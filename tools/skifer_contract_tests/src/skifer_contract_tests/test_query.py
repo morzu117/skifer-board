@@ -154,3 +154,20 @@ def test_denied_model_is_semantic_access_denied_without_rows(
     assert "recommended_action" in error
     assert "rows" not in response.json()
     assert "rows" not in error
+
+
+def test_query_limit_exceeded_is_limit_exceeded(
+    skifer: httpx.Client, auth_headers: dict[str, str]
+) -> None:
+    response = post_query(skifer, auth_headers, SIMPLE_QUERY, limit=1001)
+    assert_error(response, 400, "LimitExceeded")
+
+
+def test_unknown_metric_is_semantic_query_error_with_suggestions(
+    skifer: httpx.Client, auth_headers: dict[str, str]
+) -> None:
+    body = {"model": "sales.orders", "metrics": ["not_a_metric"]}
+    error = assert_error(post_query(skifer, auth_headers, body), 422, "SemanticQueryError")
+    assert isinstance(error["suggestions"], list) and error["suggestions"]
+    assert all(isinstance(name, str) for name in error["suggestions"])
+    assert any("revenue" in name for name in error["suggestions"])

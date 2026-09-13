@@ -251,7 +251,7 @@ def test_non_conforming_body_is_invalid_request(client: TestClient, body: dict[s
 def test_query_limit_out_of_bounds_is_invalid_request(client: TestClient, limit: int) -> None:
     response = post_query(client, {"model": "sales.orders", "metrics": ["revenue"]}, limit=limit)
     assert response.status_code == 400
-    assert response.json()["error"]["type"] == "InvalidRequest"
+    assert response.json()["error"]["type"] == "LimitExceeded"
 
 
 def test_unknown_model_is_not_found(client: TestClient) -> None:

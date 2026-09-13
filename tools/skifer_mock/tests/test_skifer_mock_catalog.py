@@ -96,14 +96,14 @@ def test_models_pagination_follows_cursors(client: TestClient) -> None:
 def test_invalid_cursor_is_invalid_request(client: TestClient, cursor: str) -> None:
     response = client.get("/api/v1/models", params={"cursor": cursor}, headers=AUTH)
     assert response.status_code == 400
-    assert response.json()["error"]["type"] == "InvalidRequest"
+    assert response.json()["error"]["type"] == "InvalidCursor"
 
 
 @pytest.mark.parametrize("limit", [0, 101])
 def test_models_limit_out_of_bounds_is_invalid_request(client: TestClient, limit: int) -> None:
     response = client.get("/api/v1/models", params={"limit": limit}, headers=AUTH)
     assert response.status_code == 400
-    assert response.json()["error"]["type"] == "InvalidRequest"
+    assert response.json()["error"]["type"] == "LimitExceeded"
 
 
 def test_model_view(client: TestClient) -> None:

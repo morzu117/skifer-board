@@ -18,6 +18,10 @@ BASE_URL_OPTION = "--skifer-base-url"
 APP_INI_KEY = "skifer_contract_app"
 TOKEN_ENV_VAR = "SKIFER_CONTRACT_TOKEN"
 DEFAULT_TOKEN = "mock-token"
+WARN_MODEL_INI_KEY = "skifer_contract_warn_model"
+REQUIRE_HUMAN_MODEL_INI_KEY = "skifer_contract_require_human_model"
+READONLY_TOKEN_INI_KEY = "skifer_contract_readonly_token"
+READONLY_TOKEN_ENV_VAR = "SKIFER_CONTRACT_READONLY_TOKEN"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -34,11 +38,67 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         type="string",
         default="",
     )
+    parser.addini(
+        WARN_MODEL_INI_KEY,
+        help="Model key that is currently in a WARN certification state on the target (D15).",
+        type="string",
+        default="",
+    )
+    parser.addini(
+        REQUIRE_HUMAN_MODEL_INI_KEY,
+        help="Model key that requires human sign-off (REQUIRE_HUMAN) on the target (D15).",
+        type="string",
+        default="",
+    )
+    parser.addini(
+        READONLY_TOKEN_INI_KEY,
+        help="Bearer token without the query:execute scope on the target (D15).",
+        type="string",
+        default="",
+    )
 
 
 @pytest.fixture(scope="session")
 def skifer_token() -> str:
     return os.environ.get(TOKEN_ENV_VAR, DEFAULT_TOKEN)
+
+
+@pytest.fixture(scope="session")
+def warn_model(pytestconfig: pytest.Config) -> str:
+    value = str(pytestconfig.getini(WARN_MODEL_INI_KEY))
+    if not value:
+        pytest.fail(
+            f"Set the ini key {WARN_MODEL_INI_KEY!r} to a model key in a WARN state on the "
+            "target (D15).",
+            pytrace=False,
+        )
+    return value
+
+
+@pytest.fixture(scope="session")
+def require_human_model(pytestconfig: pytest.Config) -> str:
+    value = str(pytestconfig.getini(REQUIRE_HUMAN_MODEL_INI_KEY))
+    if not value:
+        pytest.fail(
+            f"Set the ini key {REQUIRE_HUMAN_MODEL_INI_KEY!r} to a model key in a REQUIRE_HUMAN "
+            "state on the target (D15).",
+            pytrace=False,
+        )
+    return value
+
+
+@pytest.fixture(scope="session")
+def readonly_headers(pytestconfig: pytest.Config) -> dict[str, str]:
+    token = os.environ.get(READONLY_TOKEN_ENV_VAR) or str(
+        pytestconfig.getini(READONLY_TOKEN_INI_KEY)
+    )
+    if not token:
+        pytest.fail(
+            f"Set {READONLY_TOKEN_ENV_VAR} or the ini key {READONLY_TOKEN_INI_KEY!r} to a bearer "
+            "token without the query:execute scope (D15).",
+            pytrace=False,
+        )
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(scope="session")

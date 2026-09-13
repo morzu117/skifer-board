@@ -32,4 +32,7 @@ python_version = "3.12"
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "tools/skifer_mock/tests", "tools/skifer_contract_tests/src/skifer_contract_tests"]
-skifer_contract_app = "skifer_mock.app:create_app"
+skifer_contract_app = "skifer_mock.app:create_contract_app"
+skifer_contract_warn_model = "ops.stale_orders"
+skifer_contract_require_human_model = "ops.pending_orders"
+skifer_contract_readonly_token = "mock-read-token"

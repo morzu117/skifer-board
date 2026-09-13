@@ -10,16 +10,17 @@ import hashlib
 import json
 import secrets
 import uuid
+from collections.abc import Mapping
 from itertools import islice, product
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
-from fastapi import FastAPI, Query, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.base import RequestResponseEndpoint
 
-from skifer_mock.catalog import CATALOG, FROZEN_AT, Dimension, Metric, Model
+from skifer_mock.catalog import CATALOG, FROZEN_AT, TEST_CATALOG, Dimension, Metric, Model
 
 API_PREFIX = "/api/v1"
 DEFAULT_TOKEN = "mock-token"
@@ -76,11 +77,25 @@ def error_response(status_code: int, error_type: str, message: str, **details: A
     )
 
 
-def is_authorized(authorization: str | None, token: str) -> bool:
+SCOPES_FULL = ("models:read", "query:execute")
+SCOPES_READ_ONLY = ("models:read",)
+
+
+def resolve_scopes(
+    authorization: str | None, token: str, read_only_token: str | None
+) -> tuple[str, ...] | None:
+    """Return the scopes of the presented bearer, or `None` if it authenticates no one."""
     scheme, _, credentials = (authorization or "").partition(" ")
-    return scheme.lower() == "bearer" and secrets.compare_digest(
-        credentials.encode("utf-8"), token.encode("utf-8")
-    )
+    if scheme.lower() != "bearer":
+        return None
+    presented = credentials.encode("utf-8")
+    if secrets.compare_digest(presented, token.encode("utf-8")):
+        return SCOPES_FULL
+    if read_only_token is not None and secrets.compare_digest(
+        presented, read_only_token.encode("utf-8")
+    ):
+        return SCOPES_READ_ONLY
+    return None
 
 
 def encode_cursor(offset: int) -> str:
@@ -93,15 +108,25 @@ def decode_cursor(cursor: str, total: int) -> int:
         raw = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4))
         payload = json.loads(raw)
     except (binascii.Error, ValueError) as exc:
-        raise MockApiError(400, "InvalidRequest", "The cursor is not valid.") from exc
+        raise MockApiError(400, "InvalidCursor", "The cursor is not valid.") from exc
     offset = payload.get("offset") if isinstance(payload, dict) else None
     if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset < total:
-        raise MockApiError(400, "InvalidRequest", "The cursor is not valid.")
+        raise MockApiError(400, "InvalidCursor", "The cursor is not valid.")
     return offset
 
 
-def list_models_page(cursor: str | None, limit: int) -> dict[str, Any]:
-    keys = sorted(CATALOG)
+def validate_limit(limit: int, maximum: int) -> int:
+    if not 1 <= limit <= maximum:
+        raise MockApiError(
+            400, "LimitExceeded", f"limit must be between 1 and {maximum} (got {limit})."
+        )
+    return limit
+
+
+def list_models_page(
+    cursor: str | None, limit: int, catalog: Mapping[str, Model]
+) -> dict[str, Any]:
+    keys = sorted(catalog)
     offset = 0 if cursor is None else decode_cursor(cursor, len(keys))
     page = keys[offset : offset + limit]
     next_offset = offset + len(page)
@@ -113,22 +138,22 @@ def list_models_page(cursor: str | None, limit: int) -> dict[str, Any]:
                 "layer": model.layer,
                 "tags": list(model.tags),
             }
-            for model in (CATALOG[key] for key in page)
+            for model in (catalog[key] for key in page)
         ],
         "next_cursor": encode_cursor(next_offset) if next_offset < len(keys) else None,
         "total": len(keys),
     }
 
 
-def get_model(key: str) -> Model:
-    model = CATALOG.get(key)
+def get_model(key: str, catalog: Mapping[str, Model]) -> Model:
+    model = catalog.get(key)
     if model is None:
         raise MockApiError(404, "ResourceNotFound", f"Unknown model '{key}'.")
     return model
 
 
-def describe_model(key: str) -> dict[str, Any]:
-    model = get_model(key)
+def describe_model(key: str, catalog: Mapping[str, Model]) -> dict[str, Any]:
+    model = get_model(key, catalog)
     return {
         "key": model.key,
         "description": model.description,
@@ -141,8 +166,8 @@ def describe_model(key: str) -> dict[str, Any]:
     }
 
 
-def _reachable_models(root: Model) -> tuple[Model, ...]:
-    return (root, *(CATALOG[key] for key in root.related_models))
+def _reachable_models(root: Model, catalog: Mapping[str, Model]) -> tuple[Model, ...]:
+    return (root, *(catalog[key] for key in root.related_models))
 
 
 def resolve_metric(name: str, reachable: tuple[Model, ...]) -> tuple[Model, Metric]:
@@ -204,9 +229,9 @@ def metric_value(
     return (number % 10_000_000) / 100
 
 
-def run_query(body: SemanticQueryBody, limit: int) -> dict[str, Any]:
-    root = get_model(body.model)
-    reachable = _reachable_models(root)
+def run_query(body: SemanticQueryBody, limit: int, catalog: Mapping[str, Model]) -> dict[str, Any]:
+    root = get_model(body.model, catalog)
+    reachable = _reachable_models(root, catalog)
     metrics = [resolve_metric(name, reachable) for name in body.metrics]
     dimensions = [resolve_dimension(name, reachable) for name in body.group_by]
     if body.period is not None:
@@ -224,7 +249,7 @@ def run_query(body: SemanticQueryBody, limit: int) -> dict[str, Any]:
         if model not in involved:
             involved.append(model)
 
-    denied = [model for model in involved if model.decision == "DENY"]
+    denied = [model for model in involved if model.decision in ("DENY", "REQUIRE_HUMAN")]
     if denied:
         reasons: list[str] = []
         for model in denied:
@@ -233,11 +258,16 @@ def run_query(body: SemanticQueryBody, limit: int) -> dict[str, Any]:
             403,
             "SemanticAccessDenied",
             f"The certification gate denies access to '{denied[0].key}'.",
-            decision="DENY",
+            decision=denied[0].decision,
             reasons=reasons,
             evaluated_at=FROZEN_AT,
             recommended_action=denied[0].recommended_action,
         )
+
+    warned = [model for model in involved if model.decision == "WARN"]
+    policy_reasons: list[str] = []
+    for model in warned:
+        policy_reasons.extend(reason for reason in model.reasons if reason not in policy_reasons)
 
     filters = [query_filter.model_dump(exclude_unset=True) for query_filter in body.filters]
     normalized = {
@@ -308,7 +338,11 @@ def run_query(body: SemanticQueryBody, limit: int) -> dict[str, Any]:
             }
             for model in involved
         ],
-        "policy": {"decision": "ALLOW", "reasons": [], "evaluated_at": FROZEN_AT},
+        "policy": {
+            "decision": "WARN" if warned else "ALLOW",
+            "reasons": policy_reasons,
+            "evaluated_at": FROZEN_AT,
+        },
         "sql_hash": f"sha256:v1:{digest}",
         "statement_id": f"mock-statement-{digest[:16]}",
         "compiled_at": FROZEN_AT,
@@ -325,16 +359,113 @@ def run_query(body: SemanticQueryBody, limit: int) -> dict[str, Any]:
     }
 
 
-def create_app(*, token: str = DEFAULT_TOKEN) -> FastAPI:
+QUERY_PATH = f"{API_PREFIX}/query"
+HEALTH_PATH = f"{API_PREFIX}/health"
+SCENARIO_HEADER = "X-Mock-Scenario"
+MOCK_SCENARIOS = (
+    "deny_expired",
+    "warn_stale",
+    "require_human",
+    "limit_exceeded",
+    "invalid_cursor",
+    "unknown_metric",
+    "scope_denied",
+    "unavailable",
+)
+QUERY_ONLY_SCENARIOS = frozenset({"deny_expired", "warn_stale", "require_human"})
+
+
+async def _drain_response_body(response: Response) -> bytes:
+    chunks = [section async for section in response.body_iterator]  # type: ignore[attr-defined]
+    return b"".join(chunks)
+
+
+def create_app(
+    *,
+    token: str = DEFAULT_TOKEN,
+    read_only_token: str | None = None,
+    catalog: Mapping[str, Model] = CATALOG,
+) -> FastAPI:
     """Build the mock app; every route but `/health` requires `Authorization: Bearer <token>`."""
     app = FastAPI(title="skifer mock", docs_url=None, redoc_url=None, openapi_url=None)
 
+    # Starlette applies the LAST-registered `@app.middleware("http")` outermost (it runs first),
+    # so `apply_scenario` is registered before `authenticate`: authentication must run first, and
+    # the scenario header must never bypass it.
+    @app.middleware("http")
+    async def apply_scenario(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.url.path == HEALTH_PATH:
+            return await call_next(request)
+        scenario = request.headers.get(SCENARIO_HEADER)
+        if scenario is None:
+            return await call_next(request)
+        if scenario not in MOCK_SCENARIOS:
+            return error_response(
+                400,
+                "InvalidRequest",
+                f"Unknown X-Mock-Scenario '{scenario}'; expected one of: "
+                f"{', '.join(MOCK_SCENARIOS)}.",
+            )
+        if scenario in QUERY_ONLY_SCENARIOS and request.url.path != QUERY_PATH:
+            return await call_next(request)
+        if scenario == "limit_exceeded":
+            return error_response(
+                400, "LimitExceeded", "The requested limit exceeds the allowed maximum."
+            )
+        if scenario == "invalid_cursor":
+            return error_response(400, "InvalidCursor", "The cursor is not valid.")
+        if scenario == "unknown_metric":
+            available = sorted(
+                {metric.name for model in catalog.values() for metric in model.metrics}
+            )
+            return error_response(
+                422, "SemanticQueryError", "Unknown metric.", suggestions=available
+            )
+        if scenario == "scope_denied":
+            return error_response(403, "ScopeDenied", "The 'query:execute' scope is required.")
+        if scenario == "unavailable":
+            return error_response(
+                503, "ResourceUnavailable", "The service is temporarily unavailable."
+            )
+        if scenario == "deny_expired":
+            return error_response(
+                403,
+                "SemanticAccessDenied",
+                "The certification gate denies access.",
+                decision="DENY",
+                reasons=["EXPIRED"],
+                evaluated_at=FROZEN_AT,
+                recommended_action="Renew the certification before querying it.",
+            )
+        if scenario == "require_human":
+            return error_response(
+                403,
+                "SemanticAccessDenied",
+                "The certification gate denies access.",
+                decision="REQUIRE_HUMAN",
+                reasons=["MISSING"],
+                evaluated_at=FROZEN_AT,
+                recommended_action="Get human sign-off before querying it.",
+            )
+        response = await call_next(request)
+        if scenario == "warn_stale" and response.status_code == 200:
+            payload = json.loads(await _drain_response_body(response))
+            payload["evidence"]["policy"] = {
+                "decision": "WARN",
+                "reasons": ["STALE"],
+                "evaluated_at": FROZEN_AT,
+            }
+            return JSONResponse(payload)
+        return response
+
     @app.middleware("http")
     async def authenticate(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if request.url.path != f"{API_PREFIX}/health" and not is_authorized(
-            request.headers.get("authorization"), token
-        ):
+        if request.url.path == HEALTH_PATH:
+            return await call_next(request)
+        scopes = resolve_scopes(request.headers.get("authorization"), token, read_only_token)
+        if scopes is None:
             return error_response(401, "Unauthenticated", "A valid bearer token is required.")
+        request.state.scopes = scopes
         return await call_next(request)
 
     @app.exception_handler(MockApiError)
@@ -354,29 +485,32 @@ def create_app(*, token: str = DEFAULT_TOKEN) -> FastAPI:
         return {"status": "ok"}
 
     @app.get(f"{API_PREFIX}/me")
-    def me() -> dict[str, Any]:
+    def me(request: Request) -> dict[str, Any]:
         return {
             "subject": "mock-user",
             "consumer_class": "dashboard",
-            "scopes": ["models:read", "query:execute"],
+            "scopes": list(request.state.scopes),
         }
 
     @app.get(f"{API_PREFIX}/models")
-    def list_models(
-        cursor: str | None = None,
-        limit: Annotated[int, Query(ge=1, le=MODELS_LIMIT_MAX)] = MODELS_LIMIT_DEFAULT,
-    ) -> dict[str, Any]:
-        return list_models_page(cursor, limit)
+    def list_models(cursor: str | None = None, limit: int = MODELS_LIMIT_DEFAULT) -> dict[str, Any]:
+        return list_models_page(cursor, validate_limit(limit, MODELS_LIMIT_MAX), catalog)
 
     @app.get(f"{API_PREFIX}/models/{{key}}")
     def read_model(key: str) -> dict[str, Any]:
-        return describe_model(key)
+        return describe_model(key, catalog)
 
     @app.post(f"{API_PREFIX}/query")
     def query(
-        body: SemanticQueryBody,
-        limit: Annotated[int, Query(ge=1, le=QUERY_LIMIT_MAX)] = QUERY_LIMIT_DEFAULT,
+        request: Request, body: SemanticQueryBody, limit: int = QUERY_LIMIT_DEFAULT
     ) -> dict[str, Any]:
-        return run_query(body, limit)
+        if "query:execute" not in request.state.scopes:
+            raise MockApiError(403, "ScopeDenied", "The 'query:execute' scope is required.")
+        return run_query(body, validate_limit(limit, QUERY_LIMIT_MAX), catalog)
 
     return app
+
+
+def create_contract_app() -> FastAPI:
+    """App for `skifer_contract_tests` (D15): `WARN`, `REQUIRE_HUMAN` and `ScopeDenied` fixtures."""
+    return create_app(read_only_token="mock-read-token", catalog=TEST_CATALOG)

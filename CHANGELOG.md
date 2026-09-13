@@ -50,6 +50,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--skifer-base-url` or the `skifer_contract_app` ini key, bearer from `SKIFER_CONTRACT_TOKEN`),
   played against the mock in process by `pnpm check`; the forbidden-imports guard now also covers
   `tools/`.
+- Mock error scenarios and prepared-states contract coverage (D14, D15): `LimitExceeded` (bounds
+  on `limit`) and `InvalidCursor` (unreadable or out-of-range cursor) as distinct error types;
+  `ops.stale_orders` (`WARN`) and `ops.pending_orders` (`REQUIRE_HUMAN`) added to a test-only
+  `TEST_CATALOG`, injected into the mock via `create_contract_app()`; a `read_only_token` scoped to
+  `models:read` only (`ScopeDenied` on `POST /query`); the `X-Mock-Scenario` header
+  (`MOCK_SCENARIOS`) to force `deny_expired`, `warn_stale`, `require_human`, `limit_exceeded`,
+  `invalid_cursor`, `unknown_metric`, `scope_denied` and `unavailable` on the mock only. The
+  contract suite gained `skifer_contract_warn_model`, `skifer_contract_require_human_model` and
+  `skifer_contract_readonly_token` ini keys (the last overridable by
+  `SKIFER_CONTRACT_READONLY_TOKEN`), `test_policy.py`, `test_scopes.py`, and new cases in
+  `test_catalog.py` / `test_query.py`.
 
 ### Fixed
 

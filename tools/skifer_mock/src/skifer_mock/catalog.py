@@ -178,3 +178,59 @@ FINANCE_INVOICES = Model(
 CATALOG: dict[str, Model] = {
     model.key: model for model in (SALES_ORDERS, SALES_CUSTOMERS, FINANCE_INVOICES)
 }
+
+STALE_ORDERS = Model(
+    key="ops.stale_orders",
+    description="Test fixture: certified but stale orders, triggering a WARN decision.",
+    layer="gold",
+    tags=("ops", "test-fixture"),
+    dimensions=(Dimension("region", "string", ("EMEA", "NA", "APAC")),),
+    metrics=(Metric("revenue", ("amount",)),),
+    entities=("order",),
+    related_models=(),
+    periods=(),
+    source=Source(
+        dataset="gold.stale_orders",
+        contract_id="stale_orders",
+        contract_version="1.0.0",
+        certification_status="CERTIFIED",
+        certified_at=FROZEN_AT,
+        load_age_seconds=3600.0,
+        data_age_seconds=7200.0,
+        certification_run_id="mock-run-stale-orders",
+    ),
+    decision="WARN",
+    reasons=("DEPRECATED",),
+    recommended_action=None,
+)
+
+PENDING_ORDERS = Model(
+    key="ops.pending_orders",
+    description="Test fixture: orders pending certification, triggering a REQUIRE_HUMAN decision.",
+    layer="gold",
+    tags=("ops", "test-fixture"),
+    dimensions=(Dimension("region", "string", ("EMEA", "NA", "APAC")),),
+    metrics=(Metric("revenue", ("amount",)),),
+    entities=("order",),
+    related_models=(),
+    periods=(),
+    source=Source(
+        dataset="gold.pending_orders",
+        contract_id="pending_orders",
+        contract_version="1.0.0",
+        certification_status="MISSING",
+        certified_at=FROZEN_AT,
+        load_age_seconds=3600.0,
+        data_age_seconds=7200.0,
+        certification_run_id="mock-run-pending-orders",
+    ),
+    decision="REQUIRE_HUMAN",
+    reasons=("MISSING",),
+    recommended_action="Get human sign-off before querying 'ops.pending_orders'.",
+)
+
+TEST_CATALOG: dict[str, Model] = {
+    **CATALOG,
+    STALE_ORDERS.key: STALE_ORDERS,
+    PENDING_ORDERS.key: PENDING_ORDERS,
+}

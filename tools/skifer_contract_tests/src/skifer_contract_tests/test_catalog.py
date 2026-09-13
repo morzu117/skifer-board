@@ -72,3 +72,17 @@ def test_related_models_of_the_catalogue(
 def test_unknown_model_is_not_found(skifer: httpx.Client, auth_headers: dict[str, str]) -> None:
     response = skifer.get("/models/contract.unknown_model", headers=auth_headers)
     assert_error(response, 404, "ResourceNotFound")
+
+
+def test_models_limit_exceeded_is_limit_exceeded(
+    skifer: httpx.Client, auth_headers: dict[str, str]
+) -> None:
+    response = skifer.get("/models", params={"limit": 101}, headers=auth_headers)
+    assert_error(response, 400, "LimitExceeded")
+
+
+def test_models_invalid_cursor_is_invalid_cursor(
+    skifer: httpx.Client, auth_headers: dict[str, str]
+) -> None:
+    response = skifer.get("/models", params={"cursor": "not-a-cursor"}, headers=auth_headers)
+    assert_error(response, 400, "InvalidCursor")
