@@ -1,8 +1,8 @@
-<!-- agentkit:start 0.5.2 -->
+<!-- agentkit:start 0.5.3 -->
 
 ## Chaîne agent — skifer-board
 
-Rendu depuis agent-kernel 0.5.2. Ne pas éditer à la main :
+Rendu depuis agent-kernel 0.5.3. Ne pas éditer à la main :
 toute modification est écrasée au prochain `/sync`. Pour changer ce bloc,
 modifier le noyau ou `agent.yml`.
 
@@ -85,6 +85,20 @@ commit. Du travail non commité est du travail non rendu.
 **2. Le gate de la couche touchée est vert**, lancé **en entier** — pas un
 sous-ensemble, pas « les tests qui semblent pertinents ». Un gate partiel
 rate les dérives d'artefacts générés.
+
+**api**
+
+```bash
+pnpm run check:api
+```
+
+**web**
+
+```bash
+pnpm run check:web
+```
+
+**docs**
 
 ```bash
 python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]" && grep -q '^## \[Unreleased\]' CHANGELOG.md
@@ -321,7 +335,7 @@ le reviewer redevient un agent de dev.
 ### Commandes
 
 ```
-test   grep -q '^## \[Unreleased\]' CHANGELOG.md
+test   pnpm run check
 lint   python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]"
 ```
 
@@ -331,7 +345,7 @@ lint   python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in p
 - Couche de consommation de la couche sémantique skifer : dashboards, exploration ad-hoc, agentique, reporting. Aucune couche sémantique propre.
 - Couplage à skifer par HTTP uniquement (REST + MCP), au travers de AgentReadyDataService. Le board n'émet jamais de SQL ; Spark n'y entre jamais.
 - Dashboard as YAML : une tuile = une SemanticQuery (noms uniquement) + une spec de viz sémantique, jamais d'options brutes du renderer.
-- Dépôt amorcé, aucun code : docs/roadmap/00_*.md seulement. Stack (Next.js / FastAPI, monorepo pnpm + uv) à figer dans le plan 01.
+- Fondation en cours (plan 01) : monorepo pnpm + uv, apps/api (FastAPI, paquet skifer_board) et apps/web (Next.js 15) ; gate `pnpm run check`.
 - Plan docs/roadmap/NN_*_plan.md commité et validé avant tout code. Un point de plan = un commit feat(planNN-x.y). Toute modif = test + CHANGELOG [Unreleased]. Jamais de bump de version. LLM mocké, aucun réseau en test.
 - ../skifer est modifié en parallèle sur une autre machine : n'y rien écrire sans accord explicite.
 

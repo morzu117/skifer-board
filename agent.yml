@@ -8,7 +8,7 @@
 #   capabilities, models, guardrails, phases    defaults.yml
 
 kernel:
-  version: "v0.5.2"        # dernier tag connu bon, aligné sur skifer
+  version: "v0.5.3"        # dernier tag connu bon
 
 # Monorepo pnpm + uv (plan 01, D1) : gate unique `pnpm run check`, une entrée de gate par couche.
 # `make` n'est pas utilisé (absent de la machine Windows de dev).
