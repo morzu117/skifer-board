@@ -4,6 +4,7 @@
   "packageManager": "pnpm@9.14.4",
   "scripts": {
     "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest",
-    "check": "pnpm run check:api"
+    "check:web": "pnpm --filter @skifer-board/web lint && pnpm --filter @skifer-board/web type-check && pnpm --filter @skifer-board/web test && pnpm --filter @skifer-board/web build",
+    "check": "pnpm run check:api && pnpm run check:web"
   }
 }

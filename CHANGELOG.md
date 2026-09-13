@@ -18,3 +18,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Monorepo root and Python API skeleton under `uv` (`apps/api`, package `skifer_board`), with the
   `pnpm check` / `check:api` gate (ruff, ruff format, mypy strict, pytest) and a test guarding
   against `skifer` and `pyspark` imports from the board's own code.
+- Minimal Next.js web app (`apps/web`, package `@skifer-board/web`) with a single landing page,
+  eslint, `tsc --noEmit`, and vitest, wired into the `check:web` gate (`pnpm check` now runs
+  `check:api` then `check:web`).
