@@ -15,3 +15,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Dashboard as YAML v1 spec, skifer mock and contract tests, typed client, minimal identity.
 - Open source scaffolding: MIT license, README, contributing guide, code of conduct, security
   policy, issue and pull request templates, CI placeholder.
+- Monorepo root and Python API skeleton under `uv` (`apps/api`, package `skifer_board`), with the
+  `pnpm check` / `check:api` gate (ruff, ruff format, mypy strict, pytest) and a test guarding
+  against `skifer` and `pyspark` imports from the board's own code.

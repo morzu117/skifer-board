@@ -1,0 +1,9 @@
+{
+  "name": "skifer-board",
+  "private": true,
+  "packageManager": "pnpm@9.14.4",
+  "scripts": {
+    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest",
+    "check": "pnpm run check:api"
+  }
+}
