@@ -191,6 +191,14 @@ def test_format_key_with_unconstrained_name_passes_schema_and_is_reported_as_unk
     ]
 
 
+def test_format_key_with_slash_and_tilde_is_escaped_per_rfc6901() -> None:
+    viz = {"kind": "table", "format": {"a/b~c": "percent"}}
+    document = _document([_tile(query=REVENUE_BY_MONTH, viz=viz)])
+    assert _found(validate_document(document)) == [
+        ("semantic", "FORMAT_KEY_UNKNOWN", "/spec/tiles/0/viz/format/a~1b~0c"),
+    ]
+
+
 def test_unknown_filter_reference_in_period_value_and_ignore_filters() -> None:
     query = {
         **REVENUE_BY_MONTH,

@@ -1,0 +1,84 @@
+# Exemple — validé par pnpm run check
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: sales-overview
+  title: "Ventes — vue d'ensemble"
+  description: "Chiffre d'affaires, tendance mensuelle et détail par canal et par région."
+  owner: sales-analytics
+  tags: [sales, gold]
+spec:
+  layout: {columns: 12}
+  filters:
+    - name: period
+      kind: period
+      default: last_12_months
+    - name: region
+      dimension: region
+      default: null
+  tiles:
+    - id: kpi_revenue
+      title: "CA total"
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        filters:
+          - column: region
+            operator: eq
+            value: $filters.region
+        period: $filters.period
+      viz:
+        kind: kpi
+        metric: revenue
+        format: {revenue: currency_eur}
+    - id: revenue_trend
+      title: "Tendance du CA (toutes régions)"
+      position: {x: 4, y: 0, w: 8, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        period: $filters.period
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]
+        format: {revenue: currency_eur}
+      ignore_filters: [region]
+    - id: revenue_by_channel
+      title: "CA par canal"
+      position: {x: 0, y: 3, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [channel]
+        filters:
+          - column: region
+            operator: eq
+            value: $filters.region
+        period: $filters.period
+      viz:
+        kind: bar
+        x: channel
+        series: [revenue]
+        format: {revenue: currency_eur}
+    - id: orders_detail
+      title: "Détail commandes par région et canal"
+      position: {x: 6, y: 3, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue, order_count, avg_basket]
+        group_by: [region, channel]
+        filters:
+          - column: region
+            operator: eq
+            value: $filters.region
+        period: $filters.period
+      viz:
+        kind: table
+        columns: [region, channel, revenue, order_count, avg_basket]
+        format:
+          revenue: currency_eur
+          avg_basket: currency_eur
+          order_count: integer

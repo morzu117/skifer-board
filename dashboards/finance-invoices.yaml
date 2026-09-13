@@ -1,0 +1,36 @@
+# Exemple — validé par pnpm run check
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: finance-invoices
+  title: "Finances — factures"
+  description: "Montant en retard et répartition des factures par statut."
+  owner: finance-ops
+  tags: [finance]
+spec:
+  layout: {columns: 12}
+  tiles:
+    - id: kpi_overdue
+      title: "Montant en retard"
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: finance.invoices
+        metrics: [overdue_amount]
+      viz:
+        kind: kpi
+        metric: overdue_amount
+        format: {overdue_amount: currency_eur}
+    - id: invoices_by_status
+      title: "Factures par statut"
+      position: {x: 4, y: 0, w: 8, h: 4}
+      query:
+        model: finance.invoices
+        metrics: [invoiced_amount, overdue_amount]
+        group_by: [status]
+      viz:
+        kind: bar
+        x: status
+        series: [invoiced_amount, overdue_amount]
+        format:
+          invoiced_amount: currency_eur
+          overdue_amount: currency_eur

@@ -38,6 +38,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Schema by `json-schema-to-typescript` with a drift test, and fixture-corpus and closed-schema
   tests, wired into the `check:spec` gate (`pnpm check` now runs `check:api`, `check:spec`, then
   `check:web`).
+- Example dashboards (`dashboards/sales-overview.yaml`, `dashboards/finance-invoices.yaml`) on
+  the mock catalogue (`sales.orders`, `finance.invoices`), validated with no issue by
+  `apps/api/tests/dashboard_spec/test_example_dashboards.py` and by the `check:api` gate
+  (`uv run --locked skifer-board validate dashboards`).
 
 ### Fixed
 
