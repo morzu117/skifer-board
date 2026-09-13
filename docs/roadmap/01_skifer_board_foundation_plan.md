@@ -51,6 +51,7 @@ construite côté serveur. Aucune fonctionnalité utilisateur.
 | D9 | **Stack web alignée sur `../klasso/apps/web`** : Next.js 15, React 19, Tailwind 4, zustand 5, vitest + testing-library, eslint 9, `tsc --noEmit`. Playwright n'arrive qu'au plan 02, avec la première page réelle. | Next.js 16 : écart de conventions avec la référence klasso sans bénéfice en phase 1. |
 | D10 | **Stack API** : FastAPI, httpx, Pydantic v2, ruff, mypy `strict`, pytest. Aucune dépendance `pyspark`, et un test vérifie qu'aucun module du board n'importe `skifer` ni `pyspark`. | Importer `skifer` pour réutiliser ses DTO : couplage par code, contraire à « HTTP uniquement ». |
 | D11 | **`.gitattributes` `* text=auto eol=lf`** dès la première sous-tâche. | Laisser l'autocrlf de Windows : les contrôles de dérive des fichiers générés (D3) deviendraient rouges sur la machine de dev seulement. |
+| D12 | **Filtres globaux uniquement, application implicite** (validé le 13/09) : un filtre de `spec.filters` s'applique à chaque tuile dont le modèle expose sa dimension, avec une exclusion par tuile via `ignore_filters: [<nom>]`. La résolution se fait à l'exécution (F2.3) ; la v1 ne valide statiquement que les références (`$filters.<nom>` et `ignore_filters` doivent pointer vers des filtres existants). | Déclaration explicite des filtres sur chaque tuile : verbeux et source d'oublis. **Filtres de section** : plus tard, par ajout (un niveau de portée entre dashboard et tuile) ; la v1 ne réserve aucun champ pour eux. |
 
 ## 4. Catalogue du mock (figé ici, référencé par les exemples)
 
@@ -185,10 +186,7 @@ Aucune écriture dans `../skifer`. Aucune modification de `CLAUDE.md` ni d'`AGEN
 
 ## 8. Ce qui reste incertain
 
-1. **Application des filtres globaux** : un filtre `region` s'applique-t-il implicitement à chaque
-   tuile dont le modèle expose `region` (résolution dynamique, F2.3), ou faut-il le déclarer par
-   tuile ? Proposition : implicite, avec une liste `ignore_filters` par tuile. La v1 ne valide
-   statiquement que les références.
+1. ~~**Application des filtres globaux**~~ : tranché, voir D12.
 2. **Numéro du plan des prérequis côté skifer** (35 est pris) et mise à jour des références dans
    `CLAUDE.md` et `00_attendus_skifer.md` : à trancher avec toi.
 3. **Mémoire** : gbrain n'a pas de source `skifer-board` (sources actives : `default`, `lessons`,
