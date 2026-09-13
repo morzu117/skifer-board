@@ -21,3 +21,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Minimal Next.js web app (`apps/web`, package `@skifer-board/web`) with a single landing page,
   eslint, `tsc --noEmit`, and vitest, wired into the `check:web` gate (`pnpm check` now runs
   `check:api` then `check:web`).
+- CI job `check` in `.github/workflows/ci.yml`, running `pnpm run check` against both layers.
+  Manifest gates `api` and `web` track each layer independently; `docs` gate unchanged.
+- README section "Develop" with prerequisites, installation, commands, and layout.

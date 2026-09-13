@@ -4,8 +4,9 @@
 > Dashboards as YAML, ad-hoc exploration without SQL, a chat that pins its answers to a dashboard,
 > and a reporting suite — with no commercial BI platform in the loop.
 
-**Status: design phase.** No runnable code yet. The roadmap and the contract expected from skifer
-are written and open for discussion; the first implementation plan is next.
+**Status: foundation.** The first implementation plan
+([`docs/roadmap/01_skifer_board_foundation_plan.md`](docs/roadmap/01_skifer_board_foundation_plan.md))
+is in progress: monorepo, Dashboard as YAML spec, skifer mock and client. No user-facing feature yet.
 
 ---
 
@@ -48,6 +49,32 @@ of it:
 Next.js / React 19 / Tailwind / shadcn / zustand for the web app, FastAPI for the thin backend
 (result cache, scheduler, identity), ECharts as the default renderer behind a renderer-neutral
 visualization grammar. Final choices are frozen in the foundation plan.
+
+## Develop
+
+**Prerequisites**: Node 24+, pnpm 9 (managed via `packageManager` in `package.json`), and uv (required;
+no pip or requirements.txt). Python 3.12 is managed by uv via `.python-version`.
+
+**Installation**:
+```bash
+uv sync --locked       # Python dependencies
+pnpm install --frozen-lockfile  # JavaScript dependencies
+```
+
+**Run checks**: `pnpm run check` invokes both `check:api` and `check:web`:
+- `check:api`: ruff linting, ruff format validation, mypy strict, pytest
+- `check:web`: eslint, tsc, vitest, next build
+
+**Development**:
+- `pnpm --filter @skifer-board/web dev` — start the Next.js dev server on `localhost:3000`
+
+**Layout**:
+- `apps/api` — FastAPI backend, package `skifer_board`
+- `apps/web` — Next.js web app, package `@skifer-board/web`
+- `packages/` — shared utilities (planned)
+- `dashboards/` — example dashboards as YAML (planned)
+
+**Testing**: Tests do not use the network, any credentials, or real LLMs; mocking is required.
 
 ## Contributing
 

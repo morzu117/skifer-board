@@ -33,4 +33,22 @@ jobs:
       - name: Changelog has an Unreleased section
         run: grep -q '^## \[Unreleased\]' CHANGELOG.md
 
-  # Web (pnpm) and API (uv) jobs are added by the foundation plan once apps/ exist.
+  check:
+    name: pnpm check (api + web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python dependencies
+        run: uv sync --locked
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check
+        run: pnpm run check
+      - name: Working tree unchanged by the check
+        run: git diff --exit-code
