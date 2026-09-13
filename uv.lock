@@ -1075,6 +1075,7 @@ name = "skifer-board-api"
 version = "0.1.0"
 source = { editable = "apps/api" }
 dependencies = [
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "jsonschema" },
     { name = "pydantic" },
@@ -1083,6 +1084,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "jsonschema", specifier = ">=4.23" },
     { name = "pydantic", specifier = ">=2" },

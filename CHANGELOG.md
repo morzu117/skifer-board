@@ -76,6 +76,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   carrying rows (I3, fail-closed); `WARN` still returns a `QueryResult`. `iter_models` raises
   `UnexpectedResponse` if `next_cursor` repeats instead of looping forever. `check:api` now runs
   pytest with `--cov=skifer_board.skifer_client --cov-fail-under=100` (branch coverage).
+- Static server-side identity and a minimal FastAPI app (plan01-5.1, D10, D14, F1.5):
+  `skifer_board.identity.settings` (`BoardSettings`, `load_settings`, fail-closed on a missing or
+  empty `SKIFER_BOARD_SKIFER_TOKEN`, token masked from `repr`) and `skifer_board.identity.local`
+  (`LocalIdentity`, `local_identity`, derived only from the server's own OS user, never from a
+  request). `skifer_board.app.create_app` builds one `SkiferClient` per app from `BoardSettings`
+  and closes it on shutdown; `GET /api/health` never calls skifer, `GET /api/me` returns the local
+  identity plus what skifer resolves for the board's own service bearer, translating a
+  `SkiferClientError` into a 502 with only its type and message. No route reads an authorization
+  header, cookie, or query parameter from the incoming request — verified by a dedicated test that
+  forges all of them at once and checks the outgoing request to skifer byte for byte.
 
 ### Fixed
 
