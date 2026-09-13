@@ -1,0 +1,40 @@
+# Manifeste projet — résolu par /sync depuis ~/.agent-kernel
+#
+# Ne contient que les écarts. Tout le reste est détecté du repo ou hérité de
+# defaults.yml du noyau :
+#
+#   name/namespace       nom du dossier (skifer-board)
+#   memory.source        = namespace (pas de .gbrain-source)
+#   capabilities, models, guardrails, phases    defaults.yml
+
+kernel:
+  version: "v0.5.2"        # dernier tag connu bon, aligné sur skifer
+
+# Pas encore de pyproject/package.json : rien de détectable.
+# Provisoire = la CI actuelle ; remplacé par `make check` au point F1.1 du plan 01.
+commands:
+  test: grep -q '^## \[Unreleased\]' CHANGELOG.md
+  lint: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]"
+gates:
+  docs: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]" && grep -q '^## \[Unreleased\]' CHANGELOG.md
+
+stack:
+  produit: >
+    Couche de consommation de la couche sémantique skifer : dashboards,
+    exploration ad-hoc, agentique, reporting. Aucune couche sémantique propre.
+  frontiere: >
+    Couplage à skifer par HTTP uniquement (REST + MCP), au travers de
+    AgentReadyDataService. Le board n'émet jamais de SQL ; Spark n'y entre jamais.
+  format: >
+    Dashboard as YAML : une tuile = une SemanticQuery (noms uniquement) + une
+    spec de viz sémantique, jamais d'options brutes du renderer.
+  etat: >
+    Dépôt amorcé, aucun code : docs/roadmap/00_*.md seulement. Stack
+    (Next.js / FastAPI, monorepo pnpm + uv) à figer dans le plan 01.
+  workflow: >
+    Plan docs/roadmap/NN_*_plan.md commité et validé avant tout code. Un point
+    de plan = un commit feat(planNN-x.y). Toute modif = test + CHANGELOG
+    [Unreleased]. Jamais de bump de version. LLM mocké, aucun réseau en test.
+  skifer: >
+    ../skifer est modifié en parallèle sur une autre machine : n'y rien écrire
+    sans accord explicite.
