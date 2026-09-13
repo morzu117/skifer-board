@@ -3,7 +3,7 @@
 Date : 2026-09-13. Ce document liste ce que skifer-board **attend** de skifer, tel que constaté en
 lisant `../skifer` à cette date (CLAUDE.md, `agentic/data_service.py`, `agentic/resolver.py`,
 `semantic/evidence.py`, `services/context.py`, `api/routes/`). Il sert d'entrée au plan
-`docs/roadmap/35_*` côté skifer, qui sera écrit **à partir de ces besoins réels**.
+`docs/roadmap/35B_*` côté skifer (35 est déjà pris par le câblage gouvernance), qui sera écrit **à partir de ces besoins réels**.
 
 ⚠️ Rien ici ne doit être démarré dans `../skifer` sans accord explicite : un autre chantier y est
 en cours sur une autre machine.
@@ -182,7 +182,7 @@ a besoin de la `SemanticQuery` **en clair** dans la réponse, pas seulement du t
 - `AlertDispatcher` (webhook, Slack, e-mail, Teams, Google Chat) : soit extrait dans un paquet
   léger importable sans pyspark (le board est en Python, la dépendance serait naturelle), soit
   le board le duplique. Préférence : extraction, mais seulement si le paquet reste sans dépendance
-  Spark ni engine. À trancher avec le plan 35.
+  Spark ni engine. À trancher avec le plan 35B.
 - `HistoryExporter` (PDF fpdf2) : moins utile, le board rend en headless (Playwright). Pas d'attendu.
 
 ---

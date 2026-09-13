@@ -51,7 +51,7 @@ Tout est dans `../skifer/src/skifer/` :
 
 ## Ce qui manque, et où ça se construit
 
-### Côté skifer (prérequis, plan `docs/roadmap/35_*` dans skifer — pas ici)
+### Côté skifer (prérequis, plan `docs/roadmap/35B_*` dans skifer — pas ici)
 
 1. **Backend d'exécution sans Spark** : Databricks SQL warehouse (Statement Execution API) en
    prod, DuckDB + delta-rs en local / petite instance. Le SQL de `QueryResolver` est du Spark
@@ -115,7 +115,7 @@ Vérifier les licences au moment de l'adoption ; ce tableau date du 2026-09-13.
 
 1. Lire `../skifer/CLAUDE.md` et `../skifer/src/skifer/agentic/data_service.py`.
 2. Écrire `docs/roadmap/01_skifer_board_foundation_plan.md` : format dashboard-as-YAML,
-   architecture du board, contrat attendu de l'API skifer (pour que le plan 35 côté skifer
+   architecture du board, contrat attendu de l'API skifer (pour que le plan 35B côté skifer
    soit écrit à partir des besoins réels du board), choix de stack.
 3. Attendre la validation avant de coder.
 

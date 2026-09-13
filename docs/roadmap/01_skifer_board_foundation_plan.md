@@ -1,8 +1,9 @@
 # Plan 01 — Fondation de skifer-board
 
 > Rédigé le 13 septembre 2026. Couvre la phase 1 de la [roadmap](00_roadmap.md) (F1.1 à F1.5).
-> Statut : **en attente de validation.** Aucun code avant le GO explicite.
-> Tâche mémoire : `skifer-board:plan:foundation` (voir §8, source gbrain absente).
+> Statut : **validé, GO donné le 13 septembre 2026** (D12 et 35B tranchés le même jour).
+> Tâche mémoire : `skifer-board/plan/foundation` (source gbrain `skifer-board` ; gbrain refuse `:`
+> dans les slugs).
 
 ## 1. Intention
 
@@ -30,9 +31,8 @@ construite côté serveur. Aucune fonctionnalité utilisateur.
     recommended_action` ; décisions `ALLOW | WARN | DENY | REQUIRE_HUMAN`.
 - Le client et le mock du board sont écrits **contre `SK-02` (cible)**, pas contre l'API loopback.
 - **Numérotation côté skifer** : `docs/roadmap/35_governance_wiring_plan.md` existe déjà. Le plan
-  des prérequis du board (appelé « plan 35 » dans `CLAUDE.md` et `00_attendus_skifer.md`) prendra
-  un autre numéro, à attribuer côté skifer. Ce plan-ci ne modifie pas ces références (hors
-  périmètre) ; voir §7.
+  des prérequis du board sera le **plan 35B** côté skifer (décision du 13/09) ; les références de
+  `CLAUDE.md` et `00_attendus_skifer.md` ont été mises à jour en conséquence.
 - Machine de développement Windows : `make` absent, Python 3.12 et uv 0.12 installés, node 26,
   pnpm 9. **uv est obligatoire** pour tout l'outillage Python (décision utilisateur du 13/09).
 
@@ -187,11 +187,9 @@ Aucune écriture dans `../skifer`. Aucune modification de `CLAUDE.md` ni d'`AGEN
 ## 8. Ce qui reste incertain
 
 1. ~~**Application des filtres globaux**~~ : tranché, voir D12.
-2. **Numéro du plan des prérequis côté skifer** (35 est pris) et mise à jour des références dans
-   `CLAUDE.md` et `00_attendus_skifer.md` : à trancher avec toi.
-3. **Mémoire** : gbrain n'a pas de source `skifer-board` (sources actives : `default`, `lessons`,
-   `skifer`, `swairm`). La page `skifer-board:plan:foundation` ne peut pas être écrite tant que la
-   source n'est pas créée. Capacité `memory` absente pour ce projet.
+2. ~~**Numéro du plan des prérequis côté skifer**~~ : tranché, plan 35B.
+3. ~~**Mémoire**~~ : source gbrain `skifer-board` créée le 13/09, page `skifer-board/plan/foundation`
+   écrite.
 4. **Leçons** : la recherche dans `lessons` n'a remonté aucune leçon de domaine applicable (seulement
    les documents du noyau).
 
