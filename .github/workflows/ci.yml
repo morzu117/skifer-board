@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  docs:
+    name: Documentation checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate YAML files
+        run: |
+          pip install --quiet pyyaml
+          python - <<'PY'
+          import pathlib, sys, yaml
+          failed = False
+          for path in pathlib.Path(".").rglob("*.y*ml"):
+              if "node_modules" in path.parts or ".venv" in path.parts:
+                  continue
+              try:
+                  yaml.safe_load(path.read_text())
+              except yaml.YAMLError as exc:
+                  print(f"{path}: {exc}")
+                  failed = True
+          sys.exit(1 if failed else 0)
+          PY
+      - name: Changelog has an Unreleased section
+        run: grep -q '^## \[Unreleased\]' CHANGELOG.md
+
+  # Web (pnpm) and API (uv) jobs are added by the foundation plan once apps/ exist.

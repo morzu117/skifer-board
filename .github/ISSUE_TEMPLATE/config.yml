@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/morzu117/skifer-board/security/advisories/new
+    about: Report privately, never in a public issue.
+  - name: skifer (semantic layer)
+    url: https://github.com/morzu117/skifer/issues
+    about: Issues about the semantic layer, certification or query resolution belong to skifer.
