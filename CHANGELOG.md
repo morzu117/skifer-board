@@ -61,6 +61,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `skifer_contract_readonly_token` ini keys (the last overridable by
   `SKIFER_CONTRACT_READONLY_TOKEN`), `test_policy.py`, `test_scopes.py`, and new cases in
   `test_catalog.py` / `test_query.py`.
+- `SkiferClient` (`apps/api/src/skifer_board/skifer_client`, plan01-4.1): async httpx client to
+  the skifer public API (SK-02.1-02.3), the board's only path to skifer data. Frozen Pydantic v2
+  DTO (`Identity`, `ModelSummary`, `ModelPage`, `GovernedModelView`, `Column`, `Evidence` and its
+  sub-objects, `QueryFilter`, `QueryRequest`, `QueryResult`), a generic `SkiferClientError`
+  carrying the HTTP status and decoded body, and `health` / `me` / `list_models` / `iter_models`
+  / `get_model` / `query`, tested against `skifer_mock`'s contract app with no network.
 
 ### Fixed
 
