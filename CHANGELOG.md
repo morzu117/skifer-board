@@ -67,6 +67,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sub-objects, `QueryFilter`, `QueryRequest`, `QueryResult`), a generic `SkiferClientError`
   carrying the HTTP status and decoded body, and `health` / `me` / `list_models` / `iter_models`
   / `get_model` / `query`, tested against `skifer_mock`'s contract app with no network.
+- Typed errors of `SkiferClient` (plan01-4.2, SK-02.5, D14): `Unauthenticated`, `InvalidRequest`
+  and its `LimitExceeded` / `InvalidCursor` subclasses, `ScopeDenied`, `ResourceNotFound`,
+  `ResourceUnavailable`, `SemanticAccessDenied` (`decision`, `reasons`, `evaluated_at`,
+  `recommended_action`), `SemanticQueryError` (`suggestions`), and `UnexpectedResponse`, all
+  produced by the pure `error_from_response`. `query()` now raises `SemanticAccessDenied`
+  whenever the evidence's policy decision is `DENY` or `REQUIRE_HUMAN`, even on a 2xx response
+  carrying rows (I3, fail-closed); `WARN` still returns a `QueryResult`. `iter_models` raises
+  `UnexpectedResponse` if `next_cursor` repeats instead of looping forever. `check:api` now runs
+  pytest with `--cov=skifer_board.skifer_client --cov-fail-under=100` (branch coverage).
 
 ### Fixed
 

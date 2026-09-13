@@ -1,12 +1,14 @@
 """Async client to skifer's public API (SK-02): the board's only access to skifer data (I2).
 
-No SQL, no cache, no retry, no logging of the bearer token. Errors are generic in this module
-(`SkiferClientError`); typed errors per SK-02.5 arrive in 4.2.
+No SQL, no cache, no retry, no logging of the bearer token. Every non-2xx response and every
+non-conforming 2xx body raises a typed subclass of `SkiferClientError` (SK-02.5, D14); a
+`DENY`/`REQUIRE_HUMAN` policy decision on an otherwise successful query raises too, fail-closed
+(I3).
 """
 
 from collections.abc import AsyncIterator, Mapping
 from types import TracebackType
-from typing import Any, Self, TypeVar
+from typing import Any, Literal, Self, TypeVar
 
 import httpx
 from pydantic import BaseModel, JsonValue, ValidationError
@@ -19,7 +21,11 @@ from skifer_board.skifer_client.dto import (
     QueryRequest,
     QueryResult,
 )
-from skifer_board.skifer_client.errors import SkiferClientError
+from skifer_board.skifer_client.errors import (
+    SemanticAccessDenied,
+    UnexpectedResponse,
+    error_from_response,
+)
 
 API_PREFIX = "/api/v1"
 
@@ -78,17 +84,17 @@ class SkiferClient:
             body = self._decode(response)
         except ValueError:
             body = response.text
-        raise SkiferClientError(response.status_code, body)
+        raise error_from_response(response.status_code, body)
 
     def _parse(self, model: type[ModelT], response: httpx.Response) -> ModelT:
         try:
             payload = self._decode(response)
         except ValueError as error:
-            raise SkiferClientError(response.status_code, response.text) from error
+            raise UnexpectedResponse(response.status_code, response.text) from error
         try:
             return model.model_validate(payload)
         except ValidationError as error:
-            raise SkiferClientError(response.status_code, payload) from error
+            raise UnexpectedResponse(response.status_code, payload) from error
 
     async def health(self) -> bool:
         response = await self._request("GET", "/health")
@@ -114,6 +120,12 @@ class SkiferClient:
                 yield item
             if page.next_cursor is None:
                 return
+            if page.next_cursor == cursor:
+                raise UnexpectedResponse(
+                    200,
+                    {"cursor": cursor, "next_cursor": page.next_cursor},
+                    message=f"pagination did not progress past cursor {cursor!r}.",
+                )
             cursor = page.next_cursor
 
     async def get_model(self, key: str) -> GovernedModelView:
@@ -123,4 +135,20 @@ class SkiferClient:
     async def query(self, request: QueryRequest, limit: int = 100) -> QueryResult:
         body: dict[str, Any] = request.model_dump(mode="json", exclude_none=True)
         response = await self._request("POST", "/query", params={"limit": limit}, json=body)
-        return self._parse(QueryResult, response)
+        result = self._parse(QueryResult, response)
+        policy = result.evidence.policy
+        if policy.decision == "DENY":
+            decision: Literal["DENY", "REQUIRE_HUMAN"] = "DENY"
+        elif policy.decision == "REQUIRE_HUMAN":
+            decision = "REQUIRE_HUMAN"
+        else:
+            return result
+        raise SemanticAccessDenied(
+            response.status_code,
+            self._decode(response),
+            message=f"the certification gate returned {decision} for this query.",
+            decision=decision,
+            reasons=policy.reasons,
+            evaluated_at=policy.evaluated_at,
+            recommended_action=None,
+        )

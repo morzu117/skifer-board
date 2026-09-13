@@ -16,7 +16,20 @@ from skifer_board.skifer_client.dto import (
     QueryRequest,
     QueryResult,
 )
-from skifer_board.skifer_client.errors import SkiferClientError
+from skifer_board.skifer_client.errors import (
+    InvalidCursor,
+    InvalidRequest,
+    LimitExceeded,
+    ResourceNotFound,
+    ResourceUnavailable,
+    ScopeDenied,
+    SemanticAccessDenied,
+    SemanticQueryError,
+    SkiferClientError,
+    Unauthenticated,
+    UnexpectedResponse,
+    error_from_response,
+)
 
 __all__ = [
     "Column",
@@ -26,12 +39,23 @@ __all__ = [
     "EvidenceSource",
     "GovernedModelView",
     "Identity",
+    "InvalidCursor",
+    "InvalidRequest",
+    "LimitExceeded",
     "ModelPage",
     "ModelSummary",
     "NormalizedFilter",
     "QueryFilter",
     "QueryRequest",
     "QueryResult",
+    "ResourceNotFound",
+    "ResourceUnavailable",
+    "ScopeDenied",
+    "SemanticAccessDenied",
+    "SemanticQueryError",
     "SkiferClient",
     "SkiferClientError",
+    "Unauthenticated",
+    "UnexpectedResponse",
+    "error_from_response",
 ]

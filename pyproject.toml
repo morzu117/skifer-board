@@ -6,6 +6,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pytest>=8.0",
+    "pytest-cov>=5.0",
     "jsonschema>=4.23",
     "pyyaml>=6.0",
     "types-PyYAML>=6.0",
@@ -36,3 +37,9 @@ skifer_contract_app = "skifer_mock.app:create_contract_app"
 skifer_contract_warn_model = "ops.stale_orders"
 skifer_contract_require_human_model = "ops.pending_orders"
 skifer_contract_readonly_token = "mock-read-token"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

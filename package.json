@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.14.4",
   "scripts": {
-    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest && uv run --locked skifer-board validate dashboards",
+    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest --cov=skifer_board.skifer_client --cov-fail-under=100 && uv run --locked skifer-board validate dashboards",
     "check:web": "pnpm --filter @skifer-board/web lint && pnpm --filter @skifer-board/web type-check && pnpm --filter @skifer-board/web test && pnpm --filter @skifer-board/web build",
     "check:spec": "pnpm --filter @skifer-board/dashboard-spec type-check && pnpm --filter @skifer-board/dashboard-spec test",
     "check": "pnpm run check:api && pnpm run check:spec && pnpm run check:web"
