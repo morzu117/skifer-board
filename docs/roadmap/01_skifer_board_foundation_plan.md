@@ -2,6 +2,7 @@
 
 > Rédigé le 13 septembre 2026. Couvre la phase 1 de la [roadmap](00_roadmap.md) (F1.1 à F1.5).
 > Statut : **validé, GO donné le 13 septembre 2026** (D12 et 35B tranchés le même jour).
+> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). En attente de revue humaine et de livraison ; branche non poussée.
 > Tâche mémoire : `skifer-board/plan/foundation` (source gbrain `skifer-board` ; gbrain refuse `:`
 > dans les slugs).
 
