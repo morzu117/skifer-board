@@ -1,0 +1,16 @@
+[project]
+name = "skifer-mock"
+version = "0.1.0"
+description = "In-process mock of the skifer public API (SK-02) for skifer-board tests."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["uv_build>=0.6,<0.7"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "skifer_mock"

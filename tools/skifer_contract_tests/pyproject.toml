@@ -1,0 +1,19 @@
+[project]
+name = "skifer-contract-tests"
+version = "0.1.0"
+description = "Contract test suite of the skifer public API (SK-02), agnostic of the target."
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "pytest>=8.0",
+]
+
+[project.entry-points.pytest11]
+skifer_contract = "skifer_contract_tests.plugin"
+
+[build-system]
+requires = ["uv_build>=0.6,<0.7"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "skifer_contract_tests"

@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["apps/api"]
+members = ["apps/api", "tools/*"]
 
 [dependency-groups]
 dev = [
@@ -27,8 +27,9 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.mypy]
 strict = true
-files = ["apps/api/src", "apps/api/tests"]
+files = ["apps/api/src", "apps/api/tests", "tools/skifer_mock/src", "tools/skifer_mock/tests", "tools/skifer_contract_tests/src"]
 python_version = "3.12"
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests"]
+testpaths = ["apps/api/tests", "tools/skifer_mock/tests", "tools/skifer_contract_tests/src/skifer_contract_tests"]
+skifer_contract_app = "skifer_mock.app:create_app"

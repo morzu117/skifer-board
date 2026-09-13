@@ -42,6 +42,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the mock catalogue (`sales.orders`, `finance.invoices`), validated with no issue by
   `apps/api/tests/dashboard_spec/test_example_dashboards.py` and by the `check:api` gate
   (`uv run --locked skifer-board validate dashboards`).
+- skifer mock (`tools/skifer_mock`, FastAPI, in process only) serving the nominal path of the
+  public API (`/api/v1/health`, `/me`, `/models`, `/models/{key}`, `POST /query`) on the frozen
+  plan 01 catalogue, with deterministic rows, complete evidence, `truncated`, and the D14 errors
+  `Unauthenticated`, `InvalidRequest`, `ResourceNotFound`, `SemanticAccessDenied`.
+- Target-agnostic skifer API contract suite (`tools/skifer_contract_tests`, pytest plugin with
+  `--skifer-base-url` or the `skifer_contract_app` ini key, bearer from `SKIFER_CONTRACT_TOKEN`),
+  played against the mock in process by `pnpm check`; the forbidden-imports guard now also covers
+  `tools/`.
 
 ### Fixed
 

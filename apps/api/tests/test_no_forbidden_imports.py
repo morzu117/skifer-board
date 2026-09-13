@@ -3,9 +3,17 @@
 import ast
 from pathlib import Path
 
+import pytest
+
 FORBIDDEN_TOP_LEVEL_MODULES = {"pyspark", "skifer"}
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+TOOLS_SRC_ROOTS = [
+    REPO_ROOT / "tools" / "skifer_mock" / "src",
+    REPO_ROOT / "tools" / "skifer_contract_tests" / "src",
+]
 
 
 def find_forbidden_imports(source: str, forbidden: set[str]) -> list[str]:
@@ -50,6 +58,18 @@ def test_detector_allows_skifer_board() -> None:
 def test_no_forbidden_imports_in_source_tree() -> None:
     violations: dict[str, list[str]] = {}
     for path in SRC_ROOT.rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        forbidden = find_forbidden_imports(source, FORBIDDEN_TOP_LEVEL_MODULES)
+        if forbidden:
+            violations[str(path)] = forbidden
+    assert violations == {}
+
+
+@pytest.mark.parametrize("src_root", TOOLS_SRC_ROOTS, ids=lambda root: root.parent.name)
+def test_no_forbidden_imports_in_tools_source_tree(src_root: Path) -> None:
+    assert src_root.is_dir()
+    violations: dict[str, list[str]] = {}
+    for path in src_root.rglob("*.py"):
         source = path.read_text(encoding="utf-8")
         forbidden = find_forbidden_imports(source, FORBIDDEN_TOP_LEVEL_MODULES)
         if forbidden:
