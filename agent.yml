@@ -17,6 +17,7 @@ commands:
   lint: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]"
 gates:
   api: pnpm run check:api
+  spec: pnpm run check:spec
   web: pnpm run check:web
   docs: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]" && grep -q '^## \[Unreleased\]' CHANGELOG.md
 

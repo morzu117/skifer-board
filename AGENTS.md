@@ -92,6 +92,12 @@ rate les dérives d'artefacts générés.
 pnpm run check:api
 ```
 
+**spec**
+
+```bash
+pnpm run check:spec
+```
+
 **web**
 
 ```bash
