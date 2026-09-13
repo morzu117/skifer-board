@@ -1,0 +1,16 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: layout-wide
+  title: Mise en page large
+spec:
+  layout: {columns: 16}
+  tiles:
+    - id: kpi_revenue
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+      viz:
+        kind: kpi
+        metric: revenue

@@ -1,0 +1,17 @@
+apiVersion: skifer-board/v2
+kind: Dashboard
+metadata:
+  slug: structural-bad-api-version
+  title: Version d'API erronee
+spec:
+  tiles:
+    - id: revenue_by_month
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]

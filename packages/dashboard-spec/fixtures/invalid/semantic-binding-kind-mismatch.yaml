@@ -1,0 +1,25 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-binding-kind-mismatch
+  title: Liaison vers un filtre du mauvais type
+spec:
+  filters:
+    - name: region
+      dimension: region
+      default: null
+    - name: period
+      kind: period
+      default: last_12_months
+  tiles:
+    - id: revenue_by_month
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        period: $filters.region
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]

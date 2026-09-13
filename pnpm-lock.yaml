@@ -72,6 +72,8 @@ importers:
         specifier: ^2.1
         version: 2.1.9(@types/node@22.20.2)(jsdom@25.0.1)(lightningcss@1.32.0)
 
+  packages/dashboard-spec: {}
+
 packages:
 
   '@adobe/css-tools@4.5.0':

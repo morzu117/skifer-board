@@ -1,0 +1,5 @@
+{
+  "layer": "semantic",
+  "code": "TILE_OUT_OF_GRID",
+  "path": "/spec/tiles/0/position"
+}

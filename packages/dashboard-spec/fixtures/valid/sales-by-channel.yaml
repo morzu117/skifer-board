@@ -1,0 +1,22 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: sales-by-channel
+  title: Ventes par canal
+spec:
+  filters:
+    - name: region
+      dimension: region
+      default: null
+  tiles:
+    - id: orders_by_channel
+      position: {x: 0, y: 0, w: 12, h: 4}
+      query:
+        model: sales.orders
+        metrics: [order_count, revenue]
+        group_by: [channel]
+      viz:
+        kind: bar
+        x: channel
+        series: [order_count, revenue]
+      ignore_filters: [region]

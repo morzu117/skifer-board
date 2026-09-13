@@ -1,0 +1,22 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-unknown-filter-reference
+  title: Reference de filtre inconnue
+spec:
+  filters:
+    - name: period
+      kind: period
+      default: last_12_months
+  tiles:
+    - id: revenue_by_month
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]
+      ignore_filters: [region]

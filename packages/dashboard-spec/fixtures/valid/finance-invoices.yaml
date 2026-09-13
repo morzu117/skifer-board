@@ -1,0 +1,28 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: finance-invoices
+  title: Factures - suivi
+spec:
+  tiles:
+    - id: kpi_invoiced
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: finance.invoices
+        metrics: [invoiced_amount]
+      viz:
+        kind: kpi
+        metric: invoiced_amount
+        format: {invoiced_amount: currency_eur}
+      provenance: {show: false}
+    - id: invoices_by_month
+      position: {x: 4, y: 0, w: 8, h: 4}
+      query:
+        model: finance.invoices
+        metrics: [invoiced_amount, overdue_amount]
+        group_by: [invoice_month]
+      viz:
+        kind: line
+        x: invoice_month
+        series: [invoiced_amount, overdue_amount]
+        format: {invoiced_amount: currency_eur, overdue_amount: currency_eur}

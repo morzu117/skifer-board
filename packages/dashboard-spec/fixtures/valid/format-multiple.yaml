@@ -1,0 +1,20 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: format-multiple
+  title: Formats multiples
+spec:
+  tiles:
+    - id: orders_summary
+      position: {x: 0, y: 0, w: 12, h: 5}
+      query:
+        model: sales.orders
+        metrics: [revenue, order_count, avg_basket]
+        group_by: [region]
+      viz:
+        kind: table
+        columns: [region, revenue, order_count, avg_basket]
+        format:
+          revenue: currency_eur
+          order_count: integer
+          avg_basket: currency_eur

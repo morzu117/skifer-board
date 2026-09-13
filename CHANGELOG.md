@@ -24,3 +24,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CI job `check` in `.github/workflows/ci.yml`, running `pnpm run check` against both layers.
   Manifest gates `api` and `web` track each layer independently; `docs` gate unchanged.
 - README section "Develop" with prerequisites, installation, commands, and layout.
+- Dashboard as YAML v1 JSON Schema (`packages/dashboard-spec/schema/dashboard.v1.json`, draft
+  2020-12), its reference documentation (`docs/dashboard_yaml_spec.md`), and a fixture corpus
+  (`packages/dashboard-spec/fixtures/`: 10 valid dashboards, 15 invalid ones each paired with an
+  `*.expected.json` describing the expected structural or semantic error), validated by
+  `apps/api/tests/test_dashboard_spec_fixtures.py`.

@@ -1,0 +1,18 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: structural-viz-raw-renderer-option
+  title: Option brute de renderer interdite
+spec:
+  tiles:
+    - id: revenue_by_month
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]
+        echarts: {smooth: true}

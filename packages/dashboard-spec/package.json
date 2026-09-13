@@ -1,0 +1,5 @@
+{
+  "name": "@skifer-board/dashboard-spec",
+  "private": true,
+  "files": ["schema"]
+}

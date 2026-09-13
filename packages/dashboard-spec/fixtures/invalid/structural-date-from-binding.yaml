@@ -1,0 +1,19 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: structural-date-from-binding
+  title: Liaison interdite dans date_from
+spec:
+  tiles:
+    - id: revenue_by_month
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        date_from: $filters.period
+        date_to: "2026-01-31"
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]

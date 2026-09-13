@@ -6,6 +6,10 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pytest>=8.0",
+    "jsonschema>=4.23",
+    "pyyaml>=6.0",
+    "types-PyYAML>=6.0",
+    "types-jsonschema>=4.23",
 ]
 
 [tool.ruff]

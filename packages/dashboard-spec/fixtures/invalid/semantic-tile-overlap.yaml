@@ -1,0 +1,23 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-tile-overlap
+  title: Tuiles superposees
+spec:
+  tiles:
+    - id: kpi_revenue
+      position: {x: 0, y: 0, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+      viz:
+        kind: kpi
+        metric: revenue
+    - id: kpi_orders
+      position: {x: 0, y: 0, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [order_count]
+      viz:
+        kind: kpi
+        metric: order_count

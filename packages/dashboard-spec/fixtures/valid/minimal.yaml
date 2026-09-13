@@ -1,0 +1,15 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: minimal
+  title: Tableau minimal
+spec:
+  tiles:
+    - id: kpi_revenue
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+      viz:
+        kind: kpi
+        metric: revenue

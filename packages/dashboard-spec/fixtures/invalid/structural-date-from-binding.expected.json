@@ -1,0 +1,5 @@
+{
+  "layer": "structural",
+  "code": "SCHEMA_VIOLATION",
+  "path": "/spec/tiles/0/query/date_from"
+}
