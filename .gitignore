@@ -34,3 +34,8 @@ playwright-report/
 .idea/
 .vscode/
 .DS_Store
+
+# gstack / gbrain
+/.gbrain-source
+# gbrain `put` write-through mirror files (pages live in the brain, not in git)
+/skifer-board/
