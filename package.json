@@ -5,6 +5,7 @@
   "scripts": {
     "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest",
     "check:web": "pnpm --filter @skifer-board/web lint && pnpm --filter @skifer-board/web type-check && pnpm --filter @skifer-board/web test && pnpm --filter @skifer-board/web build",
-    "check": "pnpm run check:api && pnpm run check:web"
+    "check:spec": "pnpm --filter @skifer-board/dashboard-spec type-check && pnpm --filter @skifer-board/dashboard-spec test",
+    "check": "pnpm run check:api && pnpm run check:spec && pnpm run check:web"
   }
 }

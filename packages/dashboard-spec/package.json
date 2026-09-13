@@ -1,5 +1,23 @@
 {
   "name": "@skifer-board/dashboard-spec",
   "private": true,
-  "files": ["schema"]
+  "files": ["schema"],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "generate:types": "json2ts -i schema/dashboard.v1.json -o src/generated/dashboard.v1.ts"
+  },
+  "dependencies": {
+    "ajv": "^8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6",
+    "vitest": "^2.1",
+    "@types/node": "^22",
+    "json-schema-to-typescript": "^15",
+    "yaml": "^2"
+  }
 }
