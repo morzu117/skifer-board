@@ -135,7 +135,9 @@ Quatre types en v1 (décision D6) : `kpi`, `table`, `bar`, `line`. `area`, `pie`
 Tous les types acceptent `format` : un objet dont les clés sont des noms de métrique ou de
 dimension et les valeurs un format nommé fermé — `number`, `integer`, `percent`, `currency_eur`,
 `currency_usd`. Jamais d'option brute de renderer (pas de `echarts:`, `vega:`, couleurs, styles…) :
-ce sont des erreurs structurelles.
+ce sont des erreurs structurelles. Le schéma ne contraint pas la forme des clés de `format` :
+c'est la couche semantic (`FORMAT_KEY_UNKNOWN`) qui vérifie qu'une clé est bien un nom de
+`query.metrics` ou `query.group_by`.
 
 ## Filtres globaux et liaisons (D12)
 
@@ -213,3 +215,7 @@ par le schéma)
 Les fixtures de `packages/dashboard-spec/fixtures/invalid/` illustrent chacun de ces codes (au
 moins un exemple par code obligatoire), avec pour chacune un fichier `<nom>.expected.json`
 `{layer, code, path}` où `path` est le pointeur JSON de l'emplacement fautif.
+
+Convention de `path` (D13) : l'élément le plus précis, avec son index dans une liste — ainsi
+`VIZ_SERIES_NOT_IN_METRICS` pointe `.../viz/series/<k>` (l'entrée fautive de `viz.series`) et
+`VIZ_TABLE_COLUMN_UNKNOWN` pointe `.../viz/columns/<k>`, jamais le tableau entier.

@@ -135,12 +135,12 @@ def _viz_issues(tile: dict[str, Any], tile_path: Segments) -> list[ValidationIss
             )
         )
     if kind in CHART_KINDS:
-        for series in viz["series"]:
+        for series_index, series in enumerate(viz["series"]):
             if series not in metrics:
                 issues.append(
                     _issue(
                         "VIZ_SERIES_NOT_IN_METRICS",
-                        [*viz_path, "series"],
+                        [*viz_path, "series", series_index],
                         f"viz.series entry '{series}' is not in query.metrics",
                     )
                 )

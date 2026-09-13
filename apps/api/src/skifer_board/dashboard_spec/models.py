@@ -134,9 +134,9 @@ class Query(BaseModel):
 
 
 class Format(
-    RootModel[dict[Name, Literal["number", "integer", "percent", "currency_eur", "currency_usd"]]]
+    RootModel[dict[str, Literal["number", "integer", "percent", "currency_eur", "currency_usd"]]]
 ):
-    root: dict[Name, Literal["number", "integer", "percent", "currency_eur", "currency_usd"]]
+    root: dict[str, Literal["number", "integer", "percent", "currency_eur", "currency_usd"]]
 
 
 class KpiViz(BaseModel):

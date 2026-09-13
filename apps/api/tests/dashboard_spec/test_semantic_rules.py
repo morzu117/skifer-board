@@ -130,7 +130,33 @@ def test_viz_series_not_in_metrics() -> None:
     viz = {"kind": "line", "x": "order_month", "series": ["revenue", "order_count"]}
     document = _document([_tile(query=REVENUE_BY_MONTH, viz=viz)])
     assert _found(validate_document(document)) == [
-        ("semantic", "VIZ_SERIES_NOT_IN_METRICS", "/spec/tiles/0/viz/series"),
+        ("semantic", "VIZ_SERIES_NOT_IN_METRICS", "/spec/tiles/0/viz/series/1"),
+    ]
+
+
+def test_viz_two_series_not_in_metrics() -> None:
+    viz = {
+        "kind": "line",
+        "x": "order_month",
+        "series": ["order_count", "revenue", "margin"],
+    }
+    document = _document([_tile(query=REVENUE_BY_MONTH, viz=viz)])
+    assert _found(validate_document(document)) == [
+        ("semantic", "VIZ_SERIES_NOT_IN_METRICS", "/spec/tiles/0/viz/series/0"),
+        ("semantic", "VIZ_SERIES_NOT_IN_METRICS", "/spec/tiles/0/viz/series/2"),
+    ]
+
+
+def test_unknown_filter_reference_and_binding_kind_mismatch_in_same_tile() -> None:
+    query = {
+        **REVENUE_BY_MONTH,
+        "period": "$filters.inconnu",
+        "filters": [{"column": "region", "operator": "eq", "value": "$filters.period"}],
+    }
+    document = _document([_tile(query=query, viz={"kind": "table"})], filters=[REGION, PERIOD])
+    assert _found(validate_document(document)) == [
+        ("semantic", "UNKNOWN_FILTER_REFERENCE", "/spec/tiles/0/query/period"),
+        ("semantic", "BINDING_KIND_MISMATCH", "/spec/tiles/0/query/filters/0/value"),
     ]
 
 
@@ -154,6 +180,14 @@ def test_format_key_unknown() -> None:
     document = _document([_tile(query=REVENUE_BY_MONTH, viz=viz)])
     assert _found(validate_document(document)) == [
         ("semantic", "FORMAT_KEY_UNKNOWN", "/spec/tiles/0/viz/format/margin"),
+    ]
+
+
+def test_format_key_with_unconstrained_name_passes_schema_and_is_reported_as_unknown() -> None:
+    viz = {"kind": "table", "format": {"bad-key": "percent"}}
+    document = _document([_tile(query=REVENUE_BY_MONTH, viz=viz)])
+    assert _found(validate_document(document)) == [
+        ("semantic", "FORMAT_KEY_UNKNOWN", "/spec/tiles/0/viz/format/bad-key"),
     ]
 
 

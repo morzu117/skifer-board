@@ -213,7 +213,6 @@
     },
     "format": {
       "type": "object",
-      "propertyNames": { "$ref": "#/$defs/name" },
       "additionalProperties": {
         "enum": ["number", "integer", "percent", "currency_eur", "currency_usd"]
       }
