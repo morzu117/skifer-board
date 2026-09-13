@@ -85,7 +85,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   identity plus what skifer resolves for the board's own service bearer, translating a
   `SkiferClientError` into a 502 with only its type and message. No route reads an authorization
   header, cookie, or query parameter from the incoming request — verified by a dedicated test that
-  forges all of them at once and checks the outgoing request to skifer byte for byte.
+  forges all of them at once and checks the outgoing request to skifer byte for byte. `GET /api/me`
+  is now also asserted against the skifer identity fields (`subject`, `consumer_class`) the mock
+  returns, and the missing-token failure is covered against a fully controlled environ, both via
+  `load_settings` directly and via `create_app` with `os.environ` monkeypatched to an empty dict.
 
 ### Fixed
 

@@ -4,7 +4,12 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 from skifer_board.app import create_app
-from skifer_board.identity.settings import SKIFER_TOKEN_ENV, BoardConfigurationError, BoardSettings
+from skifer_board.identity.settings import (
+    SKIFER_TOKEN_ENV,
+    BoardConfigurationError,
+    BoardSettings,
+    load_settings,
+)
 from skifer_mock.app import create_contract_app
 
 
@@ -30,10 +35,16 @@ def test_me_returns_local_and_skifer_identity() -> None:
     assert "query:execute" in body["skifer"]["scopes"]
     assert body["subject"]
     assert body["consumer_class"] == "dashboard"
+    assert body["skifer"]["subject"] == "mock-user"
+    assert body["skifer"]["consumer_class"] == "dashboard"
 
 
 def test_create_app_without_token_in_environ_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(SKIFER_TOKEN_ENV, raising=False)
+    with pytest.raises(BoardConfigurationError):
+        load_settings({})
+    with pytest.raises(BoardConfigurationError):
+        load_settings({SKIFER_TOKEN_ENV: ""})
+    monkeypatch.setattr("skifer_board.app.os.environ", {})
     with pytest.raises(BoardConfigurationError):
         create_app()
 
