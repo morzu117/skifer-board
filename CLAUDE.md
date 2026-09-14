@@ -48,6 +48,14 @@ Tout est dans `../skifer/src/skifer/` :
   `observability/alerts.py` (`AlertDispatcher`).
 - **Statement Execution API Databricks** déjà utilisée pour les materialized views
   (`params.sql_warehouse_id`) — même mécanisme pour exécuter sans Spark.
+- **Couche applicative + API locale (Plan 31 skifer, mergé le 2026-09-13 sur `main`)** : `services/`
+  (projet, règles, gouvernance, qualité, sémantique, agents, exécution — tous derrière un
+  `RequestContext` et des scopes nommés) et `api/` (FastAPI **loopback uniquement**, extra `[api]`,
+  `skifer api serve|openapi`, routes 1:1 avec les services : `api/routes/semantic.py`, `catalog.py`,
+  `certifications.py`, `lineage.py`, `dictionary.py`, `jobs.py`…). `services/identity.py`
+  (`LocalIdentity`) dérive le sujet de l'OS : l'autorité ne vient jamais de la requête.
+  **C'est le point de départ de l'API que `skifer_client` consomme**, mais elle est locale
+  (loopback, identité OS) — pas encore une API distante multi-utilisateurs.
 
 ## Ce qui manque, et où ça se construit
 
@@ -56,10 +64,12 @@ Tout est dans `../skifer/src/skifer/` :
 1. **Backend d'exécution sans Spark** : Databricks SQL warehouse (Statement Execution API) en
    prod, DuckDB + delta-rs en local / petite instance. Le SQL de `QueryResolver` est du Spark
    SQL → transpilation de dialecte (sqlglot, MIT).
-2. **API REST sur `AgentReadyDataService`** (résultats en Arrow IPC de préférence). Une seule
-   frontière : l'API n'expose rien d'autre que le service.
-3. **Identité utilisateur** : mapping SSO → `ConsumerContext` (consumer class, scopes), et
-   row-level security, qui n'existe pas encore.
+2. **Exposition distante de l'API Plan 31** : aujourd'hui loopback + `LocalIdentity`. Il faut un
+   bind non-loopback derrière une auth réelle (bearer vérifié par un vérificateur injecté, comme
+   `mcp/auth.py`), et un format colonnaire pour les résultats (Arrow IPC de préférence). Une seule
+   frontière : l'API n'expose rien d'autre que les services.
+3. **Identité utilisateur** : mapping SSO → `RequestContext` / `ConsumerContext` (consumer class,
+   scopes), et row-level security, qui n'existe pas encore.
 
 ⚠️ Ne pas démarrer ce travail dans `../skifer` sans accord explicite : un autre chantier y est
 en cours sur une autre machine.
@@ -113,7 +123,9 @@ Vérifier les licences au moment de l'adoption ; ce tableau date du 2026-09-13.
 
 ## Premières tâches pour la session qui démarre ici
 
-1. Lire `../skifer/CLAUDE.md` et `../skifer/src/skifer/agentic/data_service.py`.
+1. Lire `../skifer/CLAUDE.md`, `../skifer/src/skifer/agentic/data_service.py`, `../skifer/src/skifer/api/`
+   et `../skifer/src/skifer/services/` (Plan 31). Si `../skifer` n'existe pas sur la machine :
+   `git clone https://github.com/morzu117/skifer.git ../skifer`.
 2. Écrire `docs/roadmap/01_skifer_board_foundation_plan.md` : format dashboard-as-YAML,
    architecture du board, contrat attendu de l'API skifer (pour que le plan 35B côté skifer
    soit écrit à partir des besoins réels du board), choix de stack.
