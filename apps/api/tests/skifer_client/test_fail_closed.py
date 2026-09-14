@@ -71,3 +71,42 @@ async def test_warn_decision_returns_a_query_result() -> None:
         result = await client.query(QUERY_REQUEST)
     assert result.evidence.policy.decision == "WARN"
     assert result.rows == ({"revenue": 42.0},)
+
+
+SENTINEL_ROW_VALUE = "ROW-SENTINEL-6-3"
+
+
+def _query_result_body_with_sentinel_row(decision: str) -> dict[str, Any]:
+    body = _query_result_body(decision)
+    body["rows"] = [{"revenue": SENTINEL_ROW_VALUE}]
+    return body
+
+
+def _client_with_sentinel_row(decision: str) -> SkiferClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_query_result_body_with_sentinel_row(decision))
+
+    return SkiferClient("http://testserver", "mock-token", transport=httpx.MockTransport(handler))
+
+
+def _assert_denied_body_has_no_rows(error: SemanticAccessDenied, decision: str) -> None:
+    expected_evidence = _query_result_body_with_sentinel_row(decision)["evidence"]
+    assert error.body == {"evidence": expected_evidence}
+    assert SENTINEL_ROW_VALUE not in str(error)
+    assert SENTINEL_ROW_VALUE not in repr(error)
+    assert SENTINEL_ROW_VALUE not in repr(error.body)
+    assert SENTINEL_ROW_VALUE not in repr(error.args)
+
+
+async def test_deny_decision_body_carries_only_evidence_no_rows() -> None:
+    async with _client_with_sentinel_row("DENY") as client:
+        with pytest.raises(SemanticAccessDenied) as excinfo:
+            await client.query(QUERY_REQUEST)
+    _assert_denied_body_has_no_rows(excinfo.value, "DENY")
+
+
+async def test_require_human_decision_body_carries_only_evidence_no_rows() -> None:
+    async with _client_with_sentinel_row("REQUIRE_HUMAN") as client:
+        with pytest.raises(SemanticAccessDenied) as excinfo:
+            await client.query(QUERY_REQUEST)
+    _assert_denied_body_has_no_rows(excinfo.value, "REQUIRE_HUMAN")

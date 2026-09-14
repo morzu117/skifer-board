@@ -113,3 +113,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `SkiferClient.iter_models` pagination guard (D17, human review of plan 01): the guard now tracks
   all cursors encountered during iteration; a `next_cursor` already seen (e.g., a cycle A → B → A)
   raises `UnexpectedResponse` instead of looping forever.
+- `SkiferClient.query` (D18, human review of plan 01): a 2xx response whose `evidence.policy.decision`
+  is `DENY` or `REQUIRE_HUMAN` still raised `SemanticAccessDenied`, but `error.body` carried the full
+  response, including the denied query's `rows` and `columns`. `error.body` is now exactly
+  `{"evidence": <the evidence received>}`.

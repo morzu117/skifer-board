@@ -145,9 +145,10 @@ class SkiferClient:
             decision = "REQUIRE_HUMAN"
         else:
             return result
+        raw_body: dict[str, Any] = response.json()
         raise SemanticAccessDenied(
             response.status_code,
-            self._decode(response),
+            {"evidence": raw_body["evidence"]},
             message=f"the certification gate returned {decision} for this query.",
             decision=decision,
             reasons=policy.reasons,
