@@ -12,6 +12,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Project MCP configuration (`.mcp.json`) declaring the codegraph structural index server, as
   expected by the agent chain's `--mcp-config .mcp.json`; the local index (`/.codegraph/`) is
   git-ignored.
+- Plan 01 follow-ups from the human review (`docs/roadmap/01_skifer_board_foundation_plan.md`
+  §10, decisions D16–D20); roadmap F2.4 aligned with spec v1 (four viz kinds, renderer chosen when
+  plan 02 opens); expectation toward skifer for `evidence.policy.recommended_action` (SK-02.3).
 - Development roadmap (`docs/roadmap/00_roadmap.md`) and expectations toward skifer
   (`docs/roadmap/00_attendus_skifer.md`).
 - Foundation plan (`docs/roadmap/01_skifer_board_foundation_plan.md`): monorepo pnpm + uv,
