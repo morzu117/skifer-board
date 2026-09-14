@@ -1,0 +1,22 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: period-literal
+  title: Periode fixe
+spec:
+  filters:
+    - name: period
+      kind: period
+      default: null
+  tiles:
+    - id: revenue_ytd
+      position: {x: 0, y: 0, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        period: ytd
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]

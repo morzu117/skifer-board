@@ -1,0 +1,22 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-duplicate-tile-id
+  title: Identifiants de tuile dupliques
+spec:
+  tiles:
+    - id: kpi_revenue
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+      viz:
+        kind: kpi
+        metric: revenue
+    - id: kpi_revenue
+      position: {x: 4, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [order_count]
+      viz:
+        kind: table

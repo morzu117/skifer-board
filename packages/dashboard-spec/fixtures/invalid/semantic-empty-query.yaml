@@ -1,0 +1,13 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-empty-query
+  title: Requete sans metrique ni dimension
+spec:
+  tiles:
+    - id: empty_tile
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+      viz:
+        kind: table

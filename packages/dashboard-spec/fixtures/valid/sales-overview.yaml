@@ -1,0 +1,45 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: sales-overview
+  title: "Ventes - vue d'ensemble"
+  owner: sales-analytics
+  tags: [sales, gold]
+spec:
+  layout: {columns: 12}
+  filters:
+    - name: region
+      dimension: region
+      default: null
+    - name: period
+      kind: period
+      default: last_12_months
+  tiles:
+    - id: kpi_revenue
+      title: CA total
+      position: {x: 0, y: 0, w: 4, h: 3}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        filters:
+          - column: region
+            operator: eq
+            value: $filters.region
+        period: $filters.period
+      viz:
+        kind: kpi
+        metric: revenue
+        format: {revenue: currency_eur}
+    - id: revenue_by_month
+      title: CA mensuel
+      position: {x: 4, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        period: $filters.period
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]
+        format: {revenue: currency_eur}

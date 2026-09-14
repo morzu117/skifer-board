@@ -1,0 +1,25 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: filters-value-binding
+  title: Filtre canal lie
+spec:
+  filters:
+    - name: channel
+      dimension: channel
+      default: null
+  tiles:
+    - id: revenue_for_channel
+      position: {x: 0, y: 0, w: 6, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [order_month]
+        filters:
+          - column: channel
+            operator: eq
+            value: $filters.channel
+      viz:
+        kind: line
+        x: order_month
+        series: [revenue]

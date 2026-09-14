@@ -1,0 +1,43 @@
+# Manifeste projet — résolu par /sync depuis ~/.agent-kernel
+#
+# Ne contient que les écarts. Tout le reste est détecté du repo ou hérité de
+# defaults.yml du noyau :
+#
+#   name/namespace       nom du dossier (skifer-board)
+#   memory.source        = namespace (pas de .gbrain-source)
+#   capabilities, models, guardrails, phases    defaults.yml
+
+kernel:
+  version: "v0.5.3"        # dernier tag connu bon
+
+# Monorepo pnpm + uv (plan 01, D1) : gate unique `pnpm run check`, une entrée de gate par couche.
+# `make` n'est pas utilisé (absent de la machine Windows de dev).
+commands:
+  test: pnpm run check
+  lint: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]"
+gates:
+  api: pnpm run check:api
+  spec: pnpm run check:spec
+  web: pnpm run check:web
+  docs: python -c "import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]" && grep -q '^## \[Unreleased\]' CHANGELOG.md
+
+stack:
+  produit: >
+    Couche de consommation de la couche sémantique skifer : dashboards,
+    exploration ad-hoc, agentique, reporting. Aucune couche sémantique propre.
+  frontiere: >
+    Couplage à skifer par HTTP uniquement (REST + MCP), au travers de
+    AgentReadyDataService. Le board n'émet jamais de SQL ; Spark n'y entre jamais.
+  format: >
+    Dashboard as YAML : une tuile = une SemanticQuery (noms uniquement) + une
+    spec de viz sémantique, jamais d'options brutes du renderer.
+  etat: >
+    Fondation en cours (plan 01) : monorepo pnpm + uv, apps/api (FastAPI,
+    paquet skifer_board) et apps/web (Next.js 15) ; gate `pnpm run check`.
+  workflow: >
+    Plan docs/roadmap/NN_*_plan.md commité et validé avant tout code. Un point
+    de plan = un commit feat(planNN-x.y). Toute modif = test + CHANGELOG
+    [Unreleased]. Jamais de bump de version. LLM mocké, aucun réseau en test.
+  skifer: >
+    ../skifer est modifié en parallèle sur une autre machine : n'y rien écrire
+    sans accord explicite.
