@@ -9,6 +9,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Project MCP configuration (`.mcp.json`) declaring the codegraph structural index server, as
+  expected by the agent chain's `--mcp-config .mcp.json`; the local index (`/.codegraph/`) is
+  git-ignored.
+- Plan 01 follow-ups from the human review (`docs/roadmap/01_skifer_board_foundation_plan.md`
+  §10, decisions D16–D20); roadmap F2.4 aligned with spec v1 (four viz kinds, renderer chosen when
+  plan 02 opens); expectation toward skifer for `evidence.policy.recommended_action` (SK-02.3).
 - Development roadmap (`docs/roadmap/00_roadmap.md`) and expectations toward skifer
   (`docs/roadmap/00_attendus_skifer.md`).
 - Foundation plan (`docs/roadmap/01_skifer_board_foundation_plan.md`): monorepo pnpm + uv,
@@ -100,3 +106,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `$defs/format` rather than replaced by an inline pattern, which still produced an unusable
   `constr`-based type in the generated models under mypy strict. `viz.format` key names are now
   unconstrained by the schema and checked only by `FORMAT_KEY_UNKNOWN` (semantic layer).
+- Dashboard as YAML v1 semantic validation (D16, human review of plan 01): a `query.filters[].value`
+  list entry starting with `$filters.` (e.g. `value: ["$filters.region", "EU"]`) is now reported as
+  `BINDING_IN_LIST` instead of being sent to skifer as a literal string, which silently emptied the
+  tile. A binding is admitted only as the entire value of `query.filters[].value`.
+- `SkiferClient.iter_models` pagination guard (D17, human review of plan 01): the guard now tracks
+  all cursors encountered during iteration; a `next_cursor` already seen (e.g., a cycle A → B → A)
+  raises `UnexpectedResponse` instead of looping forever.
+- `SkiferClient.query` (D18, human review of plan 01): a 2xx response whose `evidence.policy.decision`
+  is `DENY` or `REQUIRE_HUMAN` still raised `SemanticAccessDenied`, but `error.body` carried the full
+  response, including the denied query's `rows` and `columns`. `error.body` is now exactly
+  `{"evidence": <the evidence received>}`.
+- `local_identity()` (D20, human review of plan 01): on Python 3.12, `getpass.getuser()` may raise
+  `KeyError` (UID absent from passwd) or `ImportError` (pwd module missing on Windows); both are now
+  caught alongside `OSError` and cause a fallback to `subject="unknown"`. `check:api` now measures
+  `skifer_board.identity` at 100% coverage (D19).

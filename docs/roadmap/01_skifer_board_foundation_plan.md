@@ -2,7 +2,7 @@
 
 > Rédigé le 13 septembre 2026. Couvre la phase 1 de la [roadmap](00_roadmap.md) (F1.1 à F1.5).
 > Statut : **validé, GO donné le 13 septembre 2026** (D12 et 35B tranchés le même jour).
-> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). En attente de revue humaine et de livraison ; branche non poussée.
+> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). **Livrée le 14 septembre 2026** : PR #1 mergée dans `main` (`a55e095`). Rétro : `skifer-board/retro/foundation`. Revue humaine des décisions prises par l'orchestrateur : **faite le 14 septembre 2026** (D16 à D20, §10) ; sous-tâches 6.1 à 6.4 implémentées sur `review/plan01-decisions` (`b6fc75b`, `de9f156`, `04a51c6`, `acf2edc`), gate vert, en attente de livraison.
 > Tâche mémoire : `skifer-board/plan/foundation` (source gbrain `skifer-board` ; gbrain refuse `:`
 > dans les slugs).
 
@@ -56,6 +56,14 @@ construite côté serveur. Aucune fonctionnalité utilisateur.
 | D13 | **Précisions après la 2.2** (validées le 13/09). (a) D3 maintenu : le schéma v1 n'utilise **pas** `propertyNames` (clés de `viz.format` non contraintes structurellement, vérifiées par `FORMAT_KEY_UNKNOWN`) : datamodel-code-generator traduit mal une contrainte de clé de dict — clé `RootModel` non hashable avec `$ref`, `constr()` refusé par mypy strict en ligne (amendé le 13/09 après le re-dev 1 de la 2.2, essai vérifié) ; un test charge chaque fixture valide dans les modèles générés. (b) Le `path` d'une issue désigne l'élément fautif le plus précis, **avec son index** dans une liste (`.../viz/series/<k>`, `.../viz/columns/<k>`). | Retirer les modèles générés ou les écrire à la main : abandon de la source unique D3 pour un défaut d'outil contournable dans le schéma. Paths sans index : un éditeur ne pourrait pas surligner l'élément exact. |
 | D14 | **Contrat HTTP du mock et de la suite de contrat, là où SK-02 est muet** (fixé et validé le 13/09 avant le brief 3.1, proposé à skifer via le plan 35B). Authentification : bearer `Authorization: Bearer <token>`, absent ou invalide → **401 `Unauthenticated`** (type ajouté à la liste SK-02.5) ; `/health` sans authentification. Codes : `InvalidRequest` 400, `LimitExceeded` 400, `InvalidCursor` 400, `ScopeDenied` 403, `SemanticAccessDenied` 403 (corps : `decision`, `reasons`, `evaluated_at`, `recommended_action`, jamais de `rows`), `ResourceNotFound` 404, `SemanticQueryError` 422 (avec `suggestions`), `ResourceUnavailable` 503. Formes : `GET /models` → `{items, next_cursor, total}` (miroir de `Page`) ; `POST /query` → `{columns[{name, logical_type}], rows, evidence, truncated}`, `logical_type` ∈ `string`, `date`, `integer`, `decimal`. La suite de contrat est agnostique de la cible (base URL ou factory ASGI en ini) et ne présume d'aucune valeur de ligne. | Reprendre la forme `{code, message, path}` de l'API loopback actuelle : elle perd `decision`/`reasons` de `SemanticAccessDenied`, contraire à I3. 422 pour toute erreur de validation : confond une requête mal formée (faute du client) et un nom sémantique inconnu (faute de catalogue). Suite de contrat liée au mock : inutilisable par skifer, contraire à SK-02.7. |
 | D15 | **Couverture des états préparés par la suite de contrat** (validé le 13/09, avant la 3.2). La suite obtient par des requêtes normales : `DENY` (`finance.invoices`, `EXPIRED`), `LimitExceeded`, `InvalidCursor`, `SemanticQueryError` avec `suggestions`, `Unauthenticated`, `InvalidRequest`. Pour les états qu'aucune requête normale ne provoque, la **cible déclare ses fixtures** en configuration de la suite : clé de modèle en `WARN`, clé de modèle en `REQUIRE_HUMAN`, et un bearer sans le scope `query:execute` (→ `ScopeDenied`). Sans cette configuration, les tests concernés échouent avec un message explicite (jamais de skip). Le mock ajoute ces états à son catalogue de **test** (le catalogue §4 reste celui des exemples). `ResourceUnavailable` reste hors contrat (non provocable proprement sur une cible réelle). L'en-tête `X-Mock-Scenario` est propre au mock et sert aux tests du client du board (4.2), jamais à la suite de contrat. | En-tête de scénario dans le contrat : imposerait à skifer une surface de test dans son API réseau. États naturels seulement : `WARN` est listé dans SK-02.7, la suite n'y serait pas conforme. |
+| D16 | **Liaison interdite dans une liste** (revue humaine du 14/09, A1). Un élément du tableau `query.filters[].value` qui commence par `$filters.` est une erreur semantic `BINDING_IN_LIST`, de path `.../filters/<i>/value/<k>` (D13 b). Une liaison n'est admise que comme valeur entière (D5). | Traiter l'élément comme une liaison : injecter un filtre global dans une liste littérale, sémantique à inventer. Le laisser littéral (comportement livré en 2.2) : la chaîne `$filters.region` part vers skifer, filtre sur une valeur inexistante, et la tuile est vide sans aucune erreur. |
+| D17 | **Garde de pagination par curseurs déjà vus** (revue du 14/09, A2 ; ratifie et étend la garde livrée en 4.2). `iter_models` mémorise tous les curseurs suivis ; un `next_cursor` déjà vu lève `UnexpectedResponse`. | Comparer au seul curseur précédent (4.2) : un cycle A → B → A boucle sans fin. Plafond de pages déduit de `total` : suppose un `total` stable pendant toute l'itération. |
+| D18 | **Refus sur 2xx sans les lignes** (revue du 14/09, A3 ; ratifie le fail-closed livré en 4.2). Une réponse 2xx dont `evidence.policy.decision` vaut `DENY` ou `REQUIRE_HUMAN` lève `SemanticAccessDenied` dont `body` vaut `{"evidence": <evidence reçue>}` : jamais `rows` ni `columns`. `recommended_action` reste `None` sur ce chemin tant que `evidence.policy` ne le porte pas (demandé à skifer, SK-02.3). | Conserver le corps complet (4.2) : les lignes d'une requête refusée vivent dans l'exception et fuient au premier handler qui sérialise `body` (route des tuiles, phase 2). Vider `body` : perd la preuve utile au pied de provenance d'un refus. |
+| D19 | **Couverture 100 % étendue à `identity`** (revue du 14/09, A4 ; ratifie le seuil livré en 4.2). `check:api` mesure `skifer_board.skifer_client` et `skifer_board.identity`, seuil 100 %. | Tout `skifer_board` à 100 % : pousse à tester des chemins sans enjeu de sécurité (recherche du schéma, CLI). Client seul (4.2) : laisse hors seuil l'autre frontière de sécurité, où le repli de D20 était du code mort non détecté. |
+| D20 | **Repli de l'identité locale effectif en Python 3.12** (revue du 14/09, B1). `local_identity` retombe sur `"unknown"` quand `getpass.getuser()` lève `OSError`, `KeyError` ou `ImportError`. | `except OSError` seul (5.1) : ne couvre que Python ≥ 3.13 ; en 3.12, un UID absent de `/etc/passwd` sans variable `USER` (conteneur) lève `KeyError`, et `/api/me` répond 500. |
+
+**Ratifié sans changement le 14/09** (revue humaine) : D5 précisé (dates littérales seulement dans
+`date_from`/`date_to`) ; `422 SemanticQueryError` livré en 3.1 au lieu de 3.2 (scope-creep accepté).
 
 ## 4. Catalogue du mock (figé ici, référencé par les exemples)
 
@@ -206,3 +214,58 @@ Aucune écriture dans `../skifer`. Aucune modification de `CLAUDE.md` ni d'`AGEN
 - Fin de phase : clone frais → `uv sync --locked && pnpm install --frozen-lockfile && pnpm check`
   vert sous Linux (CI) et sous Windows (machine de dev).
 - Aucun réseau en test : mock en processus, aucun LLM, aucune clé.
+
+## 10. Suites de la revue humaine (14 septembre 2026)
+
+Revue de la codebase livrée (PR #1) appuyée sur l'index codegraph, branche
+`review/plan01-decisions`. Décisions D16 à D20 et ratifications au §3, **validées par l'utilisateur
+le 14/09**. Un point = un commit `fix(plan01-6.Y): …`, avec ses tests et une entrée
+`CHANGELOG.md [Unreleased]` (section `Fixed`).
+
+**6.1 — Liaison interdite dans une liste (D16)** (S)
+- Modifiés : `apps/api/src/skifer_board/dashboard_spec/semantic.py` (règle `BINDING_IN_LIST`),
+  `apps/api/tests/dashboard_spec/test_semantic_rules.py` (le test
+  `test_literal_period_and_values_are_not_bindings` est **remplacé** : une liste contenant
+  `$filters.region` devient un cas d'erreur, une liste littérale sans liaison et une période littérale
+  restent valides), `docs/dashboard_yaml_spec.md` (ligne du tableau des codes semantic, phrase sur les
+  deux positions admises).
+- Créés : `packages/dashboard-spec/fixtures/invalid/semantic-binding-in-list.yaml` et son
+  `.expected.json`. Si un test compte les fixtures, sa mise à jour est autorisée.
+
+**6.2 — Garde de pagination par curseurs déjà vus (D17)** (T)
+- Modifiés : `apps/api/src/skifer_board/skifer_client/client.py` (`iter_models` seul),
+  `apps/api/tests/skifer_client/test_pagination_guard.py` (ajout : un cycle A → B → A lève
+  `UnexpectedResponse` ; le cas du curseur répété immédiatement reste couvert).
+
+**6.3 — Refus sur 2xx sans les lignes (D18)** (S)
+- Modifiés : `apps/api/src/skifer_board/skifer_client/client.py` (`query` seul),
+  `apps/api/tests/skifer_client/test_fail_closed.py` (ajouts : réponse 2xx `DENY` puis
+  `REQUIRE_HUMAN` avec des lignes non vides → `error.body` n'a ni `rows` ni `columns`, aucune valeur
+  de ligne n'apparaît dans `str(error)` ni dans `repr(error.body)`, `error.body["evidence"]` est
+  égal à l'evidence reçue).
+
+**6.4 — Identité locale et couverture (D19, D20)** (T)
+- Modifiés : `apps/api/src/skifer_board/identity/local.py`, un test par exception (`OSError`,
+  `KeyError`, `ImportError` → `subject == "unknown"`) dans `apps/api/tests/identity/`,
+  `package.json` (`check:api` : ajout de `--cov=skifer_board.identity`, demandé explicitement par
+  ce plan). Le correctif et le seuil vont dans le même commit : sans le correctif, `identity` est
+  à 85 % et le gate serait rouge.
+
+**Rayon d'impact déclaré** (`codegraph impact`, 14/09) :
+
+| Symbole | Sous-tâche | Fichiers dans le rayon |
+|---|---|---|
+| `semantic_issues` | 6.1 | `semantic.py`, `validate.py`, `dashboard_spec/__init__.py`, `test_semantic_rules.py` |
+| `iter_models` | 6.2 | `client.py`, `test_client_nominal.py`, `test_pagination_guard.py` |
+| `SkiferClient.query` (lève `SemanticAccessDenied`) | 6.3 | `client.py` ; la classe `SemanticAccessDenied` est inchangée (son rayon, `errors.py`, `app.py` et 8 fichiers de test du client, n'est pas touché) |
+| `local_identity` | 6.4 | `local.py`, `app.py`, `test_app.py`, `test_no_forged_identity.py` |
+
+Seule la 6.1 supprime des lignes existantes (le test remplacé, la phrase de la doc). Aucune écriture
+dans `../skifer`.
+
+**Reports hors du plan 01**, faits dans le commit de ce paragraphe :
+- `recommended_action` sur le chemin 2xx (D18) → `00_attendus_skifer.md`, SK-02.3.
+- Schéma JSON non embarqué dans le paquet `skifer-board-api` (`schema.py` le cherche en remontant
+  les dossiers du monorepo) → risques de la phase 2 dans `00_roadmap.md`, à trancher au plan 02.
+- F2.4 de la roadmap alignée sur D6 et D7 : les 4 `kind` de la v1, renderer choisi en ouverture du
+  plan 02.

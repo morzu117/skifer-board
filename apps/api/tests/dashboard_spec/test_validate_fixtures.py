@@ -1,4 +1,4 @@
-"""The Python validator against the 25 Dashboard as YAML v1 fixtures and their sidecars."""
+"""The Python validator against the 26 Dashboard as YAML v1 fixtures and their sidecars."""
 
 import json
 from pathlib import Path
@@ -21,7 +21,7 @@ def _load_expected(fixture_path: Path) -> dict[str, Any]:
 
 
 def test_all_fixtures_are_covered() -> None:
-    assert len(VALID_FIXTURES) + len(INVALID_FIXTURES) == 25
+    assert len(VALID_FIXTURES) + len(INVALID_FIXTURES) == 26
 
 
 @pytest.mark.parametrize("fixture_path", VALID_FIXTURES, ids=lambda p: p.name)

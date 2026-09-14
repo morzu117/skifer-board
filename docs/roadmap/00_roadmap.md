@@ -226,12 +226,14 @@ skifer, chacune signée par sa ligne de provenance.
 ### F2.4 — Renderer web : grille et tuiles
 - Page `/dashboards/[slug]` : grille 12 colonnes responsive, tuiles chargées indépendamment
   (skeleton, erreur locale, retry), filtres globaux dans une barre.
-- Bibliothèque de viz : `kpi`, `table`, `bar`, `line`, `area`, `pie`, `scatter`, `heatmap` sur
-  ECharts. Chaque `kind` a un composant, une fonction pure `rows → option ECharts` testée
-  unitairement, et un formatage (`currency_eur`, `percent`, `integer`, `compact`).
+- Bibliothèque de viz : les `kind` de la spec v1 (`kpi`, `table`, `bar`, `line`, D6 du plan 01) ;
+  `area`, `pie`, `scatter`, `heatmap` arrivent par ajout à l'énumération. Le renderer (ECharts ou
+  Vega-Lite) est **choisi en ouverture du plan 02**, sur preuve : une même tuile rendue dans chacun
+  (D7 du plan 01, amendé le 14/09). Chaque `kind` a un composant, une fonction pure
+  `rows → spec du renderer` testée unitairement, et les formats nommés de la spec v1.
 - Thème clair/sombre, palette cohérente, accessibilité (contraste, navigation clavier).
-- **Done** : les 10 dashboards d'exemple se rendent contre le mock ; snapshot tests des options
-  ECharts ; Playwright hermétique pour la navigation et les filtres.
+- **Done** : les 10 dashboards d'exemple se rendent contre le mock ; snapshot tests des specs
+  du renderer ; Playwright hermétique pour la navigation et les filtres.
 
 ### F2.5 — Pied de provenance
 - Sous chaque tuile : statut de certification (icône + libellé), `evidence_id` tronqué, âge de la
@@ -257,7 +259,10 @@ skifer, chacune signée par sa ligne de provenance.
 mock masque le problème : prévoir un scénario « lent » dans le mock et un budget de latence
 explicite) ; grammaire de viz qui fuit vers ECharts (garder `viz` sémantique, revue à chaque
 nouveau `kind`) ; volumétrie (plafond `max_query_rows` de skifer = 1 000 lignes aujourd'hui, à
-négocier dans `SK-02` pour les tables).
+négocier dans `SK-02` pour les tables) ; schéma `dashboard.v1.json` introuvable hors du monorepo
+(`schema.py` le cherche en remontant les dossiers, il n'est pas embarqué dans le paquet
+`skifer-board-api`) : l'embarquer au build avec un contrôle de dérive, à trancher au plan 02 avant
+tout déploiement (revue du 14/09).
 
 ---
 

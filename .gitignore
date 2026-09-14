@@ -39,3 +39,6 @@ playwright-report/
 /.gbrain-source
 # gbrain `put` write-through mirror files (pages live in the brain, not in git)
 /skifer-board/
+
+# codegraph structural index (local to each machine, rebuilt by `codegraph init`)
+/.codegraph/

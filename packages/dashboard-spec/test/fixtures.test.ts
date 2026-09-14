@@ -27,7 +27,7 @@ const invalidFiles = readdirSync(invalidDir).filter((f) => f.endsWith(".yaml"));
 describe("fixtures corpus", () => {
   it("has the expected number of fixtures", () => {
     expect(validFiles.length).toBe(10);
-    expect(invalidFiles.length).toBe(15);
+    expect(invalidFiles.length).toBe(16);
   });
 
   it.each(validFiles)("valid/%s produces no structural issue", (file) => {

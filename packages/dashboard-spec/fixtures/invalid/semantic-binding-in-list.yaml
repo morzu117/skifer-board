@@ -1,0 +1,20 @@
+apiVersion: skifer-board/v1
+kind: Dashboard
+metadata:
+  slug: semantic-binding-in-list
+  title: Liaison interdite dans une liste de valeurs
+spec:
+  tiles:
+    - id: revenue_by_region
+      position: {x: 0, y: 0, w: 8, h: 4}
+      query:
+        model: sales.orders
+        metrics: [revenue]
+        group_by: [region]
+        filters:
+          - column: region
+            operator: in
+            value: [$filters.region, EU]
+      viz:
+        kind: table
+        columns: [region, revenue]

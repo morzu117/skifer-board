@@ -95,6 +95,11 @@ board n'enverra jamais `mode`, `view_name`, `explanation`, `response_format`.
   types depuis la première ligne ; une colonne peut être toute nulle) ;
 - **Arrow IPC** en option (`Accept: application/vnd.apache.arrow.stream`), evidence dans un en-tête
   ou dans le schema metadata. Souhaitable, pas bloquant : JSON suffit en phase 2.
+- `evidence.policy.recommended_action` (nullable), à côté de `decision`, `reasons` et
+  `evaluated_at` : une réponse 2xx dont la décision vaut `DENY` ou `REQUIRE_HUMAN` doit porter la
+  même action recommandée que le corps d'erreur `SemanticAccessDenied` (SK-02.5). Sans elle, le
+  board n'a aucun message actionnable à afficher sur ce chemin (F2.5 ; D18 du plan 01, revue du
+  14/09).
 
 ### SK-02.4 Limites
 

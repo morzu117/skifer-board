@@ -39,6 +39,36 @@ async def test_repeated_next_cursor_stops_after_the_repeating_page() -> None:
     assert calls == [None, "c1"]
 
 
+async def test_cycle_of_cursors_stops() -> None:
+    """A cycle like A → B → A must raise, not loop forever."""
+    calls: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        cursor = request.url.params.get("cursor")
+        calls.append(cursor)
+        if len(calls) > 100:
+            # Guard against infinite loop in test itself
+            raise RuntimeError("Too many calls, pagination is looping")
+        # Cycle: None → c1 → c2 → c1 (repeats)
+        next_cursor_map = {None: "c1", "c1": "c2", "c2": "c1"}
+        next_cursor = next_cursor_map.get(cursor)
+        key = f"m{len(calls)}"
+        return httpx.Response(200, json=_page(key, next_cursor))
+
+    collected: list[str] = []
+    async with SkiferClient(
+        "http://testserver", "mock-token", transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(UnexpectedResponse):
+            async for item in client.iter_models(limit=50):
+                collected.append(item.key)
+
+    # Should yield m1, m2, m3 then raise (c1 → c2 → c1 detected as loop)
+    assert collected == ["m1", "m2", "m3"]
+    # Should have called: None (→ c1), c1 (→ c2), c2 (→ c1, raise UnexpectedResponse)
+    assert calls == [None, "c1", "c2"]
+
+
 async def test_normal_progression_yields_every_item_across_pages() -> None:
     pages = [_page("m1", "c1"), _page("m2", "c2"), _page("m3", None)]
     state = {"n": 0}
