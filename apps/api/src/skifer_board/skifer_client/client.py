@@ -129,15 +129,13 @@ class SkiferClient:
         return bool(isinstance(payload, dict) and payload.get("status") == "ok")
 
     async def me(self) -> Identity:
-        response = await self._request("GET", "/me")
-        return self._parse(Identity, response)
+        return self._parse(Identity, await self._request("GET", "/me"))
 
     async def list_models(self, cursor: str | None = None, limit: int = 50) -> ModelPage:
         params: dict[str, str | int] = {"limit": limit}
         if cursor is not None:
             params["cursor"] = cursor
-        response = await self._request("GET", "/models", params=params)
-        return self._parse(ModelPage, response)
+        return self._parse(ModelPage, await self._request("GET", "/models", params=params))
 
     async def iter_models(self, limit: int = 100) -> AsyncIterator[ModelSummary]:
         cursor: str | None = None
@@ -158,13 +156,16 @@ class SkiferClient:
             cursor = page.next_cursor
 
     async def get_model(self, key: str) -> GovernedModelView:
-        response = await self._request("GET", f"/models/{key}")
-        return self._parse(GovernedModelView, response)
+        return self._parse(GovernedModelView, await self._request("GET", f"/models/{key}"))
 
     async def query(self, request: QueryRequest, limit: int = 100) -> QueryResult:
         body: dict[str, Any] = request.model_dump(mode="json", exclude_none=True)
         response = await self._request("POST", "/query", params={"limit": limit}, json=body)
-        result = self._parse(QueryResult, response)
+        try:
+            result = self._parse(QueryResult, response)
+        except UnexpectedResponse:
+            del response
+            raise
         policy = result.evidence.policy
         if policy.decision == "DENY":
             decision: Literal["DENY", "REQUIRE_HUMAN"] = "DENY"

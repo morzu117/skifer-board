@@ -26,9 +26,6 @@ pytestmark = pytest.mark.anyio
 
 SENTINEL = "ROW-SENTINEL-6-5"
 _PACKAGE_ROOT = Path(skifer_board.__file__).resolve().parent
-# `_parse`/`query` are the two frames this sub-task's fix targets; a caller such as `me` also
-# keeps `response` bound across its `await self._parse(...)`, out of scope here (see handoff).
-_RESPONSE_BAN_SCOPE = {"_parse", "query"}
 
 
 def _is_package_file(filename: str) -> bool:
@@ -70,11 +67,10 @@ def _assert_sentinel_absent(error: SkiferClientError) -> None:
                     f"{frame.f_code.co_filename}:{frame.f_lineno}"
                 )
                 for name, value in frame.f_locals.items():
-                    if frame.f_code.co_name in _RESPONSE_BAN_SCOPE:
-                        assert not isinstance(value, httpx.Response), (
-                            f"httpx.Response bound as {name!r} in {frame.f_code.co_name} "
-                            f"at {frame.f_code.co_filename}:{frame.f_lineno}"
-                        )
+                    assert not isinstance(value, httpx.Response), (
+                        f"httpx.Response bound as {name!r} in {frame.f_code.co_name} "
+                        f"at {frame.f_code.co_filename}:{frame.f_lineno}"
+                    )
                     if isinstance(value, (bytes, bytearray)):
                         assert SENTINEL.encode() not in bytes(value), (
                             f"sentinel bytes in local {name!r} in {frame.f_code.co_name} "
@@ -164,4 +160,88 @@ async def test_parse_non_json_body_leaves_no_body_content_in_the_exception() -> 
     error = excinfo.value
     assert error.body == {"length": len(content)}
     assert "Identity" in error.message
+    _assert_sentinel_absent(error)
+
+
+async def test_query_malformed_2xx_body_leaves_no_body_content_in_the_exception() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "columns": [{"name": "revenue", "logical_type": "decimal"}],
+                "rows": [{"revenue": SENTINEL}],
+                "truncated": False,
+            },
+        )
+
+    async with SkiferClient(
+        "http://testserver", "mock-token", transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(UnexpectedResponse) as excinfo:
+            await client.query(QueryRequest(model="sales.orders", metrics=("revenue",)))
+
+    error = excinfo.value
+    assert error.body == {"keys": ["columns", "rows", "truncated"]}
+    assert "QueryResult" in error.message
+    _assert_sentinel_absent(error)
+
+
+async def test_query_non_json_body_leaves_no_body_content_in_the_exception() -> None:
+    content = SENTINEL.encode()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=content, headers={"content-type": "text/plain"})
+
+    async with SkiferClient(
+        "http://testserver", "mock-token", transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(UnexpectedResponse) as excinfo:
+            await client.query(QueryRequest(model="sales.orders", metrics=("revenue",)))
+
+    error = excinfo.value
+    assert error.body == {"length": len(content)}
+    assert "QueryResult" in error.message
+    _assert_sentinel_absent(error)
+
+
+async def test_list_models_malformed_2xx_body_leaves_no_body_content_in_the_exception() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {"key": SENTINEL, "description": "d", "layer": None, "tags": []},
+                ],
+                "next_cursor": None,
+            },
+        )
+
+    async with SkiferClient(
+        "http://testserver", "mock-token", transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(UnexpectedResponse) as excinfo:
+            await client.list_models()
+
+    error = excinfo.value
+    assert error.body == {"keys": ["items", "next_cursor"]}
+    assert "ModelPage" in error.message
+    _assert_sentinel_absent(error)
+
+
+async def test_get_model_malformed_2xx_body_leaves_no_body_content_in_the_exception() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"key": SENTINEL, "description": "d", "layer": None, "tags": []},
+        )
+
+    async with SkiferClient(
+        "http://testserver", "mock-token", transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(UnexpectedResponse) as excinfo:
+            await client.get_model("sales.orders")
+
+    error = excinfo.value
+    assert error.body == {"keys": ["description", "key", "layer", "tags"]}
+    assert "GovernedModelView" in error.message
     _assert_sentinel_absent(error)
