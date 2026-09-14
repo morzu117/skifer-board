@@ -121,3 +121,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `KeyError` (UID absent from passwd) or `ImportError` (pwd module missing on Windows); both are now
   caught alongside `OSError` and cause a fallback to `subject="unknown"`. `check:api` now measures
   `skifer_board.identity` at 100% coverage (D19).
+- `SkiferClient` (D21, human review of plan 01, follow-up to D18): a 2xx exception could still leak
+  response content outside `error.body` — `query`'s frame kept the full `QueryResult` (with `rows`)
+  bound as a local while raising on `DENY`/`REQUIRE_HUMAN`, and `_parse` put the whole non-conforming
+  2xx body (or the raw response text) into `UnexpectedResponse.body` and chained the raw pydantic
+  `ValidationError`, whose `str()` echoes an `input_value` snippet of the field. `query` now clears
+  the local before raising; `_parse` describes the body without its content
+  (`{"keys": [...]}`/`{"length": <bytes>}`) and raises after its `except` block has exited, so no
+  chained exception carries the body either.

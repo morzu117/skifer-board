@@ -87,14 +87,32 @@ class SkiferClient:
         raise error_from_response(response.status_code, body)
 
     def _parse(self, model: type[ModelT], response: httpx.Response) -> ModelT:
+        def describe(payload: object) -> dict[str, object]:
+            if isinstance(payload, dict):
+                return {"keys": sorted(payload.keys())}
+            return {"length": len(response.content)}
+
         try:
             payload = self._decode(response)
-        except ValueError as error:
-            raise UnexpectedResponse(response.status_code, response.text) from error
+        except ValueError:
+            raise UnexpectedResponse(
+                response.status_code,
+                describe(None),
+                message=f"expected a JSON body decodable as {model.__name__}.",
+            ) from None
+        issues: list[dict[str, object]] | None = None
         try:
             return model.model_validate(payload)
         except ValidationError as error:
-            raise UnexpectedResponse(response.status_code, payload) from error
+            issues = [{"loc": item["loc"], "type": item["type"]} for item in error.errors()]
+        assert issues is not None
+        body = describe(payload)
+        del payload
+        raise UnexpectedResponse(
+            response.status_code,
+            body,
+            message=f"the response body does not match {model.__name__}: {issues}",
+        )
 
     async def health(self) -> bool:
         response = await self._request("GET", "/health")
@@ -145,13 +163,17 @@ class SkiferClient:
             decision = "REQUIRE_HUMAN"
         else:
             return result
-        raw_body: dict[str, Any] = response.json()
+        status_code = response.status_code
+        reasons = policy.reasons
+        evaluated_at = policy.evaluated_at
+        evidence = response.json()["evidence"]
+        del result
         raise SemanticAccessDenied(
-            response.status_code,
-            {"evidence": raw_body["evidence"]},
+            status_code,
+            {"evidence": evidence},
             message=f"the certification gate returned {decision} for this query.",
             decision=decision,
-            reasons=policy.reasons,
-            evaluated_at=policy.evaluated_at,
+            reasons=reasons,
+            evaluated_at=evaluated_at,
             recommended_action=None,
         )
