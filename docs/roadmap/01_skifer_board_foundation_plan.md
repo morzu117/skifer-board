@@ -2,7 +2,7 @@
 
 > Rédigé le 13 septembre 2026. Couvre la phase 1 de la [roadmap](00_roadmap.md) (F1.1 à F1.5).
 > Statut : **validé, GO donné le 13 septembre 2026** (D12 et 35B tranchés le même jour).
-> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). **Livrée le 14 septembre 2026** : PR #1 mergée dans `main` (`a55e095`). Rétro : `skifer-board/retro/foundation`. Revue humaine des décisions prises par l'orchestrateur : **faite le 14 septembre 2026** (D16 à D20, §10) ; sous-tâches 6.1 à 6.4 implémentées sur `review/plan01-decisions` (`b6fc75b`, `de9f156`, `04a51c6`, `acf2edc`), gate vert, en attente de livraison.
+> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). **Livrée le 14 septembre 2026** : PR #1 mergée dans `main` (`a55e095`). Rétro : `skifer-board/retro/foundation`. Revue humaine des décisions prises par l'orchestrateur : **faite le 14 septembre 2026** (D16 à D20, §10) ; sous-tâches 6.1 à 6.4 implémentées sur `review/plan01-decisions` (`b6fc75b`, `de9f156`, `04a51c6`, `acf2edc`), gate vert, livrées par la PR #2 (`cf465b2`) ; sous-tâche 6.5 (D21) implémentée sur `review/plan01-6.5` (`d0ed710`, puis re-dev `6552393` et `22d3856`), gate vert, en attente de livraison.
 > Tâche mémoire : `skifer-board/plan/foundation` (source gbrain `skifer-board` ; gbrain refuse `:`
 > dans les slugs).
 
