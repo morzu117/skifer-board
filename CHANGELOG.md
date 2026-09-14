@@ -117,3 +117,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is `DENY` or `REQUIRE_HUMAN` still raised `SemanticAccessDenied`, but `error.body` carried the full
   response, including the denied query's `rows` and `columns`. `error.body` is now exactly
   `{"evidence": <the evidence received>}`.
+- `local_identity()` (D20, human review of plan 01): on Python 3.12, `getpass.getuser()` may raise
+  `KeyError` (UID absent from passwd) or `ImportError` (pwd module missing on Windows); both are now
+  caught alongside `OSError` and cause a fallback to `subject="unknown"`. `check:api` now measures
+  `skifer_board.identity` at 100% coverage (D19).
