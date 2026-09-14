@@ -110,3 +110,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   list entry starting with `$filters.` (e.g. `value: ["$filters.region", "EU"]`) is now reported as
   `BINDING_IN_LIST` instead of being sent to skifer as a literal string, which silently emptied the
   tile. A binding is admitted only as the entire value of `query.filters[].value`.
+- `SkiferClient.iter_models` pagination guard (D17, human review of plan 01): the guard now tracks
+  all cursors encountered during iteration; a `next_cursor` already seen (e.g., a cycle A → B → A)
+  raises `UnexpectedResponse` instead of looping forever.

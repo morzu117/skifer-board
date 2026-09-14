@@ -114,18 +114,20 @@ class SkiferClient:
 
     async def iter_models(self, limit: int = 100) -> AsyncIterator[ModelSummary]:
         cursor: str | None = None
+        seen_cursors: set[str | None] = {None}
         while True:
             page = await self.list_models(cursor=cursor, limit=limit)
             for item in page.items:
                 yield item
             if page.next_cursor is None:
                 return
-            if page.next_cursor == cursor:
+            if page.next_cursor in seen_cursors:
                 raise UnexpectedResponse(
                     200,
                     {"cursor": cursor, "next_cursor": page.next_cursor},
                     message=f"pagination did not progress past cursor {cursor!r}.",
                 )
+            seen_cursors.add(page.next_cursor)
             cursor = page.next_cursor
 
     async def get_model(self, key: str) -> GovernedModelView:
