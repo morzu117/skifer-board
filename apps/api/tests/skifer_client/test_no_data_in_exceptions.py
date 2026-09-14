@@ -26,6 +26,9 @@ pytestmark = pytest.mark.anyio
 
 SENTINEL = "ROW-SENTINEL-6-5"
 _PACKAGE_ROOT = Path(skifer_board.__file__).resolve().parent
+# `_parse`/`query` are the two frames this sub-task's fix targets; a caller such as `me` also
+# keeps `response` bound across its `await self._parse(...)`, out of scope here (see handoff).
+_RESPONSE_BAN_SCOPE = {"_parse", "query"}
 
 
 def _is_package_file(filename: str) -> bool:
@@ -51,6 +54,8 @@ def _assert_sentinel_absent(error: SkiferClientError) -> None:
     assert SENTINEL not in repr(error)
     assert SENTINEL not in repr(error.args)
     assert SENTINEL not in repr(error.body)
+    assert error.__cause__ is None, f"__cause__ still set to {error.__cause__!r}"
+    assert error.__context__ is None, f"__context__ still set to {error.__context__!r}"
 
     for exc in _chain(error):
         assert SENTINEL not in str(exc), f"leaked via str({type(exc).__name__})"
@@ -64,6 +69,22 @@ def _assert_sentinel_absent(error: SkiferClientError) -> None:
                     f"leaked via locals of {frame.f_code.co_name} in "
                     f"{frame.f_code.co_filename}:{frame.f_lineno}"
                 )
+                for name, value in frame.f_locals.items():
+                    if frame.f_code.co_name in _RESPONSE_BAN_SCOPE:
+                        assert not isinstance(value, httpx.Response), (
+                            f"httpx.Response bound as {name!r} in {frame.f_code.co_name} "
+                            f"at {frame.f_code.co_filename}:{frame.f_lineno}"
+                        )
+                    if isinstance(value, (bytes, bytearray)):
+                        assert SENTINEL.encode() not in bytes(value), (
+                            f"sentinel bytes in local {name!r} in {frame.f_code.co_name} "
+                            f"at {frame.f_code.co_filename}:{frame.f_lineno}"
+                        )
+                    elif isinstance(value, str):
+                        assert SENTINEL not in value, (
+                            f"sentinel string in local {name!r} in {frame.f_code.co_name} "
+                            f"at {frame.f_code.co_filename}:{frame.f_lineno}"
+                        )
             traceback = traceback.tb_next
 
 

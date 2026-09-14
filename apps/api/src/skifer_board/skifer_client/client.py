@@ -87,19 +87,27 @@ class SkiferClient:
         raise error_from_response(response.status_code, body)
 
     def _parse(self, model: type[ModelT], response: httpx.Response) -> ModelT:
+        status_code = response.status_code
+        content_length = len(response.content)
+
         def describe(payload: object) -> dict[str, object]:
             if isinstance(payload, dict):
                 return {"keys": sorted(payload.keys())}
-            return {"length": len(response.content)}
+            return {"length": content_length}
 
+        payload: object = None
+        decode_failed = False
         try:
             payload = self._decode(response)
         except ValueError:
+            decode_failed = True
+        if decode_failed:
+            del response
             raise UnexpectedResponse(
-                response.status_code,
+                status_code,
                 describe(None),
                 message=f"expected a JSON body decodable as {model.__name__}.",
-            ) from None
+            )
         issues: list[dict[str, object]] | None = None
         try:
             return model.model_validate(payload)
@@ -108,8 +116,9 @@ class SkiferClient:
         assert issues is not None
         body = describe(payload)
         del payload
+        del response
         raise UnexpectedResponse(
-            response.status_code,
+            status_code,
             body,
             message=f"the response body does not match {model.__name__}: {issues}",
         )
@@ -168,6 +177,7 @@ class SkiferClient:
         evaluated_at = policy.evaluated_at
         evidence = response.json()["evidence"]
         del result
+        del response
         raise SemanticAccessDenied(
             status_code,
             {"evidence": evidence},

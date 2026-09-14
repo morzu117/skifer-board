@@ -129,3 +129,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the local before raising; `_parse` describes the body without its content
   (`{"keys": [...]}`/`{"length": <bytes>}`) and raises after its `except` block has exited, so no
   chained exception carries the body either.
+- `SkiferClient` (D21, second review pass): the JSON-decode branch of `_parse` still raised inside
+  its `except ValueError` block, so `error.__context__` kept the `json.JSONDecodeError` (whose
+  `.doc` is the full raw body) even with `raise ... from None`; it now raises after that block has
+  exited, like the validation-error branch already did. `_parse` and `query` also still kept the
+  `httpx.Response` itself bound as `response` in the frame that raises (its `.content` carries the
+  body, masked by a `<Response [200 OK]>` repr); both now `del response` before raising. A caller
+  such as `me`/`list_models`/`get_model` still keeps `response` bound while it awaits `_parse` —
+  left open, out of this sub-task's scope (`_parse` and `query` only).
