@@ -265,6 +265,11 @@ la livraison de 6.1 à 6.4 (PR #2), branche `review/plan01-6.5`.
   `iter_models`, `get_model`, `query`), `app.py` (`me`), `test_client_errors_generic.py`,
   `test_client_errors_typed.py`, `test_client_nominal.py`. Aucun de ces tests n'examine le `body`
   d'`UnexpectedResponse` : aucune suppression de test attendue.
+- **Élargie le 14/09 après le re-dev 1** (`6552393`, décision de l'utilisateur) : le critère D21 vaut
+  pour **toutes** les frames `skifer_board` du traceback, y compris les appelants de `_parse`
+  (`me`, `list_models`, `get_model`) et `query` sur son chemin « 2xx non conforme ». Modifiables
+  pour le re-dev 2 : ces méthodes de `client.py` en plus de `_parse` et `query`, et
+  `test_no_data_in_exceptions.py`. Les méthodes restent observablement identiques.
 
 **Rayon d'impact déclaré** (`codegraph impact`, 14/09) :
 
