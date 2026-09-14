@@ -155,10 +155,13 @@ Deux formes de filtre global, discriminées par `kind` :
   `dimension`. `default` : nom de période du calendrier skifer (string) ou `null`.
 
 Une liaison `$filters.<nom>` (motif `^\$filters\.[a-z][a-z0-9_]*$`) n'est admise qu'à deux
-endroits :
+endroits, et seulement comme valeur entière du champ :
 
 - `query.period`, vers un filtre `kind: period` ;
-- `query.filters[].value`, vers un filtre `kind: dimension`.
+- `query.filters[].value`, vers un filtre `kind: dimension`, quand `value` est le scalaire
+  lui-même. Un élément de tableau qui commence par `$filters.` (`value` étant alors une liste)
+  est une erreur `BINDING_IN_LIST` (D16) : une liste littérale reste admise, mais aucun de ses
+  éléments ne peut être une liaison.
 
 Le schéma structurel ne distingue pas syntaxiquement un nom de période littéral (`ytd`) d'une
 liaison (`$filters.period`) : les deux sont des chaînes non vides valides pour `period`, et une
@@ -211,6 +214,7 @@ par le schéma)
 | `FORMAT_KEY_UNKNOWN` | Une clé de `viz.format` n'est ni dans `query.metrics` ni dans `query.group_by`. |
 | `UNKNOWN_FILTER_REFERENCE` | Une liaison `$filters.<nom>` ou une entrée de `ignore_filters` référence un filtre global qui n'existe pas dans `spec.filters`. |
 | `BINDING_KIND_MISMATCH` | `query.period` lie un filtre de dimension, ou `query.filters[].value` lie un filtre de période. |
+| `BINDING_IN_LIST` | Un élément de `query.filters[].value` (quand `value` est un tableau) commence par `$filters.` (D16). |
 
 Les fixtures de `packages/dashboard-spec/fixtures/invalid/` illustrent chacun de ces codes (au
 moins un exemple par code obligatoire), avec pour chacune un fichier `<nom>.expected.json`

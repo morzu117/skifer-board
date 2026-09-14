@@ -31,6 +31,7 @@ SEMANTIC_CODES = {
     "FORMAT_KEY_UNKNOWN",
     "UNKNOWN_FILTER_REFERENCE",
     "BINDING_KIND_MISMATCH",
+    "BINDING_IN_LIST",
 }
 
 
@@ -61,7 +62,7 @@ def test_schema_is_valid_draft_2020_12() -> None:
 
 def test_fixtures_are_present() -> None:
     assert len(VALID_FIXTURES) == 10
-    assert len(INVALID_FIXTURES) == 15
+    assert len(INVALID_FIXTURES) == 16
 
 
 @pytest.mark.parametrize("fixture_path", VALID_FIXTURES, ids=lambda p: p.name)

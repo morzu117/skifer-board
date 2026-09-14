@@ -226,11 +226,29 @@ def test_binding_kind_mismatch_in_period_and_value() -> None:
     ]
 
 
-def test_literal_period_and_values_are_not_bindings() -> None:
+def test_binding_in_list_reported_for_each_list_entry() -> None:
+    query = {
+        **REVENUE_BY_MONTH,
+        "filters": [
+            {
+                "column": "region",
+                "operator": "in",
+                "value": ["$filters.region", "EU", "$filters.channel"],
+            }
+        ],
+    }
+    document = _document([_tile(query=query, viz={"kind": "table"})])
+    assert _found(validate_document(document)) == [
+        ("semantic", "BINDING_IN_LIST", "/spec/tiles/0/query/filters/0/value/0"),
+        ("semantic", "BINDING_IN_LIST", "/spec/tiles/0/query/filters/0/value/2"),
+    ]
+
+
+def test_literal_period_and_literal_list_values_are_not_bindings() -> None:
     query = {
         **REVENUE_BY_MONTH,
         "period": "ytd",
-        "filters": [{"column": "region", "operator": "in", "value": ["$filters.region", "EU"]}],
+        "filters": [{"column": "region", "operator": "in", "value": ["FR", "EU"]}],
     }
     assert validate_document(_document([_tile(query=query, viz={"kind": "table"})])) == []
 

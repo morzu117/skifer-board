@@ -106,3 +106,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `$defs/format` rather than replaced by an inline pattern, which still produced an unusable
   `constr`-based type in the generated models under mypy strict. `viz.format` key names are now
   unconstrained by the schema and checked only by `FORMAT_KEY_UNKNOWN` (semantic layer).
+- Dashboard as YAML v1 semantic validation (D16, human review of plan 01): a `query.filters[].value`
+  list entry starting with `$filters.` (e.g. `value: ["$filters.region", "EU"]`) is now reported as
+  `BINDING_IN_LIST` instead of being sent to skifer as a literal string, which silently emptied the
+  tile. A binding is admitted only as the entire value of `query.filters[].value`.

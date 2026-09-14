@@ -181,6 +181,7 @@ def _filter_reference_issues(
     query: dict[str, Any] = tile["query"]
     unknown: list[ValidationIssue] = []
     mismatched: list[ValidationIssue] = []
+    in_list: list[ValidationIssue] = []
 
     def check_binding(value: Any, parts: Segments, expected_kind: str) -> None:
         if not isinstance(value, str):
@@ -207,13 +208,24 @@ def _filter_reference_issues(
                 )
             )
 
+    def check_binding_not_in_list(value: Any, parts: Segments) -> None:
+        if not isinstance(value, list):
+            return
+        for element_index, element in enumerate(value):
+            if isinstance(element, str) and BINDING_PATTERN.fullmatch(element):
+                in_list.append(
+                    _issue(
+                        "BINDING_IN_LIST",
+                        [*parts, element_index],
+                        f"list entry '{element}' is a binding, only admitted as an entire value",
+                    )
+                )
+
     check_binding(query.get("period"), [*tile_path, "query", "period"], "period")
     for filter_index, query_filter in enumerate(query.get("filters", [])):
-        check_binding(
-            query_filter.get("value"),
-            [*tile_path, "query", "filters", filter_index, "value"],
-            "dimension",
-        )
+        value_path: Segments = [*tile_path, "query", "filters", filter_index, "value"]
+        check_binding(query_filter.get("value"), value_path, "dimension")
+        check_binding_not_in_list(query_filter.get("value"), value_path)
     for name_index, name in enumerate(tile.get("ignore_filters", [])):
         if name not in filter_kinds:
             unknown.append(
@@ -223,4 +235,4 @@ def _filter_reference_issues(
                     f"ignore_filters entry '{name}' references no global filter",
                 )
             )
-    return unknown + mismatched
+    return unknown + mismatched + in_list
