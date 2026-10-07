@@ -2,7 +2,7 @@
 
 > Rédigé le 13 septembre 2026. Couvre la phase 1 de la [roadmap](00_roadmap.md) (F1.1 à F1.5).
 > Statut : **validé, GO donné le 13 septembre 2026** (D12 et 35B tranchés le même jour).
-> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). **Livrée le 14 septembre 2026** : PR #1 mergée dans `main` (`a55e095`). Rétro : `skifer-board/retro/foundation`. Revue humaine des décisions prises par l'orchestrateur : **faite le 14 septembre 2026** (D16 à D20, §10) ; sous-tâches 6.1 à 6.4 implémentées sur `review/plan01-decisions` (`b6fc75b`, `de9f156`, `04a51c6`, `acf2edc`), gate vert, en attente de livraison.
+> Implémentation : **terminée le 13 septembre 2026** sur `feat/plan01-foundation` (sous-tâches 1.1 à 5.1, vérification sur clone frais verte). **Livrée le 14 septembre 2026** : PR #1 mergée dans `main` (`a55e095`). Rétro : `skifer-board/retro/foundation`. Revue humaine des décisions prises par l'orchestrateur : **faite le 14 septembre 2026** (D16 à D20, §10) ; sous-tâches 6.1 à 6.4 implémentées sur `review/plan01-decisions` (`b6fc75b`, `de9f156`, `04a51c6`, `acf2edc`), gate vert, livrées par la PR #2 (`cf465b2`) ; sous-tâche 6.5 (D21) implémentée sur `review/plan01-6.5` (`d0ed710`, puis re-dev `6552393` et `22d3856`), gate vert, en attente de livraison.
 > Tâche mémoire : `skifer-board/plan/foundation` (source gbrain `skifer-board` ; gbrain refuse `:`
 > dans les slugs).
 
@@ -61,6 +61,7 @@ construite côté serveur. Aucune fonctionnalité utilisateur.
 | D18 | **Refus sur 2xx sans les lignes** (revue du 14/09, A3 ; ratifie le fail-closed livré en 4.2). Une réponse 2xx dont `evidence.policy.decision` vaut `DENY` ou `REQUIRE_HUMAN` lève `SemanticAccessDenied` dont `body` vaut `{"evidence": <evidence reçue>}` : jamais `rows` ni `columns`. `recommended_action` reste `None` sur ce chemin tant que `evidence.policy` ne le porte pas (demandé à skifer, SK-02.3). | Conserver le corps complet (4.2) : les lignes d'une requête refusée vivent dans l'exception et fuient au premier handler qui sérialise `body` (route des tuiles, phase 2). Vider `body` : perd la preuve utile au pied de provenance d'un refus. |
 | D19 | **Couverture 100 % étendue à `identity`** (revue du 14/09, A4 ; ratifie le seuil livré en 4.2). `check:api` mesure `skifer_board.skifer_client` et `skifer_board.identity`, seuil 100 %. | Tout `skifer_board` à 100 % : pousse à tester des chemins sans enjeu de sécurité (recherche du schéma, CLI). Client seul (4.2) : laisse hors seuil l'autre frontière de sécurité, où le repli de D20 était du code mort non détecté. |
 | D20 | **Repli de l'identité locale effectif en Python 3.12** (revue du 14/09, B1). `local_identity` retombe sur `"unknown"` quand `getpass.getuser()` lève `OSError`, `KeyError` ou `ImportError`. | `except OSError` seul (5.1) : ne couvre que Python ≥ 3.13 ; en 3.12, un UID absent de `/etc/passwd` sans variable `USER` (conteneur) lève `KeyError`, et `/api/me` répond 500. |
+| D21 | **Aucune donnée de réponse dans une exception du client** (revue du 14/09, suite de D18, validé par l'utilisateur). Une exception levée par `SkiferClient` sur une réponse 2xx ne porte aucun contenu du corps reçu, hors l'evidence d'un refus (D18) et les curseurs de la garde de pagination (D17) : ni dans `body`, ni dans le message, ni dans `args`, ni dans `__cause__`/`__context__`, ni dans les variables locales des frames `skifer_board` du traceback. Sur un 2xx non conforme (`_parse`), `UnexpectedResponse.body` décrit la forme sans le contenu : `{"keys": [clés de premier niveau, triées]}` pour un objet JSON, `{"length": <octets>}` sinon ; le message cite le modèle attendu et, pour chaque erreur de validation, son emplacement et son type seulement. Les réponses non-2xx ne changent pas (D14 : jamais de lignes). | Traiter au plan 02 : aucune fuite aujourd'hui, mais la route des tuiles et l'observabilité (T2) s'appuient directement sur ces exceptions. Nettoyer seulement `body` : un rapporteur d'erreurs qui capture les variables locales (comportement par défaut de Sentry) ou la `ValidationError` chaînée (son `input_value` recopie jusqu'à ~50 caractères du corps, vérifié le 14/09) exposerait encore des lignes ; un `raise … from None` écrit dans un bloc `except` conserve `__context__`. |
 
 **Ratifié sans changement le 14/09** (revue humaine) : D5 précisé (dates littérales seulement dans
 `date_from`/`date_to`) ; `422 SemanticQueryError` livré en 3.1 au lieu de 3.2 (scope-creep accepté).
@@ -250,6 +251,25 @@ le 14/09**. Un point = un commit `fix(plan01-6.Y): …`, avec ses tests et une e
   `package.json` (`check:api` : ajout de `--cov=skifer_board.identity`, demandé explicitement par
   ce plan). Le correctif et le seuil vont dans le même commit : sans le correctif, `identity` est
   à 85 % et le gate serait rouge.
+
+**6.5 — Aucune donnée de réponse dans une exception du client (D21)** (S) — ajoutée le 14/09 après
+la livraison de 6.1 à 6.4 (PR #2), branche `review/plan01-6.5`.
+- Modifiés : `apps/api/src/skifer_board/skifer_client/client.py` (`_parse` et `query` seulement),
+  `CHANGELOG.md`. Créé : `apps/api/tests/skifer_client/test_no_data_in_exceptions.py`.
+- Tests : une valeur sentinelle placée dans les lignes d'un refus `DENY` sur 2xx, dans un corps JSON
+  2xx non conforme au DTO, puis dans un corps 2xx non JSON ; la sentinelle est absente de `str`,
+  `repr`, `args`, `body`, de la chaîne `__cause__`/`__context__` et des variables locales de chaque
+  frame du traceback dont le fichier appartient au paquet `skifer_board` (la frame du test, qui
+  fabrique la sentinelle, est exclue). Contre-preuve sur le commit parent.
+- Rayon d'impact (`codegraph impact _parse`, 14/09) : `client.py` (`me`, `list_models`,
+  `iter_models`, `get_model`, `query`), `app.py` (`me`), `test_client_errors_generic.py`,
+  `test_client_errors_typed.py`, `test_client_nominal.py`. Aucun de ces tests n'examine le `body`
+  d'`UnexpectedResponse` : aucune suppression de test attendue.
+- **Élargie le 14/09 après le re-dev 1** (`6552393`, décision de l'utilisateur) : le critère D21 vaut
+  pour **toutes** les frames `skifer_board` du traceback, y compris les appelants de `_parse`
+  (`me`, `list_models`, `get_model`) et `query` sur son chemin « 2xx non conforme ». Modifiables
+  pour le re-dev 2 : ces méthodes de `client.py` en plus de `_parse` et `query`, et
+  `test_no_data_in_exceptions.py`. Les méthodes restent observablement identiques.
 
 **Rayon d'impact déclaré** (`codegraph impact`, 14/09) :
 

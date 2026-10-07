@@ -87,14 +87,41 @@ class SkiferClient:
         raise error_from_response(response.status_code, body)
 
     def _parse(self, model: type[ModelT], response: httpx.Response) -> ModelT:
+        status_code = response.status_code
+        content_length = len(response.content)
+
+        def describe(payload: object) -> dict[str, object]:
+            if isinstance(payload, dict):
+                return {"keys": sorted(payload.keys())}
+            return {"length": content_length}
+
+        payload: object = None
+        decode_failed = False
         try:
             payload = self._decode(response)
-        except ValueError as error:
-            raise UnexpectedResponse(response.status_code, response.text) from error
+        except ValueError:
+            decode_failed = True
+        if decode_failed:
+            del response
+            raise UnexpectedResponse(
+                status_code,
+                describe(None),
+                message=f"expected a JSON body decodable as {model.__name__}.",
+            )
+        issues: list[dict[str, object]] | None = None
         try:
             return model.model_validate(payload)
         except ValidationError as error:
-            raise UnexpectedResponse(response.status_code, payload) from error
+            issues = [{"loc": item["loc"], "type": item["type"]} for item in error.errors()]
+        assert issues is not None
+        body = describe(payload)
+        del payload
+        del response
+        raise UnexpectedResponse(
+            status_code,
+            body,
+            message=f"the response body does not match {model.__name__}: {issues}",
+        )
 
     async def health(self) -> bool:
         response = await self._request("GET", "/health")
@@ -102,15 +129,13 @@ class SkiferClient:
         return bool(isinstance(payload, dict) and payload.get("status") == "ok")
 
     async def me(self) -> Identity:
-        response = await self._request("GET", "/me")
-        return self._parse(Identity, response)
+        return self._parse(Identity, await self._request("GET", "/me"))
 
     async def list_models(self, cursor: str | None = None, limit: int = 50) -> ModelPage:
         params: dict[str, str | int] = {"limit": limit}
         if cursor is not None:
             params["cursor"] = cursor
-        response = await self._request("GET", "/models", params=params)
-        return self._parse(ModelPage, response)
+        return self._parse(ModelPage, await self._request("GET", "/models", params=params))
 
     async def iter_models(self, limit: int = 100) -> AsyncIterator[ModelSummary]:
         cursor: str | None = None
@@ -131,13 +156,16 @@ class SkiferClient:
             cursor = page.next_cursor
 
     async def get_model(self, key: str) -> GovernedModelView:
-        response = await self._request("GET", f"/models/{key}")
-        return self._parse(GovernedModelView, response)
+        return self._parse(GovernedModelView, await self._request("GET", f"/models/{key}"))
 
     async def query(self, request: QueryRequest, limit: int = 100) -> QueryResult:
         body: dict[str, Any] = request.model_dump(mode="json", exclude_none=True)
         response = await self._request("POST", "/query", params={"limit": limit}, json=body)
-        result = self._parse(QueryResult, response)
+        try:
+            result = self._parse(QueryResult, response)
+        except UnexpectedResponse:
+            del response
+            raise
         policy = result.evidence.policy
         if policy.decision == "DENY":
             decision: Literal["DENY", "REQUIRE_HUMAN"] = "DENY"
@@ -145,13 +173,18 @@ class SkiferClient:
             decision = "REQUIRE_HUMAN"
         else:
             return result
-        raw_body: dict[str, Any] = response.json()
+        status_code = response.status_code
+        reasons = policy.reasons
+        evaluated_at = policy.evaluated_at
+        evidence = response.json()["evidence"]
+        del result
+        del response
         raise SemanticAccessDenied(
-            response.status_code,
-            {"evidence": raw_body["evidence"]},
+            status_code,
+            {"evidence": evidence},
             message=f"the certification gate returned {decision} for this query.",
             decision=decision,
-            reasons=policy.reasons,
-            evaluated_at=policy.evaluated_at,
+            reasons=reasons,
+            evaluated_at=evaluated_at,
             recommended_action=None,
         )

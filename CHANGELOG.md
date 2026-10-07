@@ -121,3 +121,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `KeyError` (UID absent from passwd) or `ImportError` (pwd module missing on Windows); both are now
   caught alongside `OSError` and cause a fallback to `subject="unknown"`. `check:api` now measures
   `skifer_board.identity` at 100% coverage (D19).
+- `SkiferClient` (D21, human review of plan 01, follow-up to D18): a 2xx exception could still leak
+  response content outside `error.body` — `query`'s frame kept the full `QueryResult` (with `rows`)
+  bound as a local while raising on `DENY`/`REQUIRE_HUMAN`, and `_parse` put the whole non-conforming
+  2xx body (or the raw response text) into `UnexpectedResponse.body` and chained the raw pydantic
+  `ValidationError`, whose `str()` echoes an `input_value` snippet of the field. `query` now clears
+  the local before raising; `_parse` describes the body without its content
+  (`{"keys": [...]}`/`{"length": <bytes>}`) and raises after its `except` block has exited, so no
+  chained exception carries the body either.
+- `SkiferClient` (D21, second review pass): the JSON-decode branch of `_parse` still raised inside
+  its `except ValueError` block, so `error.__context__` kept the `json.JSONDecodeError` (whose
+  `.doc` is the full raw body) even with `raise ... from None`; it now raises after that block has
+  exited, like the validation-error branch already did. `_parse` and `query` also still kept the
+  `httpx.Response` itself bound as `response` in the frame that raises (its `.content` carries the
+  body, masked by a `<Response [200 OK]>` repr); both now `del response` before raising. `me`,
+  `list_models`, and `get_model` no longer bind the response to a local at all — the awaited call
+  is passed straight into `_parse` as an argument — and `query` now wraps its `_parse` call in a
+  `try`/`except UnexpectedResponse` that clears `response` before re-raising, so no caller frame
+  keeps the response bound either.
