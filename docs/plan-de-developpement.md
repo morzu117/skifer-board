@@ -104,6 +104,8 @@ Options, avec leur coût réel :
 | B. Skifer exécute | SK-01 (backend sans Spark : Statement Execution API, DuckDB), SK-02 (API distante avec bearer vérifié), SK-08 (identité SSO → `RequestContext`, RLS dans le planner). Rien de tout cela n’est planifié côté skifer aujourd’hui. | Rien côté Board. Côté Atlas, ADR 0004 reste valable pour la comparaison locale ; il y a alors deux compilateurs dans l’écosystème, ce que l’ADR 0003 prévoit de résorber. |
 | C. Service d’exécution commun issu du compilateur Atlas (0007), remonté dans le moteur (ADR 0003), exposé par une API hébergée | Le plan 0007 d’Atlas, puis sa remontée dans skifer comme backend Spark-free, puis SK-02 et SK-08. Chemin le plus long mais un seul compilateur à la fin. | L’hypothèse Atlas « local-first, rien d’hébergé » (brief §8.4, §12 « mode hébergé : à l’usage »). |
 
+Variante A′, apparue à la discussion du 31 octobre 2026 : Board **embarque skifer comme bibliothèque** (modèle sémantique, `QueryResolver`, politique de certification, evidence, tous importables sans Spark, comme Atlas le fait déjà avec `skifer` épinglé) et exécute le SQL produit par le résolveur avec **ses propres connecteurs** (Databricks SQL, DuckDB) après transpilation sqlglot. Les invariants tiennent : Board n’écrit pas de SQL, le résolveur skifer l’écrit ; la frontière est la bibliothèque skifer, unique. Ce qui change par rapport à B : SK-01 et SK-02 sont réalisés dans le backend Board au lieu d’attendre skifer, et la décision D10 de `main` (aucun import `skifer` dans Board) tombe. Ce qui ne change pas : SK-08 (identité, RLS) reste à construire quelque part, et un coffre côté serveur est inévitable dans **toutes** les options pour une application web partagée, B compris, puisque l’API skifer devrait alors détenir les identifiants. L’objection Atlas « jamais de token sur un serveur » vaut pour une application de bureau, pas pour Board.
+
 Proposition de ce plan, **à valider par le porteur** : B comme cible contractuelle de Board (Board ne parle qu’à une API skifer, un seul client, invariants I1 à I3 conservés), C comme trajectoire de l’écosystème pour n’avoir qu’un compilateur. L’option A est écartée : elle ferait de Board ce que le projet a décidé qu’il ne serait pas. Tant que B n’est pas livré côté skifer, Board se développe contre un simulateur de cette API (comme la suite de contrat de `main`, §3.4) et **aucun lot qui touche des données réelles n’est considéré livré**.
 
 Tant que l’arbitrage n’est pas rendu, les mentions « connexions Board », « liaison de connexion », « référence de secret » et « secrets côté serveur » dans ce document (§4.1, §5.1, §7, lot 03) se lisent comme **l’option A, non retenue**, conservées pour que la comparaison reste lisible.
@@ -297,6 +299,8 @@ La frontière fonctionnelle des calculs est fixée aux §4.5–4.6. Le lot 00 do
 
 Proposition de socle à confirmer : frontend React/TypeScript, backend Python/FastAPI pour la proximité avec l’écosystème, base transactionnelle PostgreSQL pour les métadonnées Board. Le déploiement des services, le fournisseur d’identité et le mécanisme de stockage des secrets restent à sélectionner.
 
+Orientation « stack orientée données » (§10.1) : le backend n’est pas un CRUD devant une base, c’est une chaîne de traitement de données. Conséquences proposées : résultats de requête reçus et conservés en **Arrow**, jamais convertis en JSON ligne à ligne ; **DuckDB embarqué** dans le backend pour les calculs contextuels (§4.6), le cache de résultats clé `sql_hash` et les sous-totaux, sur des tables Arrow déjà autorisées ; transport **Arrow IPC** vers le navigateur ; côté client, lecture Arrow native et un composant de tableau et pivot conçu pour le colonnaire (Perspective, FINOS, Apache-2.0, déjà identifié par `main`) à côté d’ECharts pour les graphiques ; PostgreSQL ne porte que l’index des contenus, les releases, le journal et les événements. Si la variante A′ du §3.3 est retenue, DuckDB sert aussi d’exécuteur local et de cible de transpilation, comme dans Atlas (ADR 0004).
+
 Les requêtes longues sont représentées par des exécutions suivies et annulables. Les limites de résultats et délais sont explicites ; une troncature ne peut pas être présentée comme un total complet. Les traces permettent de relier l’analyse, l’environnement, l’exécution et les preuves retournées sans journaliser les secrets.
 
 ## 8. Lots de développement
@@ -438,6 +442,24 @@ Le chemin principal suit 00 → 02 → 03/04 → 05 → 06 → 07 → 08/09 → 
 | Version Atlas épinglée ou suivi contrôlé des évolutions ? | Stratégie de migration et reproductibilité. | Lots 00/04 |
 | Quels volumes, nombre de tuiles et temps de réponse cibles ? | Dimensionnement et critères de performance. | Lot 00 |
 | Quelle profondeur de personnalisation dès la V1 ? | Liste des contrôles graphiques et types de composants à figer après prototype. | Lot 01 |
+
+### 10.1 Orientations du porteur, 31 octobre 2026
+
+Réponses données à la revue des arbitrages. Une orientation n’est pas encore une décision : elle fixe la direction dans laquelle le lot 00a doit instruire.
+
+| Arbitrage | Orientation | Conséquence immédiate |
+|---|---|---|
+| Qui exécute, qui détient les connexions (§3.3) | **Hésitation entre A et B, à discuter.** La variante A′ (skifer en bibliothèque, connecteurs Board) est à instruire comme forme concrète de A. | Le lot 00a présente A′ et B côte à côte sur les mêmes critères : où vit le RLS, où vivent les secrets, qui livre SK-01, combien de compilateurs à terme. |
+| Stockage des contenus Board : git ou base | Aucun avis. | Proposition du plan : **git comme source de vérité des contenus** (analyses, dashboards, thèmes, manifestes de release en YAML), **base comme index et état d’exécution** (releases actives, journal, cache, événements). Cohérent avec Atlas et avec l’orientation 3. |
+| Accès à Atlas | **Atlas est local-first, mais la vérité est le YAML sur git, donc exploitable.** | Board lit directement le dépôt git de l’espace Atlas (clone ou API de l’hébergeur). AT-01 devient une convention de lecture du dépôt, pas une API Atlas. Le lot 04 n’attend plus le plan 0005 d’Atlas pour démarrer. |
+| Identité | Aucun avis. | Proposition du plan : un fournisseur OIDC d’entreprise pour Board ; le compte de l’hébergeur git (identité Atlas) est une **liaison** du profil Board, pas une identité concurrente ; skifer reçoit un `RequestContext` construit par Board depuis les claims. Le RLS se décide avec le point 1. |
+| Périmètre de l’adhoc | **Pour le moment, les tables certifiées.** | L’adhoc porte sur les modèles sémantiques **et** sur les datasets certifiés par skifer (data products avec certification), jamais sur une table non certifiée. L’explorateur expose la certification comme filtre d’éligibilité. |
+| Environnements | **Un environnement, c’est surtout des paramètres de connexion.** | Les contenus sont identiques entre environnements ; seule la liaison de connexion et ses paramètres changent. Le nommage est libre par espace. La release transporte des contenus, l’environnement fournit les liaisons. |
+| Version Atlas | **La moindre modification d’un KPI Atlas doit être visible sur Board, et lever une erreur si besoin.** | **Suivi, pas épinglage.** Board suit la version courante d’Atlas, affiche chaque changement sur les analyses consommatrices, et passe le visuel en erreur (référence non résolue ou sens modifié) plutôt que de servir un résultat ambigu. La reproductibilité d’une release passe par le hash de la définition au moment de l’activation, pas par un épinglage éditorial. |
+| Volumes et performance | **À étudier à l’usage ; on monitore d’abord.** | Pas d’objectifs chiffrés au lot 00. Le lot 02 livre la télémétrie (durée par exécution, lignes, taille, tuiles par dashboard) ; les seuils sont fixés après le pilote. |
+| Stack | **Orientée données, optimisée pour le traitement de données.** | Résultats en colonnaire (Arrow) de bout en bout, moteur analytique embarqué côté backend (DuckDB ou Polars) pour les calculs contextuels et le cache, transport Arrow IPC vers le navigateur, tableaux et pivots haute performance côté client. Détail au §7, à confirmer. |
+
+Deux arbitrages n’ont pas été discutés et restent ouverts : règles de validation en PROD (avant le lot 09) et profondeur de personnalisation V1 (lot 01).
 
 ## 11. Hors périmètre initial
 
