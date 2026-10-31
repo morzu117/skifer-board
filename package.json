@@ -1,0 +1,9 @@
+{
+  "name": "skifer-board",
+  "private": true,
+  "scripts": {
+    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest --cov=skifer_board --cov-fail-under=100",
+    "check:docs": "uv run --locked python -c \"import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]\" && grep -q '^## \\[Unreleased\\]' CHANGELOG.md",
+    "check": "pnpm run check:api && pnpm run check:docs"
+  }
+}
