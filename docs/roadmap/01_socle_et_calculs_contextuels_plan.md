@@ -1,6 +1,6 @@
 # Plan 01 — Socle du dépôt et calculs contextuels
 
-Date : 31 octobre 2026 · Statut : **lancé** sur accord du porteur (« tu peux commencer le développement, on verra à ce moment-là les choix à prendre »).
+Date : 31 octobre 2026 · Statut : **1.1 à 1.3 implémentées**, gate vert. Lancé sur accord du porteur (« tu peux commencer le développement, on verra à ce moment-là les choix à prendre »).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §4.6 et §7. Écrans concernés : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §3.2.
 
@@ -25,6 +25,7 @@ C’est la capacité distinctive du Board et elle est indépendante de qui exéc
 | P6 | **Une agrégation qui ne regroupe rien est toujours permise.** Si chaque groupe de sortie ne contient qu’une ligne, aucune réagrégation n’a lieu et toute métrique passe. Une dimension non additive n’interdit que les groupes où elle prend plusieurs valeurs. | Refuser par principe dès qu’une dimension non additive est retirée : refuserait « total des trois régions sélectionnées sur un seul mois ». |
 | P7 | **Une impossibilité est un résultat, pas une exception.** Les opérations rendent soit un résultat dérivé (valeurs, périmètre, règle, `evidence_id` source, caractère partiel), soit une indisponibilité (raison fermée, explication, requête à demander au moteur). Les exceptions sont réservées aux erreurs de programmation et aux contrats invalides. | Lever une exception : l’écran doit afficher « demander au moteur », c’est un état normal. |
 | P8 | **Le résultat doit être à grain unique.** Deux lignes de même clé de dimensions sont refusées à la construction (ligne de sous-total ou doublon), c’est la garde « sans double comptage ». | Dédoublonner silencieusement. |
+| P9 | **Précision** (fixée à la 1.3) : sommes, minimums et maximums gardent le type Arrow de la colonne, décimaux exacts compris (une somme décimale s’élargit à `decimal128(38, s)`) ; moyennes pondérées et parts sont rendues en `float64`. Nuls : sémantique SQL, une somme sur aucune valeur non nulle est nulle. Dénominateur nul ou nul au sens SQL : part nulle et note `zero_or_null_denominator`, jamais l’infini. | Moyenne décimale à l’échelle Spark (`scale + 4`) : à reprendre si un écart avec le moteur est mesuré au lot 05. |
 
 ## 3. Sous-tâches
 
