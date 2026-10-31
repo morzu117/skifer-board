@@ -68,8 +68,8 @@ Dépôt vide de code : aucun appelant existant. L’index structurel (`codegraph
 
 ## 6. Choix qui restent ouverts et que ce plan ne prend pas
 
-- Accès aux documents Atlas : dépendre du paquet `skifer_atlas` (épinglé par commit git, comme Atlas épingle `skifer`) pour réutiliser validation et empreinte `sha256:atlas1:`, ou lire le YAML sans lui. Prochain plan.
-- Frontend : Vite ou Next.js. Prochain plan, avec le prototype graphique du lot 01.
+- Accès aux documents Atlas : **décidé le 31 octobre 2026, dépendance au paquet `skifer_atlas`**, épinglée par commit git comme Atlas épingle `skifer`, pour réutiliser validation et empreinte `sha256:atlas1:`. Conséquence assumée : Board embarque aussi `skifer` v4.0.0 sans extra Spark, par transitivité. Mise en œuvre au prochain plan.
+- Frontend : **décidé le 31 octobre 2026, Vite** (React, TypeScript), comme Atlas ; le backend FastAPI rend la couche serveur de Next.js redondante. **En attente des maquettes** : aucun code frontend avant leur livraison.
 - Forme d’entrée des résultats : réponse HTTP skifer (option B) ou table Arrow d’un connecteur (option A′). La couche contextuelle prend une table Arrow et un contrat, les deux options s’y raccordent.
 
 ## 7. Vérification

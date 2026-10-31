@@ -459,6 +459,11 @@ Réponses données à la revue des arbitrages. Une orientation n’est pas encor
 | Volumes et performance | **À étudier à l’usage ; on monitore d’abord.** | Pas d’objectifs chiffrés au lot 00. Le lot 02 livre la télémétrie (durée par exécution, lignes, taille, tuiles par dashboard) ; les seuils sont fixés après le pilote. |
 | Stack | **Orientée données, optimisée pour le traitement de données.** | Résultats en colonnaire (Arrow) de bout en bout, moteur analytique embarqué côté backend (DuckDB ou Polars) pour les calculs contextuels et le cache, transport Arrow IPC vers le navigateur, tableaux et pivots haute performance côté client. Détail au §7, à confirmer. |
 
+Décisions complémentaires du 31 octobre 2026, à l’issue du plan 01 :
+
+- **Lecture d’Atlas par dépendance au paquet `skifer_atlas`**, épinglé par commit git. Board réutilise validation, résolution des variantes et empreinte `sha256:atlas1:` ; c’est l’empreinte qui permet de lever une erreur dès qu’un KPI change (orientation « suivi, pas épinglage »). Par transitivité, Board embarque `skifer` v4.0.0 sans extra Spark, ce qui rapproche de fait la variante A′ du §3.3 sans la trancher.
+- **Frontend en Vite** (React, TypeScript). Le développement frontend attend les maquettes.
+
 Deux arbitrages n’ont pas été discutés et restent ouverts : règles de validation en PROD (avant le lot 09) et profondeur de personnalisation V1 (lot 01).
 
 ## 11. Hors périmètre initial
