@@ -1,0 +1,59 @@
+# Adapté de skifer-atlas, examples/espace-nordis/kpis/marge-brute.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+kind: kpi
+data_product:
+  id: marge-brute
+  version: 2
+  owner: claire.m
+  domain: finance
+  description: Revenu net diminué du coût des marchandises vendues, par mois fiscal et entité.
+label: Marge brute
+synonyms: [gross margin]
+semantics:
+  calendar: {key: fiscal-nordis, version: '2026.1'}
+  timezone: Europe/Paris
+  currency: EUR
+graph:
+  nodes:
+    - id: n01
+      type: kpi_ref
+      label: Revenu net
+      kpi: revenu-net
+      version: 4
+    - id: n02
+      type: source
+      label: Coûts des ventes
+      platform: databricks
+      table: gold.finance.fact_couts
+      owner: claire.m
+      columns:
+        - {name: entite, type: string}
+        - {name: date_cout, type: date, timezone: Europe/Paris, format: yyyy-MM-dd}
+        - {name: cout, type: decimal}
+    - id: n03
+      type: temporal
+      inputs: [n02]
+      operation: period
+      column: date_cout
+      target: mois_fiscal
+      grain: month
+    - id: n04
+      type: aggregate
+      inputs: [n03]
+      group_by: [mois_fiscal, entite]
+      measures: [[cout, cout_ventes, sum]]
+    - id: n05
+      type: join
+      inputs: {left: n01, right: n04}
+      how: left
+      keys: [[mois_fiscal, mois_fiscal], [entite, entite]]
+      cardinality: '1:1'
+      check: required
+    - id: n06
+      type: metric_op
+      inputs: [n05]
+      metrics:
+        - {name: marge_brute, expr: 'revenu_net - COALESCE(cout_ventes, 0)'}
+      order: aggregate_first
+  output: n06

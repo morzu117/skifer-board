@@ -1,0 +1,67 @@
+# Adapté de skifer-atlas, examples/espace-nordis/variants/revenu-net/nordis-es.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+kind: variant
+data_product:
+  id: revenu-net--nordis-es
+  version: 1
+  owner: sofia.r
+variant_of: {id: revenu-net, version: 4}
+entity: nordis-es
+mode: from_scratch
+justification: Le système de facturation espagnol publie directement un montant net par facture clôturée.
+graph:
+  nodes:
+    - id: n01
+      type: source
+      label: Facturas
+      platform: snowflake
+      table: FINANZAS.PUBLIC.FACTURAS
+      owner: sofia.r
+      columns:
+        - {name: factura_id, type: string}
+        - {name: sociedad, type: string}
+        - {name: estado, type: string}
+        - {name: estado_grupo, type: string}
+        - {name: fecha, type: timestamp, timezone: Europe/Madrid, format: 'yyyy-MM-dd HH:mm:ss'}
+        - {name: fecha_factura, type: date, timezone: Europe/Madrid, format: yyyy-MM-dd}
+        - {name: importe_bruto, type: decimal}
+        - {name: iva, type: decimal}
+        - {name: abonos, type: decimal}
+        - {name: importe_neto, type: decimal}
+      concept: commande
+      binding:
+        abonos: avoirs
+        estado_grupo: statut
+        factura_id: commande_id
+        fecha_factura: date_facture
+        importe_bruto: montant_ttc
+        iva: montant_taxes
+        sociedad: entite
+    - id: n02
+      type: filter
+      inputs: [n01]
+      condition: estado:equals:cerrada
+      nulls: drop
+    - id: n03
+      type: temporal
+      label: Date locale
+      inputs: [n02]
+      operation: to_date
+      column: fecha
+      target: fecha_local
+      timezone: Europe/Madrid
+    - id: n04
+      type: temporal
+      inputs: [n03]
+      operation: period
+      column: fecha_local
+      target: mois_fiscal
+      grain: month
+    - id: n05
+      type: aggregate
+      inputs: [n04]
+      group_by: [mois_fiscal, sociedad]
+      measures: [[importe_neto, revenu_net, sum]]
+  output: n05
+concepts: [commande]

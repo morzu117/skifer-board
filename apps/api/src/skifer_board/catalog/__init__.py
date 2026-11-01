@@ -1,0 +1,46 @@
+"""Catalogue métier lu dans un espace Atlas (plan 04)."""
+
+from .model import (
+    AtlasStatus,
+    Availability,
+    AvailabilityState,
+    CatalogDocument,
+    CatalogEntry,
+    CatalogPage,
+    CatalogUnavailable,
+    Dependent,
+    DocumentKind,
+    DocumentPage,
+    Facets,
+    Freshness,
+    Issue,
+    Provenance,
+    Reference,
+    SourceProblem,
+    UnresolvedReason,
+    Variant,
+)
+from .service import CatalogConfig, CatalogService
+
+__all__ = [
+    "AtlasStatus",
+    "Availability",
+    "AvailabilityState",
+    "CatalogConfig",
+    "CatalogDocument",
+    "CatalogEntry",
+    "CatalogPage",
+    "CatalogService",
+    "CatalogUnavailable",
+    "Dependent",
+    "DocumentKind",
+    "DocumentPage",
+    "Facets",
+    "Freshness",
+    "Issue",
+    "Provenance",
+    "Reference",
+    "SourceProblem",
+    "UnresolvedReason",
+    "Variant",
+]

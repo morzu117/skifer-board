@@ -1,0 +1,47 @@
+# Adapté de skifer-atlas, examples/espace-nordis/governance.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+validators_required: {canonical: 2, variants: 1}
+domains:
+  - id: finance
+    label: Finance
+    referents: [claire.m]
+    validators: [claire.m, marc.d]
+  - id: ventes
+    label: Ventes
+    referents: [marc.d]
+    validators: [marc.d]
+  - id: supply
+    label: Supply chain
+    referents: [sami.b]
+    validators: [sami.b]
+    validators_required: {canonical: 1, variants: 1}
+  - id: marketing
+    label: Marketing
+members:
+  - account: julien.h
+    name: Julien H.
+    entity: groupe
+    roles: [{role: referent}]
+  - account: claire.m
+    name: Claire M.
+    entity: nordis-fr
+    roles: [{role: referent, domains: [finance]}]
+  - account: marc.d
+    name: Marc D.
+    entity: groupe
+    roles: [{role: validateur, domains: [finance, ventes]}]
+  - account: sami.b
+    name: Sami B.
+    entity: groupe
+    roles: [{role: referent, domains: [supply]}]
+  - account: anna.k
+    name: Anna K.
+    entity: nordis-de
+    roles: [{role: contributeur}]
+  - account: sofia.r
+    name: Sofia R.
+    entity: nordis-es
+    roles: [{role: contributeur}]
+allowed_platforms: [databricks, snowflake]
+tolerance: {percent: 1}
