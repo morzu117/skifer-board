@@ -1,0 +1,116 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "d7eba96de96acf6f74250671ed402f79529036ec",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "document": {
+      "entry": {
+        "id": "revenu-net",
+        "kind": "kpi",
+        "label": "Revenu net",
+        "domain": "finance",
+        "owner": "claire.m",
+        "version": 4,
+        "status": "validated",
+        "description": "Chiffre d'affaires facturé, taxes déduites, net des avoirs, sur le calendrier fiscal de l'entité.",
+        "synonyms": [
+          "CA net",
+          "net revenue",
+          "recettes consolidées"
+        ],
+        "variant_count": 2,
+        "availability": {
+          "state": "unresolved",
+          "reason": "mapping_absent"
+        }
+      },
+      "fingerprint": "sha256:atlas1:a248faeaf50b9381ef5d81e931d9e31ab40ba46d0156769b591350d2a7f2fb58",
+      "path": "kpis/revenu-net.yaml",
+      "issues": [],
+      "variants": [
+        {
+          "id": "revenu-net--nordis-es",
+          "entity": "nordis-es",
+          "mode": "from_scratch",
+          "kpi_version": 4,
+          "override_count": 0,
+          "undeclared_count": 0,
+          "version": 1,
+          "owner": "sofia.r",
+          "status": "validated"
+        },
+        {
+          "id": "revenu-net--nordis-fr",
+          "entity": "nordis-fr",
+          "mode": "override",
+          "kpi_version": 4,
+          "override_count": 2,
+          "undeclared_count": 0,
+          "version": 2,
+          "owner": "claire.m",
+          "status": "validated"
+        }
+      ],
+      "references": [
+        {
+          "id": "commande",
+          "kind": "concept",
+          "version": null,
+          "found": true,
+          "document_kind": "concept",
+          "label": "Commande",
+          "status": "validated",
+          "domain": "ventes"
+        },
+        {
+          "id": "date-de-reference",
+          "kind": "concept",
+          "version": null,
+          "found": true,
+          "document_kind": "concept",
+          "label": "Date de référence",
+          "status": "validated",
+          "domain": "finance"
+        }
+      ],
+      "referenced_by": [
+        {
+          "id": "brouillon",
+          "kind": "kpi_ref",
+          "version": 4,
+          "document_kind": "kpi",
+          "label": "Brouillon",
+          "status": "draft",
+          "domain": "ventes",
+          "document_version": 1
+        },
+        {
+          "id": "marge-brute",
+          "kind": "kpi_ref",
+          "version": 4,
+          "document_kind": "kpi",
+          "label": "Marge brute",
+          "status": "validated",
+          "domain": "finance",
+          "document_version": 2
+        },
+        {
+          "id": "panier-moyen",
+          "kind": "kpi_ref",
+          "version": 4,
+          "document_kind": "kpi",
+          "label": "Panier moyen",
+          "status": "validated",
+          "domain": "ventes",
+          "document_version": 1
+        }
+      ],
+      "impact": 3
+    }
+  }
+}

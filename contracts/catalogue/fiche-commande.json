@@ -1,0 +1,88 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "d7eba96de96acf6f74250671ed402f79529036ec",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "document": {
+      "entry": {
+        "id": "commande",
+        "kind": "concept",
+        "label": "Commande",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 5,
+        "status": "validated",
+        "description": "Une commande client, de sa création à sa facturation.",
+        "synonyms": [
+          "order",
+          "bon de commande"
+        ],
+        "variant_count": 0,
+        "availability": null
+      },
+      "fingerprint": null,
+      "path": "concepts/commande.yaml",
+      "issues": [],
+      "variants": [],
+      "references": [],
+      "referenced_by": [
+        {
+          "id": "brouillon",
+          "kind": "concept",
+          "version": null,
+          "document_kind": "kpi",
+          "label": "Brouillon",
+          "status": "draft",
+          "domain": "ventes",
+          "document_version": 1
+        },
+        {
+          "id": "invalide",
+          "kind": "concept",
+          "version": null,
+          "document_kind": "kpi",
+          "label": "Invalide",
+          "status": "invalid",
+          "domain": "ventes",
+          "document_version": 1
+        },
+        {
+          "id": "panier-moyen",
+          "kind": "concept",
+          "version": null,
+          "document_kind": "kpi",
+          "label": "Panier moyen",
+          "status": "validated",
+          "domain": "ventes",
+          "document_version": 1
+        },
+        {
+          "id": "revenu-net",
+          "kind": "concept",
+          "version": null,
+          "document_kind": "kpi",
+          "label": "Revenu net",
+          "status": "validated",
+          "domain": "finance",
+          "document_version": 4
+        },
+        {
+          "id": "revenu-net--nordis-es",
+          "kind": "concept",
+          "version": null,
+          "document_kind": "variant",
+          "label": "Revenu net — nordis-es",
+          "status": "validated",
+          "domain": "finance",
+          "document_version": 1
+        }
+      ],
+      "impact": 6
+    }
+  }
+}

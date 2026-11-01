@@ -33,7 +33,7 @@ Défaut constaté, non corrigé ici : avec DuckDB 2.0, une base nommée `index.d
 | C7 | **Pas de convergence.** `catalog` d’Atlas calcule une convergence depuis les comparaisons chiffrées stockées dans la base locale de l’utilisateur Atlas. La base de Board n’en contient aucune : la valeur serait fausse. Board ne la lit pas. | La relayer : dirait « jamais comparé » à tort. |
 | C8 | **Suivi, pas épinglage** (§10.1). Le catalogue montre la version courante. La détection d’un changement de version pour les analyses consommatrices attend qu’il existe des analyses (lots 05 et 09). | Épinglage par défaut (écrans §2.2) : remplacé par l’orientation du 31 octobre. |
 | C9 | **API HTTP.** FastAPI, deux routes en lecture : `GET /api/catalog` (paramètres `q`, `domain`, `owner`, `status`, `kind`) et `GET /api/catalog/{id}`. Écoute sur `127.0.0.1` par défaut. Pas d’identité avant le lot 02 : le catalogue est en lecture pour tous les rôles (écrans §13), et la pastille le dit déjà. Une erreur est une réponse JSON à code fermé, jamais une trace. | Pas de serveur avant le lot 02 : l’écran ne pourrait lire que des données figées. |
-| C10 | **Contrat partagé.** Un exemple de réponse versionné, lu par un test Python, qui compare sa structure à la sérialisation réelle, et par un test web, qui le décode. Le décodeur web refuse une réponse malformée et affiche une erreur, jamais une donnée partielle. | Générer les types : outillage disproportionné pour deux routes. |
+| C10 | **Contrat partagé.** Des exemples de réponses versionnés, lus par un test Python, qui compare leur structure à la sérialisation réelle, et par un test web, qui les décode. Le décodeur web refuse une réponse malformée et affiche une erreur, jamais une donnée partielle. | Générer les types : outillage disproportionné pour deux routes. |
 | C11 | **Écran sans maquette.** Composition des composants existants selon `RULES.md` §5.7, comme `02-analyses.html` : carte de filtres, tableau, tiroir de fiche. Navigation par ancre (`#/catalogue`), la page prototype reste à `#/`. | Routeur externe : inutile pour deux pages. |
 
 ## 3. Sous-tâches
@@ -54,7 +54,9 @@ Tests (Codex) : dépôts d’espace créés par `git init` dans `tmp_path`, sans
 
 ### 4.2 — API HTTP
 
-Fichiers créés : `apps/api/src/skifer_board/server.py`, `contracts/catalogue.example.json`. Modifiés : dépendances `fastapi`, `uvicorn` ; `httpx` en développement.
+Fichiers créés : `apps/api/src/skifer_board/server.py`, exemples de réponses `contracts/catalogue/*.json` (statut HTTP et corps). Modifiés : dépendances `fastapi`, `uvicorn`, script `skifer-board-api` ; `httpx2` en développement, pour le client de test de Starlette.
+
+Écarts de réalisation : le message « clone introuvable » ne contient plus le chemin du clone, qui partirait vers le navigateur. Une route inconnue ou une méthode refusée rend aussi un code fermé (`route_not_found`, `method_not_allowed`), et une erreur interne `internal_error`, sans trace. Les exemples sont produits une fois par le serveur réel sur l'espace de test de 4.1, puis versionnés.
 
 Tests (Codex) : routes, filtres, document inconnu en 404 à code fermé, catalogue indisponible en 503 à code fermé, réponse `stale` en 200 avec sa provenance, structure identique à l’exemple versionné.
 

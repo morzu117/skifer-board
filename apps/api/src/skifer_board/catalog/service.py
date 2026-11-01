@@ -101,9 +101,10 @@ class CatalogService:
     ) -> T | CatalogUnavailable:
         config = self.config
         config.state_dir.mkdir(parents=True, exist_ok=True)
+        # Le chemin du clone n'est pas dans le message : il part vers le navigateur (plan 04, 4.2).
         problem, detail = (
             SourceProblem.REPOSITORY_MISSING,
-            (f"Le clone de l'espace Atlas est introuvable : {config.repository}"),
+            "Le clone de l'espace Atlas est introuvable à l'emplacement configuré.",
         )
         if config.repository.is_dir():
             try:

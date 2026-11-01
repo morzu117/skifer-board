@@ -5,7 +5,12 @@ requires-python = ">=3.12"
 dependencies = [
     "pyarrow>=17",
     "skifer-atlas",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
 ]
+
+[project.scripts]
+skifer-board-api = "skifer_board.server:main"
 
 [build-system]
 requires = ["uv_build>=0.6"]

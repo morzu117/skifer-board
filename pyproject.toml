@@ -10,6 +10,7 @@ dev = [
     "pyarrow-stubs>=17",
     "pyyaml>=6.0",
     "hypothesis>=6.170.14",
+    "httpx2>=2.16",
 ]
 
 [tool.ruff]

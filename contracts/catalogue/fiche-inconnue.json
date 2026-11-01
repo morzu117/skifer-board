@@ -1,0 +1,9 @@
+{
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "document_not_found",
+      "id": "inconnu"
+    }
+  }
+}
