@@ -83,6 +83,8 @@ Lecture des dépôts refaite le 31 octobre 2026, dans le code et les décisions.
 
 Conséquence pour Board : le lot 04 « Catalogue Atlas » dépend du plan 0005 d’Atlas, qui n’est pas commencé. La « correspondance KPI Atlas → requête exécutable » n’est pas un défaut de format commun, le format est commun ; c’est l’absence de mapping entre deux objets du même YAML : le bloc `graph` d’un document Atlas et le modèle sémantique skifer (métriques, dimensions, `additivity`, `grain`) que `SemanticQuery` consomme. Ce mapping n’existe dans aucun des deux dépôts.
 
+Mise à jour du 1er novembre 2026 : ce tableau date du 30 octobre et n’est plus exact pour le catalogue. Au commit `fe334267` de `origin/main`, le plan 0005 d’Atlas est livré : index DuckDB d’un clone, recherche, facettes, fiches, dépendances et versions par tags `doc/<id>/v<n>`. Le code contient aussi les modules `proposals`, `compile`, `vault`, `connectors` et `compare`, que Board n’a pas relus : leur état n’est pas vérifié ici. Le lot 04 lit ce catalogue en bibliothèque ([plan 04](roadmap/04_catalogue_atlas_plan.md), §1) ; le mapping KPI → modèle sémantique (AT-02) reste absent des deux dépôts.
+
 ### 3.3 Contradiction à trancher en premier : qui exécute, qui détient les connexions
 
 Trois textes en vigueur décrivent trois exécuteurs différents pour la même requête :
