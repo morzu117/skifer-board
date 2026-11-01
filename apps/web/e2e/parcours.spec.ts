@@ -11,11 +11,13 @@ test.beforeEach(async ({ page }) => {
 test("la coque garde ses entrées à venir inactives et annonce DEV, TEST, PROD", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Navigation principale" });
   await expect(navigation.getByRole("listitem")).toHaveText([
-    "Explorerà venir", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlasà venir",
+    "Explorerà venir", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlas",
     "Déploiementsà venir", "Espace & connexionsà venir",
   ]);
-  await expect(navigation.getByRole("link")).toHaveCount(0);
-  await expect(navigation.getByRole("button", { disabled: false })).toHaveCount(0);
+  await expect(navigation.getByRole("link")).toHaveCount(1);
+  await expect(navigation.getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");
+  await expect(navigation.getByRole("button", { disabled: false })).toHaveCount(1);
+  await expect(navigation.getByRole("button", { name: "Catalogue Atlas" })).toBeEnabled();
 
   const environnement = page.getByRole("group", { name: "Environnement", exact: true });
   await expect(environnement.getByRole("button")).toHaveText(["DEV", "TEST", "PROD"]);

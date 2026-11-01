@@ -1,6 +1,6 @@
 # Plan 04 — Catalogue Atlas, première tranche (04a)
 
-Date : 1er novembre 2026 · Statut : **planifié**. Suite du lot 01 sur accord du porteur (« si c’est ok on continue et on applique toujours cette philosophie ») : Claude développe, Codex écrit les tests (plan 03, T1).
+Date : 1er novembre 2026 · Statut : **réalisé** (4.1 à 4.3). Suite du lot 01 sur accord du porteur (« si c’est ok on continue et on applique toujours cette philosophie ») : Claude développe, Codex écrit les tests (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), lot 04, §10.1 (« Accès à Atlas », « Version Atlas ») et attendus AT-01 à AT-03. Écran : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §2.
 
@@ -68,7 +68,15 @@ Fichiers créés : `apps/web/src/catalogue/*`. Modifiés : `App.tsx` (navigation
 - États : chargement, vide, erreur, Atlas indisponible (bandeau avec âge de l’index), catalogue indisponible.
 - Aucune action d’écriture : « Proposer une modification » relève d’Atlas et n’est pas affiché tant que l’adresse de l’espace n’est pas configurée.
 
-Tests (Codex) : décodeur, composants et accessibilité axe sous les deux thèmes, parcours Playwright avec l’API simulée par `page.route` depuis l’exemple versionné, captures de référence. Claude exécute les parcours (plan 03, écart 3.3).
+Tests (Codex) : décodeur, composants et accessibilité axe, parcours Playwright avec l’API simulée par `page.route` depuis les exemples versionnés, captures de référence. Claude exécute les parcours (plan 03, écart 3.3).
+
+Écarts de réalisation :
+
+- Le catalogue est une page de gestion, sans thème de contenu : les thèmes « Skifer clair » et « Skifer ardoise » s’appliquent aux tuiles d’analyse et de dashboard. L’analyse axe porte donc sur la seule coque claire.
+- La fiche est un panneau à côté de la liste, comme le détail de `02-analyses.html`, et non un tiroir modal ; sur téléphone, elle passe sous la liste et reçoit le focus. Échap la ferme et rend le focus à la ligne.
+- Le type (concept ou KPI) est porté par la ligne d’identifiant de chaque entrée, pas par une colonne : avec la fiche ouverte, sept colonnes ne tenaient pas sans défilement à 1 280 px.
+- La marque de la navigation devient un lien vers la page prototype (`#/`), avec une cible de 44 px : les captures de référence du prototype sont régénérées.
+- Codex a écrit les tests et trouvé deux défauts ; il a atteint sa limite d’usage avant d’avoir rendu ses fichiers conformes au typage et au lint. Sur décision du porteur (« ok continue avec claude »), Claude a fini ces tests : chemins des exemples, typage, `act` sans fonction asynchrone vide, et un test direct du panneau, seul moyen d’observer qu’une fiche arrivée après le changement d’identifiant est ignorée.
 
 ## 4. Rayon d’impact
 

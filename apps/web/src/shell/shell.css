@@ -32,8 +32,10 @@
   display: flex;
   align-items: center;
   gap: var(--sb-space-4);
+  min-height: var(--sb-target-min);
   padding: 0 var(--sb-space-3);
   color: var(--sb-surface);
+  text-decoration: none;
   font-size: var(--sb-text-lg);
   font-weight: 600;
 }
@@ -195,4 +197,24 @@
 
 .sb-env__segment--text {
   font-family: var(--sb-font-sans);
+}
+
+/* En-tête de page, commun aux pages de gestion. */
+.sb-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-5) var(--sb-space-7);
+}
+
+.sb-page-head__title {
+  flex-grow: 1;
+  margin: 0;
+  font-size: var(--sb-text-2xl);
+  font-weight: 600;
+}
+
+.sb-page-head__lead {
+  margin: var(--sb-space-1) 0 0;
+  color: var(--sb-ink-2);
 }

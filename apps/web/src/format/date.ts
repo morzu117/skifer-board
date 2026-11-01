@@ -21,3 +21,29 @@ export function formatMonthShort(key: string): string {
 export function formatMonthLong(key: string): string {
   return LONG.format(parse(key));
 }
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/** Âge d'une donnée : `à l'instant`, `il y a 5 min`, `il y a 3 h`, `il y a 2 j`. */
+export function formatAge(since: Date, now: Date): string {
+  const elapsed = Math.max(0, now.getTime() - since.getTime());
+  if (elapsed < MINUTE) {
+    return "à l'instant";
+  }
+  if (elapsed < HOUR) {
+    return `il y a ${String(Math.floor(elapsed / MINUTE))} min`;
+  }
+  if (elapsed < DAY) {
+    return `il y a ${String(Math.floor(elapsed / HOUR))} h`;
+  }
+  return `il y a ${String(Math.floor(elapsed / DAY))} j`;
+}
+
+const INSTANT = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "UTC" });
+
+/** `2026-11-01T19:46:23Z` → `01/11/2026 19:46 UTC`. */
+export function formatInstant(value: Date): string {
+  return `${INSTANT.format(value)} UTC`;
+}

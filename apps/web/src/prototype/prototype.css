@@ -71,20 +71,6 @@
   border-radius: var(--sb-radius-sm);
 }
 
-.sb-page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sb-space-5) var(--sb-space-7);
-}
-
-.sb-page-head__title {
-  flex-grow: 1;
-  margin: 0;
-  font-size: var(--sb-text-2xl);
-  font-weight: 600;
-}
-
 .sb-prototype {
   display: flex;
   flex-direction: column;

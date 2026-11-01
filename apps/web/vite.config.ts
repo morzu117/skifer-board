@@ -10,7 +10,8 @@ export default defineConfig({
   // Deux pages : l'application, et la mesure du rendu, hors du bundle applicatif (plan 02, 2.5).
   build: { rolldownOptions: { input: { main: "index.html", bench: "bench.html" } } },
   // Les tokens du design system sont lus dans docs/design, hors de la racine Vite (plan 02, W4).
-  server: { fs: { allow: [repoRoot] } },
+  // En développement, l'API du catalogue est servie par `skifer-board-api` (plan 04, 4.2).
+  server: { fs: { allow: [repoRoot] }, proxy: { "/api": "http://127.0.0.1:8000" } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

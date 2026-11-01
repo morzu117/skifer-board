@@ -14,10 +14,10 @@ interface SidebarProps {
 export function Sidebar({ available, active, onNavigate, workspace }: SidebarProps) {
   return (
     <nav className="sb-sidebar" aria-label="Navigation principale">
-      <div className="sb-sidebar__brand">
+      <a className="sb-sidebar__brand" href="#/">
         <BrandMark />
         <span>Skifer Board</span>
-      </div>
+      </a>
       <ul className="sb-sidebar__list">
         {SECTIONS.map((section) => (
           <li key={section.id}>
