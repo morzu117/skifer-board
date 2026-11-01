@@ -42,6 +42,8 @@ Propriétés minimales :
 8. Les parts d'une partition complète se somment à 1, à la tolérance flottante près.
 9. L'ordre des lignes ne change aucun résultat.
 
+Écart de réalisation : la table couvre toute la matrice, soit plus de 1 500 lignes. Codex l'a produite par un script qui réécrit les règles du §4.6 sans appeler le code testé, puis Claude l'a vérifiée par sondage sur les règles critiques. C'est une seconde implémentation indépendante des règles, pas une table relue ligne à ligne ; un test garantit qu'aucune combinaison ne manque.
+
 ### 3.2 — Web : accessibilité et instantanés d'options
 
 Fichiers créés : tests `*.a11y.test.tsx` à côté des composants, `apps/web/src/charts/specs/options.snapshot.test.ts` et son dossier `__snapshots__`.

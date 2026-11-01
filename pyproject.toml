@@ -9,6 +9,7 @@ dev = [
     "pytest-cov>=5.0",
     "pyarrow-stubs>=17",
     "pyyaml>=6.0",
+    "hypothesis>=6.170.14",
 ]
 
 [tool.ruff]
