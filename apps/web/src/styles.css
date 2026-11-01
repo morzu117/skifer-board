@@ -1,0 +1,44 @@
+@import "../../../docs/design/tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--sb-ground);
+  color: var(--sb-ink);
+  font-family: var(--sb-font-sans);
+  font-size: var(--sb-text-md);
+  line-height: 1.45;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sb-blue);
+  outline-offset: 2px;
+}
+
+.sb-mono {
+  font-family: var(--sb-font-mono);
+}
+
+.sb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

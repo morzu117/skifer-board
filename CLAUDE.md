@@ -27,4 +27,7 @@ Source de vérité : `docs/plan-de-developpement.md` (décisions, arbitrages, at
 uv sync --locked      # environnement Python
 pnpm run check        # gate complet : ruff, mypy strict, pytest (couverture 100 %), YAML, changelog
 uv run pytest         # tests seuls
+pnpm install --frozen-lockfile   # dépendances web
+pnpm run check:web    # web seul : typecheck, lint, tests (couverture 100 %), build
+pnpm --filter @skifer-board/web dev   # serveur de développement
 ```
