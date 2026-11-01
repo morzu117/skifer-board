@@ -1,0 +1,84 @@
+.sb-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  min-width: 0;
+  padding: var(--sb-space-6) var(--sb-space-7);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+}
+
+.sb-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-4);
+}
+
+.sb-card__title {
+  flex-grow: 1;
+  margin: 0;
+  font-size: var(--sb-text-lg);
+  font-weight: 600;
+}
+
+.sb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sb-space-1) var(--sb-space-3);
+  border-radius: var(--sb-radius-pill);
+  font-size: var(--sb-text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sb-badge--success { background: var(--sb-success-bg); color: var(--sb-success-fg); }
+.sb-badge--warning { background: var(--sb-warning-bg); color: var(--sb-warning-fg); }
+.sb-badge--danger { background: var(--sb-danger-bg); color: var(--sb-danger-fg); }
+.sb-badge--neutral { background: var(--sb-neutral-bg); color: var(--sb-neutral-fg); }
+
+.sb-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sb-space-4);
+  padding: var(--sb-space-4) var(--sb-space-5);
+  border-radius: var(--sb-radius-md);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-banner > svg { flex: none; margin-top: 1px; }
+.sb-banner__text { flex: 1 1 200px; }
+.sb-banner--warning { background: var(--sb-warning-bg); color: var(--sb-warning-fg); }
+.sb-banner--danger { background: var(--sb-danger-bg); color: var(--sb-danger-fg); }
+.sb-banner--neutral { background: var(--sb-info-bg); color: var(--sb-neutral-fg); }
+
+.sb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sb-space-3);
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-3) var(--sb-space-5);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-table);
+  cursor: pointer;
+}
+
+.sb-button--primary {
+  border-color: var(--sb-copper);
+  background: var(--sb-copper);
+  color: var(--sb-surface);
+  font-weight: 500;
+}
+
+.sb-button:disabled {
+  border-color: var(--sb-line);
+  background: var(--sb-line);
+  color: var(--sb-muted);
+  cursor: not-allowed;
+}
