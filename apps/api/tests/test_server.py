@@ -21,6 +21,11 @@ from skifer_board import server
 from skifer_board.catalog import AtlasStatus, CatalogConfig, CatalogService, DocumentKind
 
 CONTRATS = Path(__file__).resolve().parents[3] / "contracts" / "catalogue"
+# Exemples du plan 04 ; ceux du plan 05 (`versions-*`, `ecart-*`) sont rejoués par
+# test_server_versions.py.
+EXEMPLES = sorted(
+    p for p in CONTRATS.glob("*.json") if not p.stem.startswith(("versions-", "ecart-"))
+)
 DETAIL_ABSENT = "Le clone de l'espace Atlas est introuvable à l'emplacement configuré."
 
 
@@ -282,7 +287,7 @@ def comparer_contrat(obtenu: object, attendu: object, chemin: str = "body") -> N
         assert obtenu == attendu, f"Valeur différente : {chemin}"
 
 
-@pytest.mark.parametrize("fichier", sorted(CONTRATS.glob("*.json")), ids=lambda p: p.stem)
+@pytest.mark.parametrize("fichier", EXEMPLES, ids=lambda p: p.stem)
 def test_contrats_versionnes(
     client: TestClient,
     espace: Path,
@@ -300,7 +305,7 @@ def test_contrats_versionnes(
         "parametre-invalide": "/api/catalog?status=publie",
         "indisponible": "/api/catalog",
     }
-    assert {p.stem for p in CONTRATS.glob("*.json")} == routes.keys()
+    assert {p.stem for p in EXEMPLES} == routes.keys()
     if fichier.stem == "liste-ancienne":
         assert client.get("/api/catalog").status_code == 200
     if fichier.stem in ("liste-ancienne", "indisponible"):

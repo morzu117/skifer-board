@@ -47,6 +47,8 @@ Modifiés : `apps/api/src/skifer_board/server.py`. Créés : exemples `contracts
 
 Tests : chaque code fermé, structure identique aux exemples versionnés.
 
+Écart de réalisation : le test de contrat du plan 04 ne rejoue plus que ses propres exemples ; ceux du plan 05 (`versions-*`, `ecart-*`) sont rejoués par `test_server_versions.py`. Tests écrits par l'agent Claude de 5.1.
+
 ### 5.3 — Versions dans la fiche
 
 Modifiés : `apps/web/src/catalogue/*`.

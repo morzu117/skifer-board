@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "diff_unavailable",
+      "id": "revenu-net",
+      "detail": "La version 3 de « revenu-net » n'est pas un document valide."
+    }
+  }
+}

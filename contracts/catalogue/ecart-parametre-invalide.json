@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "invalid_parameter",
+      "parameter": "base",
+      "detail": "Numéro de version taguée : entier strictement positif."
+    }
+  }
+}

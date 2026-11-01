@@ -20,10 +20,20 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from .catalog import AtlasStatus, CatalogConfig, CatalogService, CatalogUnavailable, DocumentKind
+from .catalog import (
+    AtlasStatus,
+    CatalogConfig,
+    CatalogService,
+    CatalogUnavailable,
+    DiffRefusal,
+    DiffRefused,
+    DocumentKind,
+    HistoryUnavailable,
+)
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
 STATE_VARIABLE = "SKIFER_BOARD_STATE_DIR"
+VERSION_PARAMETER = "Numéro de version taguée : entier strictement positif."
 
 
 def to_json(value: Any) -> Any:
@@ -50,6 +60,25 @@ def _unavailable(found: CatalogUnavailable) -> JSONResponse:
 def _invalid(parameter: str, allowed: type[Enum]) -> JSONResponse:
     values = ", ".join(str(member.value) for member in allowed)
     return _error(400, "invalid_parameter", parameter=parameter, detail=f"Valeurs : {values}.")
+
+
+def _version(value: str | None) -> int | None:
+    """Numéro de version d'un paramètre : entier strictement positif écrit en chiffres."""
+    if value is None or not value.isascii() or not value.isdigit() or int(value) < 1:
+        return None
+    return int(value)
+
+
+# Statut HTTP d'un écart refusé (plan 05, V6).
+_REFUSAL_STATUS = {
+    DiffRefusal.VERSION_NOT_FOUND: 404,
+    DiffRefusal.NOT_SUPPORTED: 400,
+    DiffRefusal.UNRESOLVABLE: 422,
+}
+
+
+def _history_unavailable(found: HistoryUnavailable) -> JSONResponse:
+    return _error(503, "history_unavailable", problem=found.problem.value, detail=found.detail)
 
 
 def create_app(catalog: CatalogService) -> FastAPI:
@@ -94,6 +123,33 @@ def create_app(catalog: CatalogService) -> FastAPI:
             return _error(404, "document_not_found", id=document_id)
         if isinstance(found, CatalogUnavailable):
             return _unavailable(found)
+        return JSONResponse(to_json(found))
+
+    @app.get("/api/catalog/{document_id}/versions")
+    def get_versions(document_id: str) -> JSONResponse:
+        found = catalog.versions(document_id)
+        if found is None:
+            return _error(404, "document_not_found", id=document_id)
+        if isinstance(found, HistoryUnavailable):
+            return _history_unavailable(found)
+        return JSONResponse(to_json(found))
+
+    @app.get("/api/catalog/{document_id}/diff")
+    def get_diff(
+        document_id: str, base: str | None = None, other: str | None = None
+    ) -> JSONResponse:
+        first, second = _version(base), _version(other)
+        if first is None or second is None:
+            parameter = "base" if first is None else "other"
+            return _error(400, "invalid_parameter", parameter=parameter, detail=VERSION_PARAMETER)
+        found = catalog.diff(document_id, first, second)
+        if found is None:
+            return _error(404, "document_not_found", id=document_id)
+        if isinstance(found, HistoryUnavailable):
+            return _history_unavailable(found)
+        if isinstance(found, DiffRefused):
+            status = _REFUSAL_STATUS[found.reason]
+            return _error(status, found.reason.value, id=document_id, detail=found.detail)
         return JSONResponse(to_json(found))
 
     return app

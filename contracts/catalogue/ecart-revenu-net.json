@@ -1,0 +1,63 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "e4f30c9448195045b2e9454d6751283bbe78ee08",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "id": "revenu-net",
+    "diff": {
+      "identical": false,
+      "base": {
+        "version": 4,
+        "fingerprint": "sha256:atlas1:a248faeaf50b9381ef5d81e931d9e31ab40ba46d0156769b591350d2a7f2fb58"
+      },
+      "other": {
+        "version": 5,
+        "fingerprint": "sha256:atlas1:3a3300e7570e8f000d269988e814d8a48fa26b4d497386e859d6b30fc10c44e6"
+      },
+      "differences": [
+        {
+          "kind": "modified",
+          "node_type": "filter",
+          "base_node": "n02",
+          "other_node": "n02",
+          "changes": [
+            {
+              "field": "label",
+              "before": "Factures validées",
+              "after": "Factures émises"
+            }
+          ],
+          "classification": "cosmetic",
+          "severity": "info",
+          "message": "Filtre « Factures validées » : label modifié(s). Sans effet sur le résultat."
+        },
+        {
+          "kind": "modified",
+          "node_type": "compute",
+          "base_node": "n03",
+          "other_node": "n03",
+          "changes": [
+            {
+              "field": "expr",
+              "before": "montant_ttc - montant_taxes - avoirs",
+              "after": "montant_ttc - montant_taxes"
+            }
+          ],
+          "classification": "to_verify",
+          "severity": "warn",
+          "message": "Calcul « déduction des taxes » : expr modifié(s). Équivalence des expressions non démontrée : à vérifier."
+        }
+      ],
+      "by_severity": {
+        "info": 1,
+        "warn": 1,
+        "critical": 0
+      }
+    }
+  }
+}

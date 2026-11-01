@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "diff_not_supported",
+      "id": "commande",
+      "detail": "Un concept n'a pas de graphe : ses versions ne se comparent pas."
+    }
+  }
+}

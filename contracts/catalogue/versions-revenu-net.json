@@ -1,0 +1,37 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "e4f30c9448195045b2e9454d6751283bbe78ee08",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "id": "revenu-net",
+    "current_version": 5,
+    "versions": [
+      {
+        "version": 3,
+        "commit": "0a6d6982115ea10b977f158c978f8f9b8e9788c9",
+        "date": "2026-11-01T22:38:29+01:00",
+        "author": "Tests catalogue",
+        "message": "Revenu net v3"
+      },
+      {
+        "version": 4,
+        "commit": "46ab2af9e2a345952e257f89721fc43ce9b784b6",
+        "date": "2026-11-01T22:38:29+01:00",
+        "author": "Tests catalogue",
+        "message": "Revenu net v4"
+      },
+      {
+        "version": 5,
+        "commit": "e4f30c9448195045b2e9454d6751283bbe78ee08",
+        "date": "2026-11-01T22:38:29+01:00",
+        "author": "Tests catalogue",
+        "message": "Revenu net v5"
+      }
+    ]
+  }
+}
