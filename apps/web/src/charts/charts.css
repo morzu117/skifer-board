@@ -75,3 +75,9 @@
 .sb-row--selected td:first-child {
   box-shadow: inset 3px 0 0 var(--sb-copper);
 }
+
+/* Thème ardoise : les en-têtes de tableau passent sur le gris clair de l'ardoise, le gris
+   « muted » du thème clair n'atteignant que 2,4:1 sur la carte sombre (trouvé par axe, plan 03). */
+.sb-theme-skifer-ardoise .sb-table th {
+  color: var(--sb-on-slate-muted);
+}

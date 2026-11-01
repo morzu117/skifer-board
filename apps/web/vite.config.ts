@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Les parcours de bout en bout tournent sous Playwright, pas sous Vitest (plan 03, T6).
+    exclude: [...configDefaults.exclude, "e2e/**"],
     // Seule la feuille de tokens est lue en test, pour le contrôle de concordance (W4).
     css: { include: [/docs\/design\/tokens\.css/] },
     coverage: {

@@ -1,6 +1,6 @@
 # Plan 03 — Filet de tests : unitaires, non-régression, bout en bout
 
-Date : 1er novembre 2026 · Statut : **rédigé**, lancé sur demande du porteur (« comme ce projet est sensible, on va le couvrir de tests, back, unit, non-regression, et front, donc tu développes la feature et tu demandes à codex de mettre en place les tests »).
+Date : 1er novembre 2026 · Statut : **réalisé** (3.1 à 3.3), lancé sur demande du porteur (« comme ce projet est sensible, on va le couvrir de tests, back, unit, non-regression, et front, donc tu développes la feature et tu demandes à codex de mettre en place les tests »).
 
 ## 1. Contexte
 
@@ -64,6 +64,8 @@ Parcours minimaux :
 5. Aucun défilement horizontal de page à 390, 768 et 1280 px.
 6. Analyse axe de la page entière, sous les deux thèmes.
 7. Captures de référence de la page, sur ordinateur et sur téléphone, sous les deux thèmes.
+
+Écart de réalisation : le bac à sable de Codex ne peut pas lancer Chrome. Codex écrit les parcours sans les exécuter ; Claude les exécute, génère les captures de référence après les avoir regardées et renvoie les échecs à Codex. Le sandbox de Codex n'est pas levé. Le build est fait par le script `e2e` avant Playwright, qui lance `vite preview` seul : enchaîné dans la commande du serveur, `pnpm` bloquait l'arrêt du serveur en fin de test.
 
 ## 4. Rayon d'impact
 

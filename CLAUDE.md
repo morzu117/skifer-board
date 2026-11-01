@@ -29,5 +29,6 @@ pnpm run check        # gate complet : ruff, mypy strict, pytest (couverture 100
 uv run pytest         # tests seuls
 pnpm install --frozen-lockfile   # dépendances web
 pnpm run check:web    # web seul : typecheck, lint, tests (couverture 100 %), build
+pnpm run check:e2e    # bout en bout Playwright sur le build, Chrome du poste requis
 pnpm --filter @skifer-board/web dev   # serveur de développement
 ```
