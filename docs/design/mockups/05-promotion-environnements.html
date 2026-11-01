@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promotion entre environnements — Skifer Board (maquette)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-wrap: wrap; background: #F5F6F4; color: #1B2128; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<nav aria-label="Navigation principale" style="flex: 0 0 232px; box-sizing: border-box; background: #1F262D; color: #D5DCE2; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; min-height: 100%">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 9 14 4l11 5-11 5z" fill="#C97A48"/><path d="M3 14l11 5 11-5" fill="none" stroke="#E7ECF0" stroke-width="2"/><path d="M3 19l11 5 11-5" fill="none" stroke="#8FA1B1" stroke-width="2"/></svg>
+<span style="font-size: 17px; font-weight: 600; color: #FFFFFF; letter-spacing: 0.2px">Skifer Board</span>
+</div>
+<a href="01-exploration.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>Explorer</a>
+<a href="02-analyses.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Analyses</a>
+<a href="03-editeur-dashboard.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z"/></svg>Dashboards</a>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/></svg>Catalogue Atlas</a>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; background: #323E49; color: #FFFFFF; text-decoration: none; font-weight: 500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20V6M6 12l6-6 6 6"/></svg>Déploiements</a>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg>Espace &amp; connexions</a>
+<div style="flex-grow: 1"></div>
+<div style="padding: 12px; border-top: 1px solid #3A4651; font-size: 12px; color: #B7C2CC">Espace rattaché à Atlas<br><span style="color: #FFFFFF; font-weight: 500">Finance Groupe</span></div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #DADFE3">
+<div style="display: flex; align-items: center; gap: 8px; color: #55606B">Finance Groupe <span aria-hidden="true">/</span> <strong style="color: #1B2128; font-weight: 600">Déploiements</strong></div>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 12px; padding: 4px 10px; border-radius: 10px; background: #EEF2F5; color: #3E4954">Droit de déployer : TEST</span>
+<div aria-label="Utilisateur Claire M." style="width: 34px; height: 34px; border-radius: 50%; background: #2F5D8A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">CM</div>
+</header>
+
+<main style="padding: 24px; display: flex; flex-direction: column; gap: 20px">
+
+<div>
+<h1 style="margin: 0; font-size: 24px; font-weight: 600">Promouvoir une release</h1>
+<p style="margin: 4px 0 0; color: #55606B">La release fige les contenus et leurs dépendances. Elle ne transporte ni données, ni caches, ni secrets.</p>
+</div>
+
+<!-- Pipeline -->
+<section aria-label="Environnements" style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px">
+<div style="flex: 1 1 240px; padding: 16px 18px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #55606B">DEV</div>
+<div style="font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">2026.10.4</div>
+<div style="font-size: 12px; color: #3E4954">Source de la promotion</div>
+</div>
+<div style="align-self: center; color: #55606B" aria-hidden="true"><svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 10h22M18 4l6 6-6 6"/></svg></div>
+<div style="flex: 1 1 240px; padding: 16px 18px; background: #FBF1E9; border: 2px solid #A4521F; border-radius: 8px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #7A3A12">TEST · cible</div>
+<div style="font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">2026.10.2 → 2026.10.4</div>
+<div style="font-size: 12px; color: #3E4954">Release active actuelle : 2026.10.2</div>
+</div>
+<div style="align-self: center; color: #55606B" aria-hidden="true"><svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 10h22M18 4l6 6-6 6"/></svg></div>
+<div style="flex: 1 1 240px; padding: 16px 18px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #55606B">PROD</div>
+<div style="font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">2026.10.3</div>
+<div style="font-size: 12px; color: #3E4954">Approbation distincte à définir</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+<!-- Diff -->
+<section aria-label="Contenu de la release" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">1 · Contenu et comparaison avec TEST</h2>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px">
+<thead>
+<tr style="text-align: left; color: #55606B; font-size: 12px">
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Objet</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Type</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">DEV</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">TEST</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Impact</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Pilotage mensuel</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Dashboard</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r9</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r8</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED"><span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #FBEFD0; color: #4F3500; font-weight: 500">Modifié</span></td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">CA net par région</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Analyse</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r4</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r3</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED"><span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #FBEFD0; color: #4F3500; font-weight: 500">Modifié</span></td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Réalisé contre budget</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Analyse</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r6</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">—</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED"><span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Nouveau</span></td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Skifer clair</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Thème</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r2</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r2</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED"><span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #EEF2F5; color: #3E4954; font-weight: 500">Inchangé</span></td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Part du total (résultat chargé)</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Calcul contextuel</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r1</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">—</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED"><span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Nouveau</span></td>
+</tr>
+
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- Params -->
+<section aria-label="Paramètres de déploiement" style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">2 · Paramètres résolus pour TEST</h2>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px">
+<thead>
+<tr style="text-align: left; color: #55606B; font-size: 12px">
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Paramètre</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Type</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">DEV</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">TEST</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Connexion logique « finance »</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">connexion</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">Connexion DEV</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">Connexion TEST</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Catalogue</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">texte validé</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">finance_dev</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">finance_test</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Schéma</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">texte validé</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">analytics</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">analytics</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-weight: 500">Authentification</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">référence de secret</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">secret DEV</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">secret TEST</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+<span style="font-size: 12px; color: #55606B">Les secrets restent côté serveur : seule leur référence est affichée.</span>
+</section>
+</div>
+
+<!-- Checks -->
+<aside aria-label="Contrôles et activation" style="flex: 1 1 340px; max-width: 460px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+<section style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">3 · Contrôles avant activation</h2>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #E1F0E8; color: #17553A">
+<span style="flex: none; min-width: 52px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 2px">OK</span>
+<span style="flex-grow: 1">Droit de déployer sur TEST vérifié côté serveur.</span>
+</div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #E1F0E8; color: #17553A">
+<span style="flex: none; min-width: 52px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 2px">OK</span>
+<span style="flex-grow: 1">Connexion TEST compatible avec les champs attendus.</span>
+</div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #F8E0DB; color: #7A1F14">
+<span style="flex: none; min-width: 52px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 2px">Bloqué</span>
+<span style="flex-grow: 1">Dépendance manquante dans TEST : métrique Atlas « Marge brute » v2.</span>
+</div>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #EEF2F5; color: #3E4954">
+<span style="flex: none; min-width: 52px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 2px">Attente</span>
+<span style="flex-grow: 1">Contrôles de recette : lancés après résolution des dépendances.</span>
+</div>
+
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">4 · Activation</h2>
+<p style="margin: 0; color: #3E4954">Activation bloquée tant qu'une dépendance manque. La release active (2026.10.2) reste en service.</p>
+<button disabled style="padding: 12px 16px; min-height: 44px; border: 0; background: #DADFE3; color: #55606B; border-radius: 6px; font-size: 14px; font-weight: 600">Activer 2026.10.4 sur TEST</button>
+<button style="padding: 12px 16px; min-height: 44px; border: 1px solid #8A96A1; background: #FFFFFF; color: #1B2128; border-radius: 6px; font-size: 14px">Ouvrir le catalogue Atlas de TEST</button>
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Historique de TEST</h2>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #E8EBED">
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">2026.10.2</span>
+<span style="flex-grow: 1; color: #3E4954; font-size: 12px">27/10/2026 · 16:40 · Claire M.</span>
+<span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Active</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #E8EBED">
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">2026.10.1</span>
+<span style="flex-grow: 1; color: #3E4954; font-size: 12px">20/10/2026 · 11:05 · Marc D.</span>
+<span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #EEF2F5; color: #3E4954; font-weight: 500">Retour arrière possible</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #E8EBED">
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">2026.09.4</span>
+<span style="flex-grow: 1; color: #3E4954; font-size: 12px">08/10/2026 · 09:30 · Marc D.</span>
+<span style="font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #EEF2F5; color: #3E4954; font-weight: 500">Archivée</span>
+</div>
+
+<span style="font-size: 12px; color: #55606B">Un retour arrière réactive une release antérieure sans restaurer les données source.</span>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</div>
+</body>
+</html>

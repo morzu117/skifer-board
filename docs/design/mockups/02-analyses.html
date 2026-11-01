@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyses sauvegardées — Skifer Board (maquette)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-wrap: wrap; background: #F5F6F4; color: #1B2128; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<nav aria-label="Navigation principale" style="flex: 0 0 232px; box-sizing: border-box; background: #1F262D; color: #D5DCE2; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; min-height: 100%">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 9 14 4l11 5-11 5z" fill="#C97A48"/><path d="M3 14l11 5 11-5" fill="none" stroke="#E7ECF0" stroke-width="2"/><path d="M3 19l11 5 11-5" fill="none" stroke="#8FA1B1" stroke-width="2"/></svg>
+<span style="font-size: 17px; font-weight: 600; color: #FFFFFF; letter-spacing: 0.2px">Skifer Board</span>
+</div>
+<a href="01-exploration.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>Explorer</a>
+<a href="02-analyses.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; background: #323E49; color: #FFFFFF; text-decoration: none; font-weight: 500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Analyses</a>
+<a href="03-editeur-dashboard.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z"/></svg>Dashboards</a>
+<a href="02-analyses.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/></svg>Catalogue Atlas</a>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20V6M6 12l6-6 6 6"/></svg>Déploiements</a>
+<a href="02-analyses.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg>Espace &amp; connexions</a>
+<div style="flex-grow: 1"></div>
+<div style="padding: 12px; border-top: 1px solid #3A4651; font-size: 12px; color: #B7C2CC">Espace rattaché à Atlas<br><span style="color: #FFFFFF; font-weight: 500">Finance Groupe</span></div>
+</nav>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #DADFE3">
+<div style="display: flex; align-items: center; gap: 8px; color: #55606B">Finance Groupe <span aria-hidden="true">/</span> <strong style="color: #1B2128; font-weight: 600">Analyses</strong></div>
+<div role="group" aria-label="Environnement" style="display: flex; border: 1px solid #C5CCD2; border-radius: 6px; overflow: hidden; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
+<span style="padding: 6px 12px; background: #1F262D; color: #FFFFFF; font-weight: 500">DEV</span>
+<span style="padding: 6px 12px; color: #55606B">TEST</span>
+<span style="padding: 6px 12px; color: #55606B">PROD</span>
+</div>
+<div style="flex-grow: 1"></div>
+<div aria-label="Utilisateur Claire M." style="width: 34px; height: 34px; border-radius: 50%; background: #2F5D8A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">CM</div>
+</header>
+
+<main style="padding: 24px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<div style="flex: 1 1 300px">
+<h1 style="margin: 0; font-size: 24px; font-weight: 600">Analyses</h1>
+<p style="margin: 4px 0 0; color: #55606B">Objets réutilisables : les dashboards référencent une révision précise.</p>
+</div>
+<a href="01-exploration.html" style="display: inline-flex; align-items: center; padding: 10px 18px; min-height: 44px; box-sizing: border-box; background: #A4521F; color: #FFFFFF; border-radius: 6px; font-weight: 500; text-decoration: none">Nouvelle exploration</a>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<!-- List -->
+<section aria-label="Liste des analyses" style="flex: 999 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<div role="tablist" aria-label="Portée" style="display: flex; border: 1px solid #C5CCD2; border-radius: 6px; overflow: hidden">
+<span style="padding: 7px 14px; background: #1F262D; color: #FFFFFF; font-weight: 500">Toutes · 5</span>
+<span style="padding: 7px 14px">Partagées · 3</span>
+<span style="padding: 7px 14px">Personnelles · 2</span>
+</div>
+<div style="flex: 1 1 200px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #C5CCD2; border-radius: 6px; color: #55606B">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>
+Rechercher une analyse ou une métrique
+</div>
+</div>
+
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px">
+<thead>
+<tr style="text-align: left; color: #55606B; font-size: 12px">
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Analyse</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Portée</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Révision</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Dashboards</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Modifiée</th>
+</tr>
+</thead>
+<tbody>
+
+<tr style="background: #FBF1E9">
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">
+<div style="font-weight: 500">CA net par région</div>
+<div style="color: #55606B; font-size: 12px">CA net</div>
+</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">Partagée</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r4</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">3</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">30/10/2026</td>
+</tr>
+
+<tr style="background: #FFFFFF">
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">
+<div style="font-weight: 500">Marge par famille produit</div>
+<div style="color: #55606B; font-size: 12px">Marge brute %</div>
+</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">Partagée</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r2</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">1</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">28/10/2026</td>
+</tr>
+
+<tr style="background: #FFFFFF">
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">
+<div style="font-weight: 500">Clients actifs par canal</div>
+<div style="color: #55606B; font-size: 12px">Clients actifs</div>
+</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">Personnelle</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r1</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">0</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">27/10/2026</td>
+</tr>
+
+<tr style="background: #FFFFFF">
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">
+<div style="font-weight: 500">Taux de remise par client</div>
+<div style="color: #55606B; font-size: 12px">Taux de remise (adhoc)</div>
+</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">Personnelle</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r3</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">1</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">24/10/2026</td>
+</tr>
+
+<tr style="background: #FFFFFF">
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">
+<div style="font-weight: 500">Réalisé contre budget</div>
+<div style="color: #55606B; font-size: 12px">CA net, Budget</div>
+</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED">Partagée</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">r6</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; font-family: 'IBM Plex Mono', monospace">2</td>
+<td style="padding: 12px 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">21/10/2026</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 6px; background: #FBEFD0; color: #4F3500">
+<span style="font-weight: 600">Taux de remise</span>
+<span style="flex: 1 1 260px">Métrique adhoc candidate à la promotion : usage reconnu 14 fois par le système de promotion. Les seuils et décisions restent côté écosystème.</span>
+<span style="font-size: 12px; padding: 3px 10px; border-radius: 10px; background: #FFFFFF; font-weight: 500">En cours d'examen</span>
+</div>
+</section>
+
+<!-- Detail -->
+<aside aria-label="Détail de l'analyse" style="flex: 1 1 340px; max-width: 460px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 18px">
+<div>
+<div style="font-size: 12px; color: #55606B">Analyse partagée</div>
+<h2 style="margin: 2px 0 0; font-size: 18px; font-weight: 600">CA net par région</h2>
+<p style="margin: 6px 0 0; color: #3E4954">CA net · Région · Période paramétrable · Entité imposée par les droits du lecteur</p>
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Utilisée dans 3 dashboards</h3>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<span style="flex-grow: 1; font-weight: 500">Pilotage mensuel</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #E1F0E8; color: #17553A">épinglée r4</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<span style="flex-grow: 1; font-weight: 500">Suivi des régions</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #E1F0E8; color: #17553A">épinglée r4</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<span style="flex-grow: 1; font-weight: 500">Revue directoire</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #FBEFD0; color: #4F3500">épinglée r3</span>
+</div>
+
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 6px; background: #EEF2F5">
+<strong style="font-weight: 600">Modifier cette analyse ?</strong>
+<span style="color: #3E4954">Trois dashboards la consomment. Une nouvelle révision ne les change pas tant qu'ils ne sont pas migrés.</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button style="padding: 10px 14px; min-height: 44px; border: 0; background: #1F262D; color: #FFFFFF; border-radius: 6px; font-size: 13px; font-weight: 500">Créer une révision r5</button>
+<button style="padding: 10px 14px; min-height: 44px; border: 1px solid #8A96A1; background: #FFFFFF; color: #1B2128; border-radius: 6px; font-size: 13px">Copie indépendante</button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Révisions</h3>
+
+<div style="display: flex; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #A4521F; margin-top: 5px"></span>
+<span style="width: 2px; flex-grow: 1; background: #DADFE3"></span>
+</div>
+<div style="padding-bottom: 8px">
+<div><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">r4</span> <span style="color: #55606B; font-size: 12px">· Claire M. · 30/10</span></div>
+<div style="color: #3E4954">Ajout du calcul « part du total » sur le résultat chargé.</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #5E7A94; margin-top: 5px"></span>
+<span style="width: 2px; flex-grow: 1; background: #DADFE3"></span>
+</div>
+<div style="padding-bottom: 8px">
+<div><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">r3</span> <span style="color: #55606B; font-size: 12px">· Claire M. · 22/10</span></div>
+<div style="color: #3E4954">Période rendue paramétrable.</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #5E7A94; margin-top: 5px"></span>
+<span style="width: 2px; flex-grow: 1; background: #DADFE3"></span>
+</div>
+<div style="padding-bottom: 8px">
+<div><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">r2</span> <span style="color: #55606B; font-size: 12px">· Marc D. · 09/10</span></div>
+<div style="color: #3E4954">Dimension Région remplace Pays.</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #5E7A94; margin-top: 5px"></span>
+<span style="width: 2px; flex-grow: 1; background: #DADFE3"></span>
+</div>
+<div style="padding-bottom: 8px">
+<div><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">r1</span> <span style="color: #55606B; font-size: 12px">· Marc D. · 30/09</span></div>
+<div style="color: #3E4954">Création depuis une exploration.</div>
+</div>
+</div>
+
+</section>
+</aside>
+</div>
+</main>
+</div>
+</div>
+</body>
+</html>

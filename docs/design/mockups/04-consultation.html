@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultation du dashboard — Skifer Board (maquette)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-direction: column; background: #F5F6F4; color: #1B2128; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 32px; background: #FFFFFF; border-bottom: 1px solid #DADFE3">
+<svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 9 14 4l11 5-11 5z" fill="#A4521F"/><path d="M3 14l11 5 11-5" fill="none" stroke="#1F262D" stroke-width="2"/><path d="M3 19l11 5 11-5" fill="none" stroke="#6B7A88" stroke-width="2"/></svg>
+<nav aria-label="Fil d'Ariane" style="display: flex; align-items: center; gap: 8px; color: #55606B">Finance Groupe <span aria-hidden="true">/</span> Dashboards <span aria-hidden="true">/</span> <strong style="color: #1B2128; font-weight: 600">Pilotage mensuel</strong></nav>
+<div role="group" aria-label="Environnement" style="display: flex; border: 1px solid #C5CCD2; border-radius: 6px; overflow: hidden; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
+<span style="padding: 6px 12px; color: #55606B">DEV</span>
+<span style="padding: 6px 12px; color: #55606B">TEST</span>
+<span style="padding: 6px 12px; background: #1F262D; color: #FFFFFF; font-weight: 500">PROD</span>
+</div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #55606B">release 2026.10.3</span>
+<div style="flex-grow: 1"></div>
+<button style="padding: 8px 14px; min-height: 44px; border: 1px solid #C5CCD2; background: #FFFFFF; border-radius: 6px; font-size: 13px">Copier le lien</button>
+<div aria-label="Utilisateur Claire M." style="width: 34px; height: 34px; border-radius: 50%; background: #2F5D8A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">CM</div>
+</header>
+
+<main style="width: 100%; max-width: 1200px; box-sizing: border-box; margin: 0 auto; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 18px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px">
+<div style="flex: 1 1 320px">
+<div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #A4521F; font-weight: 600">Finance Groupe</div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600">Pilotage mensuel</h1>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 20px; background: #E1F0E8; color: #17553A; font-size: 12px; font-weight: 500">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+Données évaluées pour Claire M. · Entité FR
+</div>
+</div>
+
+<section aria-label="Filtres communs" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px">
+<span style="font-size: 12px; color: #55606B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px">Filtres</span>
+<span style="padding: 8px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">Période · 2026 T1–T3</span>
+<span style="padding: 8px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Famille produit · toutes</span>
+<span style="padding: 8px 12px; border: 1px solid #A4521F; background: #FBF1E9; border-radius: 6px; font-size: 13px; font-weight: 500">Région · Île-de-France ×</span>
+<span style="flex-grow: 1"></span>
+<span style="font-size: 12px; color: #55606B">Vos filtres sont personnels et ne modifient pas le dashboard partagé.</span>
+</section>
+
+<section aria-label="Indicateurs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+
+<div style="padding: 16px 18px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #55606B">CA net · Île-de-France</span>
+<span style="font-size: 28px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">7,2 M€</span>
+<span style="font-size: 12px; color: #17553A">+3,1 % contre T2</span>
+</div>
+
+<div style="padding: 16px 18px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #55606B">Clients actifs · Île-de-France</span>
+<span style="font-size: 28px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">3 920</span>
+<span style="font-size: 12px; color: #17553A">+120 contre T2</span>
+</div>
+
+<div style="padding: 16px 18px; background: #F1F3F2; border: 1px dashed #8A96A1; border-radius: 8px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #55606B">Marge brute</span>
+<span style="display: flex; align-items: center; gap: 8px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Accès refusé</span>
+<span style="font-size: 12px; color: #3E4954">Cette métrique n'est pas ouverte à votre profil. Demandez l'accès à l'administrateur de l'espace.</span>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+
+<section aria-label="CA net par région" style="flex: 999 1 520px; min-width: 0; padding: 18px 20px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600; flex-grow: 1">CA net par région · M€</h2>
+<a href="01-exploration.html" style="padding: 8px 14px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid #C5CCD2; border-radius: 6px; color: #1B2128; text-decoration: none; font-size: 13px">Ouvrir l'analyse</a>
+<a href="01-exploration.html" style="padding: 8px 14px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid #1F262D; border-radius: 6px; color: #1F262D; text-decoration: none; font-size: 13px; font-weight: 500">Explorer à partir d'ici</a>
+</div>
+<svg viewBox="0 0 700 250" role="img" aria-label="Histogramme du CA net par mois en millions d'euros, de janvier à septembre 2026. Septembre est sélectionné." style="width: 100%; height: auto; display: block">
+<line x1="30" y1="210" x2="690" y2="210" stroke="#8A96A1"/>
+<line x1="30" y1="140" x2="690" y2="140" stroke="#E3E7EA"/>
+<line x1="30" y1="70" x2="690" y2="70" stroke="#E3E7EA"/>
+<line x1="30" y1="10" x2="690" y2="10" stroke="#E3E7EA"/>
+
+<g>
+<rect x="40" y="93" width="48" height="117" rx="2" fill="#7A93AB"/>
+<text x="64" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">jan.</text>
+<text x="64" y="87" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">2,6</text>
+</g>
+
+<g>
+<rect x="112" y="84" width="48" height="126" rx="2" fill="#7A93AB"/>
+<text x="136" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">fév.</text>
+<text x="136" y="78" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">2,8</text>
+</g>
+
+<g>
+<rect x="184" y="75" width="48" height="135" rx="2" fill="#7A93AB"/>
+<text x="208" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">mars</text>
+<text x="208" y="69" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3</text>
+</g>
+
+<g>
+<rect x="256" y="79" width="48" height="131" rx="2" fill="#7A93AB"/>
+<text x="280" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">avr.</text>
+<text x="280" y="73" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">2,9</text>
+</g>
+
+<g>
+<rect x="328" y="66" width="48" height="144" rx="2" fill="#7A93AB"/>
+<text x="352" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">mai</text>
+<text x="352" y="60" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,2</text>
+</g>
+
+<g>
+<rect x="400" y="57" width="48" height="153" rx="2" fill="#7A93AB"/>
+<text x="424" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">juin</text>
+<text x="424" y="51" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,4</text>
+</g>
+
+<g>
+<rect x="472" y="70" width="48" height="140" rx="2" fill="#7A93AB"/>
+<text x="496" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">juil.</text>
+<text x="496" y="64" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,1</text>
+</g>
+
+<g>
+<rect x="544" y="52" width="48" height="158" rx="2" fill="#7A93AB"/>
+<text x="568" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">août</text>
+<text x="568" y="46" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,5</text>
+</g>
+
+<g>
+<rect x="616" y="34" width="48" height="176" rx="2" fill="#A4521F"/>
+<text x="640" y="230" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">sept.</text>
+<text x="640" y="28" text-anchor="middle" font-size="11" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,9</text>
+</g>
+
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 12px; color: #3E4954">
+<span>Île-de-France · filtre personnel</span>
+<span>Fraîcheur <span style="font-family: 'IBM Plex Mono', monospace">31/10/2026 06:12</span></span>
+<span>Définition Atlas v3 · certifié</span>
+</div>
+</section>
+
+<section aria-label="Détail des régions" style="flex: 1 1 320px; max-width: 420px; padding: 18px 20px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Top clients · CA net</h2>
+<table style="width: 100%; border-collapse: collapse; font-size: 13px">
+<tbody>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client A</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">412 k€</td></tr>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client B</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">388 k€</td></tr>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client C</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">301 k€</td></tr>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client D</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">276 k€</td></tr>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client E</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">254 k€</td></tr>
+
+<tr><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED">Client F</td><td style="padding: 8px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">231 k€</td></tr>
+
+</tbody>
+</table>
+<div style="display: flex; gap: 10px; padding: 10px 12px; border-radius: 6px; background: #FBEFD0; color: #4F3500; font-size: 12px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 1px"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>
+<span>Résultat tronqué : 6 clients affichés sur 214. Le total n'est pas celui du périmètre complet.</span>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body>
+</html>

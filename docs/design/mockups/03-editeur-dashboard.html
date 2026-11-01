@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de dashboard — Skifer Board (maquette)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-direction: column; background: #F5F6F4; color: #1B2128; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 20px; background: #1F262D; color: #FFFFFF">
+<a href="02-analyses.html" aria-label="Retour aux dashboards" style="display: flex; align-items: center; color: #D5DCE2; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+<svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 9 14 4l11 5-11 5z" fill="#C97A48"/><path d="M3 14l11 5 11-5" fill="none" stroke="#E7ECF0" stroke-width="2"/><path d="M3 19l11 5 11-5" fill="none" stroke="#8FA1B1" stroke-width="2"/></svg>
+<div>
+<div style="font-weight: 600">Pilotage mensuel</div>
+<div style="font-size: 12px; color: #B7C2CC">Brouillon · modifié il y a 2 min</div>
+</div>
+<div role="group" aria-label="Environnement" style="display: flex; border: 1px solid #5A6772; border-radius: 6px; overflow: hidden; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
+<span style="padding: 6px 12px; background: #FFFFFF; color: #1F262D; font-weight: 500">DEV</span>
+<span style="padding: 6px 12px; color: #D5DCE2">TEST</span>
+<span style="padding: 6px 12px; color: #D5DCE2">PROD</span>
+</div>
+<div style="flex-grow: 1"></div>
+<div role="group" aria-label="Aperçu responsive" style="display: flex; border: 1px solid #5A6772; border-radius: 6px; overflow: hidden">
+<span style="padding: 6px 12px; background: #323E49; font-weight: 500">Bureau</span>
+<span style="padding: 6px 12px; color: #D5DCE2">Tablette</span>
+<span style="padding: 6px 12px; color: #D5DCE2">Mobile</span>
+</div>
+<button aria-label="Annuler" style="width: 44px; height: 44px; border: 1px solid #5A6772; background: transparent; color: #FFFFFF; border-radius: 6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 6 6"/></svg></button>
+<button aria-label="Rétablir" style="width: 44px; height: 44px; border: 1px solid #5A6772; background: transparent; color: #8F9CA8; border-radius: 6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 7 5 5-5 5M20 12H10a6 6 0 0 0-6 6"/></svg></button>
+<button style="padding: 10px 16px; min-height: 44px; border: 1px solid #8F9CA8; background: transparent; color: #FFFFFF; border-radius: 6px; font-size: 14px">Aperçu</button>
+<button style="padding: 10px 18px; min-height: 44px; border: 0; background: #C9743D; color: #1B2128; border-radius: 6px; font-size: 14px; font-weight: 600">Enregistrer</button>
+</header>
+
+<div style="flex-grow: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<!-- Palette -->
+<aside aria-label="Composants" style="flex: 0 0 240px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #DADFE3; padding: 18px; display: flex; flex-direction: column; gap: 18px">
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Structure</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Section</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Colonnes</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Conteneur</span>
+
+</div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Contenu</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Analyse</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">KPI</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Texte</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Image</span>
+
+<span style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px">Filtre commun</span>
+
+</div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Analyses disponibles</h2>
+<div style="padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px"><div style="font-weight: 500">CA net par région</div><div style="font-size: 12px; color: #55606B">r4 · partagée</div></div>
+<div style="padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px"><div style="font-weight: 500">Marge par famille produit</div><div style="font-size: 12px; color: #55606B">r2 · partagée</div></div>
+<div style="padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px"><div style="font-weight: 500">Réalisé contre budget</div><div style="font-size: 12px; color: #55606B">r6 · partagée</div></div>
+</section>
+</aside>
+
+<!-- Canvas -->
+<main style="flex: 999 1 520px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center">
+<div style="width: 100%; max-width: 880px; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 6px; display: flex; flex-direction: column">
+
+<!-- Section 1 -->
+<section style="padding: 20px 24px; border-bottom: 1px dashed #B4BDC5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px">
+<div style="flex: 1 1 280px">
+<div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #A4521F; font-weight: 600">Finance Groupe</div>
+<div style="font-size: 26px; font-weight: 600">Pilotage mensuel</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; outline: 1px dashed #5E7A94; outline-offset: 4px; padding: 0">
+<span style="padding: 8px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">Période · 2026 T1–T3</span>
+<span style="padding: 8px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 12px">Cible : 3 composants</span>
+</div>
+</section>
+
+<!-- Section 2 : KPI -->
+<section style="padding: 20px 24px; border-bottom: 1px dashed #B4BDC5; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+
+<div style="padding: 14px 16px; border: 1px solid #DADFE3; border-radius: 6px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #55606B">CA net</span>
+<span style="font-size: 26px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">31,4 M€</span>
+<span style="font-size: 12px; color: #17553A">+4,2 % contre T2</span>
+</div>
+
+<div style="padding: 14px 16px; border: 1px solid #DADFE3; border-radius: 6px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #55606B">Marge brute</span>
+<span style="font-size: 26px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">24,1 %</span>
+<span style="font-size: 12px; color: #8A2B1F">−0,6 pt contre T2</span>
+</div>
+
+<div style="padding: 14px 16px; border: 1px solid #DADFE3; border-radius: 6px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #55606B">Clients actifs</span>
+<span style="font-size: 26px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">12 840</span>
+<span style="font-size: 12px; color: #17553A">+310 contre T2</span>
+</div>
+
+</section>
+
+<!-- Section 3 -->
+<section style="padding: 20px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="position: relative; padding: 14px 16px; border: 2px solid #2F5D8A; border-radius: 6px; display: flex; flex-direction: column; gap: 8px">
+<span style="position: absolute; top: -12px; left: 12px; padding: 2px 8px; background: #2F5D8A; color: #FFFFFF; font-size: 11px; border-radius: 4px">Graphique · sélectionné</span>
+<span style="font-weight: 600">CA net par région</span>
+<svg viewBox="0 0 360 190" role="img" aria-label="Histogramme du CA net par région avec une ligne de seuil à 4 millions d'euros" style="width: 100%; height: auto; display: block">
+<line x1="10" y1="160" x2="350" y2="160" stroke="#8A96A1"/>
+
+<rect x="14" y="70" width="38" height="90" rx="2" fill="#2F5D8A"/>
+
+<rect x="56" y="92" width="38" height="68" rx="2" fill="#2F5D8A"/>
+
+<rect x="98" y="111" width="38" height="49" rx="2" fill="#7A93AB"/>
+
+<rect x="140" y="115" width="38" height="45" rx="2" fill="#7A93AB"/>
+
+<rect x="182" y="119" width="38" height="41" rx="2" fill="#7A93AB"/>
+
+<rect x="224" y="121" width="38" height="39" rx="2" fill="#7A93AB"/>
+
+<rect x="266" y="125" width="38" height="35" rx="2" fill="#7A93AB"/>
+
+<rect x="308" y="134" width="38" height="26" rx="2" fill="#7A93AB"/>
+
+<line x1="10" y1="68" x2="350" y2="68" stroke="#A4521F" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="350" y="62" text-anchor="end" font-size="10" fill="#7A3A12" font-family="IBM Plex Mono, ui-monospace, monospace">objectif 4,0</text>
+</svg>
+</div>
+<div style="padding: 14px 16px; border: 1px solid #DADFE3; border-radius: 6px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-weight: 600">Détail des régions</span>
+<table style="width: 100%; border-collapse: collapse; font-size: 13px">
+<tbody>
+
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED">Île-de-France</td><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">7,2</td></tr>
+
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED">Auvergne-Rhône-Alpes</td><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">5,4</td></tr>
+
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED">Occitanie</td><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">3,9</td></tr>
+
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED">Hauts-de-France</td><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">3,6</td></tr>
+
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED">Nouvelle-Aquitaine</td><td style="padding: 6px 0; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">3,3</td></tr>
+
+</tbody>
+</table>
+<span style="font-size: 12px; color: #55606B">Filtré par la sélection du graphique</span>
+</div>
+</section>
+</div>
+<div style="font-size: 12px; color: #55606B">Largeur d'aperçu : bureau 880 px · conteneurs imbriqués, sans positionnement libre au pixel</div>
+</main>
+
+<!-- Properties -->
+<aside aria-label="Propriétés" style="flex: 0 0 320px; box-sizing: border-box; background: #FFFFFF; border-left: 1px solid #DADFE3; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+<div>
+<div style="font-size: 12px; color: #55606B">Composant graphique</div>
+<h2 style="margin: 2px 0 0; font-size: 16px; font-weight: 600">CA net par région</h2>
+</div>
+
+<div style="padding: 10px 12px; border-radius: 6px; background: #EEF2F5; color: #3E4954; font-size: 12px">Source : analyse « CA net par région », révision <span style="font-family: 'IBM Plex Mono', monospace">r4</span> épinglée. Ces réglages ne modifient pas le calcul.</div>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Héritage visuel</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px">
+<span style="padding: 4px 10px; border-radius: 10px; background: #F1F3F2; border: 1px solid #DADFE3">Thème · Skifer clair</span>
+<span style="padding: 4px 10px; border-radius: 10px; background: #F1F3F2; border: 1px solid #DADFE3">Dashboard · 1 surcharge</span>
+<span style="padding: 4px 10px; border-radius: 10px; background: #FBF1E9; border: 1px solid #E8C9B3">Composant · 3 surcharges</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Graphique</h3>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Type</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; ">Histogramme</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Axe Y</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; font-family: 'IBM Plex Mono', monospace;">0,0 M€</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Légende</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; ">Masquée</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Seuil</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; font-family: 'IBM Plex Mono', monospace;">Objectif 4,0</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Sous le seuil</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; ">Bleu atténué</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 0 0 110px; font-size: 13px; color: #3E4954">Infobulle</span>
+<span style="flex-grow: 1; padding: 8px 10px; border: 1px solid #C5CCD2; border-radius: 6px; font-size: 13px; ">Valeur + définition</span>
+</div>
+
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h3 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Interactions</h3>
+
+<div style="padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<div style="font-size: 12px; color: #55606B">Clic sur une barre</div>
+<div style="font-weight: 500">Filtre « Détail des régions »</div>
+</div>
+
+<div style="padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<div style="font-size: 12px; color: #55606B">Clic sur le titre</div>
+<div style="font-weight: 500">Ouvre l’analyse r4</div>
+</div>
+
+</section>
+
+<div style="flex-grow: 1"></div>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid #1F262D; border-radius: 6px; color: #1F262D; font-weight: 500; text-decoration: none">Créer une release depuis ce dashboard</a>
+</aside>
+</div>
+</div>
+</body>
+</html>

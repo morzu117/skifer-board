@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exploration — Skifer Board (maquette)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button{font-family:inherit}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-wrap: wrap; background: #F5F6F4; color: #1B2128; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<!-- Sidebar -->
+<nav aria-label="Navigation principale" style="flex: 0 0 232px; box-sizing: border-box; background: #1F262D; color: #D5DCE2; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; min-height: 100%">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 9 14 4l11 5-11 5z" fill="#C97A48"/><path d="M3 14l11 5 11-5" fill="none" stroke="#E7ECF0" stroke-width="2"/><path d="M3 19l11 5 11-5" fill="none" stroke="#8FA1B1" stroke-width="2"/></svg>
+<span style="font-size: 17px; font-weight: 600; color: #FFFFFF; letter-spacing: 0.2px">Skifer Board</span>
+</div>
+<a href="01-exploration.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; background: #323E49; color: #FFFFFF; text-decoration: none; font-weight: 500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>Explorer</a>
+<a href="02-analyses.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Analyses</a>
+<a href="03-editeur-dashboard.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z"/></svg>Dashboards</a>
+<a href="01-exploration.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/></svg>Catalogue Atlas</a>
+<a href="05-promotion-environnements.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 20V6M6 12l6-6 6 6"/></svg>Déploiements</a>
+<a href="01-exploration.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; color: #D5DCE2; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg>Espace &amp; connexions</a>
+<div style="flex-grow: 1"></div>
+<div style="padding: 12px; border-top: 1px solid #3A4651; font-size: 12px; color: #B7C2CC">Espace rattaché à Atlas<br><span style="color: #FFFFFF; font-weight: 500">Finance Groupe</span></div>
+</nav>
+
+<!-- Main column -->
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #DADFE3">
+<div style="display: flex; align-items: center; gap: 8px; color: #55606B">Finance Groupe <span aria-hidden="true">/</span> <strong style="color: #1B2128; font-weight: 600">Nouvelle exploration</strong></div>
+<div role="group" aria-label="Environnement" style="display: flex; border: 1px solid #C5CCD2; border-radius: 6px; overflow: hidden; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
+<span style="padding: 6px 12px; color: #55606B">DEV</span>
+<span style="padding: 6px 12px; background: #1F262D; color: #FFFFFF; font-weight: 500">TEST</span>
+<span style="padding: 6px 12px; color: #55606B">PROD</span>
+</div>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; background: #E1F0E8; color: #17553A; font-size: 12px; font-weight: 500">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+Vous consultez avec vos droits · Entité FR
+</div>
+<div aria-label="Utilisateur Claire M." style="width: 34px; height: 34px; border-radius: 50%; background: #2F5D8A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">CM</div>
+</header>
+
+<main style="padding: 24px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<div style="flex: 1 1 320px">
+<h1 style="margin: 0; font-size: 24px; font-weight: 600">CA net par région</h1>
+<p style="margin: 4px 0 0; color: #55606B">Exploration non enregistrée · aucune modification du contenu partagé</p>
+</div>
+<button style="padding: 10px 16px; min-height: 44px; border: 1px solid #C5CCD2; background: #FFFFFF; border-radius: 6px; font-size: 14px; color: #1B2128">Ajouter à un dashboard</button>
+<button style="padding: 10px 18px; min-height: 44px; border: 0; background: #A4521F; color: #FFFFFF; border-radius: 6px; font-size: 14px; font-weight: 500">Enregistrer l'analyse</button>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+
+<!-- Builder panel -->
+<aside aria-label="Constructeur d'analyse" style="flex: 0 0 300px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 18px">
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Métriques</h2>
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #A4521F; background: #FBF1E9; border-radius: 6px">
+<span style="flex-grow: 1; font-weight: 500">CA net</span>
+<span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Atlas v3 · certifié</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<span style="flex-grow: 1">Marge brute %</span>
+<span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Atlas v2</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #DADFE3; border-radius: 6px">
+<span style="flex-grow: 1">Clients actifs</span>
+<span style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #E1F0E8; color: #17553A; font-weight: 500">Atlas v1</span>
+</div>
+<button style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; min-height: 44px; border: 1px dashed #8A96A1; background: transparent; border-radius: 6px; color: #1B2128; font-size: 14px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+Calcul adhoc
+<span style="margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #FBEFD0; color: #6B4600; font-weight: 500">candidate</span>
+</button>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Dimensions</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span style="padding: 6px 12px; border-radius: 6px; background: #1F262D; color: #FFFFFF; font-weight: 500">Région</span>
+<span style="padding: 6px 12px; border-radius: 6px; border: 1px solid #C5CCD2">Mois</span>
+<span style="padding: 6px 12px; border-radius: 6px; border: 1px solid #C5CCD2">Famille produit</span>
+<span style="padding: 6px 12px; border-radius: 6px; border: 1px solid #C5CCD2">Canal</span>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: #55606B; font-weight: 600">Filtres</h2>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #55606B">Période</span>
+<div style="padding: 9px 12px; border: 1px solid #C5CCD2; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 13px">01/01/2026 – 30/09/2026</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #55606B">Entité</span>
+<div style="display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #DADFE3; background: #F1F3F2; border-radius: 6px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55606B" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">FR</span>
+<span style="margin-left: auto; font-size: 11px; color: #55606B">imposé par vos droits</span>
+</div>
+</div>
+</section>
+
+<p style="margin: 0; padding: 10px 12px; border-radius: 6px; background: #EEF2F5; font-size: 12px; color: #3E4954">Retirer un filtre d'exploration n'élargit jamais vos droits d'accès.</p>
+</aside>
+
+<!-- Results -->
+<section aria-label="Résultat" style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600; flex-grow: 1">CA net par région · M€</h2>
+<div role="tablist" aria-label="Vue" style="display: flex; border: 1px solid #C5CCD2; border-radius: 6px; overflow: hidden">
+<span style="padding: 7px 14px; background: #1F262D; color: #FFFFFF; font-weight: 500">Graphique</span>
+<span style="padding: 7px 14px; color: #1B2128">Tableau</span>
+</div>
+</div>
+
+<svg viewBox="0 0 780 290" role="img" aria-label="Histogramme du CA net par région en millions d'euros. Île-de-France, Auvergne-Rhône-Alpes et Occitanie sont sélectionnées." style="width: 100%; height: auto; max-height: 300px; display: block">
+<line x1="30" y1="230" x2="770" y2="230" stroke="#8A96A1" stroke-width="1"/>
+<line x1="30" y1="160" x2="770" y2="160" stroke="#E3E7EA" stroke-width="1"/>
+<line x1="30" y1="90" x2="770" y2="90" stroke="#E3E7EA" stroke-width="1"/>
+<line x1="30" y1="20" x2="770" y2="20" stroke="#E3E7EA" stroke-width="1"/>
+<text x="24" y="234" text-anchor="end" font-size="11" fill="#55606B" font-family="IBM Plex Mono, ui-monospace, monospace">0</text>
+<text x="24" y="164" text-anchor="end" font-size="11" fill="#55606B" font-family="IBM Plex Mono, ui-monospace, monospace">3</text>
+<text x="24" y="94" text-anchor="end" font-size="11" fill="#55606B" font-family="IBM Plex Mono, ui-monospace, monospace">6</text>
+<text x="24" y="24" text-anchor="end" font-size="11" fill="#55606B" font-family="IBM Plex Mono, ui-monospace, monospace">9</text>
+
+<g>
+<rect x="44" y="62" width="58" height="168" rx="2" fill="#A4521F" stroke="#A4521F" stroke-width="1"/>
+<text x="73" y="56" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">7,2</text>
+<text x="73" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Île-de-</text>
+<text x="73" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">France</text>
+</g>
+
+<g>
+<rect x="134" y="104" width="58" height="126" rx="2" fill="#A4521F" stroke="#A4521F" stroke-width="1"/>
+<text x="163" y="98" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">5,4</text>
+<text x="163" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Auvergne-</text>
+<text x="163" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Rhône-Alpes</text>
+</g>
+
+<g>
+<rect x="224" y="139" width="58" height="91" rx="2" fill="#A4521F" stroke="#A4521F" stroke-width="1"/>
+<text x="253" y="133" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,9</text>
+<text x="253" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Occitanie</text>
+<text x="253" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif"></text>
+</g>
+
+<g>
+<rect x="314" y="146" width="58" height="84" rx="2" fill="#C3D0DC" stroke="#5E7A94" stroke-width="1"/>
+<text x="343" y="140" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,6</text>
+<text x="343" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Hauts-de-</text>
+<text x="343" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">France</text>
+</g>
+
+<g>
+<rect x="404" y="153" width="58" height="77" rx="2" fill="#C3D0DC" stroke="#5E7A94" stroke-width="1"/>
+<text x="433" y="147" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,3</text>
+<text x="433" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Nouvelle-</text>
+<text x="433" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Aquitaine</text>
+</g>
+
+<g>
+<rect x="494" y="158" width="58" height="72" rx="2" fill="#C3D0DC" stroke="#5E7A94" stroke-width="1"/>
+<text x="523" y="152" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">3,1</text>
+<text x="523" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">PACA</text>
+<text x="523" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif"></text>
+</g>
+
+<g>
+<rect x="584" y="165" width="58" height="65" rx="2" fill="#C3D0DC" stroke="#5E7A94" stroke-width="1"/>
+<text x="613" y="159" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">2,8</text>
+<text x="613" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Grand Est</text>
+<text x="613" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif"></text>
+</g>
+
+<g>
+<rect x="674" y="181" width="58" height="49" rx="2" fill="#C3D0DC" stroke="#5E7A94" stroke-width="1"/>
+<text x="703" y="175" text-anchor="middle" font-size="12" font-weight="500" fill="#1B2128" font-family="IBM Plex Mono, ui-monospace, monospace">2,1</text>
+<text x="703" y="250" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif">Normandie</text>
+<text x="703" y="264" text-anchor="middle" font-size="11" fill="#3E4954" font-family="IBM Plex Sans, system-ui, sans-serif"></text>
+</g>
+
+</svg>
+
+<!-- Selection bar -->
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 12px 16px; border-radius: 6px; background: #FBF1E9; border: 1px solid #E8C9B3">
+<span style="font-weight: 600">3 régions sélectionnées</span>
+<span>CA net cumulé <strong style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">16,5 M€</strong></span>
+<span>Part du résultat chargé <strong style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">52,5 %</strong></span>
+<span style="flex-grow: 1"></span>
+<span style="font-size: 12px; color: #55606B">Calculé dans Board · sans requête</span>
+</div>
+</div>
+
+<!-- Derived calculations -->
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0 0 6px; font-size: 16px; font-weight: 600">Calculs contextuels</h2>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px">
+<thead>
+<tr style="text-align: left; color: #55606B; font-size: 12px">
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Calcul</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Périmètre</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600; text-align: right">Valeur</th>
+<th style="padding: 8px 10px; border-bottom: 1px solid #DADFE3; font-weight: 600">Exécution</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">CA net · somme</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Sélection courante (3 régions)</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">16,5 M€</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Local, composantes autorisées</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">CA net · part du total</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Résultat chargé (8 / 8 régions)</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">52,5 %</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Local, dénominateur explicite</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Marge brute % · recalculée</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Sélection courante (3 régions)</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">24,1 %</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Local, numérateur ÷ dénominateur</td>
+</tr>
+
+<tr>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Clients actifs · somme</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; color: #3E4954">Sélection courante (3 régions)</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED; text-align: right; font-family: 'IBM Plex Mono', monospace">Indisponible</td>
+<td style="padding: 10px; border-bottom: 1px solid #E8EBED">Nouvelle requête au moteur</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; border-radius: 6px; background: #FBEFD0; color: #4F3500">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg>
+<span style="flex: 1 1 280px">Somme des clients actifs indisponible : comptage distinct, non additif entre régions.</span>
+<button style="padding: 8px 14px; min-height: 44px; border: 1px solid #6B4600; background: #FFFFFF; border-radius: 6px; font-size: 13px; color: #4F3500; font-weight: 500">Demander au moteur</button>
+</div>
+</div>
+
+<!-- Evidence -->
+<div style="background: #FFFFFF; border: 1px solid #DADFE3; border-radius: 8px; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px 28px; font-size: 13px">
+<div><div style="font-size: 12px; color: #55606B">Définition</div><div style="font-weight: 500">CA net · Atlas v3</div></div>
+<div><div style="font-size: 12px; color: #55606B">Certification</div><div style="font-weight: 500">Skifer · certifié</div></div>
+<div><div style="font-size: 12px; color: #55606B">Grain</div><div style="font-weight: 500">région</div></div>
+<div><div style="font-size: 12px; color: #55606B">Complétude</div><div style="font-weight: 500">8 / 8 régions · non tronqué</div></div>
+<div><div style="font-size: 12px; color: #55606B">Fraîcheur</div><div style="font-weight: 500; font-family: 'IBM Plex Mono', monospace">31/10/2026 06:12</div></div>
+<div style="flex-grow: 1"></div>
+<a href="01-exploration.html" style="align-self: center; color: #1F4E7C; font-weight: 500">Voir les preuves</a>
+</div>
+
+</section>
+</div>
+</main>
+</div>
+</div>
+</body>
+</html>

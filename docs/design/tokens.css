@@ -1,0 +1,72 @@
+/* Skifer Board — design tokens (source de vérité : tokens.json)
+   Tous les couples texte/fond listés dans DESIGN-SYSTEM.md ont été vérifiés (WCAG AA). */
+:root {
+  /* Neutres */
+  --sb-ink: #1B2128;            /* texte principal */
+  --sb-ink-2: #3E4954;          /* texte secondaire */
+  --sb-muted: #55606B;          /* libellés, légendes (≥ 4.5:1 sur blanc et sur fond de page) */
+  --sb-line: #DADFE3;           /* bordure de carte */
+  --sb-line-strong: #C5CCD2;    /* bordure de contrôle */
+  --sb-line-soft: #E8EBED;      /* séparateur de ligne de tableau */
+  --sb-ground: #F5F6F4;         /* fond de page */
+  --sb-surface: #FFFFFF;        /* cartes, panneaux */
+  --sb-subtle: #F1F3F2;         /* champ verrouillé, tuile refusée */
+  --sb-info-bg: #EEF2F5;        /* encart d'information neutre */
+
+  /* Ardoise (navigation, états actifs) */
+  --sb-slate-900: #1F262D;
+  --sb-slate-700: #323E49;
+  --sb-slate-line: #3A4651;
+  --sb-on-slate: #D5DCE2;
+  --sb-on-slate-muted: #B7C2CC;
+
+  /* Cuivre (accent : action principale, sélection) */
+  --sb-copper: #A4521F;
+  --sb-copper-soft: #FBF1E9;
+  --sb-copper-edge: #E8C9B3;
+  --sb-copper-ink: #7A3A12;
+  --sb-copper-on-dark: #C9743D;  /* bouton principal sur fond ardoise (texte --sb-ink) */
+
+  /* Bleu données (focus d'édition, séries, liens) */
+  --sb-blue: #2F5D8A;
+  --sb-link: #1F4E7C;
+  --sb-series-muted: #7A93AB;    /* série non sélectionnée (≥ 3:1 sur blanc) */
+  --sb-series-muted-light: #C3D0DC; /* variante claire : TOUJOURS avec bordure --sb-series-edge */
+  --sb-series-edge: #5E7A94;
+
+  /* États sémantiques (fond + texte) */
+  --sb-success-bg: #E1F0E8;  --sb-success-fg: #17553A;
+  --sb-warning-bg: #FBEFD0;  --sb-warning-fg: #4F3500;
+  --sb-danger-bg: #F8E0DB;   --sb-danger-fg: #7A1F14;  --sb-danger-text: #8A2B1F;
+  --sb-neutral-bg: #EEF2F5;  --sb-neutral-fg: #3E4954;
+
+  /* Typographie */
+  --sb-font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --sb-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sb-text-xs: 11px;   /* badge */
+  --sb-text-sm: 12px;   /* légende, libellé, en-tête de tableau */
+  --sb-text-table: 13px;
+  --sb-text-md: 14px;   /* corps */
+  --sb-text-lg: 16px;   /* titre de carte */
+  --sb-text-xl: 18px;
+  --sb-text-2xl: 24px;  /* titre de page */
+  --sb-text-3xl: 28px;  /* titre de dashboard, valeur KPI */
+
+  /* Espacement (pas irrégulier mais fermé : n'utiliser que ces valeurs) */
+  --sb-space-1: 4px;  --sb-space-2: 6px;  --sb-space-3: 8px;  --sb-space-4: 10px;
+  --sb-space-5: 12px; --sb-space-6: 16px; --sb-space-7: 20px; --sb-space-8: 24px; --sb-space-9: 32px;
+
+  /* Rayons */
+  --sb-radius-sm: 4px;   /* étiquette flottante */
+  --sb-radius-md: 6px;   /* contrôles, lignes de liste */
+  --sb-radius-lg: 8px;   /* cartes */
+  --sb-radius-pill: 20px;
+
+  /* Gabarits */
+  --sb-sidebar-w: 232px;
+  --sb-builder-w: 300px;
+  --sb-props-w: 320px;
+  --sb-detail-max: 460px;
+  --sb-reader-max: 1200px;
+  --sb-target-min: 44px;  /* taille minimale d'une cible interactive */
+}
