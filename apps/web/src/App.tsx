@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { PrototypePage } from "./prototype/PrototypePage";
 import { AppShell } from "./shell/AppShell";
 import type { Environment, SectionId } from "./shell/sections";
 
@@ -20,7 +21,7 @@ export function App() {
       onEnvironmentChange={setEnvironment}
       identity={null}
     >
-      <h1>Prototype graphique</h1>
+      <PrototypePage />
     </AppShell>
   );
 }

@@ -1,6 +1,6 @@
 # Plan 02 — Socle web et prototype graphique
 
-Date : 1er novembre 2026 · Statut : **rédigé**, lancé sur accord du porteur (« j'ai déposé les maquettes et le design système tu peux continuer »).
+Date : 1er novembre 2026 · Statut : **réalisé** (2.1 à 2.5), décision 0001 proposée et en attente de validation ; lancé sur accord du porteur (« j'ai déposé les maquettes et le design système tu peux continuer »).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), lot 01 (§8) et prototype de décision (§6.3). Design : [`docs/design/`](../design/README.md), en particulier `RULES.md`, `DESIGN-SYSTEM.md` et les maquettes `01-exploration`, `03-editeur-dashboard` et `04-consultation`.
 
@@ -72,6 +72,8 @@ Fichiers créés : `apps/web/src/prototype/{PrototypePage,Bench}.tsx`, `docs/dec
 - Page composée réunissant les cinq cas, bascule de thème, comportement responsive (`flex-wrap`, pas de défilement horizontal de page).
 - Mode mesure (`?bench`) : tailles de résultat de 100, 1 000 et 10 000 points, de 1 à 12 tuiles, temps de premier rendu et mémoire. Tailles fixées ici, avant l'essai, comme le demande le §6.3. Mesure lancée dans Chrome headless sur le build de production.
 - Décision d'architecture 0001 : bibliothèque retenue, mesures, limites de rendu et d'accessibilité constatées, écarts aux maquettes (`RULES.md` §5.8). Elle est **proposée** : la validation revient au porteur.
+
+Écart de réalisation : la mesure est une page à part, `apps/web/bench.html` (`src/prototype/{bench.ts,BenchReport.tsx}`), et non un mode `?bench` de la page du prototype. Elle charge le rendu canvas, que la page du prototype n'embarque pas, et se lance sans toucher à l'état de l'application.
 
 ## 4. Rayon d'impact
 

@@ -4,7 +4,7 @@ import { numberColumn, stringColumn } from "../../data/arrow";
 import { formatMonthLong, formatMonthShort } from "../../format/date";
 import type { NavigableItem } from "../ChartCard";
 import type { ChartOption } from "../echarts";
-import { baseOption, categoryAxis, contrastRatio, type ChartTheme } from "../theme";
+import { baseOption, categoryAxis, contrastRatio, narrowMedia, type ChartTheme } from "../theme";
 
 /** Grille ligne × colonne d'une métrique, lue depuis un résultat au format long. */
 export interface Grid {
@@ -92,6 +92,12 @@ export function heatmapOption(grid: Grid, theme: ChartTheme, format: (value: num
         },
       },
     ],
+    // Forme étroite : montants retirés des cellules, trop petites pour les porter ; la couleur
+    // et la légende par paliers restent, et le tableau donne chaque valeur.
+    media: narrowMedia(
+      { grid: { left: 150, bottom: 28 }, xAxis: { axisLabel: { rotate: 0 } }, series: [{ label: { show: true } }] },
+      { grid: { left: 112, bottom: 48 }, xAxis: { axisLabel: { rotate: 45 } }, series: [{ label: { show: false } }] },
+    ),
   };
 }
 

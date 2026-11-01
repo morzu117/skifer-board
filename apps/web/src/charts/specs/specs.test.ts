@@ -7,7 +7,7 @@ import { barsDescription, barsOption, barStyle, categoryItems, categoryValues, e
 import { actualVsReference, combinedDescription, combinedOption, periodItems, type CombinedInput } from "./combined";
 import { binOf, binsOf, cellItems, gridOf, heatmapDescription, heatmapOption, labelColor, type Grid } from "./heatmap";
 import { sparklinePath } from "./sparkline";
-import { BridgeError, bridgeSteps, checkBridge, stepItems, stepText, waterfallDescription, waterfallOption, type BridgeStep } from "./waterfall";
+import { BridgeError, bridgeSteps, checkBridge, bridgeTop, niceMax, stepItems, stepText, waterfallBreak, waterfallDescription, waterfallOption, type BridgeStep } from "./waterfall";
 
 const plain = (text: string): string => text.replace(/[\u00a0\u202f]/g, " ");
 const amount = (value: number): string => formatAmount(value);
@@ -41,6 +41,12 @@ describe("histogramme", () => {
     expect(horizontal.yAxis.inverse).toBe(true);
     expect(series(horizontal).markLine?.data).toEqual([{ xAxis: 4 }]);
     expect(series(barsOption({ data: regions, selected: [], format: amount }, SKIFER_CLAIR)).markLine).toBeUndefined();
+  });
+
+  it("masque les étiquettes quand les barres sont trop nombreuses", () => {
+    const many: CategoryValues = { categories: Array.from({ length: 41 }, (_, index) => `c${index}`), values: Array.from({ length: 41 }, () => 1) };
+    expect((series(barsOption({ data: many, selected: [], format: amount }, SKIFER_CLAIR)).label as unknown as { show: boolean }).show).toBe(false);
+    expect((series(barsOption({ data: regions, selected: [], format: amount }, SKIFER_CLAIR)).label as unknown as { show: boolean }).show).toBe(true);
   });
 
   it("étiquette les valeurs et les absences", () => {
@@ -144,6 +150,23 @@ describe("waterfall", () => {
     expect(series(option, 1).label.formatter({ dataIndex: 2 })).toBe("−20 €");
   });
 
+  it("arrondit le haut de l'axe", () => {
+    expect(bridgeTop(bridge)).toBe(130);
+    expect(niceMax(10_240_000)).toBe(11_000_000);
+    expect(niceMax(130)).toBe(130);
+    expect(niceMax(0)).toBe(1);
+  });
+
+  it("rompt l'axe quand les variations flottent loin au-dessus de zéro", () => {
+    expect(waterfallBreak(bridge)).toEqual({ start: 10, end: 95, gap: "6%" });
+    const option = waterfallOption(bridge, SKIFER_CLAIR) as { yAxis: { breaks?: unknown[] } };
+    expect(option.yAxis.breaks).toHaveLength(1);
+    const deep: BridgeStep[] = [{ label: "T2", value: 100, kind: "total" }, { label: "Choc", value: -80, kind: "variation" }, { label: "T3", value: 20, kind: "total" }];
+    expect(waterfallBreak(deep)).toBeNull();
+    expect((waterfallOption(deep, SKIFER_CLAIR) as { yAxis: { breaks?: unknown[] } }).yAxis.breaks).toBeUndefined();
+    expect(waterfallBreak([{ label: "T", value: 5, kind: "total" }, { label: "T", value: 5, kind: "total" }])).toBeNull();
+  });
+
   it("décrit, étiquette et annonce les étapes", () => {
     expect(stepText(bridge[1] as BridgeStep)).toBe("+30 €");
     expect(plain(waterfallDescription("CA", bridge))).toBe("Waterfall de CA, de T2 (100 €) à T3 (110 €), 2 variations. Contribution la plus forte : Volume (+30 €).");
@@ -230,5 +253,29 @@ describe("un thème ne change pas les valeurs (W8)", () => {
   ])("%s", (_, build) => {
     expect(dataOf(build(SKIFER_ARDOISE))).toEqual(dataOf(build(SKIFER_CLAIR)));
     expect(build(SKIFER_ARDOISE)).not.toEqual(build(SKIFER_CLAIR));
+  });
+});
+
+describe("forme étroite", () => {
+  interface Media {
+    query?: { maxWidth: number };
+    option: { series: { label?: { show: boolean } }[]; xAxis: { axisLabel: { rotate: number } } };
+  }
+  const mediaOf = (option: object): Media[] => (option as { media: Media[] }).media;
+
+  it("retire les montants du waterfall et incline les étapes, puis les rétablit", () => {
+    const [wide, narrow] = mediaOf(waterfallOption(bridge, SKIFER_CLAIR));
+    expect(wide?.query).toBeUndefined();
+    expect(wide?.option.series[1]?.label?.show).toBe(true);
+    expect(narrow?.query?.maxWidth).toBe(480);
+    expect(narrow?.option.series[1]?.label?.show).toBe(false);
+    expect(narrow?.option.xAxis.axisLabel.rotate).toBe(45);
+  });
+
+  it("retire les montants des cellules de la heatmap et garde la couleur", () => {
+    const [wide, narrow] = mediaOf(heatmapOption(grid, SKIFER_CLAIR, amount));
+    expect(wide?.option.series[0]?.label?.show).toBe(true);
+    expect(narrow?.option.series[0]?.label?.show).toBe(false);
+    expect(narrow?.option.xAxis.axisLabel.rotate).toBe(45);
   });
 });

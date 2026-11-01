@@ -120,15 +120,56 @@ export function baseOption(theme: ChartTheme) {
   };
 }
 
-/** Axe de catégories aux couleurs du thème. */
+/** Au-delà, toutes les étiquettes de catégorie ne tiennent plus : ECharts en espace l'affichage. */
+export const MAX_LABELLED_CATEGORIES = 40;
+
+/**
+ * Axe de catégories aux couleurs du thème. Jusqu'à 40 catégories, toutes les étiquettes sont
+ * affichées, avec retour à la ligne : ECharts en masquerait sinon une sur deux, sans le dire.
+ */
 export function categoryAxis(theme: ChartTheme, data: readonly string[]) {
+  const all = data.length <= MAX_LABELLED_CATEGORIES;
   return {
     type: "category" as const,
     data: [...data],
     axisLine: { lineStyle: { color: theme.axis } },
     axisTick: { show: false },
-    axisLabel: { color: theme.text, fontSize: 11 },
+    axisLabel: { color: theme.text, fontSize: 11, interval: all ? 0 : "auto", ...(all ? { formatter: (value: string) => wrapLabel(value) } : {}) },
   };
+}
+
+/** Longueur visée d'une ligne d'étiquette de catégorie, en caractères. */
+export const LABEL_LINE_CHARS = 16;
+
+/**
+ * Retour à la ligne d'une étiquette aux espaces et après les traits d'union, jamais au milieu
+ * d'un mot : « Île-de-France » devient « Île-de-\nFrance », pas « Île-de-Franc\ne ».
+ */
+export function wrapLabel(text: string, max: number = LABEL_LINE_CHARS): string {
+  const lines: string[] = [];
+  let line = "";
+  for (const chunk of text.split(/(?<=-)|(?=\s)/)) {
+    if (line !== "" && (line + chunk).length > max) {
+      lines.push(line);
+      line = chunk.trimStart();
+    } else {
+      line += chunk;
+    }
+  }
+  lines.push(line);
+  return lines.join("\n");
+}
+
+/** Largeur de conteneur, en pixels, sous laquelle un graphique prend sa forme étroite. */
+export const NARROW_CHART_WIDTH = 480;
+
+/**
+ * Forme étroite d'un graphique, par les media queries d'ECharts évaluées sur la largeur du
+ * conteneur et non de la fenêtre. `wide` rétablit la forme large quand le conteneur
+ * s'élargit de nouveau : sans option par défaut, ECharts garderait la forme étroite.
+ */
+export function narrowMedia(wide: Record<string, unknown>, narrow: Record<string, unknown>) {
+  return [{ option: wide }, { query: { maxWidth: NARROW_CHART_WIDTH }, option: narrow }];
 }
 
 /** Axe de valeurs aux couleurs du thème, étiquettes formatées. */
@@ -137,6 +178,7 @@ export function valueAxis(theme: ChartTheme, format: (value: number) => string) 
     type: "value" as const,
     axisLine: { show: false },
     splitLine: { lineStyle: { color: theme.grid } },
-    axisLabel: { color: theme.text, fontSize: 11, fontFamily: theme.fontMono, formatter: format },
+    // Une graduation qui en chevauche une autre est masquée : la valeur reste lisible sur la grille.
+    axisLabel: { color: theme.text, fontSize: 11, fontFamily: theme.fontMono, formatter: format, hideOverlap: true },
   };
 }

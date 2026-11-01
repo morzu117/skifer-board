@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { flatColors } from "../design/tokens";
 import { baseOption, categoryAxis, contrastRatio, MARK_ROLES, SKIFER_CLAIR, TEXT_ROLES, THEMES, valueAxis } from "./theme";
+import { LABEL_LINE_CHARS, NARROW_CHART_WIDTH, narrowMedia, wrapLabel } from "./theme";
 
 const TOKEN_COLORS = new Set(flatColors().values());
 
@@ -46,8 +47,37 @@ describe("options communes", () => {
 
   it("construit les axes aux couleurs du thème", () => {
     expect(categoryAxis(SKIFER_CLAIR, ["a"]).data).toEqual(["a"]);
+    expect(categoryAxis(SKIFER_CLAIR, ["a"]).axisLabel.interval).toBe(0);
+    expect(categoryAxis(SKIFER_CLAIR, Array.from({ length: 41 }, String)).axisLabel).not.toHaveProperty("overflow");
     const axis = valueAxis(SKIFER_CLAIR, (value) => `${value} €`);
     expect(axis.axisLabel.formatter(3)).toBe("3 €");
     expect(axis.splitLine.lineStyle.color).toBe(SKIFER_CLAIR.grid);
+  });
+});
+
+describe("étiquettes et forme étroite", () => {
+  it("revient à la ligne entre les mots, jamais au milieu", () => {
+    expect(LABEL_LINE_CHARS).toBe(16);
+    expect(wrapLabel("Corse")).toBe("Corse");
+    expect(wrapLabel("Île-de-France")).toBe("Île-de-France");
+    expect(wrapLabel("Provence-Alpes-Côte d'Azur")).toBe("Provence-Alpes-\nCôte d'Azur");
+    expect(wrapLabel("Bourgogne-Franche-Comté")).toBe("Bourgogne-\nFranche-Comté");
+    expect(wrapLabel("Centre-Val de Loire", 8)).toBe("Centre-\nVal de\nLoire");
+    expect(wrapLabel("Anticonstitutionnellement", 8)).toBe("Anticonstitutionnellement");
+    expect(wrapLabel("")).toBe("");
+  });
+
+  it("formate les catégories par ce retour à la ligne", () => {
+    const axis = categoryAxis(SKIFER_CLAIR, ["Auvergne-Rhône-Alpes"]).axisLabel as { formatter: (value: string) => string };
+    expect(axis.formatter("Auvergne-Rhône-Alpes")).toBe("Auvergne-Rhône-\nAlpes");
+  });
+
+  it("masque une graduation de valeurs qui en chevauche une autre", () => {
+    expect(valueAxis(SKIFER_CLAIR, String).axisLabel.hideOverlap).toBe(true);
+  });
+
+  it("déclare une forme large par défaut et une forme étroite sous 480 px", () => {
+    expect(NARROW_CHART_WIDTH).toBe(480);
+    expect(narrowMedia({ a: 1 }, { a: 2 })).toEqual([{ option: { a: 1 } }, { query: { maxWidth: 480 }, option: { a: 2 } }]);
   });
 });

@@ -2,9 +2,10 @@
 import { BarChart, HeatmapChart, LineChart } from "echarts/charts";
 import { GridComponent, MarkLineComponent, TooltipComponent, VisualMapPiecewiseComponent } from "echarts/components";
 import * as echarts from "echarts/core";
+import { AxisBreak } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 
-echarts.use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, MarkLineComponent, VisualMapPiecewiseComponent, SVGRenderer]);
+echarts.use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, MarkLineComponent, VisualMapPiecewiseComponent, AxisBreak, SVGRenderer]);
 
 export { echarts };
 export type { EChartsCoreOption as ChartOption, EChartsType } from "echarts/core";

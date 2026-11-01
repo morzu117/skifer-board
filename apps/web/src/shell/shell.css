@@ -51,6 +51,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sb-space-4);
   width: 100%;
   min-height: var(--sb-target-min);
   padding: var(--sb-space-3) var(--sb-space-4);
@@ -190,4 +191,8 @@
   .sb-topbar {
     padding: var(--sb-space-6);
   }
+}
+
+.sb-env__segment--text {
+  font-family: var(--sb-font-sans);
 }

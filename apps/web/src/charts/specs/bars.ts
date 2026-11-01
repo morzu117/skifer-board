@@ -35,10 +35,13 @@ export function thresholdLine(theme: ChartTheme, threshold: Threshold, horizonta
     silent: true,
     symbol: "none",
     lineStyle: { color: theme.threshold, type: "dashed", width: 1.5 },
-    label: { formatter: threshold.label, color: theme.thresholdLabel, position: "insideEndTop", fontSize: 11 },
+    label: { formatter: threshold.label, color: theme.thresholdLabel, position: "insideStartTop", fontSize: 11 },
     data: [horizontal ? { xAxis: threshold.value } : { yAxis: threshold.value }],
   };
 }
+
+/** Au-delà, les étiquettes de valeur se chevauchent : le tableau et l'infobulle les portent. */
+export const MAX_LABELLED_BARS = 40;
 
 export interface BarsInput {
   data: CategoryValues;
@@ -54,7 +57,7 @@ export function barsOption({ data, selected, format, threshold, horizontal = fal
   const values = valueAxis(theme, format);
   return {
     ...baseOption(theme),
-    grid: horizontal ? { left: 180, right: 64, top: 8, bottom: 28 } : { left: 56, right: 16, top: 28, bottom: 28 },
+    grid: horizontal ? { left: 120, right: 64, top: 8, bottom: 28 } : { left: 56, right: 16, top: 28, bottom: 28 },
     xAxis: horizontal ? values : categories,
     yAxis: horizontal ? { ...categories, inverse: true } : values,
     tooltip: { ...baseOption(theme).tooltip, trigger: "item" },
@@ -64,7 +67,7 @@ export function barsOption({ data, selected, format, threshold, horizontal = fal
         barMaxWidth: 48,
         data: data.categories.map((category, index) => ({ value: data.values[index] ?? null, itemStyle: barStyle(theme, selected, category) })),
         label: {
-          show: true,
+          show: data.categories.length <= MAX_LABELLED_BARS,
           position: horizontal ? "right" : "top",
           color: theme.textStrong,
           fontFamily: theme.fontMono,
