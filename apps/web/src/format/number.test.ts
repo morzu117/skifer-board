@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deltaTone, formatAmount, formatDelta, formatNumber, formatPercent, MISSING } from "./number";
+import { deltaTone, formatAmount, formatDelta, formatNumber, formatPercent, formatSignedAmount, MISSING } from "./number";
 
 /** Remplace les espaces insécables pour lire les attentes. */
 const plain = (text: string): string => text.replace(/[\u00a0\u202f]/g, " ");
@@ -69,5 +69,14 @@ describe("formatDelta", () => {
     expect(deltaTone(-2)).toBe("negative");
     expect(deltaTone(0)).toBe("neutral");
     expect(deltaTone(null)).toBe("neutral");
+  });
+});
+
+describe("formatSignedAmount", () => {
+  it("signe une contribution", () => {
+    expect(plain(formatSignedAmount(400_000))).toBe("+400 k€");
+    expect(plain(formatSignedAmount(-180_000))).toBe("\u2212180 k€");
+    expect(plain(formatSignedAmount(0))).toBe("0 €");
+    expect(formatSignedAmount(null)).toBe(MISSING);
   });
 });

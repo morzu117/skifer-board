@@ -82,3 +82,49 @@
   color: var(--sb-muted);
   cursor: not-allowed;
 }
+
+.sb-kpi {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+  padding: var(--sb-space-6) var(--sb-space-7);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+}
+
+.sb-kpi__label { color: var(--sb-muted); font-size: var(--sb-text-sm); }
+.sb-kpi__value { font-family: var(--sb-font-mono); font-size: var(--sb-text-3xl); font-weight: 600; }
+.sb-kpi__delta { font-size: var(--sb-text-sm); }
+.sb-kpi__delta--positive { color: var(--sb-success-fg); }
+.sb-kpi__delta--negative { color: var(--sb-danger-text); }
+.sb-kpi__delta--neutral { color: var(--sb-ink-2); }
+.sb-kpi__trend { width: 100%; height: 32px; color: var(--sb-blue); }
+
+.sb-kpi--denied {
+  gap: var(--sb-space-2);
+  background: var(--sb-subtle);
+  border-style: dashed;
+  border-color: var(--sb-muted);
+}
+
+.sb-kpi__denied { display: flex; align-items: center; gap: var(--sb-space-3); font-weight: 600; }
+.sb-kpi__guidance { color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
+
+/* Thème ardoise appliqué aux tuiles HTML : mêmes rôles que le thème graphique (plan 02, W8). */
+.sb-theme-skifer-ardoise .sb-card,
+.sb-theme-skifer-ardoise .sb-kpi {
+  background: var(--sb-slate-900);
+  border-color: var(--sb-slate-line);
+  color: var(--sb-on-slate);
+}
+
+.sb-theme-skifer-ardoise .sb-kpi__label,
+.sb-theme-skifer-ardoise .sb-kpi__guidance,
+.sb-theme-skifer-ardoise .sb-chart-card__foot { color: var(--sb-on-slate-muted); }
+.sb-theme-skifer-ardoise .sb-kpi--denied { background: var(--sb-slate-700); border-color: var(--sb-on-slate-muted); }
+.sb-theme-skifer-ardoise .sb-kpi__delta--positive { color: var(--sb-success-bg); }
+.sb-theme-skifer-ardoise .sb-kpi__delta--negative { color: var(--sb-danger-bg); }
+.sb-theme-skifer-ardoise .sb-kpi__delta--neutral { color: var(--sb-on-slate); }
+.sb-theme-skifer-ardoise .sb-kpi__trend { color: var(--sb-series-muted-light); }

@@ -1,4 +1,6 @@
 /** Aides de test : accès à l'instance ECharts d'un conteneur et déclenchement d'événements. */
+import { act } from "@testing-library/react";
+
 import { echarts, type EChartsType } from "./echarts";
 
 export function chartOf(container: Element): EChartsType {
@@ -11,5 +13,7 @@ export function chartOf(container: Element): EChartsType {
 
 /** Simule un clic ECharts sur un élément, comme le ferait zrender. */
 export function clickItem(container: Element, params: { name: string; dataIndex: number; seriesIndex?: number }): void {
-  (chartOf(container) as unknown as { trigger(event: string, payload: unknown): void }).trigger("click", params);
+  act(() => {
+    (chartOf(container) as unknown as { trigger(event: string, payload: unknown): void }).trigger("click", params);
+  });
 }

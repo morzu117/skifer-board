@@ -46,6 +46,11 @@ export function formatAmount(value: number | null, unit = "€"): string {
   return `${fixed(value / scale.factor, scale.decimals)}${NBSP}${scale.suffix}${unit}`;
 }
 
+/** Montant signé, pour une contribution : `+0,4 M€`, `−180 k€`. */
+export function formatSignedAmount(value: number | null, unit = "€"): string {
+  return value !== null && value > 0 ? `+${formatAmount(value, unit)}` : formatAmount(value, unit);
+}
+
 /** Part ou taux, à partir d'un ratio : `0.525` → `52,5 %`. */
 export function formatPercent(ratio: number | null, decimals = 1): string {
   return ratio === null ? MISSING : `${fixed(ratio * 100, decimals)}${NBSP}%`;
