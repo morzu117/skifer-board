@@ -1,0 +1,8621 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres horizontales, avec seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C9743D",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "xAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#E8C9B3",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#C9743D",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres horizontales, avec seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "xAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#E8C9B3",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#C9743D",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres horizontales, sans seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C9743D",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres horizontales, sans seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres verticales, avec seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C9743D",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#E8C9B3",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#C9743D",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres verticales, avec seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#E8C9B3",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#C9743D",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres verticales, sans seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C9743D",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#323E49",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > barres verticales, sans seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > combiné, présence du seuil : false 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 40,
+      "data": [
+        2940000,
+        2980000,
+        3410000,
+        3250000,
+        3320000,
+        3300000,
+        3570000,
+        3950000,
+        3920000,
+      ],
+      "itemStyle": {
+        "color": "#C3D0DC",
+      },
+      "name": "Réalisé",
+      "type": "bar",
+    },
+    {
+      "data": [
+        3200000,
+        3260000,
+        3320000,
+        3380000,
+        3440000,
+        3500000,
+        3560000,
+        3620000,
+        3680000,
+      ],
+      "itemStyle": {
+        "color": "#D5DCE2",
+      },
+      "lineStyle": {
+        "color": "#D5DCE2",
+        "width": 2,
+      },
+      "name": "Budget",
+      "symbol": "circle",
+      "symbolSize": 6,
+      "type": "line",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "axis",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > combiné, présence du seuil : true 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 40,
+      "data": [
+        2940000,
+        2980000,
+        3410000,
+        3250000,
+        3320000,
+        3300000,
+        3570000,
+        3950000,
+        3920000,
+      ],
+      "itemStyle": {
+        "color": "#C3D0DC",
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#E8C9B3",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#C9743D",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "name": "Réalisé",
+      "type": "bar",
+    },
+    {
+      "data": [
+        3200000,
+        3260000,
+        3320000,
+        3380000,
+        3440000,
+        3500000,
+        3560000,
+        3620000,
+        3680000,
+      ],
+      "itemStyle": {
+        "color": "#D5DCE2",
+      },
+      "lineStyle": {
+        "color": "#D5DCE2",
+        "width": 2,
+      },
+      "name": "Budget",
+      "symbol": "circle",
+      "symbolSize": 6,
+      "type": "line",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#1F262D",
+    "borderColor": "#3A4651",
+    "textStyle": {
+      "color": "#FFFFFF",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "axis",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > heatmap, cellules et formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 150,
+    "right": 16,
+    "top": 8,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+          "left": 150,
+        },
+        "series": [
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 48,
+          "left": 112,
+        },
+        "series": [
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            0,
+            0,
+            1080000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            1,
+            0,
+            890000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            2,
+            0,
+            960000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            3,
+            0,
+            910000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            4,
+            0,
+            1080000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            5,
+            0,
+            880000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            6,
+            0,
+            1110000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            7,
+            0,
+            860000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            8,
+            0,
+            650000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            0,
+            1,
+            780000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            1,
+            1,
+            830000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            2,
+            1,
+            620000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            3,
+            1,
+            630000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1F262D",
+          },
+          "value": [
+            4,
+            1,
+            880000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            5,
+            1,
+            660000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            6,
+            1,
+            570000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            7,
+            1,
+            600000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            8,
+            1,
+            780000,
+          ],
+        },
+      ],
+      "itemStyle": {
+        "borderColor": "#1F262D",
+        "borderWidth": 2,
+      },
+      "label": {
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 10,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": [
+                  0,
+                  0,
+                  1080000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  1,
+                  0,
+                  890000,
+                ],
+              },
+            ],
+            "résultat": "890 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  2,
+                  0,
+                  960000,
+                ],
+              },
+            ],
+            "résultat": "960 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  3,
+                  0,
+                  910000,
+                ],
+              },
+            ],
+            "résultat": "910 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  4,
+                  0,
+                  1080000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  5,
+                  0,
+                  880000,
+                ],
+              },
+            ],
+            "résultat": "880 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  6,
+                  0,
+                  1110000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  7,
+                  0,
+                  860000,
+                ],
+              },
+            ],
+            "résultat": "860 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  8,
+                  0,
+                  650000,
+                ],
+              },
+            ],
+            "résultat": "650 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  0,
+                  1,
+                  780000,
+                ],
+              },
+            ],
+            "résultat": "780 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  1,
+                  1,
+                  830000,
+                ],
+              },
+            ],
+            "résultat": "830 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  2,
+                  1,
+                  620000,
+                ],
+              },
+            ],
+            "résultat": "620 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  3,
+                  1,
+                  630000,
+                ],
+              },
+            ],
+            "résultat": "630 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  4,
+                  1,
+                  880000,
+                ],
+              },
+            ],
+            "résultat": "880 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  5,
+                  1,
+                  660000,
+                ],
+              },
+            ],
+            "résultat": "660 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  6,
+                  1,
+                  570000,
+                ],
+              },
+            ],
+            "résultat": "570 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  7,
+                  1,
+                  600000,
+                ],
+              },
+            ],
+            "résultat": "600 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  8,
+                  1,
+                  780000,
+                ],
+              },
+            ],
+            "résultat": "780 k€",
+          },
+        ],
+        "show": true,
+      },
+      "type": "heatmap",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "visualMap": {
+    "dimension": 2,
+    "pieces": [
+      {
+        "color": "#323E49",
+        "gte": 570000,
+        "lte": 678000,
+      },
+      {
+        "color": "#5E7A94",
+        "gte": 678000,
+        "lte": 786000,
+      },
+      {
+        "color": "#7A93AB",
+        "gte": 786000,
+        "lte": 894000,
+      },
+      {
+        "color": "#C3D0DC",
+        "gte": 894000,
+        "lte": 1002000,
+      },
+      {
+        "color": "#D5DCE2",
+        "gte": 1002000,
+        "lte": 1110000,
+      },
+    ],
+    "show": false,
+    "type": "piecewise",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "splitArea": {
+      "show": false,
+    },
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > sparkline SVG du KPI, indépendante du thème 1`] = `
+{
+  "avecAbsence": "M2.0 2.0M31.0 11.8L45.5 20.5L60.0 24.6L74.5 28.3L89.0 27.3L103.5 30.0L118.0 18.1",
+  "tracé": "M2.0 2.0L16.5 11.4L31.0 11.8L45.5 20.5L60.0 24.6L74.5 28.3L89.0 27.3L103.5 30.0L118.0 18.1",
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > waterfall, rupture d'axe : false, formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 72,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        0,
+        100000,
+        0,
+        300000,
+        0,
+      ],
+      "itemStyle": {
+        "color": "transparent",
+      },
+      "silent": true,
+      "stack": "pont",
+      "type": "bar",
+    },
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#B7C2CC",
+          },
+          "value": 100000,
+        },
+        {
+          "itemStyle": {
+            "color": "#E1F0E8",
+          },
+          "value": 400000,
+        },
+        {
+          "itemStyle": {
+            "color": "#B7C2CC",
+          },
+          "value": 500000,
+        },
+        {
+          "itemStyle": {
+            "color": "#F8E0DB",
+          },
+          "value": 200000,
+        },
+        {
+          "itemStyle": {
+            "color": "#B7C2CC",
+          },
+          "value": 300000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "dataIndex": 0,
+              },
+            ],
+            "résultat": "100 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 1,
+              },
+            ],
+            "résultat": "+400 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 2,
+              },
+            ],
+            "résultat": "500 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 3,
+              },
+            ],
+            "résultat": "−200 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 4,
+              },
+            ],
+            "résultat": "300 k€",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "stack": "pont",
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Départ",
+      "Hausse",
+      "Sous-total",
+      "Baisse",
+      "Arrivée",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "max": 500000,
+    "min": 0,
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer ardoise > waterfall, rupture d'axe : true, formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 72,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        0,
+        9600000,
+        9700000,
+        9900000,
+        9900000,
+        9580000,
+        0,
+      ],
+      "itemStyle": {
+        "color": "transparent",
+      },
+      "silent": true,
+      "stack": "pont",
+      "type": "bar",
+    },
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#B7C2CC",
+          },
+          "value": 9600000,
+        },
+        {
+          "itemStyle": {
+            "color": "#E1F0E8",
+          },
+          "value": 100000,
+        },
+        {
+          "itemStyle": {
+            "color": "#E1F0E8",
+          },
+          "value": 540000,
+        },
+        {
+          "itemStyle": {
+            "color": "#F8E0DB",
+          },
+          "value": 340000,
+        },
+        {
+          "itemStyle": {
+            "color": "#E1F0E8",
+          },
+          "value": 310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#F8E0DB",
+          },
+          "value": 630000,
+        },
+        {
+          "itemStyle": {
+            "color": "#B7C2CC",
+          },
+          "value": 9580000,
+        },
+      ],
+      "label": {
+        "color": "#FFFFFF",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "dataIndex": 0,
+              },
+            ],
+            "résultat": "9,6 M€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 1,
+              },
+            ],
+            "résultat": "+100 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 2,
+              },
+            ],
+            "résultat": "+540 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 3,
+              },
+            ],
+            "résultat": "−340 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 4,
+              },
+            ],
+            "résultat": "+310 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 5,
+              },
+            ],
+            "résultat": "−630 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 6,
+              },
+            ],
+            "résultat": "9,6 M€",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "stack": "pont",
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#D5DCE2",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#3A4651",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "CA T2",
+      "Effet volume",
+      "Effet prix",
+      "Effet mix",
+      "Effet change",
+      "Remises",
+      "CA T3",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#D5DCE2",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "breakArea": {
+      "itemStyle": {
+        "borderColor": "#3A4651",
+        "color": "#1F262D",
+      },
+    },
+    "breaks": [
+      {
+        "end": 9101000,
+        "gap": "6%",
+        "start": 958000,
+      },
+    ],
+    "max": 11000000,
+    "min": 0,
+    "splitLine": {
+      "lineStyle": {
+        "color": "#323E49",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres horizontales, avec seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#A4521F",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "xAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#7A3A12",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#A4521F",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres horizontales, avec seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "xAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#7A3A12",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#A4521F",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres horizontales, sans seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#A4521F",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres horizontales, sans seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 120,
+    "right": 64,
+    "top": 8,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "right",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres verticales, avec seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#A4521F",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#7A3A12",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#A4521F",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres verticales, avec seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#7A3A12",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#A4521F",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres verticales, sans seuil, avec sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#A4521F",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "borderColor": "#5E7A94",
+            "borderWidth": 1,
+            "color": "#C3D0DC",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > barres verticales, sans seuil, sans sélection 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 8030000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 6310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 5290000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4470000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 4170000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 3370000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2610000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2730000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2550000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2240000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2090000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 2160000,
+        },
+        {
+          "itemStyle": {
+            "color": "#2F5D8A",
+          },
+          "value": 1790000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": 0,
+              },
+            ],
+            "résultat": "0 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 830,
+              },
+            ],
+            "résultat": "830 €",
+          },
+          {
+            "arguments": [
+              {
+                "value": 412000,
+              },
+            ],
+            "résultat": "412 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 999500,
+              },
+            ],
+            "résultat": "1,0 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 16500000,
+              },
+            ],
+            "résultat": "16,5 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": -180000,
+              },
+            ],
+            "résultat": "−180 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": 1200000000,
+              },
+            ],
+            "résultat": "1,2 Md€",
+          },
+          {
+            "arguments": [
+              {
+                "value": null,
+              },
+            ],
+            "résultat": "—",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "item",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+      "Occitanie",
+      "Hauts-de-France",
+      "Nouvelle-Aquitaine",
+      "Grand Est",
+      "Provence-Alpes-Côte d'Azur",
+      "Bretagne",
+      "Normandie",
+      "Pays de la Loire",
+      "Bourgogne-Franche-Comté",
+      "Centre-Val de Loire",
+      "Corse",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > combiné, présence du seuil : false 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 40,
+      "data": [
+        2940000,
+        2980000,
+        3410000,
+        3250000,
+        3320000,
+        3300000,
+        3570000,
+        3950000,
+        3920000,
+      ],
+      "itemStyle": {
+        "color": "#2F5D8A",
+      },
+      "name": "Réalisé",
+      "type": "bar",
+    },
+    {
+      "data": [
+        3200000,
+        3260000,
+        3320000,
+        3380000,
+        3440000,
+        3500000,
+        3560000,
+        3620000,
+        3680000,
+      ],
+      "itemStyle": {
+        "color": "#1B2128",
+      },
+      "lineStyle": {
+        "color": "#1B2128",
+        "width": 2,
+      },
+      "name": "Budget",
+      "symbol": "circle",
+      "symbolSize": 6,
+      "type": "line",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "axis",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > combiné, présence du seuil : true 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "series": [
+    {
+      "barMaxWidth": 40,
+      "data": [
+        2940000,
+        2980000,
+        3410000,
+        3250000,
+        3320000,
+        3300000,
+        3570000,
+        3950000,
+        3920000,
+      ],
+      "itemStyle": {
+        "color": "#2F5D8A",
+      },
+      "markLine": {
+        "data": [
+          {
+            "yAxis": 3500000,
+          },
+        ],
+        "label": {
+          "color": "#7A3A12",
+          "fontSize": 11,
+          "formatter": "objectif 3,5 M€",
+          "position": "insideStartTop",
+        },
+        "lineStyle": {
+          "color": "#A4521F",
+          "type": "dashed",
+          "width": 1.5,
+        },
+        "silent": true,
+        "symbol": "none",
+      },
+      "name": "Réalisé",
+      "type": "bar",
+    },
+    {
+      "data": [
+        3200000,
+        3260000,
+        3320000,
+        3380000,
+        3440000,
+        3500000,
+        3560000,
+        3620000,
+        3680000,
+      ],
+      "itemStyle": {
+        "color": "#1B2128",
+      },
+      "lineStyle": {
+        "color": "#1B2128",
+        "width": 2,
+      },
+      "name": "Budget",
+      "symbol": "circle",
+      "symbolSize": 6,
+      "type": "line",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "backgroundColor": "#FFFFFF",
+    "borderColor": "#C5CCD2",
+    "textStyle": {
+      "color": "#1B2128",
+      "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+      "fontSize": 12,
+    },
+    "trigger": "axis",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > heatmap, cellules et formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 150,
+    "right": 16,
+    "top": 8,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+          "left": 150,
+        },
+        "series": [
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 48,
+          "left": 112,
+        },
+        "series": [
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            0,
+            0,
+            1080000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            1,
+            0,
+            890000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            2,
+            0,
+            960000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            3,
+            0,
+            910000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            4,
+            0,
+            1080000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            5,
+            0,
+            880000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#FFFFFF",
+          },
+          "value": [
+            6,
+            0,
+            1110000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            7,
+            0,
+            860000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            8,
+            0,
+            650000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            0,
+            1,
+            780000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            1,
+            1,
+            830000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            2,
+            1,
+            620000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            3,
+            1,
+            630000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            4,
+            1,
+            880000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            5,
+            1,
+            660000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            6,
+            1,
+            570000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            7,
+            1,
+            600000,
+          ],
+        },
+        {
+          "label": {
+            "color": "#1B2128",
+          },
+          "value": [
+            8,
+            1,
+            780000,
+          ],
+        },
+      ],
+      "itemStyle": {
+        "borderColor": "#FFFFFF",
+        "borderWidth": 2,
+      },
+      "label": {
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 10,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "value": [
+                  0,
+                  0,
+                  1080000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  1,
+                  0,
+                  890000,
+                ],
+              },
+            ],
+            "résultat": "890 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  2,
+                  0,
+                  960000,
+                ],
+              },
+            ],
+            "résultat": "960 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  3,
+                  0,
+                  910000,
+                ],
+              },
+            ],
+            "résultat": "910 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  4,
+                  0,
+                  1080000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  5,
+                  0,
+                  880000,
+                ],
+              },
+            ],
+            "résultat": "880 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  6,
+                  0,
+                  1110000,
+                ],
+              },
+            ],
+            "résultat": "1,1 M€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  7,
+                  0,
+                  860000,
+                ],
+              },
+            ],
+            "résultat": "860 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  8,
+                  0,
+                  650000,
+                ],
+              },
+            ],
+            "résultat": "650 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  0,
+                  1,
+                  780000,
+                ],
+              },
+            ],
+            "résultat": "780 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  1,
+                  1,
+                  830000,
+                ],
+              },
+            ],
+            "résultat": "830 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  2,
+                  1,
+                  620000,
+                ],
+              },
+            ],
+            "résultat": "620 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  3,
+                  1,
+                  630000,
+                ],
+              },
+            ],
+            "résultat": "630 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  4,
+                  1,
+                  880000,
+                ],
+              },
+            ],
+            "résultat": "880 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  5,
+                  1,
+                  660000,
+                ],
+              },
+            ],
+            "résultat": "660 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  6,
+                  1,
+                  570000,
+                ],
+              },
+            ],
+            "résultat": "570 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  7,
+                  1,
+                  600000,
+                ],
+              },
+            ],
+            "résultat": "600 k€",
+          },
+          {
+            "arguments": [
+              {
+                "value": [
+                  8,
+                  1,
+                  780000,
+                ],
+              },
+            ],
+            "résultat": "780 k€",
+          },
+        ],
+        "show": true,
+      },
+      "type": "heatmap",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "visualMap": {
+    "dimension": 2,
+    "pieces": [
+      {
+        "color": "#F1F3F2",
+        "gte": 570000,
+        "lte": 678000,
+      },
+      {
+        "color": "#C3D0DC",
+        "gte": 678000,
+        "lte": 786000,
+      },
+      {
+        "color": "#7A93AB",
+        "gte": 786000,
+        "lte": 894000,
+      },
+      {
+        "color": "#2F5D8A",
+        "gte": 894000,
+        "lte": 1002000,
+      },
+      {
+        "color": "#1F262D",
+        "gte": 1002000,
+        "lte": 1110000,
+      },
+    ],
+    "show": false,
+    "type": "piecewise",
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "janv.",
+      "févr.",
+      "mars",
+      "avr.",
+      "mai",
+      "juin",
+      "juil.",
+      "août",
+      "sept.",
+    ],
+    "splitArea": {
+      "show": false,
+    },
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Île-de-France",
+      "Auvergne-Rhône-Alpes",
+    ],
+    "inverse": true,
+    "type": "category",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > sparkline SVG du KPI, indépendante du thème 1`] = `
+{
+  "avecAbsence": "M2.0 2.0M31.0 11.8L45.5 20.5L60.0 24.6L74.5 28.3L89.0 27.3L103.5 30.0L118.0 18.1",
+  "tracé": "M2.0 2.0L16.5 11.4L31.0 11.8L45.5 20.5L60.0 24.6L74.5 28.3L89.0 27.3L103.5 30.0L118.0 18.1",
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > waterfall, rupture d'axe : false, formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 72,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        0,
+        100000,
+        0,
+        300000,
+        0,
+      ],
+      "itemStyle": {
+        "color": "transparent",
+      },
+      "silent": true,
+      "stack": "pont",
+      "type": "bar",
+    },
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#323E49",
+          },
+          "value": 100000,
+        },
+        {
+          "itemStyle": {
+            "color": "#17553A",
+          },
+          "value": 400000,
+        },
+        {
+          "itemStyle": {
+            "color": "#323E49",
+          },
+          "value": 500000,
+        },
+        {
+          "itemStyle": {
+            "color": "#8A2B1F",
+          },
+          "value": 200000,
+        },
+        {
+          "itemStyle": {
+            "color": "#323E49",
+          },
+          "value": 300000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "dataIndex": 0,
+              },
+            ],
+            "résultat": "100 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 1,
+              },
+            ],
+            "résultat": "+400 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 2,
+              },
+            ],
+            "résultat": "500 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 3,
+              },
+            ],
+            "résultat": "−200 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 4,
+              },
+            ],
+            "résultat": "300 k€",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "stack": "pont",
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "Départ",
+      "Hausse",
+      "Sous-total",
+      "Baisse",
+      "Arrivée",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "max": 500000,
+    "min": 0,
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;
+
+exports[`Instantanés des constructeurs · Skifer clair > waterfall, rupture d'axe : true, formes large et étroite 1`] = `
+{
+  "animation": false,
+  "aria": {
+    "enabled": false,
+  },
+  "backgroundColor": "transparent",
+  "grid": {
+    "bottom": 28,
+    "left": 56,
+    "right": 16,
+    "top": 28,
+  },
+  "media": [
+    {
+      "option": {
+        "grid": {
+          "bottom": 28,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": true,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 0,
+          },
+        },
+      },
+    },
+    {
+      "option": {
+        "grid": {
+          "bottom": 72,
+        },
+        "series": [
+          {},
+          {
+            "label": {
+              "show": false,
+            },
+          },
+        ],
+        "xAxis": {
+          "axisLabel": {
+            "rotate": 45,
+          },
+        },
+      },
+      "query": {
+        "maxWidth": 480,
+      },
+    },
+  ],
+  "series": [
+    {
+      "data": [
+        0,
+        9600000,
+        9700000,
+        9900000,
+        9900000,
+        9580000,
+        0,
+      ],
+      "itemStyle": {
+        "color": "transparent",
+      },
+      "silent": true,
+      "stack": "pont",
+      "type": "bar",
+    },
+    {
+      "barMaxWidth": 48,
+      "data": [
+        {
+          "itemStyle": {
+            "color": "#323E49",
+          },
+          "value": 9600000,
+        },
+        {
+          "itemStyle": {
+            "color": "#17553A",
+          },
+          "value": 100000,
+        },
+        {
+          "itemStyle": {
+            "color": "#17553A",
+          },
+          "value": 540000,
+        },
+        {
+          "itemStyle": {
+            "color": "#8A2B1F",
+          },
+          "value": 340000,
+        },
+        {
+          "itemStyle": {
+            "color": "#17553A",
+          },
+          "value": 310000,
+        },
+        {
+          "itemStyle": {
+            "color": "#8A2B1F",
+          },
+          "value": 630000,
+        },
+        {
+          "itemStyle": {
+            "color": "#323E49",
+          },
+          "value": 9580000,
+        },
+      ],
+      "label": {
+        "color": "#1B2128",
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 11,
+        "formatter": [
+          {
+            "arguments": [
+              {
+                "dataIndex": 0,
+              },
+            ],
+            "résultat": "9,6 M€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 1,
+              },
+            ],
+            "résultat": "+100 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 2,
+              },
+            ],
+            "résultat": "+540 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 3,
+              },
+            ],
+            "résultat": "−340 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 4,
+              },
+            ],
+            "résultat": "+310 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 5,
+              },
+            ],
+            "résultat": "−630 k€",
+          },
+          {
+            "arguments": [
+              {
+                "dataIndex": 6,
+              },
+            ],
+            "résultat": "9,6 M€",
+          },
+        ],
+        "position": "top",
+        "show": true,
+      },
+      "stack": "pont",
+      "type": "bar",
+    },
+  ],
+  "textStyle": {
+    "color": "#3E4954",
+    "fontFamily": "'IBM Plex Sans', system-ui, sans-serif",
+    "fontSize": 11,
+  },
+  "tooltip": {
+    "show": false,
+  },
+  "xAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            "Île-de-France",
+          ],
+          "résultat": "Île-de-France",
+        },
+        {
+          "arguments": [
+            "Auvergne-Rhône-Alpes",
+          ],
+          "résultat": "Auvergne-Rhône-
+Alpes",
+        },
+        {
+          "arguments": [
+            "Provence-Alpes-Côte d'Azur",
+          ],
+          "résultat": "Provence-Alpes-
+Côte d'Azur",
+        },
+        {
+          "arguments": [
+            "janv. 26",
+          ],
+          "résultat": "janv. 26",
+        },
+      ],
+      "interval": 0,
+    },
+    "axisLine": {
+      "lineStyle": {
+        "color": "#C5CCD2",
+      },
+    },
+    "axisTick": {
+      "show": false,
+    },
+    "data": [
+      "CA T2",
+      "Effet volume",
+      "Effet prix",
+      "Effet mix",
+      "Effet change",
+      "Remises",
+      "CA T3",
+    ],
+    "type": "category",
+  },
+  "yAxis": {
+    "axisLabel": {
+      "color": "#3E4954",
+      "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+      "fontSize": 11,
+      "formatter": [
+        {
+          "arguments": [
+            0,
+          ],
+          "résultat": "0 €",
+        },
+        {
+          "arguments": [
+            830,
+          ],
+          "résultat": "830 €",
+        },
+        {
+          "arguments": [
+            412000,
+          ],
+          "résultat": "412 k€",
+        },
+        {
+          "arguments": [
+            999500,
+          ],
+          "résultat": "1,0 M€",
+        },
+        {
+          "arguments": [
+            16500000,
+          ],
+          "résultat": "16,5 M€",
+        },
+        {
+          "arguments": [
+            -180000,
+          ],
+          "résultat": "−180 k€",
+        },
+        {
+          "arguments": [
+            1200000000,
+          ],
+          "résultat": "1,2 Md€",
+        },
+      ],
+      "hideOverlap": true,
+    },
+    "axisLine": {
+      "show": false,
+    },
+    "breakArea": {
+      "itemStyle": {
+        "borderColor": "#C5CCD2",
+        "color": "#FFFFFF",
+      },
+    },
+    "breaks": [
+      {
+        "end": 9101000,
+        "gap": "6%",
+        "start": 958000,
+      },
+    ],
+    "max": 11000000,
+    "min": 0,
+    "splitLine": {
+      "lineStyle": {
+        "color": "#E8EBED",
+      },
+    },
+    "type": "value",
+  },
+}
+`;

@@ -34,7 +34,7 @@ describe("BenchReport", () => {
         ]}
       />,
     );
-    const table = screen.getByRole("region", { name: "Temps de rendu et mémoire par configuration" });
+    const table = screen.getByRole("group", { name: "Temps de rendu et mémoire par configuration" });
     expect(within(table).getAllByRole("row")).toHaveLength(3);
     expect(table).toHaveTextContent("non mesurée");
     expect(table).toHaveTextContent("12,3");

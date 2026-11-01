@@ -34,7 +34,7 @@ describe("ChartCard", () => {
     expect(chartTab).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("img", { name: "Histogramme du CA net par région" })).toBeVisible();
     await userEvent.click(screen.getByRole("tab", { name: "Tableau" }));
-    expect(screen.getByRole("region", { name: "CA par région" })).toBeVisible();
+    expect(screen.getByRole("group", { name: "CA par région" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Exporter l'image" })).toBeDisabled();
     screen.getByRole("tab", { name: "Tableau" }).focus();
     await userEvent.keyboard("{ArrowLeft}");

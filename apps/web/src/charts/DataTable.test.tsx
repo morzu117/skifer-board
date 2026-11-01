@@ -21,7 +21,7 @@ describe("DataTable", () => {
         ]}
       />,
     );
-    const region = screen.getByRole("region", { name: "Détail des régions" });
+    const region = screen.getByRole("group", { name: "Détail des régions" });
     expect(region).toHaveAttribute("tabindex", "0");
     const [, first, second] = within(region).getAllByRole("row");
     expect(first).toHaveClass("sb-row--selected");

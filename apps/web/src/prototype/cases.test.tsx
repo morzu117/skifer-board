@@ -33,9 +33,9 @@ describe("cas du prototype", () => {
     for (const tab of screen.getAllByRole("tab", { name: "Tableau" })) {
       await userEvent.click(tab);
     }
-    expect(within(screen.getByRole("region", { name: "Réalisé et budget par mois" })).getAllByRole("row")).toHaveLength(10);
-    expect(within(screen.getByRole("region", { name: "Étapes du passage du CA T2 au CA T3" })).getAllByRole("row")).toHaveLength(8);
-    expect(within(screen.getByRole("region", { name: "Valeurs de la carte de chaleur" })).getAllByRole("row")).toHaveLength(73);
+    expect(within(screen.getByRole("group", { name: "Réalisé et budget par mois" })).getAllByRole("row")).toHaveLength(10);
+    expect(within(screen.getByRole("group", { name: "Étapes du passage du CA T2 au CA T3" })).getAllByRole("row")).toHaveLength(8);
+    expect(within(screen.getByRole("group", { name: "Valeurs de la carte de chaleur" })).getAllByRole("row")).toHaveLength(73);
   });
 
   it("affiche les KPI et la tuile refusée", () => {
@@ -50,7 +50,7 @@ describe("cas du prototype", () => {
   it("filtre le détail par la sélection du graphique", async () => {
     render(<SelectionCase theme={SKIFER_CLAIR} />);
     const detail = screen.getByRole("region", { name: "Détail des régions" });
-    const rows = () => within(within(detail).getByRole("region", { name: "Régions, CA net et commandes" })).getAllByRole("row");
+    const rows = () => within(within(detail).getByRole("group", { name: "Régions, CA net et commandes" })).getAllByRole("row");
     expect(rows()).toHaveLength(14);
     expect(detail).toHaveTextContent("Toutes les régions");
     const chart = screen.getByRole("img", { name: /^Histogramme de CA net par région/ });

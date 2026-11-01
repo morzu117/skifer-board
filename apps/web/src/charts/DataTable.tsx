@@ -27,10 +27,15 @@ function defaultFormat(value: Cell): string {
   return typeof value === "number" ? formatNumber(value) : value;
 }
 
-/** Tableau de données : alternative à un graphique ou vue de détail (DESIGN-SYSTEM §5). */
+/**
+ * Tableau de données : alternative à un graphique ou vue de détail (DESIGN-SYSTEM §5).
+ * Le conteneur défilant est un groupe nommé, focalisable au clavier, et non une région :
+ * une région est un repère de page, qui entrerait en conflit avec la carte qui l'entoure
+ * quand le titre de la carte et la légende du tableau coïncident.
+ */
 export function DataTable({ caption, columns, rows, rowKey, selectedKeys = [] }: TableSpec) {
   return (
-    <div className="sb-table-wrap" role="region" aria-label={caption} tabIndex={0}>
+    <div className="sb-table-wrap" role="group" aria-label={caption} tabIndex={0}>
       <table className="sb-table">
         <caption className="sb-visually-hidden">{caption}</caption>
         <thead>
