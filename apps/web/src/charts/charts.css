@@ -1,0 +1,77 @@
+.sb-chart-card {
+  flex: 999 1 520px;
+}
+
+.sb-chart-focus {
+  border-radius: var(--sb-radius-md);
+}
+
+.sb-chart-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-4) var(--sb-space-7);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-tabs {
+  display: inline-flex;
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  overflow: hidden;
+}
+
+.sb-tabs [role="tab"] {
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-5);
+  border: 0;
+  background: var(--sb-surface);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-table);
+  cursor: pointer;
+}
+
+.sb-tabs [role="tab"][aria-selected="true"] {
+  background: var(--sb-slate-900);
+  color: var(--sb-surface);
+  font-weight: 500;
+}
+
+.sb-table-wrap {
+  overflow-x: auto;
+}
+
+.sb-table {
+  width: 100%;
+  min-width: 360px;
+  border-collapse: collapse;
+  font-size: var(--sb-text-table);
+}
+
+.sb-table th {
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border-bottom: 1px solid var(--sb-line);
+  color: var(--sb-muted);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+  text-align: left;
+}
+
+.sb-table td {
+  padding: var(--sb-space-4);
+  border-bottom: 1px solid var(--sb-line-soft);
+}
+
+.sb-table .sb-num {
+  font-family: var(--sb-font-mono);
+  text-align: right;
+}
+
+.sb-row--selected td {
+  background: var(--sb-copper-soft);
+}
+
+/* Repère de forme en plus de la couleur (RULES §2). */
+.sb-row--selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--sb-copper);
+}
