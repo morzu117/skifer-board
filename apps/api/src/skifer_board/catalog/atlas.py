@@ -6,6 +6,7 @@ Ce module convertit leurs dictionnaires en objets typés et refuse une valeur ho
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,18 +14,29 @@ import duckdb
 from skifer_atlas.index import search
 from skifer_atlas.index.build import ensure_index
 from skifer_atlas.index.schema import connect, index_state
+from skifer_atlas.repo import versions as atlas_versions
 from skifer_atlas.repo.git import RepoError
+from skifer_atlas.sheet import version_diff
 
 from .model import (
     AtlasStatus,
     CatalogDocument,
     CatalogEntry,
     Dependent,
+    DiffClassification,
+    Difference,
+    DifferenceKind,
+    DiffSeverity,
     DocumentKind,
+    DocumentVersion,
     Facets,
+    FieldChange,
     Issue,
     Reference,
+    SeverityCount,
     Variant,
+    VersionDiff,
+    VersionRef,
     availability,
 )
 
@@ -34,8 +46,10 @@ __all__ = [
     "open_fresh_index",
     "open_last_index",
     "read_catalog",
+    "read_diff",
     "read_document",
     "read_facets",
+    "read_versions",
 ]
 
 Row = dict[str, Any]
@@ -191,4 +205,62 @@ def read_document(
             for r in links["referenced_by"]
         ),
         impact=int(links["impact"]),
+    )
+
+
+def _instant(value: Any) -> datetime:
+    """Date ISO 8601 avec fuseau ; une date sans fuseau est hors contrat."""
+    found = datetime.fromisoformat(str(value))
+    if found.tzinfo is None:
+        raise ValueError(f"Atlas date without a time zone: {value!r}.")
+    return found
+
+
+def read_versions(repo: Path, document_id: str) -> tuple[DocumentVersion, ...]:
+    """Versions taguées d'un document, lues par Atlas dans le clone sans l'écrire.
+    Lève `RepoError` si git échoue."""
+    return tuple(
+        DocumentVersion(
+            version=int(v.version),
+            commit=str(v.commit),
+            date=_instant(v.date),
+            author=str(v.author),
+            message=str(v.message),
+        )
+        for v in atlas_versions.versions(repo, document_id)
+    )
+
+
+def _difference(row: Row) -> Difference:
+    node = row["node_ref"] or {}
+    return Difference(
+        kind=DifferenceKind(row["kind"]),
+        node_type=str(row["node_type"]),
+        base_node=_optional_str(node.get("base")),
+        other_node=_optional_str(node.get("other")),
+        changes=tuple(
+            FieldChange(field=str(c["field"]), before=c["before"], after=c["after"])
+            for c in row["changes"]
+        ),
+        classification=DiffClassification(row["classification"]),
+        severity=DiffSeverity(row["severity"]),
+        message=str(row["message"]),
+    )
+
+
+def read_diff(repo: Path, document_id: str, base: int, other: int) -> VersionDiff:
+    """Rapport de diff d'Atlas entre deux versions taguées. Lève `RepoError` : `not_found`
+    pour une version non taguée, `invalid_document` pour un graphe qui ne se résout pas."""
+    report = version_diff(repo, document_id, base, other)
+    counts = report["summary"]["by_severity"]
+    if set(counts) != set(DiffSeverity):
+        raise ValueError(f"Atlas severity summary out of contract: {sorted(counts)!r}.")
+    return VersionDiff(
+        identical=bool(report["identical"]),
+        base=VersionRef(int(report["base"]["version"]), str(report["base"]["fingerprint"])),
+        other=VersionRef(int(report["other"]["version"]), str(report["other"]["fingerprint"])),
+        differences=tuple(_difference(d) for d in report["differences"]),
+        by_severity=SeverityCount(
+            info=int(counts["info"]), warn=int(counts["warn"]), critical=int(counts["critical"])
+        ),
     )

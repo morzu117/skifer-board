@@ -189,3 +189,128 @@ class CatalogUnavailable:
 
     problem: SourceProblem
     detail: str
+
+
+# --- versions et écarts (plan 05) ---------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DocumentVersion:
+    """Version taguée `doc/<id>/v<n>` : commit, date et message du commit, nom de l'auteur."""
+
+    version: int
+    commit: str
+    date: datetime
+    author: str
+    message: str
+
+
+@dataclass(frozen=True)
+class VersionsPage:
+    """Versions taguées, de la plus ancienne à la plus récente. La version courante est
+    celle de l'index ; elle peut ne pas être taguée (plan 05, V3)."""
+
+    provenance: Provenance
+    id: str
+    current_version: int | None
+    versions: tuple[DocumentVersion, ...]
+
+
+@dataclass(frozen=True)
+class HistoryUnavailable:
+    """Le clone n'a pas pu être relu : aucun historique n'est servi (plan 05, V2)."""
+
+    problem: SourceProblem
+    detail: str
+
+
+class DifferenceKind(StrEnum):
+    MODIFIED = "modified"
+    ADDED = "added"
+    REMOVED = "removed"
+    REORDERED = "reordered"
+
+
+class DiffClassification(StrEnum):
+    """Classification d'un écart par Atlas, recopiée sans réinterprétation."""
+
+    OVERRIDE_DECLARED = "override_declared"
+    OVERRIDE_UNDECLARED = "override_undeclared"
+    FROM_SCRATCH = "from_scratch"
+    CRITICAL = "critical"
+    COSMETIC = "cosmetic"
+    TO_VERIFY = "to_verify"
+
+
+class DiffSeverity(StrEnum):
+    INFO = "info"
+    WARN = "warn"
+    CRITICAL = "critical"
+
+
+@dataclass(frozen=True)
+class FieldChange:
+    """Champ d'un nœud modifié. Avant et après sont des valeurs JSON de la définition :
+    une expression y reste du texte, jamais exécuté ni stocké (plan 05, V5)."""
+
+    field: str
+    before: object
+    after: object
+
+
+@dataclass(frozen=True)
+class Difference:
+    kind: DifferenceKind
+    node_type: str
+    # Nœud dans chacune des deux versions ; `None` du côté où il n'existe pas.
+    base_node: str | None
+    other_node: str | None
+    changes: tuple[FieldChange, ...]
+    classification: DiffClassification
+    severity: DiffSeverity
+    message: str
+
+
+@dataclass(frozen=True)
+class VersionRef:
+    version: int
+    fingerprint: str
+
+
+@dataclass(frozen=True)
+class SeverityCount:
+    info: int
+    warn: int
+    critical: int
+
+
+@dataclass(frozen=True)
+class VersionDiff:
+    """Rapport de diff d'Atlas entre deux versions taguées d'un KPI (plan 05, V4)."""
+
+    identical: bool
+    base: VersionRef
+    other: VersionRef
+    differences: tuple[Difference, ...]
+    by_severity: SeverityCount
+
+
+@dataclass(frozen=True)
+class DiffPage:
+    provenance: Provenance
+    id: str
+    diff: VersionDiff
+
+
+class DiffRefusal(StrEnum):
+    VERSION_NOT_FOUND = "version_not_found"
+    # Un concept n'a pas de graphe : ses versions ne se comparent pas.
+    NOT_SUPPORTED = "diff_not_supported"
+    # Une version taguée dont le graphe ne se résout pas.
+    UNRESOLVABLE = "diff_unavailable"
+
+
+@dataclass(frozen=True)
+class DiffRefused:
+    reason: DiffRefusal
+    detail: str

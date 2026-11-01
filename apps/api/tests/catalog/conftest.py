@@ -57,3 +57,27 @@ def espace(tmp_path: Path) -> Path:
 def service(espace: Path, tmp_path: Path) -> CatalogService:
     """Place l'état hors du clone, dans un dossier initialement absent."""
     return CatalogService(CatalogConfig(espace, tmp_path / "etat" / "catalogue"), lambda: INSTANT)
+
+
+@pytest.fixture
+def espace_versionne(espace: Path) -> Path:
+    """Trois versions taguées de « revenu-net » après l'espace initial (plan 05) : une v3 dont
+    le graphe ne se résout pas, la v4 de l'espace, puis une v5 qui renomme un filtre et
+    retire les avoirs du calcul. La version courante est la v5."""
+    kpi = espace / "kpis" / "revenu-net.yaml"
+    v4 = kpi.read_text(encoding="utf-8")
+    etapes = (
+        (3, v4.replace("  version: 4\n", "  version: 3\n").replace("output: n05", "output: n99")),
+        (4, v4),
+        (
+            5,
+            v4.replace("  version: 4\n", "  version: 5\n")
+            .replace("label: Factures validées", "label: Factures émises")
+            .replace("montant_ttc - montant_taxes - avoirs", "montant_ttc - montant_taxes"),
+        ),
+    )
+    for version, texte in etapes:
+        kpi.write_text(texte, encoding="utf-8")
+        git(espace, "commit", "--allow-empty", "-am", f"Revenu net v{version}")
+        git(espace, "tag", f"doc/revenu-net/v{version}")
+    return espace

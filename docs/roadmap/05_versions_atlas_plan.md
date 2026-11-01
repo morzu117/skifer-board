@@ -39,6 +39,8 @@ Modifiés : `apps/api/src/skifer_board/catalog/{model,atlas,service,__init__}.py
 
 Tests : dépôts construits en test avec des tags `doc/<id>/v<n>` ; versions dans l'ordre ; version courante non taguée ; document sans tag ; écart cosmétique et écart à vérifier ; versions identiques ; version inconnue ; concept ; clone supprimé ; aucun fichier ni tag écrit dans le clone.
 
+Écarts de réalisation : Codex ayant atteint sa limite d'usage, les tests sont écrits par un agent Claude distinct, qui n'a pas écrit le code et reçoit le même cadre que Codex (porteur : « ok continue avec claude »). La fixture `espace_versionne` (v3 irrésoluble, v4, v5) est posée par Claude comme outillage : elle produit aussi les exemples de 5.2. Défaut trouvé par l'agent de test : une sévérité inconnue dans le résumé du rapport d'Atlas était ignorée ; c'est désormais une erreur de contrat.
+
 ### 5.2 — Routes HTTP
 
 Modifiés : `apps/api/src/skifer_board/server.py`. Créés : exemples `contracts/catalogue/versions*.json`, `ecart*.json`.
