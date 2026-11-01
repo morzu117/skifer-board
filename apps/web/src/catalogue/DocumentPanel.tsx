@@ -5,6 +5,7 @@ import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { fetchDocument, type Fetch, type Outcome } from "./api";
 import { ProvenanceLine } from "./ProvenanceLine";
+import { VersionsSection } from "./VersionsSection";
 import { availabilityLabel, KIND_LABELS, MODE_LABELS, PROBLEM_LABELS, STATUS_LABELS, versionLabel } from "./labels";
 import type { CatalogDocument, DocumentPage } from "./model";
 
@@ -19,7 +20,9 @@ type Loading = { status: "loading" } | Outcome<DocumentPage>;
 
 /** Fiche d'une définition, à côté de la liste, comme le détail de `02-analyses.html`. */
 export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps) {
-  const [result, setResult] = useState<Loading>({ status: "loading" });
+  // La réponse est rangée avec son identifiant : celle d'une autre fiche n'est jamais montrée.
+  const [answer, setAnswer] = useState<{ id: string; outcome: Outcome<DocumentPage> } | null>(null);
+  const result: Loading = answer?.id === id ? answer.outcome : { status: "loading" };
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -27,7 +30,7 @@ export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps)
     fetchDocument(id, controller.signal, fetcher).then(
       (outcome) => {
         if (!controller.signal.aborted) {
-          setResult(outcome);
+          setAnswer({ id, outcome });
         }
       },
       () => undefined,
@@ -76,6 +79,7 @@ export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps)
       {result.status === "ok" && (
         <>
           <DocumentBody document={result.value.document} />
+          <VersionsSection id={id} kind={result.value.document.entry.kind} fetcher={fetcher} />
           <ProvenanceLine provenance={result.value.provenance} now={now()} />
         </>
       )}
@@ -117,7 +121,7 @@ function DocumentBody({ document }: { document: CatalogDocument }) {
         <dt>Synonymes</dt>
         <dd>{entry.synonyms.length === 0 ? "—" : entry.synonyms.join(", ")}</dd>
         <dt>Empreinte</dt>
-        <dd className="sb-mono sb-catalogue__hash">{document.fingerprint ?? "Non calculée : définition non valide."}</dd>
+        <dd className="sb-mono sb-catalogue__hash">{document.fingerprint ?? (entry.kind === "concept" ? "Sans objet : un concept n'a pas de graphe." : "Non calculée : définition non valide.")}</dd>
         <dt>Fichier</dt>
         <dd className="sb-mono">{document.path}</dd>
       </dl>

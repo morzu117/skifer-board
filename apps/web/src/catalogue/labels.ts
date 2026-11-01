@@ -1,5 +1,5 @@
 import type { BadgeTone } from "../ui/Badge";
-import type { AtlasStatus, Availability, DocumentKind, SourceProblem } from "./model";
+import type { AtlasStatus, Availability, DiffSeverity, DocumentKind, SourceProblem } from "./model";
 
 export const KIND_LABELS: Record<DocumentKind, string> = { concept: "Concept", kpi: "KPI" };
 
@@ -41,4 +41,19 @@ export function versionLabel(version: number | null): string {
 
 export function shortCommit(commit: string): string {
   return commit.slice(0, 7);
+}
+
+/** Sévérité d'un écart d'Atlas : le mot porte l'état, la couleur le double (plan 05, 5.3). */
+export const SEVERITY_LABELS: Record<DiffSeverity, { label: string; tone: BadgeTone }> = {
+  critical: { label: "Critique", tone: "danger" },
+  warn: { label: "Attention", tone: "warning" },
+  info: { label: "Information", tone: "neutral" },
+};
+
+/** Valeur d'un champ de définition : le texte tel quel, le reste en JSON, l'absence dite. */
+export function changeValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "absent";
+  }
+  return typeof value === "string" ? value : JSON.stringify(value);
 }

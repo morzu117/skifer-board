@@ -1,4 +1,4 @@
-import { boolean, instant, integer, list, nullable, object, oneOf, text } from "./decode";
+import { boolean, instant, integer, json, list, nullable, object, oneOf, text } from "./decode";
 
 /** Contrat de l'API du catalogue (plan 04, 4.2), champ pour champ. */
 
@@ -199,8 +199,126 @@ export const decodeCatalogPage = (value: unknown): CatalogPage =>
 
 export const decodeDocumentPage = (value: unknown): DocumentPage => object<DocumentPage>({ provenance, document })(value, "fiche");
 
+export const UNAVAILABLE_CODES = ["catalog_unavailable", "history_unavailable"] as const;
+export type UnavailableCode = (typeof UNAVAILABLE_CODES)[number];
+
 /** Corps d'une réponse 503 : `{"error": {"code": "catalog_unavailable", "problem", "detail"}}`. */
-export const decodeUnavailable = (value: unknown): Unavailable =>
-  object<{ error: Unavailable & { code: "catalog_unavailable" } }>({
-    error: object({ code: oneOf(["catalog_unavailable"] as const), problem: oneOf(SOURCE_PROBLEMS), detail: text }),
+export const decodeUnavailable = (value: unknown, code: UnavailableCode = "catalog_unavailable"): Unavailable =>
+  object<{ error: Unavailable & { code: UnavailableCode } }>({
+    error: object({ code: oneOf([code]), problem: oneOf(SOURCE_PROBLEMS), detail: text }),
   })(value, "réponse").error;
+
+/** Refus à code fermé d'un écart (plan 05, V6) : `{"error": {"code", "id", "detail"}}`. */
+export const DIFF_REFUSALS = ["version_not_found", "diff_not_supported", "diff_unavailable"] as const;
+export type DiffRefusal = (typeof DIFF_REFUSALS)[number];
+
+export interface Refusal {
+  code: DiffRefusal;
+  detail: string;
+}
+
+/** Refus d'un écart, ou `null` si le corps porte un autre code d'erreur. */
+export function decodeRefusal(value: unknown): Refusal | null {
+  const { error } = object<{ error: { code: string } }>({ error: object({ code: text }) })(value, "réponse");
+  if (!(DIFF_REFUSALS as readonly string[]).includes(error.code)) {
+    return null;
+  }
+  return object<{ error: Refusal }>({ error: object<Refusal>({ code: oneOf(DIFF_REFUSALS), detail: text }) })(value, "réponse").error;
+}
+
+// --- versions et écarts (plan 05) ---------------------------------------------------------
+
+export const DIFFERENCE_KINDS = ["modified", "added", "removed", "reordered"] as const;
+export const DIFF_CLASSIFICATIONS = ["override_declared", "override_undeclared", "from_scratch", "critical", "cosmetic", "to_verify"] as const;
+export const DIFF_SEVERITIES = ["info", "warn", "critical"] as const;
+
+export type DifferenceKind = (typeof DIFFERENCE_KINDS)[number];
+export type DiffClassification = (typeof DIFF_CLASSIFICATIONS)[number];
+export type DiffSeverity = (typeof DIFF_SEVERITIES)[number];
+
+export interface DocumentVersion {
+  version: number;
+  commit: string;
+  date: Date;
+  author: string;
+  message: string;
+}
+
+export interface VersionsPage {
+  provenance: Provenance;
+  id: string;
+  current_version: number | null;
+  /** De la plus ancienne à la plus récente, comme Atlas les rend. */
+  versions: readonly DocumentVersion[];
+}
+
+export interface FieldChange {
+  field: string;
+  /** Valeurs JSON de la définition : une expression reste du texte (plan 05, V5). */
+  before: unknown;
+  after: unknown;
+}
+
+export interface Difference {
+  kind: DifferenceKind;
+  node_type: string;
+  base_node: string | null;
+  other_node: string | null;
+  changes: readonly FieldChange[];
+  classification: DiffClassification;
+  severity: DiffSeverity;
+  message: string;
+}
+
+export interface VersionRef {
+  version: number;
+  fingerprint: string;
+}
+
+export interface VersionDiff {
+  identical: boolean;
+  base: VersionRef;
+  other: VersionRef;
+  differences: readonly Difference[];
+  by_severity: Record<DiffSeverity, number>;
+}
+
+export interface DiffPage {
+  provenance: Provenance;
+  id: string;
+  diff: VersionDiff;
+}
+
+export const decodeVersionsPage = (value: unknown): VersionsPage =>
+  object<VersionsPage>({
+    provenance,
+    id: text,
+    current_version: optionalInteger,
+    versions: list(object<DocumentVersion>({ version: integer, commit: text, date: instant, author: text, message: text })),
+  })(value, "versions");
+
+const versionRef = object<VersionRef>({ version: integer, fingerprint: text });
+
+export const decodeDiffPage = (value: unknown): DiffPage =>
+  object<DiffPage>({
+    provenance,
+    id: text,
+    diff: object<VersionDiff>({
+      identical: boolean,
+      base: versionRef,
+      other: versionRef,
+      differences: list(
+        object<Difference>({
+          kind: oneOf(DIFFERENCE_KINDS),
+          node_type: text,
+          base_node: optionalText,
+          other_node: optionalText,
+          changes: list(object<FieldChange>({ field: text, before: json, after: json })),
+          classification: oneOf(DIFF_CLASSIFICATIONS),
+          severity: oneOf(DIFF_SEVERITIES),
+          message: text,
+        }),
+      ),
+      by_severity: object<Record<DiffSeverity, number>>({ info: integer, warn: integer, critical: integer }),
+    }),
+  })(value, "écart");

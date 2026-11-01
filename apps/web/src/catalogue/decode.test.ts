@@ -2,22 +2,35 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { boolean, ContractError, instant, integer, list, object, oneOf, text } from "./decode";
-import { decodeCatalogPage, decodeDocumentPage } from "./model";
+import { decodeCatalogPage, decodeDiffPage, decodeDocumentPage, decodeVersionsPage } from "./model";
 
 // Vitest tourne depuis apps/web ; les exemples sont à la racine du dépôt (plan 04, C10).
 const CONTRATS = resolve(process.cwd(), "../../contracts/catalogue");
+
+/** Corps attendu après décodage : chaque horodatage avec fuseau relu en UTC, comme `Date` le sérialise. */
+function asUtc(value: unknown): unknown {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:\d{2})$/.test(value)) return new Date(value).toISOString();
+  if (Array.isArray(value)) return value.map(asUtc);
+  if (typeof value === "object" && value !== null) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, asUtc(item)]));
+  return value;
+}
+
+/** Décodeur d'un exemple, d'après le préfixe de son nom de fichier. */
+function decoderOf(name: string): (value: unknown) => { provenance: { read_at: Date } } {
+  if (name.startsWith("fiche-")) return decodeDocumentPage;
+  if (name.startsWith("versions-")) return decodeVersionsPage;
+  if (name.startsWith("ecart-")) return decodeDiffPage;
+  return decodeCatalogPage;
+}
 
 describe("Contrat versionné du vrai serveur", () => {
   for (const name of readdirSync(CONTRATS).filter((name) => name.endsWith(".json"))) {
     const example = JSON.parse(readFileSync(resolve(CONTRATS, name), "utf8")) as { status: number; body: unknown };
     if (example.status === 200) {
       it(`décode intégralement ${name} et relit sa date avec fuseau`, () => {
-        const decoded = name.startsWith("fiche-") ? decodeDocumentPage(example.body) : decodeCatalogPage(example.body);
+        const decoded = decoderOf(name)(example.body);
         expect(decoded.provenance.read_at).toEqual(new Date("2026-11-01T10:30:00Z"));
-        expect(JSON.parse(JSON.stringify(decoded))).toEqual({
-          ...(example.body as object),
-          provenance: { ...decoded.provenance, read_at: "2026-11-01T10:30:00.000Z" },
-        });
+        expect(JSON.parse(JSON.stringify(decoded))).toEqual(asUtc(example.body));
       });
     }
   }

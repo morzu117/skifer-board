@@ -1,13 +1,20 @@
 import { ContractError } from "./decode";
 import {
   decodeCatalogPage,
+  decodeDiffPage,
   decodeDocumentPage,
+  decodeRefusal,
   decodeUnavailable,
+  decodeVersionsPage,
   type AtlasStatus,
   type CatalogPage,
+  type DiffPage,
   type DocumentKind,
   type DocumentPage,
+  type Refusal,
   type Unavailable,
+  type UnavailableCode,
+  type VersionsPage,
 } from "./model";
 
 export interface CatalogQuery {
@@ -27,24 +34,42 @@ export type Outcome<T> =
   | { status: "not_found" }
   | { status: "error"; message: string };
 
+/** Issue d'une demande d'écart : en plus, un refus à code fermé avec la raison d'Atlas. */
+export type DiffOutcome = Outcome<DiffPage> | ({ status: "refused" } & Refusal);
+
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-async function read<T>(url: string, decode: (value: unknown) => T, signal: AbortSignal, fetcher: Fetch): Promise<Outcome<T>> {
-  let response: Response;
+interface Contract<T> {
+  decode: (value: unknown) => T;
+  /** Code d'erreur d'une réponse 503 pour cette route. */
+  unavailable?: UnavailableCode;
+}
+
+async function read<T>(url: string, contract: Contract<T>, signal: AbortSignal, fetcher: Fetch): Promise<Outcome<T>> {
+  const sent = await send(url, signal, fetcher);
+  return "failure" in sent ? sent.failure : interpret(sent.response, contract, signal);
+}
+
+type Failure = { status: "error"; message: string };
+
+async function send(url: string, signal: AbortSignal, fetcher: Fetch): Promise<{ response: Response } | { failure: Failure }> {
   try {
-    response = await fetcher(url, { signal, headers: { Accept: "application/json" } });
+    return { response: await fetcher(url, { signal, headers: { Accept: "application/json" } }) };
   } catch (error) {
     if (signal.aborted) {
       throw error;
     }
-    return { status: "error", message: "Le serveur Board ne répond pas." };
+    return { failure: { status: "error", message: "Le serveur Board ne répond pas." } };
   }
+}
+
+async function interpret<T>(response: Response, { decode, unavailable }: Contract<T>, signal: AbortSignal): Promise<Outcome<T>> {
   try {
     if (response.ok) {
       return { status: "ok", value: decode(await response.json()) };
     }
     if (response.status === 503) {
-      return { status: "unavailable", ...decodeUnavailable(await response.json()) };
+      return { status: "unavailable", ...decodeUnavailable(await response.json(), unavailable) };
     }
     if (response.status === 404) {
       return { status: "not_found" };
@@ -54,9 +79,13 @@ async function read<T>(url: string, decode: (value: unknown) => T, signal: Abort
     if (signal.aborted) {
       throw error;
     }
-    const reason = error instanceof ContractError ? error.message : "corps illisible";
-    return { status: "error", message: `Réponse du serveur hors contrat : ${reason}.` };
+    return contractError(error);
   }
+}
+
+function contractError(error: unknown): Failure {
+  const reason = error instanceof ContractError ? error.message : "corps illisible";
+  return { status: "error", message: `Réponse du serveur hors contrat : ${reason}.` };
 }
 
 export function catalogUrl(query: CatalogQuery): string {
@@ -75,9 +104,41 @@ export function catalogUrl(query: CatalogQuery): string {
 }
 
 export function fetchCatalog(query: CatalogQuery, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<CatalogPage>> {
-  return read(catalogUrl(query), decodeCatalogPage, signal, fetcher);
+  return read(catalogUrl(query), { decode: decodeCatalogPage }, signal, fetcher);
 }
 
 export function fetchDocument(id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<DocumentPage>> {
-  return read(`/api/catalog/${encodeURIComponent(id)}`, decodeDocumentPage, signal, fetcher);
+  return read(`/api/catalog/${encodeURIComponent(id)}`, { decode: decodeDocumentPage }, signal, fetcher);
+}
+
+export function fetchVersions(id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<VersionsPage>> {
+  return read(`/api/catalog/${encodeURIComponent(id)}/versions`, { decode: decodeVersionsPage, unavailable: "history_unavailable" }, signal, fetcher);
+}
+
+export function diffUrl(id: string, base: number, other: number): string {
+  return `/api/catalog/${encodeURIComponent(id)}/diff?${new URLSearchParams({ base: String(base), other: String(other) }).toString()}`;
+}
+
+/** Écart d'Atlas entre deux versions taguées ; un refus garde la raison donnée par Atlas. */
+export async function fetchDiff(id: string, base: number, other: number, signal: AbortSignal, fetcher: Fetch = fetch): Promise<DiffOutcome> {
+  const sent = await send(diffUrl(id, base, other), signal, fetcher);
+  if ("failure" in sent) {
+    return sent.failure;
+  }
+  const { response } = sent;
+  if ([400, 404, 422].includes(response.status)) {
+    let refusal: Refusal | null;
+    try {
+      refusal = decodeRefusal(await response.clone().json());
+    } catch (error) {
+      if (signal.aborted) {
+        throw error;
+      }
+      return contractError(error);
+    }
+    if (refusal !== null) {
+      return { status: "refused", ...refusal };
+    }
+  }
+  return interpret(response, { decode: decodeDiffPage, unavailable: "history_unavailable" }, signal);
 }

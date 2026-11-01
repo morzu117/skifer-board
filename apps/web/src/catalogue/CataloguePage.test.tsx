@@ -8,6 +8,7 @@ import invalide from "../../../../contracts/catalogue/fiche-invalide.json";
 import commande from "../../../../contracts/catalogue/fiche-commande.json";
 import indisponible from "../../../../contracts/catalogue/indisponible.json";
 import inconnue from "../../../../contracts/catalogue/fiche-inconnue.json";
+import versions from "../../../../contracts/catalogue/versions-revenu-net.json";
 import { CataloguePage } from "./CataloguePage";
 import { DocumentPanel } from "./DocumentPanel";
 import type { Fetch } from "./api";
@@ -28,7 +29,8 @@ function deferred() {
   return { promise, resolve };
 }
 function serve(document = revenu) {
-  return vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/catalog" ? liste : document)));
+  // La fiche lit aussi son historique (plan 05, 5.3) : la route des versions sert son exemple versionné.
+  return vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/catalog" ? liste : url.endsWith("/versions") ? versions : document)));
 }
 async function open(label = "Revenu net") {
   const button = await screen.findByRole("button", { name: label });
@@ -175,6 +177,7 @@ describe("Fiche depuis la liste", () => {
       "Non disponible : Atlas ne définit pas encore", "Index Atlas du commit"]) {
       expect(panel).toHaveTextContent(text);
     }
+    expect(await within(panel).findByRole("heading", { name: "Versions · 3", level: 3 })).toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole("heading", { level: 2, name: "Revenu net" }), { key: "a" });
     expect(panel).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
@@ -200,7 +203,7 @@ describe("Fiche depuis la liste", () => {
     render(<CataloguePage fetcher={fetcher} now={now} />);
     await open();
     const { panel } = await open("Commande");
-    expect(fetcher).toHaveBeenLastCalledWith("/api/catalog/commande", expect.anything());
+    expect(fetcher).toHaveBeenCalledWith("/api/catalog/commande", expect.anything());
     expect(within(panel).queryByText("Disponibilité")).not.toBeInTheDocument();
     expect(within(panel).queryByRole("heading", { name: /Déclinaisons|Correspondance/ })).not.toBeInTheDocument();
     expect(panel).toHaveTextContent("Aucune référence.");

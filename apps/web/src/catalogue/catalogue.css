@@ -178,3 +178,27 @@
   padding: 0;
   list-style: none;
 }
+
+.sb-catalogue__compare {
+  margin-top: var(--sb-space-2);
+}
+
+.sb-catalogue__diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  margin-top: var(--sb-space-3);
+  padding: var(--sb-space-4);
+  border-left: 3px solid var(--sb-line-strong);
+}
+
+.sb-catalogue__changes {
+  margin: var(--sb-space-2) 0 0;
+  padding-left: var(--sb-space-5);
+  overflow-wrap: anywhere;
+}
+
+.sb-catalogue__meta {
+  display: block;
+  margin-top: var(--sb-space-1);
+}

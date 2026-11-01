@@ -25,6 +25,9 @@ export const text: Decoder<string> = (value, path) => (typeof value === "string"
 export const integer: Decoder<number> = (value, path) =>
   typeof value === "number" && Number.isInteger(value) ? value : fail(path, "entier");
 
+/** Valeur JSON quelconque, recopiée sans interprétation : une valeur de définition Atlas. */
+export const json: Decoder<unknown> = (value) => value;
+
 export const boolean: Decoder<boolean> = (value, path) => (typeof value === "boolean" ? value : fail(path, "booléen"));
 
 /** Horodatage ISO 8601 avec fuseau explicite. */

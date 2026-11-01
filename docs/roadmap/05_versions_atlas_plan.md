@@ -1,6 +1,6 @@
 # Plan 05 — Catalogue Atlas, versions et écarts (04b)
 
-Date : 1er novembre 2026 · Statut : **planifié**. Suite du plan 04 sans arbitrage nouveau, en attendant ceux qui bloquent les lots 02, 03 et 05 (§3.3 du plan de développement, fournisseur d'identité, stockage des contenus). Claude développe, les tests sont écrits par un autre que l'auteur du code (plan 03, T1).
+Date : 1er novembre 2026 · Statut : **réalisé** (5.1 à 5.3). Suite du plan 04 sans arbitrage nouveau, en attendant ceux qui bloquent les lots 02, 03 et 05 (§3.3 du plan de développement, fournisseur d'identité, stockage des contenus). Claude développe, les tests sont écrits par un autre que l'auteur du code (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), lot 04 (« versions, variantes ») et orientation du 31 octobre (« la moindre modification d'un KPI Atlas doit être visible sur Board »). Écran : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §2.2 « Versions : historique, écart avec la dernière ». Prédécesseur : [plan 04](04_catalogue_atlas_plan.md).
 
@@ -58,6 +58,13 @@ Modifiés : `apps/web/src/catalogue/*`.
 - États : chargement, historique indisponible avec sa raison, écart indisponible avec le message d'Atlas, erreur.
 
 Tests : décodeur, composants et accessibilité axe, parcours Playwright sur les exemples versionnés, captures de référence.
+
+Écarts de réalisation :
+
+- Tests écrits par un second agent Claude distinct, pour la même raison qu'en 5.1. Il a trouvé deux défauts latents, que la clé de la fiche masquait dans l'écran Catalogue : un écart ouvert survivait au changement d'identifiant, et l'historique d'un document s'affichait sous la fiche du précédent pendant sa lecture. Claude les a corrigés ; les tests existants de la page servent désormais l'historique, puisque la fiche le demande.
+- La relecture de l'écran sur un espace réel a montré un défaut du plan 04 : un concept validé affichait « Empreinte : Non calculée : définition non valide. » Atlas ne calcule pas d'empreinte pour un concept ; la fiche dit « Sans objet ».
+- L'écart indisponible (503) affiche aussi le détail de la raison, comme l'historique indisponible.
+- Les parcours de bout en bout combinent la fiche du plan 04 et l'historique du plan 05, produits sur deux espaces de test : la capture montre une fiche en v4 et un historique dont la v5 est courante. C'est un artefact des exemples, pas de l'écran.
 
 ## 4. Rayon d'impact
 
