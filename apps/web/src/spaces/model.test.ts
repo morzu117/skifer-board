@@ -7,12 +7,16 @@ import locale from "../../../../contracts/espaces/liste-locale.json";
 import creation from "../../../../contracts/espaces/creation.json";
 import { ContractError } from "../catalogue/decode";
 import journal from "../../../../contracts/espaces/journal.json";
+import accord from "../../../../contracts/espaces/accord.json";
+import accords from "../../../../contracts/espaces/accords.json";
 import liaison from "../../../../contracts/espaces/liaison.json";
 import membres from "../../../../contracts/espaces/membres.json";
 import personnes from "../../../../contracts/espaces/personnes.json";
 import {
   decodeBinding,
   decodeEvents,
+  decodeGrant,
+  decodeGrants,
   decodeMembers,
   decodePeople,
   decodeSpace,
@@ -495,5 +499,108 @@ describe("Environnements où la personne peut déployer (plan 09, 9.3)", () => {
     // Un lecteur avec un droit rendu par le serveur se voit dire ce droit tel quel : Board ne recalcule rien.
     expect(deployCodes({ ...de(false, false, true), role: "reader" })).toEqual(["PROD"]);
     expect(deployCodes({ ...de(false, false, false), role: "admin", implicit: true })).toEqual([]);
+  });
+});
+
+describe("Droits de déployer accordés (plan 09, 9.4, V3)", () => {
+  const brutAccord = () => structuredClone(accord.body) as Record<string, unknown>;
+  const decoder = (value: unknown) => decodeGrant(value, "accord");
+  const CAMILLE = { name: "Camille Martin", email: "camille.martin@example.invalid" };
+  const AUTEUR = { issuer: "https://id.example.invalid", subject: "00u1a2b3c4" };
+
+  it("décode l'accord de l'exemple du serveur réel, tous les champs", () => {
+    expect(decoder(accord.body)).toEqual({
+      id: "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f",
+      environment: "TEST",
+      principal: { kind: "person", issuer: "https://id.example.invalid", subject: "00u5d6e7f8" },
+      person: { name: "Dominique Leroy", email: "dominique.leroy@example.invalid" },
+      createdAt: new Date("2026-11-02T09:30:00Z"),
+      createdBy: AUTEUR,
+      createdByPerson: CAMILLE,
+    });
+  });
+
+  it("décode la liste de l'exemple, dans l'ordre du serveur, groupe sans personne compris", () => {
+    expect(decodeGrants(accords.body)).toEqual([
+      decoder(accord.body),
+      {
+        id: "7a4b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d",
+        environment: "DEV",
+        principal: { kind: "group", name: "finance-createurs" },
+        person: null,
+        createdAt: new Date("2026-11-02T09:45:00Z"),
+        createdBy: AUTEUR,
+        createdByPerson: CAMILLE,
+      },
+    ]);
+    expect(decodeGrants({ grants: [] })).toEqual([]);
+  });
+
+  it.each(["DEV", "TEST", "PROD"])("accepte l'environnement %s", (code) => {
+    expect(decoder({ ...brutAccord(), environment: code }).environment).toBe(code);
+  });
+
+  it.each(["QA", "LOCAL", "dev", "Prod", " TEST", "", null, 1, ["DEV"], { code: "DEV" }])("refuse un environnement hors des trois : %j", (code) => {
+    expect(() => decoder({ ...brutAccord(), environment: code })).toThrow(new ContractError("accord.environment : DEV | TEST | PROD attendu"));
+  });
+
+  it.each([
+    [{ kind: "robot" }, "accord.principal.kind : group | person attendu"],
+    [{ kind: "group" }, "accord.principal.name : champ attendu"],
+    [{ kind: "group", name: 3 }, "accord.principal.name : texte attendu"],
+    [{ kind: "person", issuer: "i" }, "accord.principal.subject : champ attendu"],
+    [{ kind: "person", subject: "s" }, "accord.principal.issuer : champ attendu"],
+    [null, "accord.principal : objet attendu"],
+    ["finance-admins", "accord.principal : objet attendu"],
+  ])("refuse un principal invalide %j", (principal, message) => {
+    expect(() => decoder({ ...brutAccord(), principal })).toThrow(ContractError);
+    expect(() => decoder({ ...brutAccord(), principal })).toThrow(message);
+  });
+
+  it.each(["id", "environment", "principal", "person", "created_at", "created_by", "created_by_person"])("refuse un accord sans `%s`", (champ) => {
+    const sans = brutAccord();
+    Reflect.deleteProperty(sans, champ);
+    expect(() => decoder(sans)).toThrow(new ContractError(`accord.${champ} : champ attendu`));
+  });
+
+  it.each([
+    [{ id: 7 }, "accord.id"],
+    [{ created_at: "2026-11-02T09:30:00" }, "accord.created_at"],
+    [{ created_at: "hier" }, "accord.created_at"],
+    [{ created_by: { issuer: "i" } }, "accord.created_by.subject"],
+    [{ person: { name: 1, email: null } }, "accord.person.name"],
+    [{ person: "Dominique" }, "accord.person"],
+    [{ created_by_person: { name: "x" } }, "accord.created_by_person.email"],
+  ])("refuse un accord hors contrat %j", (champ, chemin) => {
+    expect(() => decoder({ ...brutAccord(), ...champ })).toThrow(ContractError);
+    expect(() => decoder({ ...brutAccord(), ...champ })).toThrow(chemin);
+  });
+
+  it("garde un nom de groupe exact, sans recopier de champ inconnu", () => {
+    const groupe = decoder({ ...brutAccord(), principal: { kind: "group", name: " Finance ", issuer: "x" }, person: null, role: "admin" });
+    expect(groupe.principal).toEqual({ kind: "group", name: " Finance " });
+    expect(Object.keys(groupe).sort()).toEqual(["createdAt", "createdBy", "createdByPerson", "environment", "id", "person", "principal"]);
+    const personne = decoder({ ...brutAccord(), principal: { kind: "person", issuer: "i", subject: "s", name: "intrus" } });
+    expect(personne.principal).toEqual({ kind: "person", issuer: "i", subject: "s" });
+  });
+
+  it("accepte une personne et un auteur inconnus (null)", () => {
+    const inconnus = decoder({ ...brutAccord(), person: null, created_by_person: null });
+    expect([inconnus.person, inconnus.createdByPerson]).toEqual([null, null]);
+  });
+
+  it("refuse toute la liste si un seul accord est hors contrat, avec son rang", () => {
+    const corps = structuredClone(accords.body) as { grants: Record<string, unknown>[] };
+    (corps.grants[1] as Record<string, unknown>).environment = "QA";
+    expect(() => decodeGrants(corps)).toThrow(new ContractError("réponse.grants[1].environment : DEV | TEST | PROD attendu"));
+    expect(() => decodeGrants({})).toThrow(new ContractError("réponse.grants : champ attendu"));
+    expect(() => decodeGrants({ grants: null })).toThrow(new ContractError("réponse.grants : liste attendu"));
+    expect(() => decodeGrants(null)).toThrow(new ContractError("réponse : objet attendu"));
+  });
+
+  it("le libellé d'un accord suit celui d'un principal : groupe exact, personne connue ou inconnue", () => {
+    const liste = decodeGrants(accords.body);
+    expect(liste.map((grant) => principalLabel(grant))).toEqual(["Dominique Leroy", "Groupe finance-createurs"]);
+    expect(liste.map((grant) => principalLabel({ ...grant, person: null }))).toEqual(["00u5d6e7f8", "Groupe finance-createurs"]);
   });
 });

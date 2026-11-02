@@ -4,7 +4,7 @@ import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { createSpace, type Refusal } from "./admin";
 import type { Fetch, SpaceOutcome } from "./api";
-import { refusalText } from "./MembersPage";
+import { refusalText } from "./AdminParts";
 import { SPACE_ID, type Space, type SpaceList } from "./model";
 import { EMPTY_DRAFT, PrincipalField, principalOf, type PrincipalDraft } from "./PrincipalField";
 import "../catalogue/catalogue.css";

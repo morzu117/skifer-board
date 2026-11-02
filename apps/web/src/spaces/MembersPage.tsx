@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState, type SyntheticEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 
 import { formatInstant } from "../format/date";
-import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { useRefreshed } from "../ui/useOutcome";
-import { fetchEvents, fetchMembers, REFUSAL_LABELS, removeMember, setMember, type AdminOutcome, type Refusal } from "./admin";
+import { AdminTabs, Confirm, FeedbackRegion, Journal, PrincipalCell, ReadFailure, Reading, samePrincipal, useAdminWrite } from "./AdminParts";
+import { fetchEvents, fetchMembers, removeMember, setMember, type AdminOutcome } from "./admin";
 import type { Fetch } from "./api";
 import { EMPTY_DRAFT, PrincipalField, principalOf, type PrincipalDraft } from "./PrincipalField";
-import { personDetail, personLabel, principalLabel, ROLE_LABELS, ROLES, type Binding, type Principal, type Role, type Space, type SpaceEvent } from "./model";
+import { personLabel, principalLabel, ROLE_LABELS, ROLES, type Binding, type Principal, type Role, type Space } from "./model";
 import "../catalogue/catalogue.css";
 import "../charts/charts.css";
 import "./spaces.css";
@@ -26,46 +26,19 @@ interface MembersPageProps {
 /** Changement en attente de confirmation sur une liaison. */
 type Pending = { binding: Binding; action: "role"; role: Role } | { binding: Binding; action: "remove" };
 
-type Feedback = { tone: "neutral"; text: string } | ({ tone: "danger" } & Refusal) | { tone: "error"; text: string };
-
 /**
  * « Membres et rôles » d'un espace (écrans §9, plan 08, 8.4). Le serveur décide de tout : la page
  * envoie la demande et rend sa réponse, refus compris, avec sa raison (E7, E8).
  */
 export function MembersPage({ space, fetcher, onWritten }: MembersPageProps) {
+  const [pending, setPending] = useState<Pending | null>(null);
+  const { version, busy, feedback, setFeedback, announced, write } = useAdminWrite(onWritten, () => {
+    setPending(null);
+  });
   // Relu après chaque écriture : la liste et le journal sont ceux du serveur, jamais une copie corrigée sur place.
   // L'ancienne réponse reste affichée pendant la relecture : saisie et focus ne sont pas perdus.
-  const [version, setVersion] = useState(0);
   const members = useRefreshed(`members:${space.id}`, version, (signal) => fetchMembers(space.id, signal, fetcher));
   const events = useRefreshed(`events:${space.id}`, version, (signal) => fetchEvents(space.id, signal, fetcher));
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const announced = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // La réponse d'une écriture reçoit le focus : la ligne confirmée a pu disparaître.
-    if (feedback !== null) {
-      announced.current?.focus();
-    }
-  }, [feedback]);
-
-  const write = async <T,>(run: () => Promise<AdminOutcome<T>>, done: string): Promise<boolean> => {
-    setBusy(true);
-    setFeedback(null);
-    const outcome = await run();
-    setBusy(false);
-    setPending(null);
-    if (outcome.status === "ok") {
-      setFeedback({ tone: "neutral", text: done });
-    } else if (outcome.status === "refused") {
-      setFeedback({ tone: "danger", code: outcome.code, field: outcome.field });
-    } else {
-      setFeedback({ tone: "error", text: outcome.message });
-    }
-    setVersion((value) => value + 1);
-    onWritten?.();
-    return outcome.status === "ok";
-  };
 
   const confirm = (change: Pending) => {
     const label = principalLabel(change.binding);
@@ -88,14 +61,11 @@ export function MembersPage({ space, fetcher, onWritten }: MembersPageProps) {
           </p>
         </div>
       </div>
+      <AdminTabs space={space} current="members" />
       <Banner tone="neutral">
         <strong>{NO_DATA_RIGHT}</strong> Les données restent évaluées pour chaque personne, selon son identité et les règles de la source.
       </Banner>
-      {feedback === null ? null : (
-        <div ref={announced} tabIndex={-1} className="sb-members__feedback">
-          <FeedbackBanner feedback={feedback} />
-        </div>
-      )}
+      <FeedbackRegion feedback={feedback} announced={announced} />
       <Card title="Liaisons">
         <MembersTable
           members={members}
@@ -123,54 +93,6 @@ export function MembersPage({ space, fetcher, onWritten }: MembersPageProps) {
   );
 }
 
-function FeedbackBanner({ feedback }: { feedback: Feedback }) {
-  if (feedback.tone === "neutral") {
-    return <Banner tone="neutral">{feedback.text}</Banner>;
-  }
-  if (feedback.tone === "error") {
-    return <Banner tone="danger">Changement non confirmé : {feedback.text} La liste a été relue.</Banner>;
-  }
-  return <Banner tone="danger">{refusalText(feedback)}</Banner>;
-}
-
-/** Libellé des champs qu'un `invalid_request` peut nommer (E12). */
-const FIELD_LABELS: Record<string, string> = {
-  id: "identifiant",
-  name: "nom",
-  role: "rôle",
-  principal: "membre",
-  "principal.name": "nom du groupe",
-  "principal.kind": "type de membre",
-  "principal.issuer": "personne",
-  "principal.subject": "personne",
-  first_admin: "premier administrateur",
-  "first_admin.kind": "type de premier administrateur",
-  "first_admin.name": "nom du groupe",
-  "first_admin.issuer": "personne",
-  "first_admin.subject": "personne",
-  body: "corps de la demande",
-};
-
-export function refusalText(refusal: Refusal): string {
-  const label = REFUSAL_LABELS[refusal.code];
-  if (refusal.field === null) {
-    return label;
-  }
-  return `${label} Champ en cause : ${FIELD_LABELS[refusal.field] ?? refusal.field}.`;
-}
-
-/** `title` dit ce qui manque, accordé : « Liaisons indisponibles », « Journal indisponible ». */
-function ReadFailure({ outcome, title }: { outcome: Exclude<AdminOutcome<unknown>, { status: "ok" }>; title: string }) {
-  if (outcome.status === "refused") {
-    return <Banner tone="danger">{refusalText(outcome)}</Banner>;
-  }
-  return (
-    <Banner tone="danger">
-      {title} : {outcome.message} Rien n'est affiché.
-    </Banner>
-  );
-}
-
 interface MembersTableProps {
   members: { status: "loading" } | AdminOutcome<readonly Binding[]>;
   pending: Pending | null;
@@ -181,11 +103,7 @@ interface MembersTableProps {
 
 function MembersTable({ members, pending, busy, onPending, onConfirm }: MembersTableProps) {
   if (members.status === "loading") {
-    return (
-      <p role="status" aria-busy="true" className="sb-members__state">
-        Lecture des liaisons…
-      </p>
-    );
+    return <Reading>Lecture des liaisons…</Reading>;
   }
   if (members.status !== "ok") {
     return <ReadFailure outcome={members} title="Liaisons indisponibles" />;
@@ -249,11 +167,7 @@ function MemberRow({ binding, pending, busy, onPending, onConfirm }: MemberRowPr
   return (
     <tr className={pending === null ? undefined : "sb-row--selected"}>
       <th scope="row" className="sb-members__principal">
-        <span>{label}</span>
-        <span className="sb-members__detail">
-          <Badge tone="neutral">{binding.principal.kind === "group" ? "Groupe" : "Personne"}</Badge>
-          {principalDetail(binding)}
-        </span>
+        <PrincipalCell principal={binding.principal} person={binding.person} label={label} />
       </th>
       <td>
         <select
@@ -310,53 +224,6 @@ function MemberRow({ binding, pending, busy, onPending, onConfirm }: MemberRowPr
       </td>
     </tr>
   );
-}
-
-/** Ce qui identifie le principal sans ambiguïté : l'adresse ou le sujet d'une personne, rien pour un groupe déjà nommé. */
-function principalDetail(binding: Binding): ReactNode {
-  if (binding.principal.kind === "group") {
-    return null;
-  }
-  return (
-    <>
-      {binding.person === null ? <span>Inconnue de Board ·</span> : null}
-      <span className="sb-mono">{personDetail(binding.principal, binding.person)}</span>
-    </>
-  );
-}
-
-interface ConfirmProps {
-  question: string;
-  action: string;
-  busy: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-/** Confirmation sur place ; le focus va au bouton de confirmation pour qu'un clavier enchaîne. */
-function Confirm({ question, action, busy, onConfirm, onCancel }: ConfirmProps) {
-  const button = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    button.current?.focus();
-  }, []);
-  return (
-    <div className="sb-confirm" role="group" aria-label={question}>
-      <span className="sb-confirm__question">{question}</span>
-      <button ref={button} type="button" className="sb-button sb-button--primary" disabled={busy} onClick={onConfirm}>
-        {action}
-      </button>
-      <button type="button" className="sb-button" disabled={busy} onClick={onCancel}>
-        Annuler
-      </button>
-    </div>
-  );
-}
-
-function samePrincipal(left: Principal, right: Principal): boolean {
-  if (left.kind === "group") {
-    return right.kind === "group" && left.name === right.name;
-  }
-  return right.kind === "person" && left.issuer === right.issuer && left.subject === right.subject;
 }
 
 interface AddBindingProps {
@@ -455,90 +322,4 @@ function AddBinding({ bindings, busy, fetcher, onAdd }: AddBindingProps) {
       </form>
     </Card>
   );
-}
-
-const ACTION_LABELS = {
-  space_created: "a créé l'espace",
-  binding_added: "a ajouté",
-  binding_changed: "a changé le rôle de",
-  binding_removed: "a retiré",
-} as const;
-
-interface JournalProps {
-  events: { status: "loading" } | AdminOutcome<readonly SpaceEvent[]>;
-}
-
-function Journal({ events }: JournalProps) {
-  if (events.status === "loading") {
-    return (
-      <p role="status" aria-busy="true" className="sb-members__state">
-        Lecture du journal…
-      </p>
-    );
-  }
-  if (events.status !== "ok") {
-    return <ReadFailure outcome={events} title="Journal indisponible" />;
-  }
-  if (events.value.length === 0) {
-    return <p className="sb-members__state">Aucun événement.</p>;
-  }
-  return (
-    <ol className="sb-journal" aria-label="Journal de l'espace">
-      {events.value.map((event) => (
-        <li key={event.id} className="sb-journal__item">
-          <span className="sb-mono sb-journal__at">{formatInstant(event.at)}</span>
-          <span>
-            <strong>{personLabel(event.actor, event.actorPerson)}</strong> {describe(event)}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function isText(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isRole(value: unknown): value is Role {
-  return (ROLES as readonly unknown[]).includes(value);
-}
-
-/** Principal visé ; une personne est nommée par ce que le serveur sait d'elle, même retirée depuis. */
-function journalPrincipal(value: unknown, person: SpaceEvent["principalPerson"]): string | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
-  }
-  const fields = value as Record<string, unknown>;
-  if (fields.kind === "group" && isText(fields.name)) {
-    return `le groupe ${fields.name}`;
-  }
-  if (fields.kind === "person" && isText(fields.issuer) && isText(fields.subject)) {
-    const ref = { issuer: fields.issuer, subject: fields.subject };
-    return personLabel(ref, person);
-  }
-  return null;
-}
-
-/** Phrase d'un événement. Une action ou un détail inattendus sont montrés tels quels, sans être interprétés. */
-function describe(event: SpaceEvent): string {
-  const raw = `${event.action} ${JSON.stringify(event.detail)}`;
-  const detail = typeof event.detail === "object" && event.detail !== null ? (event.detail as Record<string, unknown>) : {};
-  if (event.action === "space_created" && isText(detail.name)) {
-    return `${ACTION_LABELS.space_created} « ${detail.name} ».`;
-  }
-  const principal = journalPrincipal(detail.principal, event.principalPerson);
-  if (principal === null) {
-    return `action non reconnue : ${raw}`;
-  }
-  if (event.action === "binding_added" && isRole(detail.after)) {
-    return `${ACTION_LABELS.binding_added} ${principal} : ${ROLE_LABELS[detail.after]}.`;
-  }
-  if (event.action === "binding_changed" && isRole(detail.before) && isRole(detail.after)) {
-    return `${ACTION_LABELS.binding_changed} ${principal} : ${ROLE_LABELS[detail.before]} → ${ROLE_LABELS[detail.after]}.`;
-  }
-  if (event.action === "binding_removed" && isRole(detail.before)) {
-    return `${ACTION_LABELS.binding_removed} ${principal} (${ROLE_LABELS[detail.before]}).`;
-  }
-  return `action non reconnue : ${raw}`;
 }

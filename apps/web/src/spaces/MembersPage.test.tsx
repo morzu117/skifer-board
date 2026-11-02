@@ -7,6 +7,7 @@ import espace from "../../../../contracts/espaces/espace.json";
 import interdit from "../../../../contracts/espaces/interdit.json";
 import introuvable from "../../../../contracts/espaces/introuvable.json";
 import journal from "../../../../contracts/espaces/journal.json";
+import journalAccords from "../../../../contracts/espaces/journal-accords.json";
 import liaison from "../../../../contracts/espaces/liaison.json";
 import liaisonInconnue from "../../../../contracts/espaces/liaison-inconnue.json";
 import membres from "../../../../contracts/espaces/membres.json";
@@ -17,7 +18,8 @@ import retrait from "../../../../contracts/espaces/retrait.json";
 import { onSpaceLost } from "./lost";
 import type { Fetch } from "./api";
 import { decodeSpace } from "./model";
-import { MembersPage, NO_DATA_RIGHT, refusalText } from "./MembersPage";
+import { refusalText } from "./AdminParts";
+import { MembersPage, NO_DATA_RIGHT } from "./MembersPage";
 
 type Exemple = { status: number; body: unknown };
 type Reponse = Exemple | (() => Promise<Response>);
@@ -176,6 +178,30 @@ describe("Membres et rôles : lecture (écrans §9, plan 08, 8.4)", () => {
       await waitFor(() => { expect(perdu).toHaveBeenCalledTimes(2); });
       expect(screen.getAllByRole("alert")[0]).toHaveTextContent("Espace introuvable.");
     } finally { quitter(); }
+  });
+
+  it("les onglets relient « Membres et rôles », courant, et « Environnements » (plan 09, 9.4)", async () => {
+    await ouvrir(serveur(BASE));
+    const onglets = screen.getByRole("navigation", { name: "Administration de l'espace" });
+    expect(within(onglets).getAllByRole("link").map((lien) => [lien.textContent, lien.getAttribute("href"), lien.getAttribute("aria-current")])).toEqual([
+      ["Membres et rôles", "#/espaces/finance/membres", "page"],
+      ["Environnements", "#/espaces/finance/environnements", null],
+    ]);
+    // Les onglets suivent le titre et précèdent le rappel.
+    const titre = screen.getByRole("heading", { level: 1, name: "Membres et rôles" });
+    expect(titre.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(onglets.compareDocumentPosition(screen.getByText(NO_DATA_RIGHT)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("le journal raconte aussi les droits de déployer (plan 09, V6)", async () => {
+    await ouvrir(serveur({ [MEMBRES]: membres, [JOURNAL]: journalAccords }));
+    const entrees = within(screen.getByRole("list", { name: "Journal de l'espace" })).getAllByRole("listitem").map((item) => item.textContent.replace(/^.*UTC/, ""));
+    expect(entrees.slice(0, 4)).toEqual([
+      "Alix a retiré le droit de déployer en PROD au groupe finance-admins.",
+      "Alix a accordé le droit de déployer en PROD au groupe finance-admins.",
+      "Camille Martin a accordé le droit de déployer en DEV au groupe finance-createurs.",
+      "Camille Martin a accordé le droit de déployer en TEST à Dominique Leroy.",
+    ]);
   });
 
   it("encode l'identifiant de l'espace dans ses adresses", async () => {
@@ -530,6 +556,8 @@ describe("Libellé d'un refus", () => {
     [{ code: "invalid_request", field: "id" }, "La demande est incomplète ou mal formée. Champ en cause : identifiant."],
     [{ code: "invalid_request", field: "name" }, "La demande est incomplète ou mal formée. Champ en cause : nom."],
     [{ code: "invalid_request", field: "role" }, "La demande est incomplète ou mal formée. Champ en cause : rôle."],
+    [{ code: "invalid_request", field: "environment" }, "La demande est incomplète ou mal formée. Champ en cause : environnement."],
+    [{ code: "grant_not_found", field: null }, "Ce droit de déployer n'existe plus : la liste a été relue."],
     [{ code: "invalid_request", field: "principal" }, "La demande est incomplète ou mal formée. Champ en cause : membre."],
     [{ code: "invalid_request", field: "first_admin" }, "La demande est incomplète ou mal formée. Champ en cause : premier administrateur."],
     [{ code: "invalid_request", field: "first_admin.name" }, "La demande est incomplète ou mal formée. Champ en cause : nom du groupe."],
@@ -547,6 +575,7 @@ describe("Libellé d'un refus", () => {
     "id",
     "name",
     "role",
+    "environment",
     "principal",
     "principal.kind",
     "principal.name",

@@ -14,6 +14,7 @@ import { SpaceSwitch } from "./shell/SpaceSwitch";
 import { fetchSpace, fetchSpaces, type SpaceOutcome } from "./spaces/api";
 import { CreateSpacePage } from "./spaces/CreateSpacePage";
 import { onSpaceLost } from "./spaces/lost";
+import { EnvironmentsPage } from "./spaces/EnvironmentsPage";
 import { MembersPage } from "./spaces/MembersPage";
 import { manages, SPACE_ID, type Space, type SpaceList } from "./spaces/model";
 import { SpacesHome } from "./spaces/SpacesHome";
@@ -24,7 +25,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" ? route.space : null;
 }
 
 interface Sections {
@@ -170,7 +171,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" ? "espace" : undefined;
+  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -207,6 +208,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
         current={current}
         listed={listed}
         fetcher={fetcher}
+        environment={environment}
         onWritten={() => {
           setRevision((value) => value + 1);
         }}
@@ -229,6 +231,9 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "members") {
       return [current.value.name, "Membres et rôles"];
     }
+    if (route.page === "environments") {
+      return [current.value.name, "Environnements"];
+    }
     return current.value.role === null ? [current.value.name] : [current.value.name, "Catalogue Atlas"];
   }
   return [current?.status === "not_found" ? "Espace introuvable" : "Espace"];
@@ -239,10 +244,12 @@ interface PageProps {
   current: Current;
   listed: { status: "loading" } | SpaceOutcome<SpaceList>;
   fetcher: Fetch;
+  /** Environnement choisi dans la coque. */
+  environment: Environment;
   onWritten: () => void;
 }
 
-function Page({ route, current, listed, fetcher, onWritten }: PageProps) {
+function Page({ route, current, listed, fetcher, environment, onWritten }: PageProps) {
   if (route.page === "home") {
     return <SpacesHome listed={listed} />;
   }
@@ -293,6 +300,19 @@ function Page({ route, current, listed, fetcher, onWritten }: PageProps) {
     }
     // Le serveur décide : un rôle insuffisant est refusé par lui, et la page rend ce refus.
     return <MembersPage key={current.value.id} space={current.value} fetcher={fetcher} onWritten={onWritten} />;
+  }
+  if (route.page === "environments") {
+    if (current.value.implicit) {
+      return (
+        <>
+          <Heading title="Environnements" />
+          <Banner tone="neutral">
+            En mode local, sans fournisseur d'identité, vous pouvez déployer dans les trois environnements de l'espace implicite : les droits de déployer ne se gèrent pas.
+          </Banner>
+        </>
+      );
+    }
+    return <EnvironmentsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
   }
   if (current.value.role === null) {
     return (

@@ -1,0 +1,293 @@
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+
+import { routeHash, type Route } from "../shell/route";
+import { formatInstant } from "../format/date";
+import { Badge } from "../ui/Badge";
+import { Banner } from "../ui/Banner";
+import { ENVIRONMENTS } from "../shell/sections";
+import { REFUSAL_LABELS, type AdminOutcome, type Refusal } from "./admin";
+import { personDetail, personLabel, ROLE_LABELS, ROLES, type Known, type Principal, type Role, type Space, type SpaceEvent } from "./model";
+import "./spaces.css";
+
+/**
+ * Pièces communes aux écrans d'administration d'un espace (plan 08, 8.4 ; plan 09, 9.4) : onglets,
+ * écriture relue, retours et refus du serveur, confirmation sur place, journal.
+ */
+
+export type Feedback = { tone: "neutral"; text: string } | ({ tone: "danger" } & Refusal) | { tone: "error"; text: string };
+
+/** Onglets des écrans d'administration, reliés l'un à l'autre (écrans §9). */
+export function AdminTabs({ space, current }: { space: Space; current: "members" | "environments" }) {
+  const tabs: readonly { page: Route & { page: "members" | "environments" }; label: string }[] = [
+    { page: { page: "members", space: space.id }, label: "Membres et rôles" },
+    { page: { page: "environments", space: space.id }, label: "Environnements" },
+  ];
+  return (
+    <nav className="sb-admin-tabs" aria-label="Administration de l'espace">
+      {tabs.map(({ page, label }) => (
+        <a key={page.page} className="sb-admin-tabs__tab" href={routeHash(page)} aria-current={page.page === current ? "page" : undefined}>
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+interface AdminWrite {
+  /** Révision des lectures : relues après chaque écriture, jamais corrigées sur place. */
+  version: number;
+  busy: boolean;
+  feedback: Feedback | null;
+  setFeedback: (feedback: Feedback | null) => void;
+  /** Reçoit le focus après une écriture : la ligne confirmée a pu disparaître. */
+  announced: RefObject<HTMLDivElement | null>;
+  /** Rend `true` si le serveur a accepté. */
+  write: <T>(run: () => Promise<AdminOutcome<T>>, done: string) => Promise<boolean>;
+}
+
+export function useAdminWrite(onWritten: (() => void) | undefined, onSettled?: () => void): AdminWrite {
+  const [version, setVersion] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const announced = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (feedback !== null) {
+      announced.current?.focus();
+    }
+  }, [feedback]);
+  const write = async <T,>(run: () => Promise<AdminOutcome<T>>, done: string): Promise<boolean> => {
+    setBusy(true);
+    setFeedback(null);
+    const outcome = await run();
+    setBusy(false);
+    onSettled?.();
+    if (outcome.status === "ok") {
+      setFeedback({ tone: "neutral", text: done });
+    } else if (outcome.status === "refused") {
+      setFeedback({ tone: "danger", code: outcome.code, field: outcome.field });
+    } else {
+      setFeedback({ tone: "error", text: outcome.message });
+    }
+    setVersion((value) => value + 1);
+    onWritten?.();
+    return outcome.status === "ok";
+  };
+  return { version, busy, feedback, setFeedback, announced, write };
+}
+
+/** Réponse de la dernière écriture, qui reçoit le focus. */
+export function FeedbackRegion({ feedback, announced }: { feedback: Feedback | null; announced: RefObject<HTMLDivElement | null> }) {
+  if (feedback === null) {
+    return null;
+  }
+  return (
+    <div ref={announced} tabIndex={-1} className="sb-members__feedback">
+      <FeedbackBanner feedback={feedback} />
+    </div>
+  );
+}
+
+function FeedbackBanner({ feedback }: { feedback: Feedback }) {
+  if (feedback.tone === "neutral") {
+    return <Banner tone="neutral">{feedback.text}</Banner>;
+  }
+  if (feedback.tone === "error") {
+    return <Banner tone="danger">Changement non confirmé : {feedback.text} La liste a été relue.</Banner>;
+  }
+  return <Banner tone="danger">{refusalText(feedback)}</Banner>;
+}
+
+/** Libellé des champs qu'un `invalid_request` peut nommer (plan 08, E12 ; plan 09, V9). */
+const FIELD_LABELS: Record<string, string> = {
+  id: "identifiant",
+  name: "nom",
+  role: "rôle",
+  environment: "environnement",
+  principal: "membre",
+  "principal.name": "nom du groupe",
+  "principal.kind": "type de membre",
+  "principal.issuer": "personne",
+  "principal.subject": "personne",
+  first_admin: "premier administrateur",
+  "first_admin.kind": "type de premier administrateur",
+  "first_admin.name": "nom du groupe",
+  "first_admin.issuer": "personne",
+  "first_admin.subject": "personne",
+  body: "corps de la demande",
+};
+
+export function refusalText(refusal: Refusal): string {
+  const label = REFUSAL_LABELS[refusal.code];
+  if (refusal.field === null) {
+    return label;
+  }
+  return `${label} Champ en cause : ${FIELD_LABELS[refusal.field] ?? refusal.field}.`;
+}
+
+/** `title` dit ce qui manque, accordé : « Liaisons indisponibles », « Journal indisponible ». */
+export function ReadFailure({ outcome, title }: { outcome: Exclude<AdminOutcome<unknown>, { status: "ok" }>; title: string }) {
+  if (outcome.status === "refused") {
+    return <Banner tone="danger">{refusalText(outcome)}</Banner>;
+  }
+  return (
+    <Banner tone="danger">
+      {title} : {outcome.message} Rien n'est affiché.
+    </Banner>
+  );
+}
+
+/** Lecture en cours d'une liste d'administration. */
+export function Reading({ children }: { children: ReactNode }) {
+  return (
+    <p role="status" aria-busy="true" className="sb-members__state">
+      {children}
+    </p>
+  );
+}
+
+interface ConfirmProps {
+  question: string;
+  action: string;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** Confirmation sur place ; le focus va au bouton de confirmation pour qu'un clavier enchaîne. */
+export function Confirm({ question, action, busy, onConfirm, onCancel }: ConfirmProps) {
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    button.current?.focus();
+  }, []);
+  return (
+    <div className="sb-confirm" role="group" aria-label={question}>
+      <span className="sb-confirm__question">{question}</span>
+      <button ref={button} type="button" className="sb-button sb-button--primary" disabled={busy} onClick={onConfirm}>
+        {action}
+      </button>
+      <button type="button" className="sb-button" disabled={busy} onClick={onCancel}>
+        Annuler
+      </button>
+    </div>
+  );
+}
+
+export function samePrincipal(left: Principal, right: Principal): boolean {
+  if (left.kind === "group") {
+    return right.kind === "group" && left.name === right.name;
+  }
+  return right.kind === "person" && left.issuer === right.issuer && left.subject === right.subject;
+}
+
+/** Libellé et détail d'un principal lié : badge Groupe ou Personne, adresse ou sujet d'une personne. */
+export function PrincipalCell({ principal, person, label }: { principal: Principal; person: Known | null; label: string }) {
+  return (
+    <>
+      <span>{label}</span>
+      <span className="sb-members__detail">
+        <Badge tone="neutral">{principal.kind === "group" ? "Groupe" : "Personne"}</Badge>
+        {principal.kind === "group" ? null : (
+          <>
+            {person === null ? <span>Inconnue de Board ·</span> : null}
+            <span className="sb-mono">{personDetail(principal, person)}</span>
+          </>
+        )}
+      </span>
+    </>
+  );
+}
+
+const ACTION_LABELS = {
+  space_created: "a créé l'espace",
+  binding_added: "a ajouté",
+  binding_changed: "a changé le rôle de",
+  binding_removed: "a retiré",
+  deploy_granted: "a accordé le droit de déployer",
+  deploy_revoked: "a retiré le droit de déployer",
+} as const;
+
+export function Journal({ events }: { events: { status: "loading" } | AdminOutcome<readonly SpaceEvent[]> }) {
+  if (events.status === "loading") {
+    return <Reading>Lecture du journal…</Reading>;
+  }
+  if (events.status !== "ok") {
+    return <ReadFailure outcome={events} title="Journal indisponible" />;
+  }
+  if (events.value.length === 0) {
+    return <p className="sb-members__state">Aucun événement.</p>;
+  }
+  return (
+    <ol className="sb-journal" aria-label="Journal de l'espace">
+      {events.value.map((event) => (
+        <li key={event.id} className="sb-journal__item">
+          <span className="sb-mono sb-journal__at">{formatInstant(event.at)}</span>
+          <span>
+            <strong>{personLabel(event.actor, event.actorPerson)}</strong> {describe(event)}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isRole(value: unknown): value is Role {
+  return (ROLES as readonly unknown[]).includes(value);
+}
+
+function isEnvironment(value: unknown): value is string {
+  return (ENVIRONMENTS as readonly unknown[]).includes(value);
+}
+
+interface Target {
+  /** Complément direct : « le groupe finance », « Dominique Leroy ». */
+  named: string;
+  /** Complément introduit par « à » : « au groupe finance », « à Dominique Leroy ». */
+  toward: string;
+}
+
+/** Principal visé ; une personne est nommée par ce que le serveur sait d'elle, même retirée depuis. */
+function journalPrincipal(value: unknown, person: SpaceEvent["principalPerson"]): Target | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const fields = value as Record<string, unknown>;
+  if (fields.kind === "group" && isText(fields.name)) {
+    return { named: `le groupe ${fields.name}`, toward: `au groupe ${fields.name}` };
+  }
+  if (fields.kind === "person" && isText(fields.issuer) && isText(fields.subject)) {
+    const label = personLabel({ issuer: fields.issuer, subject: fields.subject }, person);
+    return { named: label, toward: `à ${label}` };
+  }
+  return null;
+}
+
+/** Phrase d'un événement. Une action ou un détail inattendus sont montrés tels quels, sans être interprétés. */
+function describe(event: SpaceEvent): string {
+  const raw = `${event.action} ${JSON.stringify(event.detail)}`;
+  const detail = typeof event.detail === "object" && event.detail !== null ? (event.detail as Record<string, unknown>) : {};
+  if (event.action === "space_created" && isText(detail.name)) {
+    return `${ACTION_LABELS.space_created} « ${detail.name} ».`;
+  }
+  const target = journalPrincipal(detail.principal, event.principalPerson);
+  if (target === null) {
+    return `action non reconnue : ${raw}`;
+  }
+  const principal = target.named;
+  if (event.action === "binding_added" && isRole(detail.after)) {
+    return `${ACTION_LABELS.binding_added} ${principal} : ${ROLE_LABELS[detail.after]}.`;
+  }
+  if (event.action === "binding_changed" && isRole(detail.before) && isRole(detail.after)) {
+    return `${ACTION_LABELS.binding_changed} ${principal} : ${ROLE_LABELS[detail.before]} → ${ROLE_LABELS[detail.after]}.`;
+  }
+  if (event.action === "binding_removed" && isRole(detail.before)) {
+    return `${ACTION_LABELS.binding_removed} ${principal} (${ROLE_LABELS[detail.before]}).`;
+  }
+  if ((event.action === "deploy_granted" || event.action === "deploy_revoked") && isEnvironment(detail.environment)) {
+    return `${ACTION_LABELS[event.action]} en ${detail.environment} ${target.toward}.`;
+  }
+  return `action non reconnue : ${raw}`;
+}

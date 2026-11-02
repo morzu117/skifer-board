@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import accord from "../../../../contracts/espaces/accord.json";
+import accordInconnu from "../../../../contracts/espaces/accord-inconnu.json";
+import accords from "../../../../contracts/espaces/accords.json";
 import creation from "../../../../contracts/espaces/creation.json";
 import dernier from "../../../../contracts/espaces/dernier-administrateur.json";
+import environnementInvalide from "../../../../contracts/espaces/environnement-invalide.json";
 import existant from "../../../../contracts/espaces/espace-existant.json";
 import interdit from "../../../../contracts/espaces/interdit.json";
 import introuvable from "../../../../contracts/espaces/introuvable.json";
@@ -15,10 +19,11 @@ import personnes from "../../../../contracts/espaces/personnes.json";
 import rechercheInvalide from "../../../../contracts/espaces/recherche-invalide.json";
 import requeteInvalide from "../../../../contracts/espaces/requete-invalide.json";
 import retrait from "../../../../contracts/espaces/retrait.json";
+import retraitAccord from "../../../../contracts/espaces/retrait-accord.json";
 import anonyme from "../../../../contracts/identite/non-authentifie.json";
 import origine from "../../../../contracts/identite/origine-refusee.json";
 import { onSessionLost } from "../identity/session";
-import { createSpace, fetchEvents, fetchMembers, REFUSAL_LABELS, REFUSALS, removeMember, searchPeople, setMember, type AdminOutcome } from "./admin";
+import { createSpace, fetchEvents, fetchGrants, fetchMembers, grantDeploy, REFUSAL_LABELS, REFUSALS, removeMember, revokeDeploy, searchPeople, setMember, type AdminOutcome } from "./admin";
 import type { Fetch } from "./api";
 import { onSpaceLost } from "./lost";
 
@@ -31,7 +36,7 @@ const PERSONNE = { kind: "person", issuer: "https://id.example.invalid", subject
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
-type Nom = "membres" | "journal" | "recherche" | "pose" | "retrait" | "creation";
+type Nom = "membres" | "journal" | "recherche" | "pose" | "retrait" | "creation" | "accords" | "accord" | "retraitAccord";
 type Appel = (fetcher: Fetch) => Promise<AdminOutcome<unknown>>;
 /** Chaque appel de l'administration, avec ce qu'il envoie au serveur. */
 const APPELS: Readonly<Record<Nom, Appel>> = {
@@ -41,6 +46,10 @@ const APPELS: Readonly<Record<Nom, Appel>> = {
   pose: (fetcher: Fetch) => setMember("finance", GROUPE, "reader", fetcher),
   retrait: (fetcher: Fetch) => removeMember("finance", "9c3f2a7d-0b14-4e6a-8d52-6a7b8c9d0e1f", fetcher),
   creation: (fetcher: Fetch) => createSpace({ id: "finance", name: "Finance", firstAdmin: GROUPE }, fetcher),
+  // Droits de déployer (plan 09, 9.4) : mêmes refus, mêmes signalements que le reste de l'administration.
+  accords: (fetcher: Fetch) => fetchGrants("finance", signal(), fetcher),
+  accord: (fetcher: Fetch) => grantDeploy("finance", "PROD", GROUPE, fetcher),
+  retraitAccord: (fetcher: Fetch) => revokeDeploy("finance", "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f", fetcher),
 };
 const NOMS = Object.keys(APPELS) as Nom[];
 
@@ -163,7 +172,76 @@ describe("Requêtes de l'administration d'un espace (plan 08, 8.4)", () => {
     await setMember("finance", GROUPE, "reader");
     await removeMember("finance", "b");
     await createSpace({ id: "f", name: "F", firstAdmin: GROUPE });
-    expect(espion).toHaveBeenCalledTimes(6);
+    await fetchGrants("finance", signal());
+    await grantDeploy("finance", "DEV", GROUPE);
+    await revokeDeploy("finance", "g");
+    expect(espion).toHaveBeenCalledTimes(9);
+  });
+});
+
+describe("Requêtes des droits de déployer (plan 09, 9.4)", () => {
+  it("lit les accords : GET à l'adresse encodée, Accept JSON, signal transmis, sans corps ; exemple réel décodé", async () => {
+    const fetcher = servir(accords);
+    const abandon = signal();
+    const issue = await fetchGrants("a/b c", abandon, fetcher);
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith("/api/spaces/a%2Fb%20c/deploy-grants", { method: "GET", headers: { Accept: "application/json" }, signal: abandon });
+    expect(issue.status).toBe("ok");
+    if (issue.status !== "ok") return;
+    expect(issue.value.map((grant) => [grant.id, grant.environment, grant.principal.kind])).toEqual([
+      ["3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f", "TEST", "person"],
+      ["7a4b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d", "DEV", "group"],
+    ]);
+    expect(issue.value[0]).toEqual({
+      id: "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f",
+      environment: "TEST",
+      principal: PERSONNE,
+      person: { name: "Dominique Leroy", email: "dominique.leroy@example.invalid" },
+      createdAt: new Date("2026-11-02T09:30:00Z"),
+      createdBy: { issuer: "https://id.example.invalid", subject: "00u1a2b3c4" },
+      createdByPerson: { name: "Camille Martin", email: "camille.martin@example.invalid" },
+    });
+  });
+
+  it("accorde : POST JSON `{environment, principal}` exact, sans signal, réponse décodée", async () => {
+    const fetcher = servir(accord);
+    const issue = await grantDeploy("a/b", "TEST", PERSONNE, fetcher);
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith("/api/spaces/a%2Fb/deploy-grants", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ environment: "TEST", principal: PERSONNE }),
+    });
+    expect(issue).toMatchObject({ status: "ok", value: { id: "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f", environment: "TEST", createdByPerson: { name: "Camille Martin" } } });
+  });
+
+  it.each(["DEV", "TEST", "PROD"] as const)("accorde en %s, nom de groupe envoyé tel quel (ni rogné ni replié)", async (environnement) => {
+    const fetcher = servir(accord);
+    await grantDeploy("finance", environnement, { kind: "group", name: "  Finance-Admins " }, fetcher);
+    expect(JSON.parse(fetcher.mock.calls[0]?.[1]?.body as string)).toEqual({ environment: environnement, principal: { kind: "group", name: "  Finance-Admins " } });
+  });
+
+  it("retire : DELETE à l'identifiant encodé, 204 sans corps", async () => {
+    const fetcher = servir(retraitAccord);
+    expect(await revokeDeploy("a/b", "x/y?z#w", fetcher)).toEqual({ status: "ok", value: null });
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith("/api/spaces/a%2Fb/deploy-grants/x%2Fy%3Fz%23w", { method: "DELETE", headers: { Accept: "application/json" } });
+  });
+
+  it("un accord rendu dans un environnement hors des trois n'est pas un succès", async () => {
+    const issue = await grantDeploy("finance", "DEV", GROUPE, servir({ status: 200, body: { ...accord.body, environment: "QA" } }));
+    expect(issue).toEqual({ status: "error", message: "Réponse du serveur hors contrat : accord.environment : DEV | TEST | PROD attendu." });
+    const liste = await fetchGrants("finance", signal(), servir({ status: 200, body: { grants: [{ ...accord.body, principal: { kind: "robot" } }] } }));
+    expect(liste).toEqual({ status: "error", message: "Réponse du serveur hors contrat : réponse.grants[0].principal.kind : group | person attendu." });
+  });
+
+  it("libellés : accord inconnu, environnement en cause, mode local neutre, valable pour les membres comme pour les droits de déployer", () => {
+    expect(REFUSALS).toContain("grant_not_found");
+    expect(REFUSAL_LABELS.grant_not_found).toBe("Ce droit de déployer n'existe plus : la liste a été relue.");
+    expect(REFUSAL_LABELS.local_mode).toBe("En mode local, l'espace implicite ne se gère pas.");
+  });
+
+  it("une écriture d'accord sans signal n'est jamais traitée comme abandonnée", async () => {
+    for (const ecrire of [APPELS.accord, APPELS.retraitAccord]) {
+      expect(await ecrire(vi.fn<Fetch>().mockRejectedValue(new DOMException("abandon", "AbortError")))).toEqual({ status: "error", message: "Le serveur Board ne répond pas." });
+    }
   });
 });
 
@@ -175,6 +253,8 @@ describe("Refus du serveur rendus tels quels, avec leur raison", () => {
     ["personne inconnue", inconnue, { code: "unknown_person", field: null }],
     ["liaison inconnue", liaisonInconnue, { code: "binding_not_found", field: null }],
     ["mode local", modeLocal, { code: "local_mode", field: null }],
+    ["accord inconnu", accordInconnu, { code: "grant_not_found", field: null }],
+    ["environnement invalide", environnementInvalide, { code: "invalid_request", field: "environment" }],
     ["requête invalide", requeteInvalide, { code: "invalid_request", field: "first_admin.kind" }],
     // Le paramètre en cause est nommé `parameter`, pas `field` : aucun champ n'est inventé.
     ["recherche invalide", rechercheInvalide, { code: "invalid_parameter", field: null }],
@@ -267,6 +347,8 @@ describe("Pannes, session perdue et abandon", () => {
     ["recherche", (fetcher: Fetch) => APPELS.recherche(fetcher), "réponse.people : champ attendu"],
     ["pose", (fetcher: Fetch) => APPELS.pose(fetcher), "liaison.id : champ attendu"],
     ["creation", (fetcher: Fetch) => APPELS.creation(fetcher), "espace.id : champ attendu"],
+    ["accords", (fetcher: Fetch) => APPELS.accords(fetcher), "réponse.grants : champ attendu"],
+    ["accord", (fetcher: Fetch) => APPELS.accord(fetcher), "accord.id : champ attendu"],
   ])("un succès hors contrat (%s) n'est pas un succès", async (_nom, appel, raison) => {
     expect(await appel(servir({ status: 200, body: {} }))).toEqual({ status: "error", message: `Réponse du serveur hors contrat : ${raison}.` });
   });
@@ -277,7 +359,7 @@ describe("Pannes, session perdue et abandon", () => {
   });
 
   it("une lecture abandonnée rejette au lieu de rendre une erreur, avant ou après la réponse", async () => {
-    for (const lire of [fetchMembers, fetchEvents]) {
+    for (const lire of [fetchMembers, fetchEvents, fetchGrants]) {
       const avant = new AbortController();
       avant.abort();
       const refus = new DOMException("abandon", "AbortError");

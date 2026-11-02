@@ -179,6 +179,63 @@ describe("Accueil des espaces : lien « Membres et rôles » (plan 08, 8.4)", ()
   });
 });
 
+describe("Accueil des espaces : lien « Environnements » (plan 09, 9.4)", () => {
+  const espace = (id: string, role: "reader" | "creator" | "admin" | null, implicit = false) => ({
+    id, name: `Espace ${id}`, atlas: "skifer-atlas", created_at: "2026-11-02T09:00:00+00:00",
+    created_by: { issuer: "https://id.example.invalid", subject: "s" }, role, implicit,
+    // Un créateur ou un lecteur qui peut déployer ne gère pas pour autant les droits (V5).
+    environments: [{ code: "DEV", deploy: true }, { code: "TEST", deploy: true }, { code: "PROD", deploy: true }],
+  });
+  const lienEnv = (nom: string) => screen.queryByRole("link", { name: `Environnements de ${nom}` });
+  const ouvrirListe = async (corps: unknown) => {
+    render(<Accueil fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json(corps))} />);
+    await screen.findByRole("list", { name: "Espaces" });
+  };
+
+  it("n'offre les environnements qu'aux espaces que la personne administre, même si elle peut déployer ailleurs", async () => {
+    await ouvrirListe({ spaces: [espace("a", "admin"), espace("c", "creator"), espace("l", "reader")], platform_admin: false });
+    expect(lienEnv("Espace a")).toHaveAttribute("href", "#/espaces/a/environnements");
+    expect(lienEnv("Espace a")).toHaveTextContent(/^Environnements$/);
+    expect(lienEnv("Espace c")).not.toBeInTheDocument();
+    expect(lienEnv("Espace l")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /^Environnements de/ })).toHaveLength(1);
+  });
+
+  it("les deux liens d'administration vont ensemble, dans l'ordre des onglets, dans l'entrée de l'espace", async () => {
+    await ouvrirListe({ spaces: [espace("a", "admin")], platform_admin: false });
+    const [entree] = items();
+    expect(within(entree as HTMLElement).getAllByRole("link").map((lien) => lien.textContent)).toEqual(["Espace a", "Membres et rôles", "Environnements"]);
+  });
+
+  it("l'administration de la plateforme a le lien, même sans rôle (E6)", async () => {
+    render(<Accueil fetcher={servir(administration)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(lienEnv("Finance")).toHaveAttribute("href", "#/espaces/finance/environnements");
+  });
+
+  it("l'administration de la plateforme a le lien pour un espace où elle est simple lectrice", async () => {
+    await ouvrirListe({ spaces: [espace("l", "reader")], platform_admin: true });
+    expect(lienEnv("Espace l")).toHaveAttribute("href", "#/espaces/l/environnements");
+  });
+
+  it("aucun lien pour l'espace implicite du mode local (V8), même administrateur", async () => {
+    render(<Accueil fetcher={servir(locale)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(screen.queryByRole("link", { name: /Environnements/ })).not.toBeInTheDocument();
+  });
+
+  it("aucun lien d'environnements pour la liste du contrat, où finance peut déployer en DEV", async () => {
+    render(<Accueil fetcher={servir(liste)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(screen.queryByRole("link", { name: /Environnements/ })).not.toBeInTheDocument();
+  });
+
+  it("encode l'identifiant dans le lien des environnements", async () => {
+    await ouvrirListe({ spaces: [{ ...espace("x", "admin"), id: "a/b c" }], platform_admin: false });
+    expect(lienEnv("Espace x")).toHaveAttribute("href", "#/espaces/a%2Fb%20c/environnements");
+  });
+});
+
 describe("Accueil des espaces : liste reçue de la coque", () => {
   it("ne lit rien lui-même : il affiche ce que la coque lui passe", () => {
     const espion = vi.fn<Fetch>();

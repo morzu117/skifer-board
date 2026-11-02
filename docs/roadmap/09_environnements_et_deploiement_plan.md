@@ -1,6 +1,6 @@
 # Plan 09 — Environnements et droit de déployer (lot 02, quatrième tranche)
 
-Date : 2 novembre 2026 · Statut : **en cours**. Quatrième tranche du lot 02 (« socle partagé »), après les espaces et les rôles (plan 08). Choix du porteur du 2 novembre, qui suit les recommandations : **trois environnements fixes `DEV`, `TEST`, `PROD`**, **un rôle valable dans tous les environnements**, **un droit de déployer explicite par environnement, sans droit d'office pour les administrateurs**, **paramètres de déploiement dans une tranche suivante**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **réalisé (9.1 à 9.4)**. Quatrième tranche du lot 02 (« socle partagé »), après les espaces et les rôles (plan 08). Choix du porteur du 2 novembre, qui suit les recommandations : **trois environnements fixes `DEV`, `TEST`, `PROD`**, **un rôle valable dans tous les environnements**, **un droit de déployer explicite par environnement, sans droit d'office pour les administrateurs**, **paramètres de déploiement dans une tranche suivante**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §2 (droit de déployer par environnement), §4.1 (objet Environnement), §5 (environnements et déploiement), §8 lot 02, §10 et §10.1 (nommage des environnements). Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §0.1 (déployeur), §0.5 (coque), §9 (administration, « Environnements »). Design : `docs/design/RULES.md` §9, `DESIGN-SYSTEM.md` §1 et §5 (bascule `DEV | TEST | PROD`, pipeline d'environnements).
 
@@ -95,6 +95,16 @@ Créés : `apps/web/src/spaces/` (écran d'administration).
 - Le journal de l'espace raconte les accords et les retraits.
 
 Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+
+- Les pièces communes à « Membres et rôles » et « Environnements » sont regroupées dans `spaces/AdminParts.tsx` : onglets, écriture suivie d'une relecture, refus, confirmation sur place, journal. « Membres et rôles » est réécrit dessus sans changer de comportement ; ses tests ont servi de filet.
+- La cible du pipeline est l'environnement choisi dans la bascule de la coque (`aria-current="step"`, « environnement affiché ») ; le formulaire propose cet environnement ; un autre peut y être choisi, et chaque changement de la bascule l'oublie.
+- Un droit déjà accordé dans le même environnement est signalé et le bouton reste inactif : rien n'est envoyé. Le serveur, idempotent, n'en ferait rien de toute façon (V5).
+- Si la relecture qui suit une écriture échoue, le formulaire disparaît avec la liste : sans la liste à jour, un doublon ne se détecte plus (fail-closed).
+- Le refus `local_mode` a désormais un libellé neutre, partagé par les écrans d'administration et la création d'un espace.
+- L'accueil des espaces offre « Environnements » à côté de « Membres et rôles ».
+- L'agent de test a trouvé trois défauts, corrigés : le formulaire ne suivait pas la bascule après l'ouverture de l'écran, puis, une fois corrigé, ressortait un ancien choix quand la bascule revenait à sa cible ; une adresse ou un nom de groupe sans espace sortait de sa carte. Ses remarques sur le point d'interrogation orphelin, le repère d'attente confondu avec la carte cible et l'écart des liens de l'accueil ont été reprises.
 
 ## 4. Rayon d'impact
 

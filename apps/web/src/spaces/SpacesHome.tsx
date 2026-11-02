@@ -68,9 +68,14 @@ function SpaceList({ spaces, platformAdmin }: { spaces: readonly Space[]; platfo
             Atlas : {space.atlas} · <span className="sb-spaces__id">{space.id}</span>
           </span>
           {manages(space, platformAdmin) ? (
-            <a className="sb-spaces__members" href={routeHash({ page: "members", space: space.id })} aria-label={`Membres et rôles de ${space.name}`}>
-              Membres et rôles
-            </a>
+            <span className="sb-spaces__links">
+              <a className="sb-spaces__members" href={routeHash({ page: "members", space: space.id })} aria-label={`Membres et rôles de ${space.name}`}>
+                Membres et rôles
+              </a>
+              <a className="sb-spaces__members" href={routeHash({ page: "environments", space: space.id })} aria-label={`Environnements de ${space.name}`}>
+                Environnements
+              </a>
+            </span>
           ) : null}
         </li>
       ))}

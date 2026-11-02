@@ -122,6 +122,18 @@ export interface Binding {
   createdByPerson: Known | null;
 }
 
+/** Droit de déployer accordé dans un environnement à un groupe ou à une personne (plan 09, V3). */
+export interface DeployGrant {
+  id: string;
+  environment: Environment;
+  principal: Principal;
+  /** Personne visée, si elle est connue. */
+  person: Known | null;
+  createdAt: Date;
+  createdBy: PersonRef;
+  createdByPerson: Known | null;
+}
+
 export interface SpaceEvent {
   id: number;
   at: Date;
@@ -130,7 +142,7 @@ export interface SpaceEvent {
   action: string;
   /** Détail tel que journalisé : principal, rôle avant, rôle après, ou nom de l'espace. */
   detail: unknown;
-  /** Personne visée par une liaison, si elle est connue ; elle peut avoir été retirée depuis. */
+  /** Personne visée par une liaison ou un accord, si elle est connue ; elle peut avoir été retirée depuis. */
   principalPerson: Known | null;
 }
 
@@ -173,6 +185,33 @@ export function decodeBinding(value: unknown, path: string): Binding {
 
 export function decodeMembers(value: unknown): readonly Binding[] {
   return object({ members: list(decodeBinding) })(value, "réponse").members;
+}
+
+const decodeRawGrant = object({
+  id: text,
+  environment: oneOf(ENVIRONMENTS),
+  principal: decodePrincipal,
+  person: nullable(decodeKnown),
+  created_at: instant,
+  created_by: decodeRef,
+  created_by_person: nullable(decodeKnown),
+});
+
+export function decodeGrant(value: unknown, path: string): DeployGrant {
+  const raw = decodeRawGrant(value, path);
+  return {
+    id: raw.id,
+    environment: raw.environment,
+    principal: raw.principal,
+    person: raw.person,
+    createdAt: raw.created_at,
+    createdBy: raw.created_by,
+    createdByPerson: raw.created_by_person,
+  };
+}
+
+export function decodeGrants(value: unknown): readonly DeployGrant[] {
+  return object({ grants: list(decodeGrant) })(value, "réponse").grants;
 }
 
 const decodeRawEvent = object({
@@ -234,6 +273,6 @@ export function personDetail(ref: PersonRef, known: Known | null): string {
   return name || filled(email) ? ref.subject : ref.issuer;
 }
 
-export function principalLabel(binding: Pick<Binding, "principal" | "person">): string {
+export function principalLabel(binding: { principal: Principal; person: Known | null }): string {
   return binding.principal.kind === "group" ? `Groupe ${binding.principal.name}` : personLabel(binding.principal, binding.person);
 }

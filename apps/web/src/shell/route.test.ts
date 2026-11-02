@@ -31,6 +31,19 @@ it.each([
   ["#/espaces/a%2Fb/membres", { page: "members", space: "a/b" }],
   ["#/espaces/membres", { page: "catalogue", space: "membres" }],
   ["#/espaces/%/membres", { page: "members", space: "%" }],
+  // Environnements d'un espace (plan 09, 9.4).
+  ["#/espaces/finance/environnements", { page: "environments", space: "finance" }],
+  ["#/espaces/finance/environnements/", { page: "home" }],
+  ["#/espaces/finance/environnements/x", { page: "home" }],
+  ["#/espaces/finance/environnement", { page: "home" }],
+  ["#/espaces/finance/ENVIRONNEMENTS", { page: "home" }],
+  ["#/espaces/finance/environnements?x=1", { page: "home" }],
+  ["#/espaces/finance/environments", { page: "home" }],
+  ["#/espaces//environnements", { page: "home" }],
+  ["#/espaces/environnements", { page: "catalogue", space: "environnements" }],
+  ["#/espaces/a%2Fb/environnements", { page: "environments", space: "a/b" }],
+  ["#/espaces/caf%C3%A9/environnements", { page: "environments", space: "café" }],
+  ["#/espaces/%/environnements", { page: "environments", space: "%" }],
   ["#/nouvel-espace", { page: "create" }],
   ["#/nouvel-espace/", { page: "home" }],
   ["#nouvel-espace", { page: "home" }],
@@ -57,6 +70,10 @@ it.each([
   [{ page: "members", space: "finance" }, "#/espaces/finance/membres"],
   [{ page: "members", space: "a/b?c#d%e f" }, "#/espaces/a%2Fb%3Fc%23d%25e%20f/membres"],
   [{ page: "members", space: "membres" }, "#/espaces/membres/membres"],
+  [{ page: "environments", space: "finance" }, "#/espaces/finance/environnements"],
+  [{ page: "environments", space: "a/b?c#d%e f" }, "#/espaces/a%2Fb%3Fc%23d%25e%20f/environnements"],
+  [{ page: "environments", space: "environnements" }, "#/espaces/environnements/environnements"],
+  [{ page: "environments", space: "café" }, "#/espaces/caf%C3%A9/environnements"],
 ] as [Route, string][])("construit l'ancre de %j et la relit à l'identique", (route, hash) => {
   expect(routeHash(route)).toBe(hash);
   expect(routeFromHash(routeHash(route))).toEqual(route);
@@ -76,6 +93,13 @@ it("l'ancre des membres d'un identifiant piégé reste celle des membres de cet 
   }
   // Sans identifiant, l'ancre ne désigne aucun espace : retour à l'accueil.
   expect(routeFromHash(routeHash({ page: "members", space: "" }))).toEqual({ page: "home" });
+});
+
+it("l'ancre des environnements d'un identifiant piégé reste celle des environnements de cet identifiant", () => {
+  for (const space of ["/", "catalogue", "membres", "x/membres", "x/environnements", "..", "nouvel-espace", "%"]) {
+    expect(routeFromHash(routeHash({ page: "environments", space }))).toEqual({ page: "environments", space });
+  }
+  expect(routeFromHash(routeHash({ page: "environments", space: "" }))).toEqual({ page: "home" });
 });
 
 it("navigue et notifie le hook au hashchange, puis se désabonne", () => {

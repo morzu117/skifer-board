@@ -45,6 +45,12 @@
   color: var(--sb-link);
 }
 
+.sb-spaces__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sb-space-6);
+}
+
 .sb-spaces__members {
   display: inline-flex;
   align-items: center;
@@ -232,4 +238,145 @@
 .sb-journal__at {
   color: var(--sb-ink-2);
   font-size: var(--sb-text-sm);
+}
+
+/* Onglets des écrans d'administration d'un espace (plan 09, 9.4). */
+.sb-admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  border-bottom: 1px solid var(--sb-line);
+}
+
+.sb-admin-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-5);
+  border-bottom: 2px solid transparent;
+  color: var(--sb-link);
+  font-size: var(--sb-text-sm);
+  text-decoration: none;
+}
+
+.sb-admin-tabs__tab[aria-current="page"] {
+  border-bottom-color: var(--sb-slate-900);
+  color: var(--sb-ink);
+  font-weight: 600;
+}
+
+/* Pipeline d'environnements (DESIGN-SYSTEM §5) : trois cartes reliées par des flèches, la cible
+   sur fond cuivre clair avec une bordure cuivre de 2 px. */
+.sb-pipeline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sb-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-pipeline__stage {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  padding: var(--sb-space-7);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+}
+
+.sb-pipeline__stage + .sb-pipeline__stage::before {
+  position: absolute;
+  top: var(--sb-space-8);
+  left: calc(-1 * var(--sb-space-8));
+  width: var(--sb-space-8);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-lg);
+  content: "→" / "";
+  text-align: center;
+}
+
+.sb-pipeline__stage--target {
+  border: 2px solid var(--sb-copper);
+  background: var(--sb-copper-soft);
+}
+
+.sb-pipeline__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sb-space-3);
+  margin: 0;
+  color: var(--sb-ink);
+  font-size: var(--sb-text-lg);
+}
+
+.sb-pipeline__note {
+  color: var(--sb-copper-ink);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-grants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-grant {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Une adresse ou un nom de groupe sans espace se coupe plutôt que de sortir de la carte. */
+  overflow-wrap: anywhere;
+  gap: var(--sb-space-3);
+  padding-top: var(--sb-space-5);
+  border-top: 1px solid var(--sb-line-soft);
+}
+
+.sb-grant > * {
+  max-width: 100%;
+}
+
+.sb-grant:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Repère de forme, en plus de la confirmation (RULES §2) ; ardoise, pour ne pas se confondre
+   avec la carte cible, déjà cuivrée. */
+.sb-grant--pending {
+  padding-left: var(--sb-space-5);
+  box-shadow: inset 3px 0 0 var(--sb-slate-900);
+}
+
+.sb-grant__meta {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-grant .sb-confirm {
+  justify-content: flex-start;
+}
+
+/* Sous cette largeur d'écran, la zone de contenu ne tient plus trois cartes lisibles. */
+@media (max-width: 1100px) {
+  .sb-pipeline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sb-pipeline__stage + .sb-pipeline__stage::before {
+    top: calc(-1 * var(--sb-space-8));
+    left: 0;
+    width: 100%;
+    line-height: var(--sb-space-8);
+    content: "↓" / "";
+  }
 }

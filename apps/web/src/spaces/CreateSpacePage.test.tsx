@@ -172,7 +172,7 @@ describe("Création d'un espace : saisie et envoi", () => {
     ["requête invalide", { status: 400, body: { error: { code: "invalid_request", field: "id" } } }, "La demande est incomplète ou mal formée. Champ en cause : identifiant."],
     ["champ nommé", requeteInvalide, "Champ en cause : type de premier administrateur."],
     ["interdit", interdit, "Votre rôle ne permet pas cette action."],
-    ["mode local", modeLocal, "En mode local, l'espace n'a pas de membres à gérer."],
+    ["mode local", modeLocal, "En mode local, l'espace implicite ne se gère pas."],
   ] as [string, Exemple, string][])("un refus (%s) est rendu avec sa raison, la saisie gardée", async (_cas, exemple, texte) => {
     const onCreated = vi.fn();
     ouvrir(vi.fn<Fetch>().mockResolvedValue(reponse(exemple)), onCreated);

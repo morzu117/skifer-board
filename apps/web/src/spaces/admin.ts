@@ -2,14 +2,31 @@ import { ContractError } from "../catalogue/decode";
 import { reportSessionLost } from "../identity/session";
 import { spaceUrl, type Fetch } from "./api";
 import { reportSpaceLost } from "./lost";
-import { decodeBinding, decodeEvents, decodeMembers, decodePeople, decodeSpace, type Binding, type KnownPerson, type Principal, type Role, type Space, type SpaceEvent } from "./model";
+import type { Environment } from "../shell/sections";
+import {
+  decodeBinding,
+  decodeEvents,
+  decodeGrant,
+  decodeGrants,
+  decodeMembers,
+  decodePeople,
+  decodeSpace,
+  type Binding,
+  type DeployGrant,
+  type KnownPerson,
+  type Principal,
+  type Role,
+  type Space,
+  type SpaceEvent,
+} from "./model";
 
 /**
- * Administration d'un espace (plan 08, 8.4) : membres, journal, recherche de personnes, création.
+ * Administration d'un espace (plan 08, 8.4 ; plan 09, 9.4) : membres, droits de déployer, journal,
+ * recherche de personnes, création.
  * Le serveur décide de tout (E7) : l'écran rend ses refus tels quels, avec leur raison.
  */
 
-/** Refus à codes fermés du serveur (E8, E11, E12, et contrôle d'origine du plan 06). */
+/** Refus à codes fermés du serveur (plan 08, E8, E11, E12 ; plan 09, V9 ; contrôle d'origine du plan 06). */
 export const REFUSALS = [
   "invalid_request",
   "invalid_parameter",
@@ -17,6 +34,7 @@ export const REFUSALS = [
   "unknown_person",
   "last_admin",
   "binding_not_found",
+  "grant_not_found",
   "space_not_found",
   "forbidden",
   "local_mode",
@@ -40,9 +58,10 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   unknown_person: "Cette personne n'est pas connue de Board : elle doit s'être connectée une fois.",
   last_admin: "C'est la dernière liaison administrateur de l'espace : ajoutez d'abord un autre administrateur.",
   binding_not_found: "Cette liaison n'existe plus : la liste a été relue.",
+  grant_not_found: "Ce droit de déployer n'existe plus : la liste a été relue.",
   space_not_found: "Espace introuvable.",
   forbidden: "Votre rôle ne permet pas cette action.",
-  local_mode: "En mode local, l'espace n'a pas de membres à gérer.",
+  local_mode: "En mode local, l'espace implicite ne se gère pas.",
   origin_refused: "La demande ne vient pas de cette page : elle a été refusée.",
 };
 
@@ -135,6 +154,23 @@ export function setMember(space: string, principal: Principal, role: Role, fetch
 
 export function removeMember(space: string, binding: string, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
   return call({ url: `${spaceUrl(space)}/members/${encodeURIComponent(binding)}`, method: "DELETE", decode: () => null }, undefined, fetcher);
+}
+
+export function fetchGrants(space: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<readonly DeployGrant[]>> {
+  return call({ url: `${spaceUrl(space)}/deploy-grants`, decode: decodeGrants }, signal, fetcher);
+}
+
+/** Accorde le droit de déployer ; un droit déjà accordé est rendu tel quel, sans journal (plan 09, V5). */
+export function grantDeploy(space: string, environment: Environment, principal: Principal, fetcher: Fetch = fetch): Promise<AdminOutcome<DeployGrant>> {
+  return call(
+    { url: `${spaceUrl(space)}/deploy-grants`, method: "POST", body: { environment, principal }, decode: (value) => decodeGrant(value, "accord") },
+    undefined,
+    fetcher,
+  );
+}
+
+export function revokeDeploy(space: string, grant: string, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
+  return call({ url: `${spaceUrl(space)}/deploy-grants/${encodeURIComponent(grant)}`, method: "DELETE", decode: () => null }, undefined, fetcher);
 }
 
 export interface NewSpace {
