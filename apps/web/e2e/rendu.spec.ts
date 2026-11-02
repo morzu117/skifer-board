@@ -1,15 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-import { simulerIdentite, attendreGraphiques, choisirTheme, themes } from "./aides";
+import { simulerEspaces, simulerIdentite, attendreGraphiques, choisirTheme, themes } from "./aides";
 
 test.beforeEach(async ({ page }) => {
   await simulerIdentite(page);
+  await simulerEspaces(page);
 });
 
 for (const theme of themes) {
   test(`la page entière respecte axe, contraste inclus, sous ${theme.nom}`, async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/#/prototype");
     await choisirTheme(page, theme.nom);
     await attendreGraphiques(page);
     // Aucune exclusion, aucun filtrage par tags : toutes les règles axe sont conservées.
@@ -19,7 +20,7 @@ for (const theme of themes) {
   });
 
   test(`capture de référence de la page principale sous ${theme.nom}`, async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/#/prototype");
     await choisirTheme(page, theme.nom);
     await attendreGraphiques(page);
     await expect(page).toHaveScreenshot(theme.capture, { fullPage: true });

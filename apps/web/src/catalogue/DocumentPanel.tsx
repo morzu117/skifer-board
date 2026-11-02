@@ -10,6 +10,7 @@ import { availabilityLabel, KIND_LABELS, MODE_LABELS, PROBLEM_LABELS, STATUS_LAB
 import type { CatalogDocument, DocumentPage } from "./model";
 
 interface DocumentPanelProps {
+  space: string;
   id: string;
   fetcher: Fetch;
   now: () => Date;
@@ -19,7 +20,7 @@ interface DocumentPanelProps {
 type Loading = { status: "loading" } | Outcome<DocumentPage>;
 
 /** Fiche d'une définition, à côté de la liste, comme le détail de `02-analyses.html`. */
-export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps) {
+export function DocumentPanel({ space, id, fetcher, now, onClose }: DocumentPanelProps) {
   // La réponse est rangée avec son identifiant : celle d'une autre fiche n'est jamais montrée.
   const [answer, setAnswer] = useState<{ id: string; outcome: Outcome<DocumentPage> } | null>(null);
   const result: Loading = answer?.id === id ? answer.outcome : { status: "loading" };
@@ -27,7 +28,7 @@ export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps)
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchDocument(id, controller.signal, fetcher).then(
+    fetchDocument(space, id, controller.signal, fetcher).then(
       (outcome) => {
         if (!controller.signal.aborted) {
           setAnswer({ id, outcome });
@@ -38,7 +39,7 @@ export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps)
     return () => {
       controller.abort();
     };
-  }, [id, fetcher]);
+  }, [space, id, fetcher]);
 
   useEffect(() => {
     heading.current?.focus();
@@ -79,7 +80,7 @@ export function DocumentPanel({ id, fetcher, now, onClose }: DocumentPanelProps)
       {result.status === "ok" && (
         <>
           <DocumentBody document={result.value.document} />
-          <VersionsSection id={id} kind={result.value.document.entry.kind} fetcher={fetcher} />
+          <VersionsSection space={space} id={id} kind={result.value.document.entry.kind} fetcher={fetcher} />
           <ProvenanceLine provenance={result.value.provenance} now={now()} />
         </>
       )}

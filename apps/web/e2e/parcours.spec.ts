@@ -1,24 +1,26 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { simulerIdentite, attendreGraphiques, choisirTheme, titresGraphiques } from "./aides";
+import { simulerEspaces, simulerIdentite, attendreGraphiques, choisirTheme, titresGraphiques } from "./aides";
 
 test.beforeEach(async ({ page }) => {
   await simulerIdentite(page);
-  await page.goto("/");
+  await simulerEspaces(page);
+  // Le prototype graphique vit hors espace, sous #/prototype (plan 08, 8.3).
+  await page.goto("/#/prototype");
   await expect(page.getByRole("heading", { level: 1, name: "Prototype graphique" })).toBeVisible();
   await attendreGraphiques(page);
 });
 
 test("la coque garde ses entrées à venir inactives et annonce DEV, TEST, PROD", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Navigation principale" });
+  // Hors espace, le catalogue n'est pas offert : il se lit « dans un espace » (plan 08, E9).
   await expect(navigation.getByRole("listitem")).toHaveText([
-    "Explorerà venir", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlas",
+    "Explorerà venir", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlasdans un espace",
     "Déploiementsà venir", "Espace & connexionsà venir",
   ]);
   await expect(navigation.getByRole("link")).toHaveCount(1);
   await expect(navigation.getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");
-  await expect(navigation.getByRole("button", { disabled: false })).toHaveCount(1);
-  await expect(navigation.getByRole("button", { name: "Catalogue Atlas" })).toBeEnabled();
+  await expect(navigation.getByRole("button", { disabled: false })).toHaveCount(0);
 
   const environnement = page.getByRole("group", { name: "Environnement", exact: true });
   await expect(environnement.getByRole("button")).toHaveText(["DEV", "TEST", "PROD"]);

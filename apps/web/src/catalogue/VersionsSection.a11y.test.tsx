@@ -20,16 +20,16 @@ interface Sample {
   status: number;
   body: unknown;
 }
-const ECART = "/api/catalog/revenu-net/diff?base=4&other=5";
+const ECART = "/api/spaces/finance/catalog/revenu-net/diff?base=4&other=5";
 function routeur(overrides: Readonly<Record<string, Sample>> = {}) {
   const table: Readonly<Record<string, Sample>> = {
-    "/api/catalog": liste, "/api/catalog/revenu-net": revenu, "/api/catalog/commande": commande,
-    "/api/catalog/revenu-net/versions": versions, "/api/catalog/commande/versions": versionsConcept, [ECART]: ecart, ...overrides,
+    "/api/spaces/finance/catalog": liste, "/api/spaces/finance/catalog/revenu-net": revenu, "/api/spaces/finance/catalog/commande": commande,
+    "/api/spaces/finance/catalog/revenu-net/versions": versions, "/api/spaces/finance/catalog/commande/versions": versionsConcept, [ECART]: ecart, ...overrides,
   };
   return vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(Response.json((table[url] ?? inconnue).body, { status: (table[url] ?? inconnue).status })));
 }
 async function ouvrir(fetcher: Fetch, label = "Revenu net") {
-  const { container } = render(<CataloguePage fetcher={fetcher} now={() => new Date("2026-11-01T12:30:00Z")} />);
+  const { container } = render(<CataloguePage space="finance" fetcher={fetcher} now={() => new Date("2026-11-01T12:30:00Z")} />);
   await userEvent.click(await screen.findByRole("button", { name: label }));
   return { container, panel: await screen.findByRole("complementary", { name: label }) };
 }
@@ -50,7 +50,7 @@ it.each<[string, Sample, RegExp]>([
   await expectAccessible(container);
 });
 it("Accessibilité de la fiche, historique indisponible", async () => {
-  const { container, panel } = await ouvrir(routeur({ "/api/catalog/revenu-net/versions": historiqueIndisponible }));
+  const { container, panel } = await ouvrir(routeur({ "/api/spaces/finance/catalog/revenu-net/versions": historiqueIndisponible }));
   await within(panel).findByText(/Historique indisponible/);
   await expectAccessible(container);
 });

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { BrandMark } from "../ui/icons";
 import { SECTIONS, type SectionId } from "./sections";
 import "./shell.css";
@@ -7,17 +9,22 @@ interface SidebarProps {
   available: ReadonlySet<SectionId>;
   active?: SectionId | undefined;
   onNavigate: (section: SectionId) => void;
-  /** Espace Atlas rattaché, ou `null` s'il n'y en a pas. */
+  /** Rattachement Atlas de l'espace courant, ou `null` hors d'un espace. */
   workspace: string | null;
+  /** Sélecteur d'espace, sous la marque. */
+  spaceSwitch?: ReactNode;
+  /** Mention d'une entrée indisponible ; « à venir » par défaut. */
+  pending?: Partial<Record<SectionId, string>> | undefined;
 }
 
-export function Sidebar({ available, active, onNavigate, workspace }: SidebarProps) {
+export function Sidebar({ available, active, onNavigate, workspace, spaceSwitch, pending }: SidebarProps) {
   return (
     <nav className="sb-sidebar" aria-label="Navigation principale">
       <a className="sb-sidebar__brand" href="#/">
         <BrandMark />
         <span>Skifer Board</span>
       </a>
+      {spaceSwitch}
       <ul className="sb-sidebar__list">
         {SECTIONS.map((section) => (
           <li key={section.id}>
@@ -35,7 +42,7 @@ export function Sidebar({ available, active, onNavigate, workspace }: SidebarPro
             ) : (
               <span className="sb-sidebar__item sb-sidebar__item--pending">
                 {section.label}
-                <span className="sb-sidebar__pending">à venir</span>
+                <span className="sb-sidebar__pending">{pending?.[section.id] ?? "à venir"}</span>
               </span>
             )}
           </li>
@@ -43,7 +50,7 @@ export function Sidebar({ available, active, onNavigate, workspace }: SidebarPro
       </ul>
       <div className="sb-sidebar__foot">
         <span className="sb-sidebar__foot-label">Espace rattaché à Atlas</span>
-        <span>{workspace ?? "Aucun espace rattaché"}</span>
+        <span>{workspace ?? "Aucun espace choisi"}</span>
       </div>
     </nav>
   );

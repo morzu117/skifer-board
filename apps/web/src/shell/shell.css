@@ -218,3 +218,35 @@
   margin: var(--sb-space-1) 0 0;
   color: var(--sb-ink-2);
 }
+
+/* Sélecteur d'espace et pastille du rôle, en tête de la navigation (plan 08, 8.3). */
+.sb-space-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sb-space-3);
+  padding: 0 var(--sb-space-3);
+}
+
+.sb-space-switch__label {
+  color: var(--sb-on-slate-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-space-switch__select {
+  width: 100%;
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-4);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font: inherit;
+  font-size: var(--sb-text-md);
+}
+
+@media (max-width: 760px) {
+  .sb-space-switch {
+    padding: 0;
+  }
+}

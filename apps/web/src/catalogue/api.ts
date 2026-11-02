@@ -1,5 +1,6 @@
 import { reportSessionLost } from "../identity/session";
-import { ContractError } from "./decode";
+import { reportSpaceLost } from "../spaces/lost";
+import { ContractError, object, text } from "./decode";
 import {
   decodeCatalogPage,
   decodeDiffPage,
@@ -73,7 +74,15 @@ async function interpret<T>(response: Response, { decode, unavailable }: Contrac
       return { status: "unavailable", ...decodeUnavailable(await response.json(), unavailable) };
     }
     if (response.status === 404) {
+      if (await isSpaceNotFound(response)) {
+        // Accès retiré pendant la lecture : la coque relit l'espace (plan 08, E4).
+        reportSpaceLost();
+      }
       return { status: "not_found" };
+    }
+    if (response.status === 403) {
+      // Administrateur de la plateforme sans rôle dans l'espace : il ne lit pas le catalogue (plan 08, E6).
+      return { status: "error", message: "Votre rôle dans cet espace ne permet pas de lire le catalogue." };
     }
     if (response.status === 401) {
       // Session expirée ou révoquée : la coque passe à l'écran de connexion (plan 06, 6.3).
@@ -89,12 +98,27 @@ async function interpret<T>(response: Response, { decode, unavailable }: Contrac
   }
 }
 
+/** Réponse 404 de la garde d'espace, et non d'un document absent. Un corps illisible n'en est pas une. */
+async function isSpaceNotFound(response: Response): Promise<boolean> {
+  try {
+    const { error } = object({ error: object({ code: text }) })(await response.clone().json(), "réponse");
+    return error.code === "space_not_found";
+  } catch {
+    return false;
+  }
+}
+
 function contractError(error: unknown): Failure {
   const reason = error instanceof ContractError ? error.message : "corps illisible";
   return { status: "error", message: `Réponse du serveur hors contrat : ${reason}.` };
 }
 
-export function catalogUrl(query: CatalogQuery): string {
+/** Le catalogue se lit dans un espace (plan 08, E9). */
+export function catalogBase(space: string): string {
+  return `/api/spaces/${encodeURIComponent(space)}/catalog`;
+}
+
+export function catalogUrl(space: string, query: CatalogQuery): string {
   const params = new URLSearchParams();
   const q = query.q.trim();
   if (q !== "") {
@@ -106,28 +130,29 @@ export function catalogUrl(query: CatalogQuery): string {
     }
   }
   const search = params.toString();
-  return search === "" ? "/api/catalog" : `/api/catalog?${search}`;
+  const base = catalogBase(space);
+  return search === "" ? base : `${base}?${search}`;
 }
 
-export function fetchCatalog(query: CatalogQuery, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<CatalogPage>> {
-  return read(catalogUrl(query), { decode: decodeCatalogPage }, signal, fetcher);
+export function fetchCatalog(space: string, query: CatalogQuery, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<CatalogPage>> {
+  return read(catalogUrl(space, query), { decode: decodeCatalogPage }, signal, fetcher);
 }
 
-export function fetchDocument(id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<DocumentPage>> {
-  return read(`/api/catalog/${encodeURIComponent(id)}`, { decode: decodeDocumentPage }, signal, fetcher);
+export function fetchDocument(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<DocumentPage>> {
+  return read(`${catalogBase(space)}/${encodeURIComponent(id)}`, { decode: decodeDocumentPage }, signal, fetcher);
 }
 
-export function fetchVersions(id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<VersionsPage>> {
-  return read(`/api/catalog/${encodeURIComponent(id)}/versions`, { decode: decodeVersionsPage, unavailable: "history_unavailable" }, signal, fetcher);
+export function fetchVersions(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Outcome<VersionsPage>> {
+  return read(`${catalogBase(space)}/${encodeURIComponent(id)}/versions`, { decode: decodeVersionsPage, unavailable: "history_unavailable" }, signal, fetcher);
 }
 
-export function diffUrl(id: string, base: number, other: number): string {
-  return `/api/catalog/${encodeURIComponent(id)}/diff?${new URLSearchParams({ base: String(base), other: String(other) }).toString()}`;
+export function diffUrl(space: string, id: string, base: number, other: number): string {
+  return `${catalogBase(space)}/${encodeURIComponent(id)}/diff?${new URLSearchParams({ base: String(base), other: String(other) }).toString()}`;
 }
 
 /** Écart d'Atlas entre deux versions taguées ; un refus garde la raison donnée par Atlas. */
-export async function fetchDiff(id: string, base: number, other: number, signal: AbortSignal, fetcher: Fetch = fetch): Promise<DiffOutcome> {
-  const sent = await send(diffUrl(id, base, other), signal, fetcher);
+export async function fetchDiff(space: string, id: string, base: number, other: number, signal: AbortSignal, fetcher: Fetch = fetch): Promise<DiffOutcome> {
+  const sent = await send(diffUrl(space, id, base, other), signal, fetcher);
   if ("failure" in sent) {
     return sent.failure;
   }

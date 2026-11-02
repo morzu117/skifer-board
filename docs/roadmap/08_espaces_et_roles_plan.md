@@ -82,6 +82,14 @@ Modifiés : `apps/web/src/App.tsx`, `shell/*`, `catalogue/*`.
 
 Tests : composants, accessibilité axe, parcours Playwright avec réponses simulées, captures de référence.
 
+Écarts de réalisation :
+
+- Le sélecteur d'espace est en tête de la navigation latérale, et non dans la barre supérieure, qu'il faisait passer sur deux lignes à 1280 px.
+- L'agent de test a trouvé trois défauts, corrigés : les pages « administration sans rôle » et « espace indisponible » n'avaient pas de titre de niveau 1 ; un accès retiré pendant la lecture du catalogue s'affichait comme une panne du service (une réponse `space_not_found` du catalogue fait désormais relire l'espace) ; un identifiant `.` faisait lire `/api/spaces/` (un identifiant hors du format E1 n'est plus demandé au serveur).
+- Décisions prises sur les points soulevés : la liste des espaces est relue à chaque navigation, et l'accueil la reçoit de la coque (une seule lecture) ; l'espace rendu par le serveur doit être celui demandé ; hors d'un espace lisible, le catalogue est marqué « dans un espace » et non « à venir » ; le fil d'Ariane d'un espace sans rôle ne nomme pas le catalogue.
+- Le catalogue est ouvert au rôle lecteur, comme le dit E9 ; les écrans §0.1 le réservaient au créateur. E9 prévaut.
+- À sa seconde passe, l'agent de test a trouvé une boucle : un espace reconfirmé alors que son catalogue répond `space_not_found` relançait sans fin la relecture. L'espace n'est plus relu qu'une fois par navigation ; le catalogue reste alors en échec affiché.
+
 ### 8.4 — Membres et rôles, création d'un espace
 
 Créés : `apps/web/src/spaces/` (écran d'administration).

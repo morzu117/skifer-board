@@ -13,6 +13,8 @@ import { ATLAS_STATUSES, DOCUMENT_KINDS, type CatalogEntry, type CatalogPage, ty
 import "./catalogue.css";
 
 interface CataloguePageProps {
+  /** Espace dont le catalogue est lu ; la lecture exige le rôle lecteur (plan 08, E9). */
+  space: string;
   fetcher?: Fetch;
   now?: () => Date;
 }
@@ -20,7 +22,7 @@ interface CataloguePageProps {
 type Loading = { status: "loading" } | Outcome<CatalogPage>;
 
 /** Catalogue métier (écrans §2), en lecture seule : les définitions appartiennent à Atlas. */
-export function CataloguePage({ fetcher = fetch, now = () => new Date() }: CataloguePageProps) {
+export function CataloguePage({ space, fetcher = fetch, now = () => new Date() }: CataloguePageProps) {
   const [query, setQuery] = useState<CatalogQuery>(EMPTY_QUERY);
   const [attempt, setAttempt] = useState(0);
   // Une réponse n'est affichée que pour la requête qui l'a demandée : sinon, chargement.
@@ -28,12 +30,12 @@ export function CataloguePage({ fetcher = fetch, now = () => new Date() }: Catal
   const [facets, setFacets] = useState<Facets | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const openers = useRef(new Map<string, HTMLButtonElement>());
-  const key = `${catalogUrl(query)}#${String(attempt)}`;
+  const key = `${catalogUrl(space, query)}#${String(attempt)}`;
   const result: Loading = answer?.key === key ? answer.outcome : { status: "loading" };
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchCatalog(query, controller.signal, fetcher).then(
+    fetchCatalog(space, query, controller.signal, fetcher).then(
       (outcome) => {
         // Une réponse arrivée après l'abandon de sa requête n'est jamais affichée.
         if (controller.signal.aborted) {
@@ -49,7 +51,7 @@ export function CataloguePage({ fetcher = fetch, now = () => new Date() }: Catal
     return () => {
       controller.abort();
     };
-  }, [key, query, fetcher]);
+  }, [key, space, query, fetcher]);
 
   const close = (id: string) => {
     setSelected(null);
@@ -129,7 +131,7 @@ export function CataloguePage({ fetcher = fetch, now = () => new Date() }: Catal
             </>
           )}
         </Card>
-        {selected !== null && <DocumentPanel key={selected} id={selected} fetcher={fetcher} now={now} onClose={() => { close(selected); }} />}
+        {selected !== null && <DocumentPanel key={selected} space={space} id={selected} fetcher={fetcher} now={now} onClose={() => { close(selected); }} />}
       </div>
     </>
   );

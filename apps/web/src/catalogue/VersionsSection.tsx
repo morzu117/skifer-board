@@ -1,47 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { formatInstant } from "../format/date";
 import { formatNumber } from "../format/number";
 import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
+import { useOutcome } from "../ui/useOutcome";
 import { fetchDiff, fetchVersions, type DiffOutcome, type Fetch, type Outcome } from "./api";
 import { changeValue, PROBLEM_LABELS, SEVERITY_LABELS, shortCommit, versionLabel } from "./labels";
 import { DIFF_SEVERITIES, type DiffPage, type DocumentKind, type VersionsPage } from "./model";
 
 interface VersionsSectionProps {
+  space: string;
   id: string;
   kind: DocumentKind;
   fetcher: Fetch;
 }
 
-/** Lit une réponse à chaque changement de `key` et ignore celle d'une demande abandonnée. */
-function useOutcome<T>(key: string, load: (signal: AbortSignal) => Promise<T>): T | { status: "loading" } {
-  const [answer, setAnswer] = useState<{ key: string; outcome: T } | null>(null);
-  // `load` est recréée à chaque rendu ; `key` dit tout ce dont elle dépend.
-  const loader = useRef(load);
-  useEffect(() => {
-    loader.current = load;
-  });
-  useEffect(() => {
-    const controller = new AbortController();
-    loader.current(controller.signal).then(
-      (outcome) => {
-        if (!controller.signal.aborted) {
-          setAnswer({ key, outcome });
-        }
-      },
-      () => undefined, // Lecture abandonnée : la fiche a changé ou s'est fermée.
-    );
-    return () => {
-      controller.abort();
-    };
-  }, [key]);
-  return answer?.key === key ? answer.outcome : { status: "loading" };
-}
-
 /** Versions taguées d'une définition et, pour un KPI, l'écart avec la dernière (plan 05). */
-export function VersionsSection({ id, kind, fetcher }: VersionsSectionProps) {
-  const result = useOutcome<Outcome<VersionsPage>>(`versions:${id}`, (signal) => fetchVersions(id, signal, fetcher));
+export function VersionsSection({ space, id, kind, fetcher }: VersionsSectionProps) {
+  const result = useOutcome<Outcome<VersionsPage>>(`versions:${space}:${id}`, (signal) => fetchVersions(space, id, signal, fetcher));
   // L'écart ouvert appartient à un document : il ne survit pas à un changement d'`id`.
   const [opened, setOpened] = useState<{ id: string; version: number } | null>(null);
   const open = opened?.id === id ? opened.version : null;
@@ -112,7 +89,7 @@ export function VersionsSection({ id, kind, fetcher }: VersionsSectionProps) {
                     </button>
                     {open === version.version && (
                       <div id={panel}>
-                        <DiffView id={id} base={version.version} other={latest.version} fetcher={fetcher} />
+                        <DiffView space={space} id={id} base={version.version} other={latest.version} fetcher={fetcher} />
                       </div>
                     )}
                   </>
@@ -131,14 +108,15 @@ export function VersionsSection({ id, kind, fetcher }: VersionsSectionProps) {
 }
 
 interface DiffViewProps {
+  space: string;
   id: string;
   base: number;
   other: number;
   fetcher: Fetch;
 }
 
-function DiffView({ id, base, other, fetcher }: DiffViewProps) {
-  const result = useOutcome<DiffOutcome>(`diff:${id}:${String(base)}:${String(other)}`, (signal) => fetchDiff(id, base, other, signal, fetcher));
+function DiffView({ space, id, base, other, fetcher }: DiffViewProps) {
+  const result = useOutcome<DiffOutcome>(`diff:${space}:${id}:${String(base)}:${String(other)}`, (signal) => fetchDiff(space, id, base, other, signal, fetcher));
   switch (result.status) {
     case "loading":
       return <p role="status">Calcul de l'écart par Atlas…</p>;

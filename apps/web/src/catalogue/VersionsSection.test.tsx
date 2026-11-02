@@ -27,17 +27,17 @@ interface Sample {
 }
 const now = () => new Date("2026-11-01T12:30:00Z");
 const response = (sample: Sample) => Response.json(sample.body, { status: sample.status });
-const ECART_V4 = "/api/catalog/revenu-net/diff?base=4&other=5";
-const ECART_V3 = "/api/catalog/revenu-net/diff?base=3&other=5";
+const ECART_V4 = "/api/spaces/finance/catalog/revenu-net/diff?base=4&other=5";
+const ECART_V3 = "/api/spaces/finance/catalog/revenu-net/diff?base=3&other=5";
 /** Les exemples versionnés, par URL ; toute autre URL reçoit le 404 du vrai serveur. */
 const ROUTES: Readonly<Record<string, Sample>> = {
-  "/api/catalog": liste,
-  "/api/catalog/revenu-net": revenu,
-  "/api/catalog/commande": commande,
-  "/api/catalog/invalide": invalide,
-  "/api/catalog/revenu-net/versions": versions,
-  "/api/catalog/commande/versions": versionsConcept,
-  "/api/catalog/invalide/versions": { status: 200, body: { ...versionsConcept.body, id: "invalide", current_version: 1 } },
+  "/api/spaces/finance/catalog": liste,
+  "/api/spaces/finance/catalog/revenu-net": revenu,
+  "/api/spaces/finance/catalog/commande": commande,
+  "/api/spaces/finance/catalog/invalide": invalide,
+  "/api/spaces/finance/catalog/revenu-net/versions": versions,
+  "/api/spaces/finance/catalog/commande/versions": versionsConcept,
+  "/api/spaces/finance/catalog/invalide/versions": { status: 200, body: { ...versionsConcept.body, id: "invalide", current_version: 1 } },
   [ECART_V4]: ecart,
   [ECART_V3]: irresoluble,
 };
@@ -72,12 +72,12 @@ const compare = (version: number) => {
 };
 const signalOf = (fetcher: ReturnType<typeof vi.fn<Fetch>>, url: string) => fetcher.mock.calls.find(([called]) => called === url)?.[1]?.signal;
 async function versionsKpi(fetcher = routeur()) {
-  render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+  render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
   await screen.findByRole("heading", { name: "Versions · 3" });
   return fetcher;
 }
 async function ouvrirFiche(fetcher: Fetch, label = "Revenu net") {
-  render(<CataloguePage fetcher={fetcher} now={now} />);
+  render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
   await userEvent.click(await screen.findByRole("button", { name: label }));
   await screen.findByRole("heading", { name: label, level: 2 });
   return screen.getByRole("complementary", { name: label });
@@ -107,7 +107,7 @@ describe("Historique d'un KPI (plan 05, 5.3)", () => {
     const fetcher = routeur();
     await ouvrirFiche(fetcher);
     await screen.findByRole("heading", { name: "Versions · 3" });
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/catalog", "/api/catalog/revenu-net", "/api/catalog/revenu-net/versions"]);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/finance/catalog", "/api/spaces/finance/catalog/revenu-net", "/api/spaces/finance/catalog/revenu-net/versions"]);
   });
   it("propose l'écart avec la v5 pour chaque version antérieure, jamais pour la dernière", async () => {
     await versionsKpi();
@@ -249,7 +249,7 @@ describe("États d'un écart", () => {
 describe("États de l'historique", () => {
   it("annonce la lecture en cours puis la liste", async () => {
     const pending = deferred();
-    render(<VersionsSection id="revenu-net" kind="kpi" fetcher={() => pending.promise} />);
+    render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={() => pending.promise} />);
     expect(screen.getByRole("heading", { name: "Versions", level: 3 })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Lecture des versions dans le clone…");
     await settle(() => { pending.resolve(response(versions)); });
@@ -257,7 +257,7 @@ describe("États de l'historique", () => {
     expect(screen.getByRole("heading", { name: "Versions · 3" })).toBeInTheDocument();
   });
   it("dit l'historique indisponible avec sa raison et son détail, la fiche restant affichée", async () => {
-    const panel = await ouvrirFiche(routeur({ "/api/catalog/revenu-net/versions": historiqueIndisponible }));
+    const panel = await ouvrirFiche(routeur({ "/api/spaces/finance/catalog/revenu-net/versions": historiqueIndisponible }));
     const banner = await within(panel).findByText(/Historique indisponible/);
     expect(banner.closest("[role=status]")).toHaveTextContent(
       "Historique indisponible : le clone de l'espace est introuvable. Les versions ne sont lues que dans un clone relu.Le clone de l'espace Atlas est introuvable à l'emplacement configuré.",
@@ -277,7 +277,7 @@ describe("États de l'historique", () => {
     ["réseau", new TypeError("réseau"), "L'historique n'a pas pu être lu. Le serveur Board ne répond pas.", "alert"],
   ])("affiche l'état %s", async (_label, sample, message, role) => {
     const fetcher = sample instanceof Error ? vi.fn<Fetch>().mockRejectedValue(sample) : vi.fn<Fetch>().mockResolvedValue(response(sample));
-    render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
     await waitFor(() => { expect(screen.getByRole(role)).toHaveTextContent(message); });
     expect(screen.getByRole("heading", { name: "Versions", level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
@@ -286,7 +286,7 @@ describe("États de l'historique", () => {
 
 describe("Version courante et versions taguées (plan 05, V3)", () => {
   it("dit la version courante non taguée d'un KPI et ne propose aucun écart avec elle", async () => {
-    render(<VersionsSection id="revenu-net" kind="kpi" fetcher={routeur({ "/api/catalog/revenu-net/versions": versionsWith({ current_version: 6 }) })} />);
+    render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={routeur({ "/api/spaces/finance/catalog/revenu-net/versions": versionsWith({ current_version: 6 }) })} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     expect(section()).toHaveTextContent("La version courante v6 n'est pas taguée dans Atlas : aucun écart n'est proposé avec elle.");
     expect(within(section()).queryByText("Courante")).not.toBeInTheDocument();
@@ -294,22 +294,22 @@ describe("Version courante et versions taguées (plan 05, V3)", () => {
     expect(within(section()).getAllByRole("button", { name: "Écart avec la v5" })).toHaveLength(2);
   });
   it("dit la version courante non taguée d'un concept sans parler d'écart et ne propose aucun écart", async () => {
-    const fetcher = routeur({ "/api/catalog/commande/versions": versionsWith({ id: "commande", current_version: 6 }) });
-    render(<VersionsSection id="commande" kind="concept" fetcher={fetcher} />);
+    const fetcher = routeur({ "/api/spaces/finance/catalog/commande/versions": versionsWith({ id: "commande", current_version: 6 }) });
+    render(<VersionsSection space="finance" id="commande" kind="concept" fetcher={fetcher} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     expect(section()).toHaveTextContent("La version courante v6 n'est pas taguée dans Atlas.");
     expect(section()).not.toHaveTextContent("aucun écart");
     expect(within(section()).queryByRole("button")).not.toBeInTheDocument();
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/catalog/commande/versions"]);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/finance/catalog/commande/versions"]);
   });
   it("signale la version courante d'un concept tagué sans proposer d'écart", async () => {
-    render(<VersionsSection id="commande" kind="concept" fetcher={routeur({ "/api/catalog/commande/versions": versionsWith({ id: "commande" }) })} />);
+    render(<VersionsSection space="finance" id="commande" kind="concept" fetcher={routeur({ "/api/spaces/finance/catalog/commande/versions": versionsWith({ id: "commande" }) })} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     expect(items()[0]).toHaveTextContent("v5 Courante");
     expect(within(section()).queryByRole("button")).not.toBeInTheDocument();
   });
   it("dit qu'aucune version n'est taguée", async () => {
-    render(<VersionsSection id="commande" kind="concept" fetcher={routeur()} />);
+    render(<VersionsSection space="finance" id="commande" kind="concept" fetcher={routeur()} />);
     await screen.findByRole("heading", { name: "Versions · 0" });
     expect(section()).toHaveTextContent("Aucune version taguée dans Atlas.");
     expect(section()).toHaveTextContent("La version courante v5 n'est pas taguée dans Atlas.");
@@ -317,14 +317,14 @@ describe("Version courante et versions taguées (plan 05, V3)", () => {
     expect(section()).toHaveTextContent("Versions lues dans le clone au commit e4f30c9");
   });
   it("ne dit rien d'une version courante absente", async () => {
-    render(<VersionsSection id="revenu-net" kind="kpi" fetcher={routeur({ "/api/catalog/revenu-net/versions": versionsWith({ current_version: null as unknown as number }) })} />);
+    render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={routeur({ "/api/spaces/finance/catalog/revenu-net/versions": versionsWith({ current_version: null as unknown as number }) })} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     expect(section()).not.toHaveTextContent("n'est pas taguée");
     expect(within(section()).queryByText("Courante")).not.toBeInTheDocument();
   });
   it("ne propose aucun écart pour une seule version taguée", async () => {
     const [, , seule] = versions.body.versions;
-    render(<VersionsSection id="revenu-net" kind="kpi" fetcher={routeur({ "/api/catalog/revenu-net/versions": versionsWith({ versions: [seule as (typeof versions.body.versions)[number]] }) })} />);
+    render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={routeur({ "/api/spaces/finance/catalog/revenu-net/versions": versionsWith({ versions: [seule as (typeof versions.body.versions)[number]] }) })} />);
     await screen.findByRole("heading", { name: "Versions · 1" });
     expect(within(section()).queryByRole("button")).not.toBeInTheDocument();
   });
@@ -334,9 +334,9 @@ describe("Abandon des lectures dépassées", () => {
   it("abandonne l'historique d'une fiche remplacée et n'affiche jamais sa réponse tardive", async () => {
     const late = deferred(); const current = deferred();
     const fetcher = vi.fn<Fetch>().mockReturnValueOnce(late.promise).mockReturnValueOnce(current.promise);
-    const { rerender } = render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
-    rerender(<VersionsSection id="commande" kind="concept" fetcher={fetcher} />);
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/catalog/revenu-net/versions", "/api/catalog/commande/versions"]);
+    const { rerender } = render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    rerender(<VersionsSection space="finance" id="commande" kind="concept" fetcher={fetcher} />);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/finance/catalog/revenu-net/versions", "/api/spaces/finance/catalog/commande/versions"]);
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     expect(fetcher.mock.calls[1]?.[1]?.signal?.aborted).toBe(false);
     await settle(() => { late.resolve(response(versions)); });
@@ -349,9 +349,9 @@ describe("Abandon des lectures dépassées", () => {
   it("ignore une réponse tardive même si elle revient au même identifiant", async () => {
     const first = deferred(); const second = deferred(); const third = deferred();
     const fetcher = vi.fn<Fetch>().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise).mockReturnValueOnce(third.promise);
-    const { rerender } = render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
-    rerender(<VersionsSection id="commande" kind="concept" fetcher={fetcher} />);
-    rerender(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    const { rerender } = render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    rerender(<VersionsSection space="finance" id="commande" kind="concept" fetcher={fetcher} />);
+    rerender(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     expect(fetcher.mock.calls[1]?.[1]?.signal?.aborted).toBe(true);
     await settle(() => { first.resolve(response(versionsWith({ current_version: 6 }))); });
@@ -363,11 +363,11 @@ describe("Abandon des lectures dépassées", () => {
   it("abandonne l'écart en cours quand la fiche change et n'affiche jamais sa réponse tardive", async () => {
     const pending = deferred();
     const fetcher = routeur();
-    const { rerender } = render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    const { rerender } = render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     fetcher.mockReturnValueOnce(pending.promise);
     await userEvent.click(compare(4));
-    rerender(<VersionsSection id="commande" kind="concept" fetcher={fetcher} />);
+    rerender(<VersionsSection space="finance" id="commande" kind="concept" fetcher={fetcher} />);
     expect(signalOf(fetcher, ECART_V4)?.aborted).toBe(true);
     await screen.findByRole("heading", { name: "Versions · 0" });
     await settle(() => { pending.resolve(response(ecart)); });
@@ -407,7 +407,7 @@ describe("Abandon des lectures dépassées", () => {
   it("abandonne l'historique et l'écart au démontage, sans erreur sur la réponse rejetée", async () => {
     let reject!: (reason: Error) => void;
     const fetcher = vi.fn<Fetch>().mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
-    const { unmount } = render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    const { unmount } = render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
     unmount();
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     await settle(() => { reject(new DOMException("Abandonné", "AbortError")); });
@@ -416,16 +416,16 @@ describe("Abandon des lectures dépassées", () => {
   // de la personne (plan 05, V4 ; §5). Trouvé par l'agent de test.
   it("ne demande aucun écart à la lecture d'une autre fiche, même si un écart était ouvert", async () => {
     const autre = versionsWith({ id: "marge-brute" });
-    const fetcher = routeur({ "/api/catalog/marge-brute/versions": autre, "/api/catalog/marge-brute/diff?base=4&other=5": ecart });
-    const { rerender } = render(<VersionsSection id="revenu-net" kind="kpi" fetcher={fetcher} />);
+    const fetcher = routeur({ "/api/spaces/finance/catalog/marge-brute/versions": autre, "/api/spaces/finance/catalog/marge-brute/diff?base=4&other=5": ecart });
+    const { rerender } = render(<VersionsSection space="finance" id="revenu-net" kind="kpi" fetcher={fetcher} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
     await userEvent.click(compare(4));
     await screen.findByText(/2 écarts/);
-    rerender(<VersionsSection id="marge-brute" kind="kpi" fetcher={fetcher} />);
-    await waitFor(() => { expect(fetcher).toHaveBeenCalledWith("/api/catalog/marge-brute/versions", expect.anything()); });
+    rerender(<VersionsSection space="finance" id="marge-brute" kind="kpi" fetcher={fetcher} />);
+    await waitFor(() => { expect(fetcher).toHaveBeenCalledWith("/api/spaces/finance/catalog/marge-brute/versions", expect.anything()); });
     await screen.findByRole("heading", { name: "Versions · 3" });
     await settle(() => undefined);
-    expect(fetcher).not.toHaveBeenCalledWith("/api/catalog/marge-brute/diff?base=4&other=5", expect.anything());
+    expect(fetcher).not.toHaveBeenCalledWith("/api/spaces/finance/catalog/marge-brute/diff?base=4&other=5", expect.anything());
     expect(compare(4)).toHaveAttribute("aria-expanded", "false");
   });
 });
@@ -438,7 +438,7 @@ describe("Fiche et historique dans le catalogue", () => {
     const panel = await ouvrirFiche(fetcher);
     expect(within(panel).getByRole("status")).toHaveTextContent("Lecture des versions dans le clone…");
     await userEvent.click(within(panel).getByRole("button", { name: "Fermer la fiche" }));
-    expect(signalOf(fetcher, "/api/catalog/revenu-net/versions")?.aborted).toBe(true);
+    expect(signalOf(fetcher, "/api/spaces/finance/catalog/revenu-net/versions")?.aborted).toBe(true);
     await settle(() => { pending.resolve(response(versions)); });
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     expect(screen.queryByText(/Versions ·/)).not.toBeInTheDocument();
@@ -446,11 +446,11 @@ describe("Fiche et historique dans le catalogue", () => {
   it("abandonne l'historique quand une autre fiche est ouverte et n'en affiche jamais la réponse tardive", async () => {
     const pending = deferred();
     const fetcher = routeur();
-    fetcher.mockImplementation((url) => url === "/api/catalog/revenu-net/versions" ? pending.promise : Promise.resolve(response(ROUTES[url] ?? inconnue)));
+    fetcher.mockImplementation((url) => url === "/api/spaces/finance/catalog/revenu-net/versions" ? pending.promise : Promise.resolve(response(ROUTES[url] ?? inconnue)));
     await ouvrirFiche(fetcher);
     await userEvent.click(screen.getByRole("button", { name: "Commande" }));
     const panel = await screen.findByRole("complementary", { name: "Commande" });
-    expect(signalOf(fetcher, "/api/catalog/revenu-net/versions")?.aborted).toBe(true);
+    expect(signalOf(fetcher, "/api/spaces/finance/catalog/revenu-net/versions")?.aborted).toBe(true);
     await within(panel).findByRole("heading", { name: "Versions · 0" });
     await settle(() => { pending.resolve(response(versions)); });
     expect(panel).not.toHaveTextContent("Revenu net v");
@@ -482,7 +482,7 @@ describe("Fiche et historique dans le catalogue", () => {
     expect(screen.queryByText(/écarts entre/)).not.toBeInTheDocument();
   });
   it("ne propose aucun écart dans la fiche d'un concept et dit son empreinte sans objet", async () => {
-    const fetcher = routeur({ "/api/catalog/commande/versions": versionsWith({ id: "commande" }) });
+    const fetcher = routeur({ "/api/spaces/finance/catalog/commande/versions": versionsWith({ id: "commande" }) });
     const panel = await ouvrirFiche(fetcher, "Commande");
     await within(panel).findByRole("heading", { name: "Versions · 3" });
     expect(within(panel).queryByRole("button", { name: /Écart avec/ })).not.toBeInTheDocument();
@@ -502,17 +502,17 @@ describe("Fiche et historique dans le catalogue", () => {
   it("n'affiche jamais l'historique d'une autre définition sous la fiche affichée", async () => {
     const pending = deferred();
     const historique = versionsWith({ id: "commande", versions: versions.body.versions.map((version) => ({ ...version, message: `Commande v${String(version.version)}` })) });
-    const table: Readonly<Record<string, Sample>> = { ...ROUTES, "/api/catalog/commande/versions": historique };
-    const fetcher = vi.fn<Fetch>().mockImplementation((url) => url === "/api/catalog/commande" ? pending.promise : Promise.resolve(response(table[url] ?? inconnue)));
-    const { rerender } = render(<DocumentPanel id="revenu-net" fetcher={fetcher} now={now} onClose={vi.fn()} />);
+    const table: Readonly<Record<string, Sample>> = { ...ROUTES, "/api/spaces/finance/catalog/commande/versions": historique };
+    const fetcher = vi.fn<Fetch>().mockImplementation((url) => url === "/api/spaces/finance/catalog/commande" ? pending.promise : Promise.resolve(response(table[url] ?? inconnue)));
+    const { rerender } = render(<DocumentPanel space="finance" id="revenu-net" fetcher={fetcher} now={now} onClose={vi.fn()} />);
     await screen.findByRole("heading", { name: "Versions · 3" });
-    rerender(<DocumentPanel id="commande" fetcher={fetcher} now={now} onClose={vi.fn()} />);
+    rerender(<DocumentPanel space="finance" id="commande" fetcher={fetcher} now={now} onClose={vi.fn()} />);
     await settle(() => undefined);
     // Pendant la lecture de la nouvelle fiche, rien de l'ancienne ni historique de la nouvelle.
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("commande");
     expect(screen.getByRole("status")).toHaveTextContent("Chargement de la fiche");
     expect(screen.queryByRole("heading", { name: /^Versions/ })).toBeNull();
-    expect(fetcher).not.toHaveBeenCalledWith("/api/catalog/commande/versions", expect.anything());
+    expect(fetcher).not.toHaveBeenCalledWith("/api/spaces/finance/catalog/commande/versions", expect.anything());
     // La fiche du concept arrivée, son historique s'affiche sans écart proposé.
     await settle(() => { pending.resolve(response(commande)); });
     await screen.findByText(/Commande v5/);

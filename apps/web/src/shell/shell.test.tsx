@@ -24,9 +24,24 @@ describe("Sidebar", () => {
     expect(nav).toHaveTextContent("Finance Groupe");
   });
 
-  it("dit quand aucun espace n'est rattaché", () => {
+  it("affiche la mention propre d'une entrée indisponible, « à venir » sinon", () => {
+    render(<Sidebar available={new Set()} onNavigate={vi.fn()} workspace={null} pending={{ catalogue: "dans un espace" }} />);
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
+    expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
+    for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements", "Espace & connexions"]) {
+      expect(within(nav).getByText(name)).toHaveTextContent(`${name}à venir`);
+    }
+  });
+
+  it("une entrée livrée ignore sa mention d'indisponibilité", () => {
+    render(<Sidebar available={new Set<SectionId>(["catalogue"])} onNavigate={vi.fn()} workspace={null} pending={{ catalogue: "dans un espace" }} />);
+    expect(screen.getByRole("button", { name: "Catalogue Atlas" })).toHaveTextContent(/^Catalogue Atlas$/);
+  });
+
+  it("dit quand aucun espace n'est choisi", () => {
     render(<Sidebar available={new Set()} onNavigate={vi.fn()} workspace={null} />);
-    expect(screen.getByText("Aucun espace rattaché")).toBeInTheDocument();
+    expect(screen.getByText("Aucun espace choisi")).toBeInTheDocument();
   });
 });
 
@@ -64,6 +79,7 @@ describe("AppShell", () => {
         available={new Set()}
         onNavigate={vi.fn()}
         breadcrumb={["Finance Groupe", "Prototype"]}
+        spaceSwitch={<p>sélecteur d'espace</p>}
         environment="DEV"
         onEnvironmentChange={onEnvironmentChange}
         identity={null}
@@ -74,13 +90,32 @@ describe("AppShell", () => {
     const crumbs = within(screen.getByRole("navigation", { name: "Fil d'Ariane" })).getAllByRole("listitem");
     expect(crumbs.map((crumb) => crumb.getAttribute("aria-current"))).toEqual([null, "page"]);
     expect(screen.getByRole("main")).toHaveTextContent("contenu");
+    // Le sélecteur d'espace est en tête de la navigation latérale, sous la marque (plan 08, 8.3).
+    const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+    expect(nav).toHaveTextContent("sélecteur d'espace");
+    expect(screen.getByRole("banner")).not.toHaveTextContent("sélecteur d'espace");
+    expect(screen.getByRole("main")).not.toHaveTextContent("sélecteur d'espace");
+    const marque = within(nav).getByRole("link", { name: "Skifer Board" });
+    const selecteur = within(nav).getByText("sélecteur d'espace");
+    const liste = within(nav).getAllByRole("list")[0] as HTMLElement;
+    expect(marque.compareDocumentPosition(selecteur) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(selecteur.compareDocumentPosition(liste) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "TEST" }));
     expect(onEnvironmentChange).toHaveBeenCalledWith("TEST");
   });
 
+  it("transmet la mention des entrées indisponibles à la navigation", () => {
+    render(
+      <AppShell workspace={null} available={new Set()} onNavigate={vi.fn()} breadcrumb={["Vos espaces"]} spaceSwitch={null} pending={{ catalogue: "dans un espace" }} environment="DEV" onEnvironmentChange={vi.fn()} identity={null}>
+        <p>contenu</p>
+      </AppShell>,
+    );
+    expect(screen.getByText("Catalogue Atlas")).toHaveTextContent("dans un espace");
+  });
+
   it("transmet la section active", () => {
     render(
-      <AppShell workspace={null} available={new Set<SectionId>(["dashboards"])} active="dashboards" onNavigate={vi.fn()} breadcrumb={["Dashboards"]} environment="PROD" onEnvironmentChange={vi.fn()} identity={null}>
+      <AppShell workspace={null} available={new Set<SectionId>(["dashboards"])} active="dashboards" onNavigate={vi.fn()} breadcrumb={["Dashboards"]} spaceSwitch={null} environment="PROD" onEnvironmentChange={vi.fn()} identity={null}>
         <p>contenu</p>
       </AppShell>,
     );
@@ -103,7 +138,7 @@ it.each([false, true])("TopBar propose la déconnexion seulement avec une action
 });
 it("la coque transmet l'identité et l'action de déconnexion", async () => {
   const onLogout = vi.fn();
-  render(<AppShell workspace={null} available={new Set()} onNavigate={vi.fn()} breadcrumb={["Accueil"]} environment="DEV" onEnvironmentChange={vi.fn()} identity={{ name: "Camille", entity: null }} onLogout={onLogout}><h1>Accueil</h1></AppShell>);
+  render(<AppShell workspace={null} available={new Set()} onNavigate={vi.fn()} breadcrumb={["Accueil"]} spaceSwitch={null} environment="DEV" onEnvironmentChange={vi.fn()} identity={{ name: "Camille", entity: null }} onLogout={onLogout}><h1>Accueil</h1></AppShell>);
   expect(screen.getByText("Données évaluées pour Camille", { exact: true })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
   expect(onLogout).toHaveBeenCalledOnce();

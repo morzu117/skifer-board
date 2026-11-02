@@ -30,7 +30,7 @@ function deferred() {
 }
 function serve(document = revenu) {
   // La fiche lit aussi son historique (plan 05, 5.3) : la route des versions sert son exemple versionné.
-  return vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/catalog" ? liste : url.endsWith("/versions") ? versions : document)));
+  return vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/spaces/finance/catalog" ? liste : url.endsWith("/versions") ? versions : document)));
 }
 async function open(label = "Revenu net") {
   const button = await screen.findByRole("button", { name: label });
@@ -43,7 +43,7 @@ async function open(label = "Revenu net") {
 describe("Liste du catalogue", () => {
   it("annonce le chargement puis une ligne par entrée, les mots et la provenance", async () => {
     const pending = deferred();
-    render(<CataloguePage fetcher={() => pending.promise} now={now} />);
+    render(<CataloguePage space="finance" fetcher={() => pending.promise} now={now} />);
     expect(screen.getByRole("status")).toHaveTextContent("Chargement du catalogue");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     await settle(() => { pending.resolve(response(liste)); });
@@ -61,7 +61,7 @@ describe("Liste du catalogue", () => {
     expect(screen.queryByText("Exécutable", { exact: true })).not.toBeInTheDocument();
   });
   it.each([0, 1])("affiche le compteur pour %i entrée et distingue le vide", async (count) => {
-    render(<CataloguePage fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json({ ...liste.body, entries: liste.body.entries.slice(0, count) }))} now={now} />);
+    render(<CataloguePage space="finance" fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json({ ...liste.body, entries: liste.body.entries.slice(0, count) }))} now={now} />);
     expect(await screen.findByText(count === 1 ? "1 définition" : "0 définitions")).toBeInTheDocument();
     if (count === 0) {
       expect(screen.getByText("Aucune définition ne correspond à ces critères.")).toBeInTheDocument();
@@ -74,13 +74,13 @@ describe("Liste du catalogue", () => {
     ["Statut Atlas", "validated", "status=validated"], ["Type", "kpi", "kind=kpi"],
   ])("requête et remise à zéro du filtre %s", async (label, value, search) => {
     const fetcher = vi.fn<Fetch>().mockImplementation(() => Promise.resolve(response(liste)));
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await screen.findByRole("table");
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
-    await waitFor(() => { expect(fetcher).toHaveBeenLastCalledWith(`/api/catalog?${search}`, expect.anything()); });
+    await waitFor(() => { expect(fetcher).toHaveBeenLastCalledWith(`/api/spaces/finance/catalog?${search}`, expect.anything()); });
     await screen.findByRole("table");
     fireEvent.change(screen.getByLabelText(label), { target: { value: "" } });
-    await waitFor(() => { expect(fetcher).toHaveBeenLastCalledWith("/api/catalog", expect.anything()); });
+    await waitFor(() => { expect(fetcher).toHaveBeenLastCalledWith("/api/spaces/finance/catalog", expect.anything()); });
     await screen.findByRole("table");
     const form = screen.getByLabelText("Rechercher").closest("form");
     expect(form).not.toBeNull();
@@ -89,7 +89,7 @@ describe("Liste du catalogue", () => {
   it("ne montre jamais la réponse dépassée même si le fetcher ignore l'abandon", async () => {
     const first = deferred(); const second = deferred();
     const fetcher = vi.fn<Fetch>().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     fireEvent.change(screen.getByLabelText("Rechercher"), { target: { value: "nouvelle" } });
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     await settle(() => { first.resolve(response(liste)); });
@@ -101,7 +101,7 @@ describe("Liste du catalogue", () => {
   it("une ancienne réponse ne doit pas effacer la liste plus récente déjà affichée", async () => {
     const first = deferred(); const second = deferred();
     const fetcher = vi.fn<Fetch>().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     fireEvent.change(screen.getByLabelText("Rechercher"), { target: { value: "nouvelle" } });
     await settle(() => { second.resolve(Response.json({ ...liste.body, entries: [] })); });
     expect(screen.getByText("0 définitions")).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("Liste du catalogue", () => {
   it.each(["Domaine", "Propriétaire"])("conserve les facettes en chargement et la valeur absente : %s", async (label) => {
     const pending = deferred();
     const fetcher = vi.fn<Fetch>().mockResolvedValueOnce(response(liste)).mockReturnValueOnce(pending.promise);
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await screen.findByRole("table");
     const select = screen.getByLabelText(label);
     const value = label === "Domaine" ? "finance" : "claire.m";
@@ -126,7 +126,7 @@ describe("Liste du catalogue", () => {
     // Les facettes du serveur peuvent changer entre deux lectures du clone.
     const pending = deferred();
     const fetcher = vi.fn<Fetch>().mockResolvedValueOnce(response(liste)).mockReturnValueOnce(pending.promise);
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await screen.findByRole("table");
     const select = screen.getByLabelText(label);
     const value = label === "Type" ? "kpi" : "validated";
@@ -136,20 +136,20 @@ describe("Liste du catalogue", () => {
   });
   it("relance après une erreur via Réessayer", async () => {
     const fetcher = vi.fn<Fetch>().mockRejectedValueOnce(new Error("hors ligne")).mockResolvedValueOnce(response(liste));
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await userEvent.click(await screen.findByRole("button", { name: "Réessayer" }));
     await screen.findByRole("table");
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
   it.each([[inconnue, "Le service du catalogue est introuvable"], [indisponible, "Atlas est indisponible"]] as const)("distingue une liste indisponible ou absente : %j", async (sample, message) => {
-    render(<CataloguePage fetcher={vi.fn<Fetch>().mockResolvedValue(response(sample))} now={now} />);
+    render(<CataloguePage space="finance" fetcher={vi.fn<Fetch>().mockResolvedValue(response(sample))} now={now} />);
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
   it.each([false, true])("sert l'index ancien avec âge, commit et détail, provenance incomplète : %s", async (fallback) => {
     const page = decodeCatalogPage(ancienne.body);
     if (fallback) { page.provenance.problem = null; page.provenance.detail = null; }
-    render(<CataloguePage fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json(page))} now={now} />);
+    render(<CataloguePage space="finance" fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json(page))} now={now} />);
     await screen.findByRole("table");
     expect(screen.getByText("Atlas indisponible").parentElement).toHaveTextContent("il y a 2 h (commit d7eba96)");
     expect(screen.getByText("Atlas indisponible").parentElement).toHaveTextContent(fallback ? "n'a pas pu être relu" : ancienne.body.provenance.detail);
@@ -158,7 +158,7 @@ describe("Liste du catalogue", () => {
   it("abandonne une lecture au démontage sans afficher d'erreur", async () => {
     let reject!: (reason: Error) => void;
     const fetcher = vi.fn<Fetch>().mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
-    const { unmount } = render(<CataloguePage fetcher={fetcher} />);
+    const { unmount } = render(<CataloguePage space="finance" fetcher={fetcher} />);
     unmount();
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     await settle(() => { reject(new Error("abandon")); });
@@ -167,7 +167,7 @@ describe("Liste du catalogue", () => {
 
 describe("Fiche depuis la liste", () => {
   it("ouvre le KPI, lie la ligne au panneau et affiche toutes ses informations", async () => {
-    render(<CataloguePage fetcher={serve()} now={now} />);
+    render(<CataloguePage space="finance" fetcher={serve()} now={now} />);
     const { button, panel } = await open();
     expect(button).toHaveAttribute("aria-expanded", "true");
     expect(button).toHaveAttribute("aria-controls", panel.id);
@@ -186,24 +186,24 @@ describe("Fiche depuis la liste", () => {
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
   it("ferme par le bouton et rend le focus", async () => {
-    render(<CataloguePage fetcher={serve()} now={now} />);
+    render(<CataloguePage space="finance" fetcher={serve()} now={now} />);
     const { button, panel } = await open();
     await userEvent.click(within(panel).getByRole("button", { name: "Fermer la fiche" }));
     expect(panel).not.toBeInTheDocument();
     expect(button).toHaveFocus();
   });
   it("affiche diagnostics, empreinte non calculée et référence non résolue", async () => {
-    render(<CataloguePage fetcher={vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/catalog" ? liste : invalide)))} now={now} />);
+    render(<CataloguePage space="finance" fetcher={vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/spaces/finance/catalog" ? liste : invalide)))} now={now} />);
     const { panel } = await open("Invalide");
     for (const text of ["Diagnostics Atlas · 1", "Erreur", "id_mismatch", invalide.body.document.issues[0]?.message ?? "diagnostic attendu",
       "/data_product/id", "Non calculée : définition non valide.", "revenu-absent", "Non résolue", "Aucune déclinaison", "Aucun document Atlas", "Impact : 0 documents"]) expect(panel).toHaveTextContent(text);
   });
   it("change de ligne et recharge le concept sans disponibilité ni déclinaisons", async () => {
-    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/catalog" ? liste : url.endsWith("commande") ? commande : revenu)));
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(response(url === "/api/spaces/finance/catalog" ? liste : url.endsWith("commande") ? commande : revenu)));
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await open();
     const { panel } = await open("Commande");
-    expect(fetcher).toHaveBeenCalledWith("/api/catalog/commande", expect.anything());
+    expect(fetcher).toHaveBeenCalledWith("/api/spaces/finance/catalog/commande", expect.anything());
     expect(within(panel).queryByText("Disponibilité")).not.toBeInTheDocument();
     expect(within(panel).queryByRole("heading", { name: /Déclinaisons|Correspondance/ })).not.toBeInTheDocument();
     expect(panel).toHaveTextContent("Aucune référence.");
@@ -212,7 +212,7 @@ describe("Fiche depuis la liste", () => {
   it.each([[inconnue, "n'est plus dans l'index Atlas"], [indisponible, "Atlas est indisponible"], [{ status: 500, body: {} }, "La fiche n'a pas pu être lue"]] as const)("affiche l'état de fiche HTTP %j", async (sample, message) => {
     const pending = deferred();
     const fetcher = vi.fn<Fetch>().mockResolvedValueOnce(response(liste)).mockReturnValueOnce(pending.promise);
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await userEvent.click(await screen.findByRole("button", { name: "Revenu net" }));
     expect(screen.getByText("Chargement de la fiche…")).toBeInTheDocument();
     await settle(() => { pending.resolve(response(sample)); });
@@ -221,7 +221,7 @@ describe("Fiche depuis la liste", () => {
   it("abandonne la fiche fermée en cours de chargement", async () => {
     let reject!: (reason: Error) => void;
     const fetcher = vi.fn<Fetch>().mockResolvedValueOnce(response(liste)).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     await userEvent.click(await screen.findByRole("button", { name: "Revenu net" }));
     await userEvent.click(screen.getByRole("button", { name: "Fermer la fiche" }));
     expect(fetcher.mock.calls[1]?.[1]?.signal?.aborted).toBe(true);
@@ -230,8 +230,8 @@ describe("Fiche depuis la liste", () => {
   it("ne montre jamais la fiche précédente arrivée après en avoir ouvert une autre", async () => {
     const late = deferred();
     const fetcher = vi.fn<Fetch>().mockReturnValueOnce(late.promise).mockResolvedValueOnce(response(commande));
-    const { rerender } = render(<DocumentPanel id="revenu_net" fetcher={fetcher} now={now} onClose={vi.fn()} />);
-    rerender(<DocumentPanel id="commande" fetcher={fetcher} now={now} onClose={vi.fn()} />);
+    const { rerender } = render(<DocumentPanel space="finance" id="revenu_net" fetcher={fetcher} now={now} onClose={vi.fn()} />);
+    rerender(<DocumentPanel space="finance" id="commande" fetcher={fetcher} now={now} onClose={vi.fn()} />);
     const label = commande.body.document.entry.label;
     await screen.findByRole("heading", { name: label, level: 2 });
     expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
@@ -249,8 +249,8 @@ describe("Fiche depuis la liste", () => {
     page.document.variants = [{ ...variante, mode: "mode futur" }];
     const catalog = decodeCatalogPage(liste.body);
     catalog.entries = [page.document.entry];
-    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(Response.json(url === "/api/catalog" ? catalog : page)));
-    render(<CataloguePage fetcher={fetcher} now={now} />);
+    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(Response.json(url === "/api/spaces/finance/catalog" ? catalog : page)));
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
     const { panel } = await open();
     expect(panel).toHaveTextContent("Impact : 1 document en dépend");
     expect(panel).toHaveTextContent("mode futur");

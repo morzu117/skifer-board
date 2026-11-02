@@ -2,10 +2,19 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { simulerIdentite } from "./aides";
+import { catalogueHorsEspace, enregistrerLectures, simulerEspaces, simulerIdentite } from "./aides";
 
+/** Le catalogue se lit dans un espace (plan 08, E9) : `finance`, servi par les exemples d'espaces. */
+const BASE = "/api/spaces/finance/catalog";
+let lectures: string[] = [];
 test.beforeEach(async ({ page }) => {
   await simulerIdentite(page);
+  await simulerEspaces(page);
+  lectures = enregistrerLectures(page);
+});
+test.afterEach(() => {
+  // Aucun parcours du catalogue n'appelle plus `/api/catalog` sans espace.
+  expect(catalogueHorsEspace(lectures)).toEqual([]);
 });
 
 interface Exemple {
@@ -29,11 +38,11 @@ function exempleVersions(id: string, route: string, url: URL, historique?: strin
 }
 async function simulerCatalogue(page: Page, state = "liste", historique?: string) {
   await page.clock.setFixedTime(new Date("2026-11-01T12:30:00Z"));
-  await page.route("**/api/catalog**", async (route) => {
+  await page.route(`**${BASE}**`, async (route) => {
     const url = new URL(route.request().url());
     // La fiche lit aussi `/{id}/versions` et `/{id}/diff` (plan 05) : l'identifiant s'arrête au premier « / ».
-    const [id = "", sous = ""] = url.pathname.slice("/api/catalog/".length).split("/").map(decodeURIComponent);
-    const document = url.pathname !== "/api/catalog";
+    const [id = "", sous = ""] = url.pathname.slice(`${BASE}/`.length).split("/").map(decodeURIComponent);
+    const document = url.pathname !== BASE;
     const sample = exemple(!document ? state
       : sous !== "" ? exempleVersions(id, sous, url, historique)
         : ["revenu-net", "invalide", "commande"].includes(id) ? `fiche-${id}` : "fiche-inconnue");
@@ -63,7 +72,7 @@ async function ouvrirFiche(page: Page) {
 async function ouvrirEcart(page: Page) {
   const fiche = page.getByRole("complementary", { name: "Revenu net" });
   const v4 = fiche.getByRole("button", { name: "Écart avec la v5", exact: true }).first();
-  const demande = page.waitForRequest((request) => request.url().endsWith("/api/catalog/revenu-net/diff?base=4&other=5"));
+  const demande = page.waitForRequest((request) => request.url().endsWith(`${BASE}/revenu-net/diff?base=4&other=5`));
   for (let pas = 0; pas < 10 && !(await v4.evaluate((element) => element === document.activeElement)); pas += 1) await page.keyboard.press("Tab");
   await expect(v4).toBeFocused();
   await page.keyboard.press("Enter");
@@ -75,23 +84,28 @@ async function ouvrirEcart(page: Page) {
 }
 async function ouvrirCatalogue(page: Page, state = "liste") {
   await simulerCatalogue(page, state);
-  await page.goto("/#/catalogue");
+  await page.goto("/#/espaces/finance/catalogue");
   await expect(page.getByRole("heading", { level: 1, name: "Catalogue Atlas" })).toBeVisible();
   if (state === "indisponible") await expect(page.getByRole("alert")).toBeVisible();
   else await expect(page.getByRole("table")).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
 }
 
-test("navigue depuis la coque vers le catalogue puis revient par la marque", async ({ page }) => {
+test("navigue depuis l'accueil vers le catalogue d'un espace puis revient par la marque", async ({ page }) => {
   await simulerCatalogue(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Catalogue Atlas", exact: true }).click();
-  await expect(page).toHaveURL(/#\/catalogue$/);
+  await page.getByRole("link", { name: "Finance", exact: true }).click();
+  await expect(page).toHaveURL(/#\/espaces\/finance\/catalogue$/);
   await expect(page.getByRole("table")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Fil d'Ariane" })).toContainText("Catalogue Atlas");
+  await expect(page.getByRole("navigation", { name: "Fil d'Ariane" }).getByRole("listitem")).toHaveText(["Finance", "Catalogue Atlas"]);
+  const navigation = page.getByRole("navigation", { name: "Navigation principale" });
+  await expect(navigation.getByRole("button", { disabled: false })).toHaveCount(1);
+  await expect(navigation.getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Skifer Board" }).click();
   await expect(page).toHaveURL(/#\/$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Prototype graphique" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Vos espaces" })).toBeVisible();
+  expect(lectures).toContain(BASE);
 });
 test("recherche puis filtre les définitions avec les URL attendues", async ({ page }) => {
   await ouvrirCatalogue(page);
@@ -192,7 +206,7 @@ test("dit le refus d'Atlas pour une version qui ne se résout pas", async ({ pag
 });
 test("annonce l'historique indisponible et garde la fiche", async ({ page }) => {
   await simulerCatalogue(page, "liste", "versions-indisponible");
-  await page.goto("/#/catalogue");
+  await page.goto("/#/espaces/finance/catalogue");
   await page.getByRole("button", { name: "Revenu net", exact: true }).click();
   const fiche = page.getByRole("complementary", { name: "Revenu net" });
   await expect(fiche).toContainText("Historique indisponible : le clone de l'espace est introuvable. Les versions ne sont lues que dans un clone relu.");
@@ -227,7 +241,7 @@ test("axe sur la page entière, contraste compris : écart ouvert", async ({ pag
 });
 test("axe sur la page entière, contraste compris : historique indisponible", async ({ page }) => {
   await simulerCatalogue(page, "liste", "versions-indisponible");
-  await page.goto("/#/catalogue");
+  await page.goto("/#/espaces/finance/catalogue");
   await page.getByRole("button", { name: "Revenu net", exact: true }).click();
   await expect(page.getByText(/Historique indisponible/)).toBeVisible();
   const result = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();

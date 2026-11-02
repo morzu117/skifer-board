@@ -3,7 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 import etabli from "../../../contracts/identite/me-etabli.json" with { type: "json" };
 import anonyme from "../../../contracts/identite/non-authentifie.json" with { type: "json" };
 import deconnexion from "../../../contracts/identite/deconnexion.json" with { type: "json" };
-import { attendreGraphiques, simulerIdentite } from "./aides";
+import { attendreGraphiques, simulerEspaces, simulerIdentite } from "./aides";
+
+test.beforeEach(async ({ page }) => {
+  await simulerEspaces(page);
+});
 
 // Les deux projets de playwright.config.ts exécutent tous ces parcours : ordinateur et téléphone.
 async function aucuneDonnee(page: Page) {
@@ -56,13 +60,13 @@ test("la déconnexion envoie POST et suit / avant de constater l'absence de sess
 });
 test("le 401 du catalogue retire les données et annonce la session expirée", async ({ page }) => {
   await simulerIdentite(page, etabli);
-  await page.route("**/api/catalog**", async (route) => {
+  await page.route("**/api/spaces/finance/catalog**", async (route) => {
     await route.fulfill({ status: anonyme.status, json: anonyme.body });
   });
   await page.goto("/");
   await expect(page.getByText(`Données évaluées pour ${etabli.body.identity.name}`, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Catalogue Atlas", exact: true }).click();
-  await expect(page).toHaveURL(/#\/catalogue$/);
+  await page.getByRole("link", { name: "Finance", exact: true }).click();
+  await expect(page).toHaveURL(/#\/espaces\/finance\/catalogue$/);
   await expect(page.getByRole("heading", { name: "Connexion requise" })).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Votre session a expiré. Reconnectez-vous pour continuer.");
   await expect(page.getByRole("link", { name: "Se connecter" })).toHaveAttribute("href", "/auth/login");
@@ -80,7 +84,7 @@ for (const etat of ["connexion avec raison", "coque établie"]) {
     if (etat === "connexion avec raison") await connexion(page, "provider_unavailable");
     else {
       await simulerIdentite(page, etabli);
-      await page.goto("/");
+      await page.goto("/#/prototype");
       await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
       await attendreGraphiques(page);
     }
