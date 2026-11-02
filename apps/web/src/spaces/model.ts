@@ -1,4 +1,5 @@
-import { boolean, instant, integer, json, list, nullable, object, oneOf, text } from "../catalogue/decode";
+import { boolean, ContractError, instant, integer, json, list, nullable, object, oneOf, text } from "../catalogue/decode";
+import { ENVIRONMENTS, type Environment } from "../shell/sections";
 
 /**
  * Espaces vus par la personne (plan 08). Le rôle vient du serveur, recalculé à chaque requête :
@@ -21,6 +22,12 @@ export interface PersonRef {
   subject: string;
 }
 
+/** Environnement d'un espace et droit de la personne d'y déployer, recalculé par le serveur (plan 09, V7). */
+export interface SpaceEnvironment {
+  code: Environment;
+  deploy: boolean;
+}
+
 export interface Space {
   id: string;
   name: string;
@@ -31,6 +38,8 @@ export interface Space {
   role: Role | null;
   /** Espace implicite du mode local : ses membres ne se gèrent pas (E11). */
   implicit: boolean;
+  /** Les trois environnements, dans l'ordre DEV | TEST | PROD (plan 09, V1). */
+  environments: readonly SpaceEnvironment[];
 }
 
 export interface SpaceList {
@@ -48,10 +57,15 @@ const decodeRaw = object({
   created_by: decodeRef,
   role: nullable(oneOf(ROLES)),
   implicit: boolean,
+  environments: list(object<SpaceEnvironment>({ code: oneOf(ENVIRONMENTS), deploy: boolean })),
 });
 
 export function decodeSpace(value: unknown, path: string): Space {
   const raw = decodeRaw(value, path);
+  // Environnements fixes et ordre invariable (V1, RULES §9) : un autre ensemble est hors contrat.
+  if (raw.environments.map((environment) => environment.code).join("|") !== ENVIRONMENTS.join("|")) {
+    throw new ContractError(`${path}.environments : ${ENVIRONMENTS.join(" | ")} attendus dans cet ordre`);
+  }
   return {
     id: raw.id,
     name: raw.name,
@@ -60,12 +74,18 @@ export function decodeSpace(value: unknown, path: string): Space {
     createdBy: raw.created_by,
     role: raw.role,
     implicit: raw.implicit,
+    environments: raw.environments,
   };
 }
 
 export function decodeSpaceList(value: unknown): SpaceList {
   const raw = object({ spaces: list(decodeSpace), platform_admin: boolean })(value, "réponse");
   return { spaces: raw.spaces, platformAdmin: raw.platform_admin };
+}
+
+/** Environnements où la personne peut déployer, toujours dans l'ordre DEV | TEST | PROD ; le serveur reste seul juge (V7). */
+export function deployCodes(space: Space): readonly Environment[] {
+  return ENVIRONMENTS.filter((code) => space.environments.some((environment) => environment.code === code && environment.deploy));
 }
 
 export function roleLabel(role: Role | null): string {

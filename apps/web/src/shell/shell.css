@@ -147,11 +147,22 @@
   font-family: var(--sb-font-mono);
   font-size: var(--sb-text-sm);
   cursor: pointer;
+  position: relative;
 }
 
 .sb-env__segment[aria-pressed="true"] {
   background: var(--sb-slate-900);
   color: var(--sb-surface);
+}
+
+/* Marque du droit de déployer (plan 09, 9.3), dite aussi en texte sous le rôle. Dans le coin du
+   segment, hors du flux : le libellé reste centré et la bascule garde sa largeur. */
+.sb-env__deploy {
+  position: absolute;
+  top: var(--sb-space-1);
+  right: var(--sb-space-1);
+  font-size: 0.6em;
+  line-height: 1;
 }
 
 .sb-identity {
@@ -226,6 +237,11 @@
   align-items: flex-start;
   gap: var(--sb-space-3);
   padding: 0 var(--sb-space-3);
+}
+
+.sb-space-switch__deploy {
+  color: var(--sb-on-slate-muted);
+  font-size: var(--sb-text-sm);
 }
 
 .sb-space-switch__label {

@@ -4,6 +4,7 @@ import espace from "../../../../contracts/espaces/espace.json";
 import liste from "../../../../contracts/espaces/liste.json";
 import administration from "../../../../contracts/espaces/liste-administration.json";
 import locale from "../../../../contracts/espaces/liste-locale.json";
+import creation from "../../../../contracts/espaces/creation.json";
 import { ContractError } from "../catalogue/decode";
 import journal from "../../../../contracts/espaces/journal.json";
 import liaison from "../../../../contracts/espaces/liaison.json";
@@ -16,6 +17,7 @@ import {
   decodePeople,
   decodeSpace,
   decodeSpaceList,
+  deployCodes,
   manages,
   NO_ROLE_LABEL,
   personLabel,
@@ -38,6 +40,12 @@ describe("Décodage d'un espace (plan 08, contrats d'espaces)", () => {
       createdBy: { issuer: "https://id.example.invalid", subject: "00u1a2b3c4" },
       role: "admin",
       implicit: false,
+      // L'exemple du serveur réel : administrateur sans aucun accord, donc sans droit de déployer (V4).
+      environments: [
+        { code: "DEV", deploy: false },
+        { code: "TEST", deploy: false },
+        { code: "PROD", deploy: false },
+      ],
     });
   });
   it.each([...ROLES, null])("accepte le rôle %s", (role) => {
@@ -45,9 +53,9 @@ describe("Décodage d'un espace (plan 08, contrats d'espaces)", () => {
   });
   it("ignore un champ inconnu sans le recopier", () => {
     const decode = decodeSpace({ ...brut(), members: ["x"], platform_admin: true }, "espace");
-    expect(Object.keys(decode).sort()).toEqual(["atlas", "createdAt", "createdBy", "id", "implicit", "name", "role"]);
+    expect(Object.keys(decode).sort()).toEqual(["atlas", "createdAt", "createdBy", "environments", "id", "implicit", "name", "role"]);
   });
-  it.each(["id", "name", "atlas", "created_at", "created_by", "role", "implicit"])("refuse l'absence du champ %s", (champ) => {
+  it.each(["id", "name", "atlas", "created_at", "created_by", "role", "implicit", "environments"])("refuse l'absence du champ %s", (champ) => {
     // Un rôle absent n'est jamais lu comme « aucun rôle » : l'absence n'est pas `null`.
     const valeur = Object.fromEntries(Object.entries(brut()).filter(([cle]) => cle !== champ));
     expect(() => decodeSpace(valeur, "espace")).toThrow(new ContractError(`espace.${champ} : champ attendu`));
@@ -310,5 +318,182 @@ describe("Qui gère les membres d'un espace (E6, E11)", () => {
       expect(manages(espaceDe("admin", true), plateforme)).toBe(false);
       expect(manages(espaceDe(null, true), plateforme)).toBe(false);
     }
+  });
+});
+
+describe("Environnements d'un espace (plan 09, 9.3, V1 et V7)", () => {
+  const env = (code: unknown, deploy: unknown = false) => ({ code, deploy });
+  const TROIS = () => [env("DEV"), env("TEST"), env("PROD")];
+  const avec = (environments: unknown) => ({ ...brut(), environments });
+  const droits = (space: Space) => space.environments.map(({ code, deploy }) => `${code}:${String(deploy)}`);
+  const ORDRE = "espace.environments : DEV | TEST | PROD attendus dans cet ordre";
+
+  it("décode les exemples du serveur réel, droit de déployer compris", () => {
+    // Créateur avec un accord en DEV ; lecteur sans accord (sans effet de toute façon, V3).
+    const [finance, rh] = decodeSpaceList(liste.body).spaces as [Space, Space];
+    expect(droits(finance)).toEqual(["DEV:true", "TEST:false", "PROD:false"]);
+    expect(droits(rh)).toEqual(["DEV:false", "TEST:false", "PROD:false"]);
+    // Mode local : la personne locale déploie dans les trois (V8).
+    expect(droits(decodeSpaceList(locale.body).spaces[0] as Space)).toEqual(["DEV:true", "TEST:true", "PROD:true"]);
+    // Administration de la plateforme seule, administrateur sans accord, espace créé : rien (V4).
+    expect(droits(decodeSpaceList(administration.body).spaces[0] as Space)).toEqual(["DEV:false", "TEST:false", "PROD:false"]);
+    expect(droits(decodeSpace(espace.body, "espace"))).toEqual(["DEV:false", "TEST:false", "PROD:false"]);
+    expect(droits(decodeSpace(creation.body, "espace"))).toEqual(["DEV:false", "TEST:false", "PROD:false"]);
+  });
+
+  it.each([
+    [[true, false, false]],
+    [[false, true, false]],
+    [[false, false, true]],
+    [[true, false, true]],
+    [[true, true, true]],
+    [[false, false, false]],
+  ])("garde chaque droit à sa place : %j", (attendus) => {
+    const decode = decodeSpace(avec(["DEV", "TEST", "PROD"].map((code, rang) => env(code, attendus[rang]))), "espace");
+    expect(decode.environments).toEqual([
+      { code: "DEV", deploy: attendus[0] },
+      { code: "TEST", deploy: attendus[1] },
+      { code: "PROD", deploy: attendus[2] },
+    ]);
+  });
+
+  it("refuse un espace sans environnements : l'absence n'est jamais lue comme « aucun droit »", () => {
+    const sans = brut();
+    Reflect.deleteProperty(sans, "environments");
+    expect(() => decodeSpace(sans, "espace")).toThrow(new ContractError("espace.environments : champ attendu"));
+  });
+
+  it.each([null, {}, "DEV|TEST|PROD", 3, { 0: env("DEV"), 1: env("TEST"), 2: env("PROD"), length: 3 }])("refuse des environnements qui ne sont pas une liste : %j", (valeur) => {
+    expect(() => decodeSpace(avec(valeur), "espace")).toThrow(new ContractError("espace.environments : liste attendu"));
+  });
+
+  it.each(["QA", "LOCAL", "dev", "Prod", " DEV", "", null, 1, ["DEV"]])("refuse un code d'environnement inconnu : %j", (code) => {
+    const environnements = TROIS();
+    environnements[1] = env(code);
+    expect(() => decodeSpace(avec(environnements), "espace")).toThrow(new ContractError("espace.environments[1].code : DEV | TEST | PROD attendu"));
+  });
+
+  it.each(["true", 1, 0, null, "false", [], {}])("refuse un droit de déployer qui n'est pas un booléen : %j", (deploy) => {
+    const environnements = TROIS();
+    environnements[2] = env("PROD", deploy);
+    expect(() => decodeSpace(avec(environnements), "espace")).toThrow(new ContractError("espace.environments[2].deploy : booléen attendu"));
+  });
+
+  it.each(["code", "deploy"])("refuse un environnement sans `%s`", (champ) => {
+    const environnements: Record<string, unknown>[] = TROIS();
+    Reflect.deleteProperty(environnements[0] as object, champ);
+    expect(() => decodeSpace(avec(environnements), "espace")).toThrow(new ContractError(`espace.environments[0].${champ} : champ attendu`));
+  });
+
+  it.each([null, "DEV", ["DEV", true], 1])("refuse un environnement qui n'est pas un objet : %j", (valeur) => {
+    expect(() => decodeSpace(avec([env("DEV"), valeur, env("PROD")]), "espace")).toThrow(new ContractError("espace.environments[1] : objet attendu"));
+  });
+
+  it.each([
+    ["ordre inversé", ["PROD", "TEST", "DEV"]],
+    ["TEST en tête", ["TEST", "DEV", "PROD"]],
+    ["PROD avant TEST", ["DEV", "PROD", "TEST"]],
+    ["doublon à la place de TEST", ["DEV", "DEV", "PROD"]],
+    ["doublon à la place de PROD", ["DEV", "TEST", "TEST"]],
+    ["deux environnements", ["DEV", "PROD"]],
+    ["deux environnements, les premiers", ["DEV", "TEST"]],
+    ["un seul", ["PROD"]],
+    ["aucun", []],
+    ["quatre, doublon final", ["DEV", "TEST", "PROD", "PROD"]],
+    ["quatre, doublon en tête", ["DEV", "DEV", "TEST", "PROD"]],
+  ])("refuse un autre ensemble ou un autre ordre (%s)", (_cas, codes) => {
+    // Le droit déclaré ne change rien : l'ensemble entier est hors contrat (fail-closed).
+    expect(() => decodeSpace(avec(codes.map((code) => env(code, true))), "espace")).toThrow(new ContractError(ORDRE));
+    expect(() => decodeSpace(avec(codes.map((code) => env(code, false))), "espace")).toThrow(ContractError);
+  });
+
+  it("le message d'ordre situe l'espace fautif dans une liste, et refuse toute la liste", () => {
+    const corps = structuredClone(liste.body) as { spaces: Record<string, unknown>[]; platform_admin: boolean };
+    (corps.spaces[1] as Record<string, unknown>).environments = [env("DEV"), env("PROD"), env("TEST")];
+    expect(() => decodeSpaceList(corps)).toThrow(new ContractError("réponse.spaces[1].environments : DEV | TEST | PROD attendus dans cet ordre"));
+    (corps.spaces[1] as Record<string, unknown>).environments = [env("DEV"), env("TEST"), env("PROD", "oui")];
+    expect(() => decodeSpaceList(corps)).toThrow(new ContractError("réponse.spaces[1].environments[2].deploy : booléen attendu"));
+  });
+
+  it("ignore un champ inconnu d'un environnement sans le recopier", () => {
+    const decode = decodeSpace(
+      avec([
+        { code: "DEV", deploy: true, rank: 0, label: "Développement", grants: [{ principal: "x" }] },
+        { code: "TEST", deploy: false, deploy_reason: "aucun accord" },
+        { code: "PROD", deploy: false, required: "deploy" },
+      ]),
+      "espace",
+    );
+    for (const environnement of decode.environments) {
+      expect(Object.keys(environnement).sort()).toEqual(["code", "deploy"]);
+    }
+    expect(decode.environments).toEqual([
+      { code: "DEV", deploy: true },
+      { code: "TEST", deploy: false },
+      { code: "PROD", deploy: false },
+    ]);
+  });
+
+  it("ne partage pas les objets reçus : modifier la réponse après coup ne change pas l'espace décodé", () => {
+    const environnements = TROIS();
+    const decode = decodeSpace(avec(environnements), "espace");
+    (environnements[0] as { deploy: unknown }).deploy = true;
+    expect(decode.environments[0]).toEqual({ code: "DEV", deploy: false });
+  });
+});
+
+describe("Environnements où la personne peut déployer (plan 09, 9.3)", () => {
+  const base = decodeSpace(espace.body, "espace");
+  const avecDroits = (environments: Space["environments"]): Space => ({ ...base, environments });
+  const de = (dev: boolean, test: boolean, prod: boolean): Space =>
+    avecDroits([
+      { code: "DEV", deploy: dev },
+      { code: "TEST", deploy: test },
+      { code: "PROD", deploy: prod },
+    ]);
+
+  it.each([
+    [false, false, false, []],
+    [true, false, false, ["DEV"]],
+    [false, true, false, ["TEST"]],
+    [false, false, true, ["PROD"]],
+    [true, true, false, ["DEV", "TEST"]],
+    [true, false, true, ["DEV", "PROD"]],
+    [false, true, true, ["TEST", "PROD"]],
+    [true, true, true, ["DEV", "TEST", "PROD"]],
+  ])("DEV %s, TEST %s, PROD %s : %j", (dev, test, prod, attendu) => {
+    expect(deployCodes(de(dev, test, prod))).toEqual(attendu);
+  });
+
+  it("dit les exemples du serveur réel", () => {
+    const [finance, rh] = decodeSpaceList(liste.body).spaces as [Space, Space];
+    expect(deployCodes(finance)).toEqual(["DEV"]);
+    expect(deployCodes(rh)).toEqual([]);
+    expect(deployCodes(decodeSpaceList(locale.body).spaces[0] as Space)).toEqual(["DEV", "TEST", "PROD"]);
+    expect(deployCodes(decodeSpaceList(administration.body).spaces[0] as Space)).toEqual([]);
+    expect(deployCodes(base)).toEqual([]);
+  });
+
+  it("suit toujours l'ordre DEV, TEST, PROD, même pour un espace construit dans le désordre", () => {
+    const desordre = avecDroits([
+      { code: "PROD", deploy: true },
+      { code: "DEV", deploy: true },
+      { code: "TEST", deploy: false },
+    ]);
+    expect(deployCodes(desordre)).toEqual(["DEV", "PROD"]);
+    expect(deployCodes(avecDroits([{ code: "PROD", deploy: true }, { code: "TEST", deploy: true }, { code: "DEV", deploy: true }]))).toEqual(["DEV", "TEST", "PROD"]);
+  });
+
+  it("ne répète pas un code ni n'invente un droit : un doublon ne compte qu'une fois, un environnement absent pas du tout", () => {
+    // Ces formes ne sortent jamais du décodeur ; la fonction reste sûre pour un espace construit à la main.
+    expect(deployCodes(avecDroits([{ code: "DEV", deploy: true }, { code: "DEV", deploy: true }]))).toEqual(["DEV"]);
+    expect(deployCodes(avecDroits([{ code: "TEST", deploy: false }, { code: "TEST", deploy: true }]))).toEqual(["TEST"]);
+    expect(deployCodes(avecDroits([]))).toEqual([]);
+  });
+
+  it("ne dépend ni du rôle ni de l'espace implicite : le serveur reste seul juge (V3, V7)", () => {
+    // Un lecteur avec un droit rendu par le serveur se voit dire ce droit tel quel : Board ne recalcule rien.
+    expect(deployCodes({ ...de(false, false, true), role: "reader" })).toEqual(["PROD"]);
+    expect(deployCodes({ ...de(false, false, false), role: "admin", implicit: true })).toEqual([]);
   });
 });

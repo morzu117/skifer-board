@@ -8,12 +8,14 @@ interface TopBarProps {
   breadcrumb: readonly string[];
   environment: Environment;
   onEnvironmentChange: (environment: Environment) => void;
+  /** Environnements où la personne peut déployer dans l'espace courant ; `null` hors d'un espace. */
+  deploy?: ReadonlySet<Environment> | null | undefined;
   identity: Identity | null;
   /** Présent quand une session est ouverte : bouton « Se déconnecter ». */
   onLogout?: (() => void) | undefined;
 }
 
-export function TopBar({ breadcrumb, environment, onEnvironmentChange, identity, onLogout }: TopBarProps) {
+export function TopBar({ breadcrumb, environment, onEnvironmentChange, deploy, identity, onLogout }: TopBarProps) {
   return (
     <header className="sb-topbar">
       <nav aria-label="Fil d'Ariane" className="sb-topbar__crumbs">
@@ -25,7 +27,7 @@ export function TopBar({ breadcrumb, environment, onEnvironmentChange, identity,
           ))}
         </ol>
       </nav>
-      <EnvironmentSwitch value={environment} onChange={onEnvironmentChange} />
+      <EnvironmentSwitch value={environment} onChange={onEnvironmentChange} deploy={deploy} />
       <IdentityPill identity={identity} />
       {onLogout === undefined ? null : (
         <button type="button" className="sb-button" onClick={onLogout}>

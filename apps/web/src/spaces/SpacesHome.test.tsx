@@ -100,6 +100,17 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     ["HTTP 500", () => vi.fn<Fetch>().mockResolvedValue(Response.json({}, { status: 500 })), "Réponse inattendue du serveur (HTTP 500)."],
     ["corps hors contrat", () => vi.fn<Fetch>().mockResolvedValue(Response.json({ spaces: [{ id: "x" }], platform_admin: true })), "hors contrat"],
     ["404", () => vi.fn<Fetch>().mockResolvedValue(Response.json({}, { status: 404 })), "réponse inattendue du serveur."],
+    // Plan 09, 9.3 : un seul espace aux environnements dans un autre ordre rend toute la liste hors contrat.
+    ["environnements dans un autre ordre", () => {
+      const corps = structuredClone(liste.body);
+      (corps.spaces[1] as { environments: unknown[] }).environments.reverse();
+      return vi.fn<Fetch>().mockResolvedValue(Response.json({ ...corps, platform_admin: true }));
+    }, "hors contrat"],
+    ["environnements absents", () => {
+      const corps = structuredClone(liste.body);
+      Reflect.deleteProperty(corps.spaces[0] as object, "environments");
+      return vi.fn<Fetch>().mockResolvedValue(Response.json(corps));
+    }, "hors contrat"],
   ])("annonce l'erreur (%s) sans liste ni bouton de création", async (_cas, fabrique, message) => {
     render(<Accueil fetcher={fabrique()} />);
     const alerte = await screen.findByRole("alert");
@@ -125,6 +136,8 @@ describe("Accueil des espaces : lien « Membres et rôles » (plan 08, 8.4)", ()
   const espace = (id: string, role: "reader" | "creator" | "admin" | null, implicit = false) => ({
     id, name: `Espace ${id}`, atlas: "skifer-atlas", created_at: "2026-11-02T09:00:00+00:00",
     created_by: { issuer: "https://id.example.invalid", subject: "s" }, role, implicit,
+    // Forme du serveur depuis le plan 09 : les trois environnements, sans droit de déployer.
+    environments: [{ code: "DEV", deploy: false }, { code: "TEST", deploy: false }, { code: "PROD", deploy: false }],
   });
   const lienMembres = (nom: string) => screen.queryByRole("link", { name: `Membres et rôles de ${nom}` });
 

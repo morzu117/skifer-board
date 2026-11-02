@@ -26,6 +26,9 @@ const ROUTES: Readonly<Record<string, Exemple>> = {
   // Membres et rôles, création d'un espace (plan 08, 8.4).
   "/api/spaces/finance/members": membres,
   "/api/spaces/finance/events": journal,
+  // Bascule marquée du droit de déployer et ligne « Déploiement » (plan 09, 9.3).
+  "/api/spaces/deployeur": { status: 200, body: { ...espace.body, id: "deployeur", name: "Déployeur", role: "creator", environments: [{ code: "DEV", deploy: true }, { code: "TEST", deploy: true }, { code: "PROD", deploy: false }] } },
+  "/api/spaces/deployeur/catalog": catalogue,
 };
 const fetcher = vi.fn<Fetch>().mockImplementation((url) => {
   const exemple = ROUTES[url];
@@ -41,6 +44,7 @@ describe.each(THEMES)("Accessibilité de la coque avec espaces · $label", (them
     ["administration sans rôle", "#/espaces/plateforme/catalogue", () => screen.findByText(/sans rôle dans cet espace/)],
     ["espace indisponible", "#/espaces/panne/catalogue", () => screen.findByRole("heading", { level: 1, name: "Espace indisponible" })],
     ["membres et rôles", "#/espaces/finance/membres", () => screen.findByRole("list", { name: "Journal de l'espace" })],
+    ["espace avec droit de déployer en DEV et TEST", "#/espaces/deployeur/catalogue", () => screen.findByText("DEV, TEST", { selector: ".sb-space-switch__deploy .sb-mono" })],
     ["nouvel espace sans administration", "#/nouvel-espace", () => screen.findByText(/Seuls les administrateurs de la plateforme/)],
   ])("aucune violation axe : %s", async (_page, hash, attendre) => {
     window.history.replaceState(null, "", `/${hash}`);

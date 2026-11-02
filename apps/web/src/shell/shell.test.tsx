@@ -143,3 +143,142 @@ it("la coque transmet l'identité et l'action de déconnexion", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
   expect(onLogout).toHaveBeenCalledOnce();
 });
+
+describe("EnvironmentSwitch : marque du droit de déployer (plan 09, 9.3)", () => {
+  type Env = "DEV" | "TEST" | "PROD";
+  const CODES = ["DEV", "TEST", "PROD"] as const;
+  const groupe = () => screen.getByRole("group", { name: "Environnement" });
+  const segments = () => within(groupe()).getAllByRole("button");
+  /** Contenu de la place réservée à la marque, par segment : « ● » ou vide. */
+  const marques = () => segments().map((segment) => segment.querySelector(".sb-env__deploy")?.textContent);
+  /** Le droit est la description du segment ; son nom reste son libellé (« DEV »). */
+  function verifier(droits: readonly Env[]) {
+    segments().forEach((segment, rang) => {
+      const code = CODES[rang] as Env;
+      expect(segment).toHaveAccessibleName(code);
+      if (droits.includes(code)) {
+        expect(segment).toHaveAccessibleDescription("Déploiement autorisé");
+      } else {
+        expect(segment).not.toHaveAttribute("aria-describedby");
+        expect(segment).toHaveAccessibleDescription("");
+      }
+    });
+    expect(marques()).toEqual(CODES.map((code) => (droits.includes(code) ? "●" : "")));
+  }
+
+  it.each([
+    ["sans la prop", undefined],
+    ["hors d'un espace (null)", null],
+    ["dans un espace sans aucun droit", new Set<Env>()],
+  ])("%s : aucune marque ni description, noms d'origine", (_cas, deploy) => {
+    render(<EnvironmentSwitch value="DEV" onChange={vi.fn()} deploy={deploy} />);
+    verifier([]);
+    expect(segments().map((segment) => segment.textContent)).toEqual(["DEV", "TEST", "PROD"]);
+    // La place de la marque est réservée partout (DESIGN-SYSTEM §1.5), vide et décorative.
+    for (const segment of segments()) {
+      expect(segment.querySelectorAll(".sb-env__deploy")).toHaveLength(1);
+      expect(segment.querySelector(".sb-env__deploy")).toHaveAttribute("aria-hidden", "true");
+    }
+  });
+
+  it.each([
+    [["DEV"]],
+    [["TEST"]],
+    [["PROD"]],
+    [["PROD", "DEV"]],
+    [["PROD", "TEST", "DEV"]],
+  ] as [Env[]][])("droit en %j : marque et description sur ces segments seulement, nom exact, ordre invariable", (droits) => {
+    render(<EnvironmentSwitch value="DEV" onChange={vi.fn()} deploy={new Set(droits)} />);
+    verifier(droits);
+    for (const segment of segments()) {
+      // Une seule place de marque, décorative ; aucun texte masqué en plus du libellé.
+      expect(segment.querySelectorAll(".sb-env__deploy")).toHaveLength(1);
+      expect(segment.querySelector(".sb-env__deploy")).toHaveAttribute("aria-hidden", "true");
+      expect(segment).not.toHaveTextContent(/déploiement/i);
+    }
+  });
+
+  it("la description est un seul élément masqué du groupe, partagé par les segments autorisés", () => {
+    render(<EnvironmentSwitch value="DEV" onChange={vi.fn()} deploy={new Set<Env>(["DEV", "PROD"])} />);
+    const [dev, test, prod] = segments() as [HTMLElement, HTMLElement, HTMLElement];
+    const id = dev.getAttribute("aria-describedby");
+    expect(id).not.toBeNull();
+    expect(prod).toHaveAttribute("aria-describedby", id);
+    expect(test).not.toHaveAttribute("aria-describedby");
+    const description = document.getElementById(id ?? "");
+    expect(description).toHaveTextContent(/^Déploiement autorisé$/);
+    expect(description).not.toBeVisible();
+    expect(groupe().contains(description)).toBe(true);
+    expect(groupe().querySelectorAll("[hidden]")).toHaveLength(1);
+    // Rien de lisible à l'écran en dehors des libellés et de la marque : le seul texte est masqué.
+    expect(screen.getByText("Déploiement autorisé")).toBe(description);
+  });
+
+  it("deux bascules ont chacune leur description", () => {
+    render(<><EnvironmentSwitch value="DEV" onChange={vi.fn()} deploy={new Set<Env>(["DEV"])} /><EnvironmentSwitch value="DEV" onChange={vi.fn()} deploy={new Set<Env>(["DEV"])} /></>);
+    const [premier, second] = screen.getAllByRole("button", { name: "DEV" });
+    expect(premier?.getAttribute("aria-describedby")).not.toBe(second?.getAttribute("aria-describedby"));
+    expect(second).toHaveAccessibleDescription("Déploiement autorisé");
+  });
+
+  it.each(["DEV", "TEST", "PROD"] as Env[])("la marque ne change pas l'environnement choisi (%s) : aria-pressed suit seulement value", (value) => {
+    const onChange = vi.fn();
+    const { rerender } = render(<EnvironmentSwitch value={value} onChange={onChange} />);
+    const avant = segments().map((segment) => segment.getAttribute("aria-pressed"));
+    for (const droits of [new Set<Env>(["DEV"]), new Set<Env>(["PROD"]), new Set<Env>(["DEV", "TEST", "PROD"]), new Set<Env>(), null]) {
+      rerender(<EnvironmentSwitch value={value} onChange={onChange} deploy={droits} />);
+      expect(segments().map((segment) => segment.getAttribute("aria-pressed"))).toEqual(avant);
+    }
+    expect(avant).toEqual(CODES.map((code) => String(code === value)));
+    // Changer les droits n'émet aucun changement d'environnement.
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("un segment marqué ou non se choisit pareil, à la souris, sur la marque elle-même, et au clavier", async () => {
+    const onChange = vi.fn();
+    render(<EnvironmentSwitch value="TEST" onChange={onChange} deploy={new Set<Env>(["DEV"])} />);
+    await userEvent.click(screen.getByRole("button", { name: "DEV" }));
+    expect(onChange).toHaveBeenLastCalledWith("DEV");
+    await userEvent.click(screen.getByRole("button", { name: "PROD" }));
+    expect(onChange).toHaveBeenLastCalledWith("PROD");
+    await userEvent.click(screen.getByRole("button", { name: "DEV" }).querySelector(".sb-env__deploy") as HTMLElement);
+    expect(onChange).toHaveBeenLastCalledWith("DEV");
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "DEV" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenLastCalledWith("DEV");
+    expect(onChange).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("Transmission du droit de déployer par la coque (plan 09, 9.3)", () => {
+  const marques = () => within(screen.getByRole("group", { name: "Environnement" })).getAllByRole("button").map((segment) => segment.querySelector(".sb-env__deploy")?.textContent);
+
+  it("TopBar transmet `deploy` à la bascule, et ne marque rien sans", () => {
+    const { rerender } = render(<TopBar breadcrumb={["Finance"]} environment="TEST" onEnvironmentChange={vi.fn()} deploy={new Set(["TEST"] as const)} identity={null} />);
+    expect(screen.getByRole("button", { name: "TEST" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "TEST" })).toHaveAccessibleDescription("Déploiement autorisé");
+    expect(marques()).toEqual(["", "●", ""]);
+    rerender(<TopBar breadcrumb={["Finance"]} environment="TEST" onEnvironmentChange={vi.fn()} identity={null} />);
+    expect(screen.getByRole("button", { name: "TEST" })).toHaveAccessibleDescription("");
+    expect(marques()).toEqual(["", "", ""]);
+  });
+
+  it("AppShell transmet `deploy` à la barre supérieure ; null ne marque rien", async () => {
+    const onEnvironmentChange = vi.fn();
+    const coque = (deploy: ReadonlySet<"DEV" | "TEST" | "PROD"> | null) => (
+      <AppShell workspace="Finance" available={new Set()} onNavigate={vi.fn()} breadcrumb={["Finance"]} spaceSwitch={null} environment="DEV" onEnvironmentChange={onEnvironmentChange} deploy={deploy} identity={null}>
+        <p>contenu</p>
+      </AppShell>
+    );
+    const { rerender } = render(coque(new Set(["DEV", "PROD"] as const)));
+    const bascule = within(screen.getByRole("banner")).getByRole("group", { name: "Environnement" });
+    expect(within(bascule).getAllByRole("button").map((segment) => segment.textContent)).toEqual(["DEV●", "TEST", "PROD●"]);
+    await userEvent.click(within(bascule).getByRole("button", { name: "PROD" }));
+    expect(onEnvironmentChange).toHaveBeenCalledExactlyOnceWith("PROD");
+    rerender(coque(null));
+    expect(within(bascule).getAllByRole("button").map((segment) => segment.textContent)).toEqual(["DEV", "TEST", "PROD"]);
+    expect(marques()).toEqual(["", "", ""]);
+  });
+});

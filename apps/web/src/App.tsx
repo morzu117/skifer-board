@@ -196,6 +196,8 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
       }
       environment={environment}
       onEnvironmentChange={setEnvironment}
+      // L'environnement choisi reste un état de la coque (plan 09, 9.3) ; le droit vient du serveur.
+      deploy={space === null ? null : new Set(space.environments.filter((found) => found.deploy).map((found) => found.code))}
       identity={identity}
       onLogout={onLogout}
     >

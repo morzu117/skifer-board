@@ -18,18 +18,20 @@ interface AppShellProps {
   pending?: Partial<Record<SectionId, string>> | undefined;
   environment: Environment;
   onEnvironmentChange: (environment: Environment) => void;
+  /** Environnements où la personne peut déployer dans l'espace courant ; `null` hors d'un espace. */
+  deploy?: ReadonlySet<Environment> | null | undefined;
   identity: Identity | null;
   onLogout?: (() => void) | undefined;
   children: ReactNode;
 }
 
 /** Coque des pages de gestion : navigation latérale, barre supérieure, contenu (RULES §4). */
-export function AppShell({ workspace, available, active, onNavigate, breadcrumb, spaceSwitch, pending, environment, onEnvironmentChange, identity, onLogout, children }: AppShellProps) {
+export function AppShell({ workspace, available, active, onNavigate, breadcrumb, spaceSwitch, pending, environment, onEnvironmentChange, deploy, identity, onLogout, children }: AppShellProps) {
   return (
     <div className="sb-shell">
       <Sidebar available={available} onNavigate={onNavigate} workspace={workspace} active={active} spaceSwitch={spaceSwitch} pending={pending} />
       <div className="sb-shell__main">
-        <TopBar breadcrumb={breadcrumb} environment={environment} onEnvironmentChange={onEnvironmentChange} identity={identity} onLogout={onLogout} />
+        <TopBar breadcrumb={breadcrumb} environment={environment} onEnvironmentChange={onEnvironmentChange} deploy={deploy} identity={identity} onLogout={onLogout} />
         <main className="sb-shell__content">{children}</main>
       </div>
     </div>

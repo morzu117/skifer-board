@@ -76,6 +76,14 @@ Modifiés : `apps/web/src/App.tsx`, `shell/*`, `spaces/*`.
 
 Tests : composants, axe, parcours Playwright, captures.
 
+Écarts de réalisation :
+
+- Les environnements étant fixes (V1), le décodeur exige exactement `DEV`, `TEST`, `PROD` dans cet ordre ; tout autre ensemble rend l'espace hors contrat, affiché comme une erreur, sans marque ni ligne.
+- La marque est un « ● » ; le segment garde le nom de son libellé (« DEV ») et le droit en est la description (`aria-describedby`, « Déploiement autorisé »). Un texte masqué ajouté au nom donnait « DEV , déploiement autorisé » dans Chrome (défaut trouvé par l'agent de test), et un nom exact garde la commande vocale « DEV ».
+- La marque est placée dans le coin du segment, hors du flux : le libellé reste centré et la bascule garde la même largeur et la même position partout, dans un espace ou non (DESIGN-SYSTEM §1.5).
+- Dans la ligne « Déploiement : … », les codes sont en mono (RULES §5) et toujours dans l'ordre `DEV, TEST, PROD`.
+- Le « ● » reste blanc sur le segment actif ; la ligne « Déploiement » en tient lieu de légende textuelle.
+
 ### 9.4 — Écran « Environnements »
 
 Créés : `apps/web/src/spaces/` (écran d'administration).
