@@ -489,6 +489,8 @@ Un lot terminé possède un livrable démontrable, ses contrôles pertinents, un
 
 ## 13. Attendus externes
 
+Mise à jour du 2 novembre 2026 (lot 00b) : chaque attendu est détaillé, avec l’état relu dans le code et ce qui change sous A′ et sous B, dans [attendus skifer](attendus/skifer.md) et [attendus Atlas](attendus/atlas.md). Ces documents ajoutent AT-05 à AT-07 et signalent cinq défauts de skifer qui touchent le fail-closed. Le tableau ci-dessous reste le résumé ; l’état « rien n’existe » ne vaut plus pour AT-01, couvert en bibliothèque.
+
 Rien de ce qui suit n’existe au 31 octobre 2026. Chaque ligne doit devenir un plan dans le dépôt cible, avec un propriétaire, avant que le lot Board qui en dépend soit déclaré livré. Les SK-01 à SK-09 reprennent `docs/roadmap/00_attendus_skifer.md` de `main` (commit `63697c9`), qui en détaille la surface ; SK-10, SK-11 et les attendus Atlas sont ajoutés par cette révision. Ne rien démarrer dans `../skifer` ni `../skifer-atlas` sans accord explicite : les deux dépôts ont un chantier en cours.
 
 ### Côté skifer
