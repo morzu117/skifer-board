@@ -11,9 +11,11 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     MetaData,
     PrimaryKeyConstraint,
+    SmallInteger,
     String,
     Table,
     Text,
@@ -89,6 +91,48 @@ space_bindings = Table(
     UniqueConstraint("space_id", "principal_key", name="uq_space_bindings_principal"),
     Index("ix_space_bindings_group", "group_name"),
     Index("ix_space_bindings_person", "person_issuer", "person_subject"),
+)
+
+# Environnements d'un espace, dans leur ordre de promotion (plan 09, V1).
+space_environments = Table(
+    "space_environments",
+    metadata,
+    Column(
+        "space_id",
+        String(40),
+        ForeignKey("spaces.id", name="fk_space_environments_space"),
+        nullable=False,
+    ),
+    Column("code", String(10), nullable=False),
+    Column("position", SmallInteger, nullable=False),
+    PrimaryKeyConstraint("space_id", "code", name="pk_space_environments"),
+    UniqueConstraint("space_id", "position", name="uq_space_environments_position"),
+)
+
+# Accord du droit de déployer : un groupe ou une personne, dans un environnement d'un espace
+# (plan 09, V3). `principal_key` rend l'accord unique par environnement.
+deploy_grants = Table(
+    "deploy_grants",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("space_id", String(40), nullable=False),
+    Column("environment", String(10), nullable=False),
+    Column("kind", String(10), nullable=False),
+    Column("group_name", Text, nullable=True),
+    Column("person_issuer", Text, nullable=True),
+    Column("person_subject", Text, nullable=True),
+    Column("principal_key", Text, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_by_issuer", Text, nullable=False),
+    Column("created_by_subject", Text, nullable=False),
+    ForeignKeyConstraint(
+        ["space_id", "environment"],
+        ["space_environments.space_id", "space_environments.code"],
+        name="fk_deploy_grants_environment",
+    ),
+    UniqueConstraint("space_id", "environment", "principal_key", name="uq_deploy_grants_principal"),
+    Index("ix_deploy_grants_group", "group_name"),
+    Index("ix_deploy_grants_person", "person_issuer", "person_subject"),
 )
 
 # Personnes connues, enregistrées à la connexion ; leurs groupes ne sont pas gardés (E5).

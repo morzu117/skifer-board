@@ -1,4 +1,5 @@
-"""Espaces, liaisons, personnes et journal dans la base d'état (plan 08, 8.1).
+"""Espaces, liaisons, personnes et journal dans la base d'état (plan 08, 8.1), environnements
+et accords du droit de déployer (plan 09, 9.1).
 
 Chaque écriture est une transaction qui verrouille d'abord la ligne de l'espace : deux
 écritures concurrentes sur un même espace se suivent, et la règle du dernier administrateur
@@ -19,6 +20,7 @@ from sqlalchemy import (
     Connection,
     Engine,
     Row,
+    Table,
     and_,
     delete,
     func,
@@ -31,10 +33,21 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
 from ..identity.model import Identity
-from ..state.schema import people, space_bindings, space_events, spaces
+from ..state.schema import (
+    deploy_grants,
+    people,
+    space_bindings,
+    space_environments,
+    space_events,
+    spaces,
+)
 from .model import (
+    ENVIRONMENTS,
     Binding,
     BindingNotFound,
+    DeployGrant,
+    Environment,
+    GrantNotFound,
     GroupPrincipal,
     LastAdmin,
     Person,
@@ -89,32 +102,44 @@ def _space(row: Row[Any]) -> Space:
     )
 
 
+def _principal(row: Row[Any]) -> Principal:
+    if row.kind == "group":
+        return GroupPrincipal(row.group_name)
+    return PersonRef(row.person_issuer, row.person_subject)
+
+
 def _binding(row: Row[Any]) -> Binding:
-    principal: Principal = (
-        GroupPrincipal(row.group_name)
-        if row.kind == "group"
-        else PersonRef(row.person_issuer, row.person_subject)
-    )
     return Binding(
         row.id,
         row.space_id,
-        principal,
+        _principal(row),
         Role(row.role),
         _utc(row.created_at),
         PersonRef(row.created_by_issuer, row.created_by_subject),
     )
 
 
-def _matching(identity: Identity) -> ColumnElement[bool]:
-    """Liaisons qui correspondent à la session : ses groupes, ou elle-même."""
+def _grant(row: Row[Any]) -> DeployGrant:
+    return DeployGrant(
+        row.id,
+        row.space_id,
+        Environment(row.environment),
+        _principal(row),
+        _utc(row.created_at),
+        PersonRef(row.created_by_issuer, row.created_by_subject),
+    )
+
+
+def _matching(identity: Identity, table: Table = space_bindings) -> ColumnElement[bool]:
+    """Liaisons, ou accords, qui correspondent à la session : ses groupes, ou elle-même."""
     person = and_(
-        space_bindings.c.kind == "person",
-        space_bindings.c.person_issuer == identity.issuer,
-        space_bindings.c.person_subject == identity.subject,
+        table.c.kind == "person",
+        table.c.person_issuer == identity.issuer,
+        table.c.person_subject == identity.subject,
     )
     if not identity.groups:
         return person
-    group = and_(space_bindings.c.kind == "group", space_bindings.c.group_name.in_(identity.groups))
+    group = and_(table.c.kind == "group", table.c.group_name.in_(identity.groups))
     return or_(person, group)
 
 
@@ -190,6 +215,13 @@ class SpaceStore:
                         created_by_issuer=actor.issuer,
                         created_by_subject=actor.subject,
                     )
+                )
+                connection.execute(
+                    insert(space_environments),
+                    [
+                        {"space_id": space_id, "code": env.value, "position": env.rank}
+                        for env in ENVIRONMENTS
+                    ],
                 )
                 self._log(connection, space_id, actor, now, "space_created", {"name": name})
                 self._insert_binding(connection, space_id, first_admin, Role.ADMIN, actor, now)
@@ -313,6 +345,115 @@ class SpaceStore:
                 now,
                 "binding_removed",
                 {"principal": _principal_json(current.principal), "before": current.role.value},
+            )
+
+    # --- Environnements et accords du droit de déployer (plan 09).
+
+    def environments(self, space_ids: list[str]) -> dict[str, tuple[Environment, ...]]:
+        """Environnements de chaque espace, dans leur ordre de promotion (V1)."""
+        if not space_ids:
+            return {}
+        found: dict[str, list[Environment]] = {space_id: [] for space_id in space_ids}
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(space_environments)
+                .where(space_environments.c.space_id.in_(space_ids))
+                .order_by(space_environments.c.space_id, space_environments.c.position)
+            ).all()
+        for row in rows:
+            found[row.space_id].append(Environment(row.code))
+        return {space_id: tuple(envs) for space_id, envs in found.items()}
+
+    def grants(self, space_id: str) -> list[DeployGrant]:
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(deploy_grants)
+                .where(deploy_grants.c.space_id == space_id)
+                .order_by(deploy_grants.c.created_at, deploy_grants.c.id)
+            ).all()
+        return [_grant(row) for row in rows]
+
+    def grants_of(self, identity: Identity, space_ids: list[str]) -> dict[str, list[DeployGrant]]:
+        """Accords qui correspondent à la session, par espace ; recalculés à chaque appel."""
+        found: dict[str, list[DeployGrant]] = {space_id: [] for space_id in space_ids}
+        if not space_ids:
+            return found
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(deploy_grants).where(
+                    deploy_grants.c.space_id.in_(space_ids), _matching(identity, deploy_grants)
+                )
+            ).all()
+        for row in rows:
+            found[row.space_id].append(_grant(row))
+        return found
+
+    def grant(
+        self,
+        space_id: str,
+        environment: Environment,
+        principal: Principal,
+        actor: PersonRef,
+        now: datetime,
+    ) -> DeployGrant:
+        """Accorde le droit de déployer. Un accord déjà posé n'est ni refait ni journalisé (V5)."""
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            self._check_person(connection, principal)
+            row = connection.execute(
+                select(deploy_grants).where(
+                    deploy_grants.c.space_id == space_id,
+                    deploy_grants.c.environment == environment.value,
+                    deploy_grants.c.principal_key == _principal_key(principal),
+                )
+            ).one_or_none()
+            if row is not None:
+                return _grant(row)
+            grant_id = str(uuid.uuid4())
+            connection.execute(
+                insert(deploy_grants).values(
+                    id=grant_id,
+                    space_id=space_id,
+                    environment=environment.value,
+                    principal_key=_principal_key(principal),
+                    created_at=now,
+                    created_by_issuer=actor.issuer,
+                    created_by_subject=actor.subject,
+                    **_principal_columns(principal),
+                )
+            )
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "deploy_granted",
+                {"environment": environment.value, "principal": _principal_json(principal)},
+            )
+        return DeployGrant(grant_id, space_id, environment, principal, now, actor)
+
+    def revoke(self, space_id: str, grant_id: str, actor: PersonRef, now: datetime) -> None:
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            row = connection.execute(
+                select(deploy_grants).where(
+                    deploy_grants.c.space_id == space_id, deploy_grants.c.id == grant_id
+                )
+            ).one_or_none()
+            if row is None:
+                raise GrantNotFound(grant_id)
+            current = _grant(row)
+            connection.execute(delete(deploy_grants).where(deploy_grants.c.id == grant_id))
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "deploy_revoked",
+                {
+                    "environment": current.environment.value,
+                    "principal": _principal_json(current.principal),
+                },
             )
 
     # --- Journal (E10).

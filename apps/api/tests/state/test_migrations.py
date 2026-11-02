@@ -80,6 +80,25 @@ COLONNES = {
         "action": False,
         "detail": False,
     },
+    # Environnements des espaces et accords du droit de déployer (plan 09, 9.1, révision 0004).
+    "space_environments": {
+        "space_id": False,
+        "code": False,
+        "position": False,
+    },
+    "deploy_grants": {
+        "id": False,
+        "space_id": False,
+        "environment": False,
+        "kind": False,
+        "group_name": True,
+        "person_issuer": True,
+        "person_subject": True,
+        "principal_key": False,
+        "created_at": False,
+        "created_by_issuer": False,
+        "created_by_subject": False,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
@@ -88,6 +107,8 @@ INSTANTS = {
     "space_bindings": {"created_at"},
     "people": {"last_login"},
     "space_events": {"at"},
+    "space_environments": set(),
+    "deploy_grants": {"created_at"},
 }
 CLES = {
     "sessions": ["fingerprint"],
@@ -96,6 +117,8 @@ CLES = {
     "space_bindings": ["id"],
     "people": ["issuer", "subject"],
     "space_events": ["id"],
+    "space_environments": ["space_id", "code"],
+    "deploy_grants": ["id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 

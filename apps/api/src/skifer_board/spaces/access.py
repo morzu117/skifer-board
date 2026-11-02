@@ -1,8 +1,9 @@
-"""Accès aux espaces depuis une requête (plan 08, E6, E7 et E11).
+"""Accès aux espaces depuis une requête (plan 08, E6, E7 et E11 ; plan 09, V7 et V8).
 
-Avec OIDC, les espaces sont en base et le rôle est recalculé à chaque appel à partir de la
-session. En mode local, sans personne ni base obligatoire, un seul espace implicite, `local`,
-existe : la personne locale y est administrateur, et ses membres ne se gèrent pas.
+Avec OIDC, les espaces sont en base ; le rôle et le droit de déployer sont recalculés à chaque
+appel à partir de la session. En mode local, sans personne ni base obligatoire, un seul espace
+implicite, `local`, existe : la personne locale y est administrateur et peut déployer dans ses
+trois environnements, et ni ses membres ni ses accords ne se gèrent.
 """
 
 from __future__ import annotations
@@ -13,7 +14,10 @@ from datetime import datetime
 
 from ..identity.model import Identity
 from .model import (
+    ENVIRONMENTS,
     Binding,
+    DeployGrant,
+    Environment,
     LocalMode,
     Person,
     PersonRef,
@@ -21,6 +25,7 @@ from .model import (
     Role,
     Space,
     SpaceEvent,
+    deployable,
     is_platform_admin,
 )
 from .store import SpaceStore
@@ -38,6 +43,10 @@ class Access:
     role: Role | None
     platform_admin: bool
     implicit: bool = False
+    #: Environnements de l'espace, dans l'ordre de promotion (plan 09, V1).
+    environments: tuple[Environment, ...] = ENVIRONMENTS
+    #: Environnements où la session peut déployer (V3, V4).
+    deploy: frozenset[Environment] = frozenset()
 
     @property
     def manages(self) -> bool:
@@ -74,10 +83,10 @@ class Spaces:
         if viewer is None:
             return []
         member = self.store.spaces_of(viewer)
-        if not self.platform_admin(viewer):
-            return [Access(space, role, False) for space, role in member]
+        admin = self.platform_admin(viewer)
         roles = {space.id: role for space, role in member}
-        return [Access(space, roles.get(space.id), True) for space in self.store.list_spaces()]
+        shown = self.store.list_spaces() if admin else [space for space, _ in member]
+        return self._with_environments(viewer, [(s, roles.get(s.id)) for s in shown], admin)
 
     def access(self, viewer: Identity | None, space_id: str) -> Access | None:
         """L'espace et le rôle de la session, ou `None` : espace inconnu ou non-membre, sans
@@ -93,7 +102,28 @@ class Spaces:
         admin = self.platform_admin(viewer)
         if role is None and not admin:
             return None
-        return Access(space, role, admin)
+        [found] = self._with_environments(viewer, [(space, role)], admin)
+        return found
+
+    def _with_environments(
+        self, viewer: Identity, shown: list[tuple[Space, Role | None]], admin: bool
+    ) -> list[Access]:
+        """Accès complétés des environnements et du droit de déployer : deux lectures pour
+        tous les espaces, pas une par espace."""
+        assert self.store is not None, "espaces en base"
+        ids = [space.id for space, _ in shown]
+        environments = self.store.environments(ids)
+        grants = self.store.grants_of(viewer, ids)
+        return [
+            Access(
+                space,
+                role,
+                admin,
+                environments=environments[space.id],
+                deploy=deployable(viewer, role, grants[space.id]),
+            )
+            for space, role in shown
+        ]
 
     def administers_any(self, viewer: Identity | None) -> bool:
         """Administrateur d'au moins un espace, ou de la plateforme : peut chercher des
@@ -128,6 +158,23 @@ class Spaces:
         store, actor = self._writer(viewer)
         store.remove_binding(space_id, binding_id, actor, self.clock())
 
+    def grants(self, space_id: str) -> list[DeployGrant]:
+        return self._reader().grants(space_id)
+
+    def grant(
+        self,
+        viewer: Identity | None,
+        space_id: str,
+        environment: Environment,
+        principal: Principal,
+    ) -> DeployGrant:
+        store, actor = self._writer(viewer)
+        return store.grant(space_id, environment, principal, actor, self.clock())
+
+    def revoke(self, viewer: Identity | None, space_id: str, grant_id: str) -> None:
+        store, actor = self._writer(viewer)
+        store.revoke(space_id, grant_id, actor, self.clock())
+
     def events(self, space_id: str) -> list[SpaceEvent]:
         return self._reader().events(space_id)
 
@@ -147,4 +194,4 @@ class Spaces:
 
     def _local(self) -> Access:
         space = Space(LOCAL_SPACE, "Local", self.atlas, self.started, LOCAL_PERSON)
-        return Access(space, Role.ADMIN, False, implicit=True)
+        return Access(space, Role.ADMIN, False, implicit=True, deploy=frozenset(ENVIRONMENTS))

@@ -27,7 +27,8 @@ def test_aucune_colonne_destinee_a_du_sql(migre: Engine) -> None:
 
 
 def test_requetes_construites_jamais_ecrites() -> None:
-    """Ni `text()`, ni instruction en chaîne, ni `op.execute` dans le paquet d'état (P2)."""
+    """Ni `text()`, ni instruction en chaîne, ni `op.execute` sur du texte dans le paquet
+    d'état (P2)."""
     sources = sorted(PAQUET.rglob("*.py"))
     assert any(p.name == "0001_sessions.py" for p in sources)
     for source in sources:

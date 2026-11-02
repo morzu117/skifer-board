@@ -2,9 +2,13 @@
 
 from .access import LOCAL_PERSON, LOCAL_SPACE, Access, Spaces
 from .model import (
+    ENVIRONMENTS,
     SPACE_ID,
     Binding,
     BindingNotFound,
+    DeployGrant,
+    Environment,
+    GrantNotFound,
     GroupPrincipal,
     LastAdmin,
     LocalMode,
@@ -18,6 +22,8 @@ from .model import (
     SpaceExists,
     SpaceNotFound,
     UnknownPerson,
+    can_deploy,
+    deployable,
     effective_role,
     is_platform_admin,
     matches,
@@ -26,6 +32,7 @@ from .store import EVENTS_LIMIT, PEOPLE_LIMIT, SpaceStore
 from .web import Refused, install_spaces
 
 __all__ = [
+    "ENVIRONMENTS",
     "EVENTS_LIMIT",
     "LOCAL_PERSON",
     "LOCAL_SPACE",
@@ -34,6 +41,9 @@ __all__ = [
     "Access",
     "Binding",
     "BindingNotFound",
+    "DeployGrant",
+    "Environment",
+    "GrantNotFound",
     "GroupPrincipal",
     "LastAdmin",
     "LocalMode",
@@ -50,6 +60,8 @@ __all__ = [
     "SpaceStore",
     "Spaces",
     "UnknownPerson",
+    "can_deploy",
+    "deployable",
     "effective_role",
     "install_spaces",
     "is_platform_admin",

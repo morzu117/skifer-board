@@ -40,6 +40,13 @@ Créés : révision `0004`. Modifiés : `apps/api/src/skifer_board/spaces/` (mod
 
 Tests : décision sur toutes les combinaisons (aucun accord, accord de groupe, de personne, rôle lecteur, créateur, administrateur, administration de la plateforme seule, accord dans un autre environnement ou un autre espace, même sujet chez un autre émetteur) ; accord idempotent sans journal ; journal complet ; isolation de deux espaces ; migration d'une base vierge et d'une base en révision `0003` qui a déjà des espaces.
 
+Écarts de réalisation :
+
+- À côté de `can_deploy`, `deployable(identity, role, grants)` rend l'ensemble des environnements où la personne peut déployer ; c'est ce que porte l'accès. Les deux reçoivent les accords **d'un seul espace** et ne relisent pas leur `space_id` : le magasin les regroupe par espace (`grants_of`), et l'isolation de deux espaces est testée au niveau du magasin et de l'accès.
+- L'accès à un ou plusieurs espaces lit environnements et accords en deux requêtes au total, pas une par espace.
+- Un environnement absent de `space_environments` est refusé par la clé étrangère de `deploy_grants` ; le magasin ne traduit pas cette erreur, puisque les routes de 9.2 n'acceptent que les trois codes (V9) et que tout espace a ses trois environnements (V1).
+- L'agent de test n'a trouvé aucun défaut. Sur ses remarques, les nouveaux symboles sont exportés par `skifer_board.spaces`, et la docstring du test d'invariant P2 précise que seul `op.execute` sur du texte est interdit (la migration `0004` passe une requête construite).
+
 ### 9.2 — Routes
 
 Modifiés : `spaces/web.py`. Exemples versionnés dans `contracts/espaces/`.

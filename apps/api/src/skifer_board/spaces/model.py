@@ -1,8 +1,9 @@
-"""Espaces, liaisons et rôles (plan 08, E1 à E6).
+"""Espaces, liaisons et rôles (plan 08, E1 à E6), environnements et droit de déployer
+(plan 09, V1 à V4).
 
 Un rôle ne donne jamais de droit sur les données : elles restent évaluées pour la personne,
-selon son identité et le RLS. Le rôle effectif est recalculé à partir de la session, jamais
-reçu du navigateur.
+selon son identité et le RLS. Le rôle effectif et le droit de déployer sont recalculés à
+partir de la session, jamais reçus du navigateur.
 """
 
 from __future__ import annotations
@@ -36,6 +37,21 @@ class Role(StrEnum):
 
 
 _RANKS = {Role.READER: 1, Role.CREATOR: 2, Role.ADMIN: 3}
+
+
+class Environment(StrEnum):
+    """Les trois environnements de tout espace, dans leur ordre de promotion (V1)."""
+
+    DEV = "DEV"
+    TEST = "TEST"
+    PROD = "PROD"
+
+    @property
+    def rank(self) -> int:
+        return ENVIRONMENTS.index(self) + 1
+
+
+ENVIRONMENTS = (Environment.DEV, Environment.TEST, Environment.PROD)
 
 
 @dataclass(frozen=True)
@@ -80,6 +96,18 @@ class Binding:
 
 
 @dataclass(frozen=True)
+class DeployGrant:
+    """Accord du droit de déployer dans un environnement d'un espace (V3)."""
+
+    id: str
+    space_id: str
+    environment: Environment
+    principal: Principal
+    created_at: datetime
+    created_by: PersonRef
+
+
+@dataclass(frozen=True)
 class Person:
     issuer: str
     subject: str
@@ -116,6 +144,10 @@ class BindingNotFound(SpaceError):
     code = "binding_not_found"
 
 
+class GrantNotFound(SpaceError):
+    code = "grant_not_found"
+
+
 class UnknownPerson(SpaceError):
     code = "unknown_person"
 
@@ -142,3 +174,19 @@ def effective_role(identity: Identity, bindings: Iterable[Binding]) -> Role | No
     """Le plus élevé des rôles des liaisons qui correspondent à la session (E3)."""
     roles = [b.role for b in bindings if matches(b.principal, identity)]
     return max(roles, key=lambda role: role.rank, default=None)
+
+
+def deployable(
+    identity: Identity, role: Role | None, grants: Iterable[DeployGrant]
+) -> frozenset[Environment]:
+    """Environnements où la session peut déployer : un accord y correspond à elle, et son rôle
+    est créateur ou plus (V3). Aucun droit d'office, administrateur compris (V4)."""
+    if role is None or not role.allows(Role.CREATOR):
+        return frozenset()
+    return frozenset(g.environment for g in grants if matches(g.principal, identity))
+
+
+def can_deploy(
+    identity: Identity, role: Role | None, grants: Iterable[DeployGrant], environment: Environment
+) -> bool:
+    return environment in deployable(identity, role, grants)
