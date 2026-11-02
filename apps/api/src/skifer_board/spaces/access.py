@@ -1,4 +1,5 @@
-"""Accès aux espaces depuis une requête (plan 08, E6, E7 et E11 ; plan 09, V7 et V8).
+"""Accès aux espaces depuis une requête (plan 08, E6, E7 et E11 ; plan 09, V7 et V8 ; plan 10, P6
+et P9).
 
 Avec OIDC, les espaces sont en base ; le rôle et le droit de déployer sont recalculés à chaque
 appel à partir de la session. En mode local, sans personne ni base obligatoire, un seul espace
@@ -28,6 +29,7 @@ from .model import (
     deployable,
     is_platform_admin,
 )
+from .parameters import Configuration, Declaration, Parameter, ParameterValue
 from .store import SpaceStore
 
 LOCAL_SPACE = "local"
@@ -51,6 +53,15 @@ class Access:
     @property
     def manages(self) -> bool:
         return self.platform_admin or (self.role is not None and self.role.allows(Role.ADMIN))
+
+    @property
+    def sets_values(self) -> frozenset[Environment]:
+        """Environnements où la session peut poser ou vider une valeur de paramètre : rôle
+        administrateur dans l'espace et droit d'y déployer (plan 10, P6). L'administration de
+        la plateforme seule n'en donne aucun."""
+        if self.role is None or not self.role.allows(Role.ADMIN):
+            return frozenset()
+        return self.deploy
 
 
 @dataclass(frozen=True)
@@ -174,6 +185,42 @@ class Spaces:
     def revoke(self, viewer: Identity | None, space_id: str, grant_id: str) -> None:
         store, actor = self._writer(viewer)
         store.revoke(space_id, grant_id, actor, self.clock())
+
+    def configuration(self, space_id: str) -> Configuration:
+        return self._reader().configuration(space_id)
+
+    def declare(
+        self, viewer: Identity | None, space_id: str, name: str, declaration: Declaration
+    ) -> Parameter:
+        store, actor = self._writer(viewer)
+        return store.declare(space_id, name, declaration, actor, self.clock())
+
+    def redeclare(
+        self, viewer: Identity | None, space_id: str, name: str, declaration: Declaration
+    ) -> Parameter:
+        store, actor = self._writer(viewer)
+        return store.redeclare(space_id, name, declaration, actor, self.clock())
+
+    def remove_parameter(self, viewer: Identity | None, space_id: str, name: str) -> None:
+        store, actor = self._writer(viewer)
+        store.remove_parameter(space_id, name, actor, self.clock())
+
+    def set_value(
+        self,
+        viewer: Identity | None,
+        space_id: str,
+        name: str,
+        environment: Environment,
+        value: object,
+    ) -> ParameterValue:
+        store, actor = self._writer(viewer)
+        return store.set_value(space_id, name, environment, value, actor, self.clock())
+
+    def clear_value(
+        self, viewer: Identity | None, space_id: str, name: str, environment: Environment
+    ) -> None:
+        store, actor = self._writer(viewer)
+        store.clear_value(space_id, name, environment, actor, self.clock())
 
     def events(self, space_id: str) -> list[SpaceEvent]:
         return self._reader().events(space_id)

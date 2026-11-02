@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -133,6 +134,56 @@ deploy_grants = Table(
     UniqueConstraint("space_id", "environment", "principal_key", name="uq_deploy_grants_principal"),
     Index("ix_deploy_grants_group", "group_name"),
     Index("ix_deploy_grants_person", "person_issuer", "person_subject"),
+)
+
+# Paramètres de déploiement déclarés dans un espace (plan 10, P1 à P3). Le nom est immuable ;
+# type, contraintes et défaut sont des données typées en JSON, jamais du texte interprété.
+deploy_parameters = Table(
+    "deploy_parameters",
+    metadata,
+    Column(
+        "space_id",
+        String(40),
+        ForeignKey("spaces.id", name="fk_deploy_parameters_space"),
+        nullable=False,
+    ),
+    Column("name", String(63), nullable=False),
+    Column("type", String(16), nullable=False),
+    Column("constraints", JSONB(none_as_null=True), nullable=False),
+    Column("required", Boolean, nullable=False),
+    Column("default_value", JSONB(none_as_null=True), nullable=True),
+    Column("description", Text, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_by_issuer", Text, nullable=False),
+    Column("created_by_subject", Text, nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    Column("updated_by_issuer", Text, nullable=False),
+    Column("updated_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "name", name="pk_deploy_parameters"),
+)
+
+# Valeur propre d'un paramètre dans un environnement de son espace (plan 10, P4) : une au plus.
+parameter_values = Table(
+    "parameter_values",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("name", String(63), nullable=False),
+    Column("environment", String(10), nullable=False),
+    Column("value", JSONB(none_as_null=True), nullable=False),
+    Column("set_at", DateTime(timezone=True), nullable=False),
+    Column("set_by_issuer", Text, nullable=False),
+    Column("set_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "name", "environment", name="pk_parameter_values"),
+    ForeignKeyConstraint(
+        ["space_id", "name"],
+        ["deploy_parameters.space_id", "deploy_parameters.name"],
+        name="fk_parameter_values_parameter",
+    ),
+    ForeignKeyConstraint(
+        ["space_id", "environment"],
+        ["space_environments.space_id", "space_environments.code"],
+        name="fk_parameter_values_environment",
+    ),
 )
 
 # Personnes connues, enregistrées à la connexion ; leurs groupes ne sont pas gardés (E5).

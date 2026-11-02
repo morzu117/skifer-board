@@ -1,4 +1,4 @@
-"""Espaces, appartenance et rôles (plan 08)."""
+"""Espaces, appartenance et rôles (plan 08), environnements (plan 09), paramètres (plan 10)."""
 
 from .access import LOCAL_PERSON, LOCAL_SPACE, Access, Spaces
 from .model import (
@@ -28,6 +28,24 @@ from .model import (
     is_platform_admin,
     matches,
 )
+from .parameters import (
+    PARAMETERS_LIMIT,
+    Configuration,
+    Constraints,
+    Declaration,
+    InvalidParameter,
+    Parameter,
+    ParameterExists,
+    ParameterLimit,
+    ParameterNotFound,
+    ParameterType,
+    ParameterValue,
+    Resolved,
+    State,
+    Value,
+    ValuesIncompatible,
+    check_name,
+)
 from .store import EVENTS_LIMIT, PEOPLE_LIMIT, SpaceStore
 from .web import Guards, Refused, install_spaces
 
@@ -36,22 +54,34 @@ __all__ = [
     "EVENTS_LIMIT",
     "LOCAL_PERSON",
     "LOCAL_SPACE",
+    "PARAMETERS_LIMIT",
     "PEOPLE_LIMIT",
     "SPACE_ID",
     "Access",
     "Binding",
     "BindingNotFound",
+    "Configuration",
+    "Constraints",
+    "Declaration",
     "DeployGrant",
     "Environment",
     "GrantNotFound",
     "GroupPrincipal",
     "Guards",
+    "InvalidParameter",
     "LastAdmin",
     "LocalMode",
+    "Parameter",
+    "ParameterExists",
+    "ParameterLimit",
+    "ParameterNotFound",
+    "ParameterType",
+    "ParameterValue",
     "Person",
     "PersonRef",
     "Principal",
     "Refused",
+    "Resolved",
     "Role",
     "Space",
     "SpaceError",
@@ -60,8 +90,12 @@ __all__ = [
     "SpaceNotFound",
     "SpaceStore",
     "Spaces",
+    "State",
     "UnknownPerson",
+    "Value",
+    "ValuesIncompatible",
     "can_deploy",
+    "check_name",
     "deployable",
     "effective_role",
     "install_spaces",

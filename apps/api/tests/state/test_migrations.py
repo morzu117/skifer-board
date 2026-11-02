@@ -99,6 +99,31 @@ COLONNES = {
         "created_by_issuer": False,
         "created_by_subject": False,
     },
+    # Paramètres de déploiement et leurs valeurs par environnement (plan 10, 10.1, révision 0005).
+    "deploy_parameters": {
+        "space_id": False,
+        "name": False,
+        "type": False,
+        "constraints": False,
+        "required": False,
+        "default_value": True,
+        "description": False,
+        "created_at": False,
+        "created_by_issuer": False,
+        "created_by_subject": False,
+        "updated_at": False,
+        "updated_by_issuer": False,
+        "updated_by_subject": False,
+    },
+    "parameter_values": {
+        "space_id": False,
+        "name": False,
+        "environment": False,
+        "value": False,
+        "set_at": False,
+        "set_by_issuer": False,
+        "set_by_subject": False,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
@@ -109,6 +134,8 @@ INSTANTS = {
     "space_events": {"at"},
     "space_environments": set(),
     "deploy_grants": {"created_at"},
+    "deploy_parameters": {"created_at", "updated_at"},
+    "parameter_values": {"set_at"},
 }
 CLES = {
     "sessions": ["fingerprint"],
@@ -119,6 +146,8 @@ CLES = {
     "space_events": ["id"],
     "space_environments": ["space_id", "code"],
     "deploy_grants": ["id"],
+    "deploy_parameters": ["space_id", "name"],
+    "parameter_values": ["space_id", "name", "environment"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 

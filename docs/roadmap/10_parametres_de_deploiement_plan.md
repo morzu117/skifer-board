@@ -39,6 +39,17 @@ Créés : révision `0005`, `apps/api/src/skifer_board/spaces/parameters.py` (mo
 
 Tests : validation de chaque type à ses bornes ; résolution sur toutes les combinaisons (valeur, défaut, obligatoire, facultatif) ; compatibilité ; limite de 100 ; isolation de deux espaces ; journal ; concurrence de deux écritures ; migration d'une base vierge et d'une base en `0004` peuplée.
 
+Écarts de réalisation :
+- Une valeur est rangée par espace, nom et environnement, sans identifiant technique : le nom est immuable (P3). Clés étrangères vers la déclaration et vers `space_environments`, sans suppression en cascade : le retrait efface les valeurs lui-même, dans sa transaction.
+- Un texte, un choix et une description refusent les caractères de contrôle et les demi-paires de substitution, que la base refuserait ; un texte a au moins un caractère (vider une valeur est un acte distinct). Les caractères de format (bidirectionnels, largeur nulle) restent admis. `max_length` compte les caractères Unicode, pas les unités UTF-16 du navigateur : l'écran de 10.3 devra compter de la même façon.
+- Vider une valeur absente n'a aucun effet et n'est pas journalisé, comme une écriture sans changement (E12).
+- Le retrait d'un paramètre journalise sa déclaration et les valeurs retirées.
+- `configuration` lit déclarations et valeurs sous un verrou partagé sur l'espace : une lecture attend l'écriture en cours et ne voit jamais un état intermédiaire. Les déclarations sont triées par Python, pas par la collation de la base.
+- Une déclaration relue de la base est validée de nouveau ; une ligne invalide n'est pas montrée.
+- Le magasin valide lui-même le nom d'un paramètre déclaré (`InvalidParameter`, champ `name`), en plus de la route à venir.
+- Le droit de poser une valeur est `Access.sets_values` : rôle administrateur et droit de déployer. En mode local il vaut les trois environnements, comme `deploy`, mais toute opération sur les paramètres y est refusée (`local_mode`, P9).
+- Tests écrits par un agent Claude indépendant (449 tests, dont un ajouté par Claude pour la validation du nom dans le magasin) ; douze régressions volontaires attrapées, aucun défaut trouvé.
+
 ### 10.2 — Routes
 
 Modifiés : `spaces/web.py`. Exemples versionnés dans `contracts/espaces/`.

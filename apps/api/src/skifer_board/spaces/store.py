@@ -1,5 +1,5 @@
 """Espaces, liaisons, personnes et journal dans la base d'état (plan 08, 8.1), environnements
-et accords du droit de déployer (plan 09, 9.1).
+et accords du droit de déployer (plan 09, 9.1), paramètres de déploiement (plan 10, 10.1).
 
 Chaque écriture est une transaction qui verrouille d'abord la ligne de l'espace : deux
 écritures concurrentes sur un même espace se suivent, et la règle du dernier administrateur
@@ -35,6 +35,8 @@ from sqlalchemy.exc import IntegrityError
 from ..identity.model import Identity
 from ..state.schema import (
     deploy_grants,
+    deploy_parameters,
+    parameter_values,
     people,
     space_bindings,
     space_environments,
@@ -60,6 +62,21 @@ from .model import (
     SpaceNotFound,
     UnknownPerson,
     effective_role,
+)
+from .parameters import (
+    PARAMETERS_LIMIT,
+    Configuration,
+    Declaration,
+    Parameter,
+    ParameterExists,
+    ParameterLimit,
+    ParameterNotFound,
+    ParameterValue,
+    Value,
+    ValuesIncompatible,
+    check_name,
+    constraints_json,
+    same_value,
 )
 
 PEOPLE_LIMIT = 20
@@ -128,6 +145,43 @@ def _grant(row: Row[Any]) -> DeployGrant:
         _utc(row.created_at),
         PersonRef(row.created_by_issuer, row.created_by_subject),
     )
+
+
+def _parameter(row: Row[Any]) -> Parameter:
+    # Relue, la déclaration est validée de nouveau : une ligne invalide n'est pas montrée.
+    declaration = Declaration.parse(
+        row.type, row.constraints, row.required, row.default_value, row.description
+    )
+    return Parameter(
+        row.space_id,
+        row.name,
+        declaration,
+        _utc(row.created_at),
+        PersonRef(row.created_by_issuer, row.created_by_subject),
+        _utc(row.updated_at),
+        PersonRef(row.updated_by_issuer, row.updated_by_subject),
+    )
+
+
+def _parameter_value(row: Row[Any]) -> ParameterValue:
+    return ParameterValue(
+        row.space_id,
+        row.name,
+        Environment(row.environment),
+        row.value,
+        _utc(row.set_at),
+        PersonRef(row.set_by_issuer, row.set_by_subject),
+    )
+
+
+def _declaration_columns(declaration: Declaration) -> dict[str, Any]:
+    return {
+        "type": declaration.type.value,
+        "constraints": constraints_json(declaration.type, declaration.constraints),
+        "required": declaration.required,
+        "default_value": declaration.default,
+        "description": declaration.description,
+    }
 
 
 def _matching(identity: Identity, table: Table = space_bindings) -> ColumnElement[bool]:
@@ -456,6 +510,242 @@ class SpaceStore:
                 },
             )
 
+    # --- Paramètres de déploiement (plan 10).
+
+    def configuration(self, space_id: str) -> Configuration:
+        """Déclarations et valeurs de l'espace, lues ensemble : le verrou partagé sur l'espace
+        attend les écritures en cours, qui le prennent toutes en exclusif."""
+        with self._engine.begin() as connection:
+            found = connection.execute(
+                select(spaces.c.id).where(spaces.c.id == space_id).with_for_update(read=True)
+            ).first()
+            if found is None:
+                raise SpaceNotFound(space_id)
+            parameter_rows = connection.execute(
+                select(deploy_parameters).where(deploy_parameters.c.space_id == space_id)
+            ).all()
+            value_rows = connection.execute(
+                select(parameter_values).where(parameter_values.c.space_id == space_id)
+            ).all()
+        values = sorted(
+            (_parameter_value(row) for row in value_rows),
+            key=lambda found: (found.name, found.environment.rank),
+        )
+        # Triés ici, et non par la collation de la base : le même ordre partout.
+        parameters = sorted(
+            (_parameter(row) for row in parameter_rows), key=lambda found: found.name
+        )
+        return Configuration(tuple(parameters), tuple(values))
+
+    def declare(
+        self,
+        space_id: str,
+        name: str,
+        declaration: Declaration,
+        actor: PersonRef,
+        now: datetime,
+    ) -> Parameter:
+        """Déclare un paramètre, au plus `PARAMETERS_LIMIT` par espace (P3)."""
+        check_name(name)
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            if self._parameter_row(connection, space_id, name) is not None:
+                raise ParameterExists(name)
+            count = connection.execute(
+                select(func.count())
+                .select_from(deploy_parameters)
+                .where(deploy_parameters.c.space_id == space_id)
+            ).scalar_one()
+            if count >= PARAMETERS_LIMIT:
+                raise ParameterLimit(space_id)
+            connection.execute(
+                insert(deploy_parameters).values(
+                    space_id=space_id,
+                    name=name,
+                    created_at=now,
+                    created_by_issuer=actor.issuer,
+                    created_by_subject=actor.subject,
+                    updated_at=now,
+                    updated_by_issuer=actor.issuer,
+                    updated_by_subject=actor.subject,
+                    **_declaration_columns(declaration),
+                )
+            )
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "parameter_declared",
+                {"name": name, "declaration": declaration.to_json()},
+            )
+        return Parameter(space_id, name, declaration, now, actor, now, actor)
+
+    def redeclare(
+        self,
+        space_id: str,
+        name: str,
+        declaration: Declaration,
+        actor: PersonRef,
+        now: datetime,
+    ) -> Parameter:
+        """Change la déclaration ; refusé si une valeur existante deviendrait invalide (P5).
+        Une déclaration inchangée n'est pas journalisée."""
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            current = self._existing(connection, space_id, name)
+            if current.declaration.same_as(declaration):
+                return current
+            blocked = declaration.incompatible(self._own_values(connection, space_id, name))
+            if blocked:
+                raise ValuesIncompatible(blocked)
+            connection.execute(
+                update(deploy_parameters)
+                .where(
+                    deploy_parameters.c.space_id == space_id,
+                    deploy_parameters.c.name == name,
+                )
+                .values(
+                    updated_at=now,
+                    updated_by_issuer=actor.issuer,
+                    updated_by_subject=actor.subject,
+                    **_declaration_columns(declaration),
+                )
+            )
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "parameter_changed",
+                {
+                    "name": name,
+                    "before": current.declaration.to_json(),
+                    "after": declaration.to_json(),
+                },
+            )
+        return Parameter(
+            space_id, name, declaration, current.created_at, current.created_by, now, actor
+        )
+
+    def remove_parameter(self, space_id: str, name: str, actor: PersonRef, now: datetime) -> None:
+        """Retire la déclaration et ses valeurs, dans la même transaction (P5)."""
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            current = self._existing(connection, space_id, name)
+            values = self._own_values(connection, space_id, name)
+            connection.execute(
+                delete(parameter_values).where(
+                    parameter_values.c.space_id == space_id, parameter_values.c.name == name
+                )
+            )
+            connection.execute(
+                delete(deploy_parameters).where(
+                    deploy_parameters.c.space_id == space_id, deploy_parameters.c.name == name
+                )
+            )
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "parameter_removed",
+                {
+                    "name": name,
+                    "declaration": current.declaration.to_json(),
+                    "values": {
+                        environment.value: values[environment]
+                        for environment in ENVIRONMENTS
+                        if environment in values
+                    },
+                },
+            )
+
+    def set_value(
+        self,
+        space_id: str,
+        name: str,
+        environment: Environment,
+        value: object,
+        actor: PersonRef,
+        now: datetime,
+    ) -> ParameterValue:
+        """Pose la valeur propre d'un environnement, validée contre la déclaration courante.
+        Une valeur inchangée n'est pas journalisée."""
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            checked = self._existing(connection, space_id, name).declaration.check(value)
+            row = connection.execute(
+                select(parameter_values).where(
+                    parameter_values.c.space_id == space_id,
+                    parameter_values.c.name == name,
+                    parameter_values.c.environment == environment.value,
+                )
+            ).one_or_none()
+            if row is not None and same_value(row.value, checked):
+                return _parameter_value(row)
+            columns = {
+                "value": checked,
+                "set_at": now,
+                "set_by_issuer": actor.issuer,
+                "set_by_subject": actor.subject,
+            }
+            if row is None:
+                connection.execute(
+                    insert(parameter_values).values(
+                        space_id=space_id, name=name, environment=environment.value, **columns
+                    )
+                )
+            else:
+                connection.execute(
+                    update(parameter_values)
+                    .where(
+                        parameter_values.c.space_id == space_id,
+                        parameter_values.c.name == name,
+                        parameter_values.c.environment == environment.value,
+                    )
+                    .values(**columns)
+                )
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "value_set",
+                {
+                    "name": name,
+                    "environment": environment.value,
+                    "before": None if row is None else row.value,
+                    "after": checked,
+                },
+            )
+        return ParameterValue(space_id, name, environment, checked, now, actor)
+
+    def clear_value(
+        self, space_id: str, name: str, environment: Environment, actor: PersonRef, now: datetime
+    ) -> None:
+        """Vide la valeur propre d'un environnement ; sans valeur, rien n'est journalisé."""
+        with self._engine.begin() as connection:
+            self._lock(connection, space_id)
+            self._existing(connection, space_id, name)
+            where = (
+                parameter_values.c.space_id == space_id,
+                parameter_values.c.name == name,
+                parameter_values.c.environment == environment.value,
+            )
+            row = connection.execute(select(parameter_values).where(*where)).one_or_none()
+            if row is None:
+                return
+            connection.execute(delete(parameter_values).where(*where))
+            self._log(
+                connection,
+                space_id,
+                actor,
+                now,
+                "value_cleared",
+                {"name": name, "environment": environment.value, "before": row.value},
+            )
+
     # --- Journal (E10).
 
     def events(self, space_id: str, limit: int = EVENTS_LIMIT) -> list[SpaceEvent]:
@@ -488,6 +778,29 @@ class SpaceStore:
         ).first()
         if found is None:
             raise SpaceNotFound(space_id)
+
+    def _parameter_row(self, connection: Connection, space_id: str, name: str) -> Row[Any] | None:
+        return connection.execute(
+            select(deploy_parameters).where(
+                deploy_parameters.c.space_id == space_id, deploy_parameters.c.name == name
+            )
+        ).one_or_none()
+
+    def _existing(self, connection: Connection, space_id: str, name: str) -> Parameter:
+        row = self._parameter_row(connection, space_id, name)
+        if row is None:
+            raise ParameterNotFound(name)
+        return _parameter(row)
+
+    def _own_values(
+        self, connection: Connection, space_id: str, name: str
+    ) -> dict[Environment, Value]:
+        rows = connection.execute(
+            select(parameter_values).where(
+                parameter_values.c.space_id == space_id, parameter_values.c.name == name
+            )
+        ).all()
+        return {Environment(row.environment): row.value for row in rows}
 
     def _check_person(self, connection: Connection, principal: Principal) -> None:
         """Une personne ne se lie qu'une fois connue de Board, donc après une connexion (E5)."""
