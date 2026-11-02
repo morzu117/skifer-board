@@ -44,3 +44,192 @@
 .sb-space-missing a {
   color: var(--sb-link);
 }
+
+.sb-spaces__members {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  color: var(--sb-link);
+  font-size: var(--sb-text-sm);
+}
+
+/* Membres et rôles, création d'un espace (plan 08, 8.4). */
+.sb-members__state,
+.sb-principal__hint {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-members__principal {
+  font-weight: 600;
+  text-align: left;
+}
+
+.sb-members__principal > span {
+  display: block;
+}
+
+.sb-members__detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-1);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-members__role {
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-table);
+}
+
+.sb-members__actions {
+  text-align: right;
+}
+
+.sb-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.sb-confirm__question {
+  color: var(--sb-ink);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+}
+
+.sb-members__add,
+.sb-create {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sb-space-5);
+  max-width: 640px;
+}
+
+.sb-members__add > button,
+.sb-members__add > .sb-confirm {
+  align-self: flex-start;
+}
+
+/* En colonne, la base de flex de `.sb-field` deviendrait une hauteur. */
+.sb-members__add .sb-field,
+.sb-create .sb-field {
+  flex: none;
+}
+
+.sb-members__add-role {
+  max-width: 240px;
+}
+
+.sb-principal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sb-principal__legend {
+  margin-bottom: var(--sb-space-3);
+  padding: 0;
+  color: var(--sb-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-principal__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3) var(--sb-space-6);
+}
+
+.sb-principal__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+  min-height: var(--sb-target-min);
+}
+
+.sb-principal__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+}
+
+.sb-principal__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.sb-principal__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-principal__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-principal__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+  margin: 0;
+}
+
+.sb-create__problem {
+  color: var(--sb-danger-text);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-journal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-journal__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-1) var(--sb-space-5);
+}
+
+.sb-journal__at {
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}

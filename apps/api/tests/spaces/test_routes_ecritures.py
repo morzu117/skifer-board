@@ -427,12 +427,22 @@ def test_liaison_de_personne_connue(monde: Monde) -> None:
     )
     assert reponse.status_code == 200
     corps = reponse.json()
-    assert set(corps) == {"id", "principal", "person", "role", "created_at", "created_by"}
+    assert set(corps) == {
+        "id",
+        "principal",
+        "person",
+        "role",
+        "created_at",
+        "created_by",
+        "created_by_person",
+    }
     assert corps["principal"] == principal
     assert corps["person"] == {"name": "Nom ines", "email": "ines@example.invalid"}
     assert corps["role"] == "creator"
     assert corps["created_at"] == monde.horloge().isoformat()
     assert corps["created_by"] == {"issuer": EMETTEUR, "subject": ADMIN_GROUPE.sujet}
+    # L'auteur est une personne connue : son nom et son adresse accompagnent sa référence (8.4).
+    assert corps["created_by_person"] == {"name": "Nom ada", "email": "ada@example.invalid"}
     # Les groupes de la personne ne sont ni gardés ni exposés (E5).
     assert "groupe-secret" not in reponse.text
     assert monde.requete(INVITEE, "GET", f"/api/spaces/{A}").json()["role"] == "creator"
@@ -474,8 +484,11 @@ def test_changement_de_role_journalise(monde: Monde) -> None:
         "id": journal[0]["id"],
         "at": monde.horloge().isoformat(),
         "actor": {"issuer": EMETTEUR, "subject": "axel"},
+        "actor_person": {"name": "Nom axel", "email": "axel@example.invalid"},
         "action": "binding_changed",
         "detail": {"principal": principal, "before": "reader", "after": "creator"},
+        # Un groupe n'est pas une personne : rien à nommer.
+        "principal_person": None,
     }
     retrait = monde.requete(
         PLATEFORME_SEULE, "DELETE", f"/api/spaces/{A}/members/{monde.liaisons['a-lecteurs']}"
@@ -484,7 +497,9 @@ def test_changement_de_role_journalise(monde: Monde) -> None:
     journal = monde.requete(ADMIN_GROUPE, "GET", f"/api/spaces/{A}/events").json()["events"]
     assert journal[0]["action"] == "binding_removed"
     assert journal[0]["actor"] == {"issuer": EMETTEUR, "subject": "pia"}
+    assert journal[0]["actor_person"] == {"name": "Nom pia", "email": "pia@example.invalid"}
     assert journal[0]["detail"] == {"principal": principal, "before": "creator"}
+    assert journal[0]["principal_person"] is None
 
 
 def test_dernier_administrateur_par_retrait_et_par_abaissement(monde: Monde) -> None:

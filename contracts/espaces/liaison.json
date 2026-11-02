@@ -16,6 +16,10 @@
     "created_by": {
       "issuer": "https://id.example.invalid",
       "subject": "00u1a2b3c4"
+    },
+    "created_by_person": {
+      "name": "Camille Martin",
+      "email": "camille.martin@example.invalid"
     }
   }
 }

@@ -1,6 +1,6 @@
 # Plan 08 — Espaces, appartenance et rôles (lot 02, troisième tranche)
 
-Date : 2 novembre 2026 · Statut : **en cours**. Troisième tranche du lot 02 (« socle partagé »), après l'identité (plan 06) et la persistance (plan 07). Choix du porteur du 2 novembre, qui suit les recommandations : **appartenance par groupes du fournisseur et par personnes**, **groupe d'administration de la plateforme nommé en configuration**, **espaces, membres et rôles en base**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **réalisé** (8.1 à 8.4). Troisième tranche du lot 02 (« socle partagé »), après l'identité (plan 06) et la persistance (plan 07). Choix du porteur du 2 novembre, qui suit les recommandations : **appartenance par groupes du fournisseur et par personnes**, **groupe d'administration de la plateforme nommé en configuration**, **espaces, membres et rôles en base**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §2 (propositions : consulter, créer, administrer), §4.1 (objet Espace), §4.3 (droits), §8 lot 02. Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §0.1 (rôles), §0.5 (coque), §1.1 (accueil des espaces), §9 (administration, « Membres et rôles »).
 
@@ -100,6 +100,16 @@ Créés : `apps/web/src/spaces/` (écran d'administration).
 - Création d'un espace : identifiant, nom, premier administrateur.
 
 Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+
+- Les réponses des liaisons et du journal portent le nom et l'adresse connus de leur auteur (`created_by_person`, `actor_person`) et, pour le journal, de la personne visée (`principal_person`). Sans eux, l'écran ne pourrait nommer que par le sujet, opaque, une personne retirée ou un auteur qui n'est pas membre.
+- Ajouter un membre déjà lié change son rôle (le serveur pose ou remplace la liaison) : l'écran le signale et le fait confirmer, comme un changement de rôle.
+- Le nom d'un groupe part tel quel, ni replié ni rogné (E3) ; le nom d'un espace part sans les blancs qui l'entourent, selon la même règle que le serveur.
+- L'entrée « Espace & connexions » mène aux membres pour qui gère l'espace, et dit sinon pourquoi elle est fermée ; un espace sans rôle marque le catalogue « sans rôle ». Un espace lisible sans rôle n'étant visible que de l'administration de la plateforme (E6), il est tenu pour géré.
+- Après chaque écriture, la coque relit l'espace et la liste : un administrateur qui s'abaisse lui-même voit aussitôt son nouveau rôle. La réponse précédente reste affichée pendant la relecture, pour ne perdre ni la saisie ni le focus.
+- L'agent de test a trouvé quatre défauts, corrigés : la page des membres débordait horizontalement sous 1280 px (le libellé masqué d'une colonne échappait au conteneur défilant du tableau, désormais positionné) ; une personne au nom vide avait un libellé vide ; « Liaisons indisponible » n'était pas accordé ; la pastille gardait le rôle d'avant un abaissement de soi-même. Il a aussi relevé, et cela est corrigé : la saisie perdue après un refus, le focus perdu après une confirmation, des champs en cause affichés bruts, une erreur de création non reliée à son champ, de grands vides dans les formulaires, et un refus sans corps JSON présenté comme une rupture de contrat.
+- À sa seconde passe, l'agent de test a trouvé deux défauts mineurs, corrigés : un détail de journal qui n'était pas un objet JSON faisait répondre 500 à tout le journal ; un nom ou une adresse blancs servaient encore de détail d'une personne, qui n'était alors plus distinguée de ses homonymes.
 
 ## 4. Rayon d'impact
 

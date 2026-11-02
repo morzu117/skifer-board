@@ -171,7 +171,13 @@ def reponses(
     try:
         horloge.instant = a(8, 40)
         scenario.connecter(
-            "plateforme", PLATEFORME_SUJET, [PLATEFORME], "Camille Roux", "camille@ex.invalid"
+            "plateforme",
+            PLATEFORME_SUJET,
+            [PLATEFORME],
+            # Personne de l'exemple d'identité (`contracts/identite/me-etabli.json`) : les
+            # exemples des liaisons et du journal la nomment comme auteur (plan 08, 8.4).
+            "Camille Martin",
+            "camille.martin@example.invalid",
         )
         horloge.instant = a(8, 45)
         scenario.connecter(

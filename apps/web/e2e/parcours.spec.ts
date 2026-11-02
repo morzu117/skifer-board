@@ -13,10 +13,10 @@ test.beforeEach(async ({ page }) => {
 
 test("la coque garde ses entrées à venir inactives et annonce DEV, TEST, PROD", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Navigation principale" });
-  // Hors espace, le catalogue n'est pas offert : il se lit « dans un espace » (plan 08, E9).
+  // Hors espace, le catalogue et les membres ne sont pas offerts : ils se lisent « dans un espace » (plan 08, E9 et 8.4).
   await expect(navigation.getByRole("listitem")).toHaveText([
     "Explorerà venir", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlasdans un espace",
-    "Déploiementsà venir", "Espace & connexionsà venir",
+    "Déploiementsà venir", "Espace & connexionsdans un espace",
   ]);
   await expect(navigation.getByRole("link")).toHaveCount(1);
   await expect(navigation.getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");

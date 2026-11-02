@@ -33,7 +33,7 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Lecture des espaces…");
     expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("list", { name: "Espaces" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Créer un espace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Créer un espace/ })).not.toBeInTheDocument();
     expect(fetcher).toHaveBeenCalledExactlyOnceWith("/api/spaces", expect.objectContaining({ signal: expect.any(AbortSignal) as AbortSignal }));
     await act(async () => { attente.resolve(reponse(liste)); await Promise.resolve(); });
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     expect(within(rh as HTMLElement).getByRole("link", { name: "Ressources humaines" })).toHaveAttribute("href", "#/espaces/rh/catalogue");
     expect(rh).toHaveTextContent("Lecteur");
     expect(rh).not.toHaveTextContent("Créateur");
-    expect(screen.queryByRole("button", { name: /Créer un espace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Créer un espace/ })).not.toBeInTheDocument();
     expect(screen.getByText(/ne donne aucun droit sur les données/)).toBeInTheDocument();
   });
 
@@ -63,9 +63,11 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
 
   it("n'offre la création qu'à l'administration de la plateforme, et dit son absence de rôle", async () => {
     render(<Accueil fetcher={servir(administration)} />);
-    const bouton = await screen.findByRole("button", { name: /Créer un espace/ });
-    // La création arrive avec 8.4 : le bouton est visible et inactif.
-    expect(bouton).toBeDisabled();
+    const lien = await screen.findByRole("link", { name: "Créer un espace" });
+    // La création est livrée (8.4) : un lien vers sa page, plus de bouton inactif « à venir ».
+    expect(lien).toHaveAttribute("href", "#/nouvel-espace");
+    expect(screen.queryByRole("button", { name: /Créer un espace/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/à venir/)).not.toBeInTheDocument();
     const [finance] = items();
     expect(finance).toHaveTextContent("Administration de la plateforme");
     expect(finance).not.toHaveTextContent(/Lecteur|Créateur|Administrateur(?! de)/);
@@ -76,7 +78,7 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     await screen.findByRole("list", { name: "Espaces" });
     expect(screen.getByRole("link", { name: "Local" })).toHaveAttribute("href", "#/espaces/local/catalogue");
     expect(items()[0]).toHaveTextContent("Administrateur");
-    expect(screen.queryByRole("button", { name: /Créer un espace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Créer un espace/ })).not.toBeInTheDocument();
   });
 
   it("distingue la liste vide d'une erreur", async () => {
@@ -90,7 +92,7 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
   it("une liste vide pour l'administration de la plateforme garde le bouton de création", async () => {
     render(<Accueil fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json({ spaces: [], platform_admin: true }))} />);
     expect(await screen.findByRole("region", { name: "Aucun espace" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Créer un espace/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Créer un espace" })).toHaveAttribute("href", "#/nouvel-espace");
   });
 
   it.each([
@@ -106,7 +108,7 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     expect(alerte).toHaveTextContent("Aucune donnée n'est affichée.");
     expect(screen.queryByRole("list", { name: "Espaces" })).not.toBeInTheDocument();
     // Un corps hors contrat qui dit `platform_admin: true` ne fait pas apparaître la création.
-    expect(screen.queryByRole("button", { name: /Créer un espace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Créer un espace/ })).not.toBeInTheDocument();
   });
 
   it.each(["chargement", "liste", "erreur"])("garde le lien vers le prototype hors espace : %s", async (etat) => {
@@ -116,6 +118,51 @@ describe("Accueil des espaces (écrans §1.1, plan 08, 8.3)", () => {
     if (etat === "liste") await screen.findByRole("list", { name: "Espaces" });
     if (etat === "erreur") await screen.findByRole("alert");
     expect(screen.getByRole("link", { name: "Prototype graphique" })).toHaveAttribute("href", "#/prototype");
+  });
+});
+
+describe("Accueil des espaces : lien « Membres et rôles » (plan 08, 8.4)", () => {
+  const espace = (id: string, role: "reader" | "creator" | "admin" | null, implicit = false) => ({
+    id, name: `Espace ${id}`, atlas: "skifer-atlas", created_at: "2026-11-02T09:00:00+00:00",
+    created_by: { issuer: "https://id.example.invalid", subject: "s" }, role, implicit,
+  });
+  const lienMembres = (nom: string) => screen.queryByRole("link", { name: `Membres et rôles de ${nom}` });
+
+  it("n'offre les membres qu'aux espaces que la personne administre", async () => {
+    const corps = { spaces: [espace("a", "admin"), espace("c", "creator"), espace("l", "reader")], platform_admin: false };
+    render(<Accueil fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json(corps))} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(lienMembres("Espace a")).toHaveAttribute("href", "#/espaces/a/membres");
+    expect(lienMembres("Espace a")).toHaveTextContent("Membres et rôles");
+    expect(lienMembres("Espace c")).not.toBeInTheDocument();
+    expect(lienMembres("Espace l")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /^Membres et rôles/ })).toHaveLength(1);
+  });
+
+  it("l'administration de la plateforme gère tous les espaces, même sans rôle (E6)", async () => {
+    render(<Accueil fetcher={servir(administration)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(lienMembres("Finance")).toHaveAttribute("href", "#/espaces/finance/membres");
+    // Le lien principal de l'espace reste celui de son catalogue.
+    expect(screen.getByRole("link", { name: "Finance" })).toHaveAttribute("href", "#/espaces/finance/catalogue");
+  });
+
+  it("aucun lien de membres pour l'espace implicite du mode local, même administrateur (E11)", async () => {
+    render(<Accueil fetcher={servir(locale)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(screen.queryByRole("link", { name: /Membres et rôles/ })).not.toBeInTheDocument();
+  });
+
+  it("aucun lien de membres pour un simple membre (liste du contrat)", async () => {
+    render(<Accueil fetcher={servir(liste)} />);
+    await screen.findByRole("list", { name: "Espaces" });
+    expect(screen.queryByRole("link", { name: /Membres et rôles/ })).not.toBeInTheDocument();
+  });
+
+  it("encode l'identifiant dans le lien des membres", async () => {
+    const corps = { spaces: [{ ...espace("x", "admin"), id: "a/b c" }], platform_admin: false };
+    render(<Accueil fetcher={vi.fn<Fetch>().mockResolvedValue(Response.json(corps))} />);
+    expect(await screen.findByRole("link", { name: "Membres et rôles de Espace x" })).toHaveAttribute("href", "#/espaces/a%2Fb%20c/membres");
   });
 });
 

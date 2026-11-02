@@ -117,14 +117,35 @@ def _access_json(access: Access) -> dict[str, Any]:
     }
 
 
-def _event_json(event: SpaceEvent) -> dict[str, Any]:
+def _event_json(
+    event: SpaceEvent,
+    actor: dict[str, str | None] | None,
+    principal: dict[str, str | None] | None,
+) -> dict[str, Any]:
     return {
         "id": event.id,
         "at": event.at.isoformat(),
         "actor": _ref_json(event.actor),
+        "actor_person": actor,
         "action": event.action,
         "detail": event.detail,
+        "principal_person": principal,
     }
+
+
+def _detail_person(event: SpaceEvent) -> PersonRef | None:
+    """Personne visée par un événement de liaison, telle que le journal l'a gardée. Un détail
+    inattendu n'en désigne aucune : il est rendu tel quel, sans faire tomber le journal."""
+    detail: object = event.detail
+    if not isinstance(detail, dict):
+        return None
+    principal = detail.get("principal")
+    if not isinstance(principal, dict) or principal.get("kind") != "person":
+        return None
+    issuer, subject = principal.get("issuer"), principal.get("subject")
+    if not isinstance(issuer, str) or not isinstance(subject, str):
+        return None
+    return PersonRef(issuer, subject)
 
 
 # --- Validation des corps.
@@ -271,25 +292,39 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
     def get_space(request: Request, space_id: str) -> JSONResponse:
         return JSONResponse(_access_json(access(request, space_id)))
 
-    def binding_json(binding: Binding) -> dict[str, Any]:
-        person = None
-        if isinstance(binding.principal, PersonRef):
-            known = spaces.person(binding.principal)
-            person = None if known is None else {"name": known.name, "email": known.email}
-        return {
-            "id": binding.id,
-            "principal": _principal_json(binding.principal),
-            "person": person,
-            "role": binding.role.value,
-            "created_at": binding.created_at.isoformat(),
-            "created_by": _ref_json(binding.created_by),
-        }
+    def people_of(refs: list[PersonRef]) -> dict[PersonRef, dict[str, str | None] | None]:
+        """Nom et adresse des personnes connues, une lecture par personne distincte ; `None`
+        pour une personne que Board ne connaît pas."""
+        found: dict[PersonRef, dict[str, str | None] | None] = {}
+        for ref in refs:
+            if ref not in found:
+                known = spaces.person(ref)
+                found[ref] = None if known is None else {"name": known.name, "email": known.email}
+        return found
+
+    def bindings_json(bindings: list[Binding]) -> list[dict[str, Any]]:
+        persons = [b.principal for b in bindings if isinstance(b.principal, PersonRef)]
+        people = people_of(persons + [b.created_by for b in bindings])
+        return [
+            {
+                "id": binding.id,
+                "principal": _principal_json(binding.principal),
+                "person": (
+                    people[binding.principal] if isinstance(binding.principal, PersonRef) else None
+                ),
+                "role": binding.role.value,
+                "created_at": binding.created_at.isoformat(),
+                "created_by": _ref_json(binding.created_by),
+                "created_by_person": people[binding.created_by],
+            }
+            for binding in bindings
+        ]
 
     @app.get("/api/spaces/{space_id}/members")
     def list_members(request: Request, space_id: str) -> JSONResponse:
         found = manager(request, space_id)
         bindings = spaces.bindings(found.space.id)
-        return JSONResponse({"members": [binding_json(binding) for binding in bindings]})
+        return JSONResponse({"members": bindings_json(bindings)})
 
     @app.post("/api/spaces/{space_id}/members")
     async def set_member(request: Request, space_id: str) -> JSONResponse:
@@ -298,7 +333,7 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
         principal = _principal(body["principal"], "principal")
         role = _role(body["role"], "role")
         binding = spaces.set_binding(viewer(request), found.space.id, principal, role)
-        return JSONResponse(binding_json(binding))
+        return JSONResponse(bindings_json([binding])[0])
 
     @app.delete("/api/spaces/{space_id}/members/{binding_id}")
     def remove_member(request: Request, space_id: str, binding_id: str) -> Response:
@@ -313,7 +348,17 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
     def list_events(request: Request, space_id: str) -> JSONResponse:
         found = manager(request, space_id)
         events = spaces.events(found.space.id)
-        return JSONResponse({"events": [_event_json(event) for event in events]})
+        targets = [_detail_person(event) for event in events]
+        # Une personne retirée n'est plus dans les liaisons : son nom vient d'ici.
+        people = people_of([e.actor for e in events] + [t for t in targets if t is not None])
+        return JSONResponse(
+            {
+                "events": [
+                    _event_json(event, people[event.actor], None if t is None else people[t])
+                    for event, t in zip(events, targets, strict=True)
+                ]
+            }
+        )
 
     @app.get("/api/people")
     def search_people(request: Request, q: str | None = None) -> JSONResponse:

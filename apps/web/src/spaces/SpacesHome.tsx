@@ -3,7 +3,7 @@ import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import type { SpaceOutcome } from "./api";
-import { roleLabel, type Space, type SpaceList as Listed } from "./model";
+import { manages, roleLabel, type Space, type SpaceList as Listed } from "./model";
 import "./spaces.css";
 
 interface SpacesHomeProps {
@@ -25,10 +25,9 @@ export function SpacesHome({ listed: result }: SpacesHomeProps) {
           <p className="sb-page-head__lead">Un rôle dans un espace ne donne aucun droit sur les données : elles restent évaluées pour vous.</p>
         </div>
         {platformAdmin ? (
-          // La création arrive avec l'écran d'administration (plan 08, 8.4).
-          <button type="button" className="sb-button sb-button--primary" disabled>
-            Créer un espace · à venir
-          </button>
+          <a className="sb-button sb-button--primary" href={routeHash({ page: "create" })}>
+            Créer un espace
+          </a>
         ) : null}
       </div>
       {result.status === "loading" ? (
@@ -36,7 +35,7 @@ export function SpacesHome({ listed: result }: SpacesHomeProps) {
           Lecture des espaces…
         </p>
       ) : result.status === "ok" ? (
-        <SpaceList spaces={result.value.spaces} />
+        <SpaceList spaces={result.value.spaces} platformAdmin={platformAdmin} />
       ) : (
         <Banner tone="danger">
           Espaces indisponibles : {result.status === "error" ? result.message : "réponse inattendue du serveur."} Aucune donnée n'est affichée.
@@ -49,7 +48,7 @@ export function SpacesHome({ listed: result }: SpacesHomeProps) {
   );
 }
 
-function SpaceList({ spaces }: { spaces: readonly Space[] }) {
+function SpaceList({ spaces, platformAdmin }: { spaces: readonly Space[]; platformAdmin: boolean }) {
   if (spaces.length === 0) {
     return (
       <Card title="Aucun espace">
@@ -68,6 +67,11 @@ function SpaceList({ spaces }: { spaces: readonly Space[] }) {
           <span className="sb-spaces__meta">
             Atlas : {space.atlas} · <span className="sb-spaces__id">{space.id}</span>
           </span>
+          {manages(space, platformAdmin) ? (
+            <a className="sb-spaces__members" href={routeHash({ page: "members", space: space.id })} aria-label={`Membres et rôles de ${space.name}`}>
+              Membres et rôles
+            </a>
+          ) : null}
         </li>
       ))}
     </ul>

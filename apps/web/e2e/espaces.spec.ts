@@ -67,8 +67,11 @@ test("l'accueil liste les espaces avec le rôle, le rattachement Atlas et le lie
 
 test("l'administration de la plateforme voit « Créer un espace » et son absence de rôle", async ({ page }) => {
   await accueil(page, { "/api/spaces": administration });
-  await expect(page.getByRole("button", { name: /Créer un espace/ })).toBeDisabled();
+  // La création est livrée (plan 08, 8.4) : un lien vers sa page, et les membres de chaque espace.
+  await expect(page.getByRole("link", { name: "Créer un espace" })).toHaveAttribute("href", "#/nouvel-espace");
+  await expect(page.getByRole("button", { name: /Créer un espace/ })).toHaveCount(0);
   await expect(page.getByRole("list", { name: "Espaces" })).toContainText("Administration de la plateforme");
+  await expect(page.getByRole("link", { name: "Membres et rôles de Finance" })).toHaveAttribute("href", "#/espaces/finance/membres");
 });
 
 test("une liste vide se distingue d'une erreur", async ({ page }) => {
@@ -134,9 +137,11 @@ test("l'administration de la plateforme sans rôle ne lit pas le catalogue", asy
   await expect(page.getByRole("status").filter({ hasText: "sans rôle dans cet espace" })).toContainText("son catalogue ne vous est pas lisible");
   await expect(pastille(page)).toHaveText("Rôle : Administration de la plateforme");
   await expect(page.getByRole("navigation", { name: "Fil d'Ariane" }).getByRole("listitem")).toHaveText(["Finance"]);
-  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("listitem").filter({ hasText: "Catalogue Atlas" })).toHaveText("Catalogue Atlasdans un espace");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("listitem").filter({ hasText: "Catalogue Atlas" })).toHaveText("Catalogue Atlassans rôle");
   await expect(page.getByRole("table")).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("button")).toHaveCount(0);
+  // Il gère les membres (E6, plan 08, 8.4) : seule cette entrée est offerte.
+  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("button")).toHaveText(["Espace & connexions"]);
+  await expect(page.getByRole("link", { name: "Gérer les membres" })).toHaveAttribute("href", "#/espaces/finance/membres");
   expect(lectures.filter((chemin) => chemin.includes("/catalog"))).toEqual([]);
 });
 

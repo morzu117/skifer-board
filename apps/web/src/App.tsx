@@ -12,18 +12,49 @@ import { navigate, routeHash, useRoute, type Route } from "./shell/route";
 import type { Environment, SectionId } from "./shell/sections";
 import { SpaceSwitch } from "./shell/SpaceSwitch";
 import { fetchSpace, fetchSpaces, type SpaceOutcome } from "./spaces/api";
+import { CreateSpacePage } from "./spaces/CreateSpacePage";
 import { onSpaceLost } from "./spaces/lost";
-import { SPACE_ID, type Space, type SpaceList } from "./spaces/model";
+import { MembersPage } from "./spaces/MembersPage";
+import { manages, SPACE_ID, type Space, type SpaceList } from "./spaces/model";
 import { SpacesHome } from "./spaces/SpacesHome";
 import { Banner } from "./ui/Banner";
-import { useOutcome } from "./ui/useOutcome";
+import { useRefreshed } from "./ui/useOutcome";
 
-/** Seul le catalogue est livré (lot 04) ; les autres sections restent à venir. */
-const AVAILABLE = new Set<SectionId>(["catalogue"]);
-const NOTHING = new Set<SectionId>();
-/** Hors d'un espace lisible, le catalogue n'est pas « à venir » : il se lit dans un espace. */
-const OUTSIDE: Partial<Record<SectionId, string>> = { catalogue: "dans un espace" };
 const NOT_FOUND = { status: "not_found" } as const;
+
+/** Espace de la route, s'il y en a un. */
+function spaceOf(route: Route): string | null {
+  return route.page === "catalogue" || route.page === "members" ? route.space : null;
+}
+
+interface Sections {
+  available: ReadonlySet<SectionId>;
+  pending: Partial<Record<SectionId, string>>;
+}
+
+/**
+ * Entrées livrées : le catalogue (lot 04) pour un rôle dans l'espace, « Espace & connexions » pour
+ * qui en gère les membres (plan 08, 8.4). Une entrée indisponible dit pourquoi, sans lien mort ; le
+ * serveur reste seul juge (E7).
+ */
+export function sectionsFor(space: Space | null, platformAdmin: boolean): Sections {
+  if (space === null) {
+    return { available: new Set(), pending: { catalogue: "dans un espace", espace: "dans un espace" } };
+  }
+  const available = new Set<SectionId>();
+  const pending: Partial<Record<SectionId, string>> = {};
+  if (space.role === null) {
+    pending.catalogue = "sans rôle";
+  } else {
+    available.add("catalogue");
+  }
+  if (manages(space, platformAdmin)) {
+    available.add("espace");
+  } else {
+    pending.espace = space.implicit ? "mode local" : "administrateurs";
+  }
+  return { available, pending };
+}
 
 /** Route de connexion du serveur quand une session est perdue pendant l'usage. */
 const LOGIN_PATH = "/auth/login";
@@ -126,27 +157,34 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
     [],
   );
   const reread = lost.hash === hash && lost.reread ? "relu" : "";
+  // Une écriture sur les membres peut changer son propre rôle (E4) : la liste et l'espace sont
+  // relus, l'ancienne réponse restant affichée pendant la relecture.
+  const [revision, setRevision] = useState(0);
   // La liste est relue à chaque navigation : le sélecteur ne garde pas un espace retiré.
-  const listed = useOutcome(`spaces:${hash}:${reread}`, (signal) => fetchSpaces(signal, fetcher));
-  const spaceId = route.page === "catalogue" ? route.space : null;
-  const current: Current = useOutcome(`space:${spaceId ?? ""}:${reread}`, (signal) =>
+  const listed = useRefreshed(`spaces:${hash}:${reread}`, revision, (signal) => fetchSpaces(signal, fetcher));
+  const spaceId = spaceOf(route);
+  const current: Current = useRefreshed(`space:${spaceId ?? ""}:${reread}`, revision, (signal) =>
     // Un identifiant hors format (E1) ne désigne aucun espace : rien n'est demandé au serveur.
     spaceId === null ? Promise.resolve(null) : SPACE_ID.test(spaceId) ? fetchSpace(spaceId, signal, fetcher) : Promise.resolve(NOT_FOUND),
   );
   const space = current?.status === "ok" ? current.value : null;
-  const readable = space !== null && space.role !== null;
+  const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
+  const sections = sectionsFor(space, platformAdmin);
+  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" ? "espace" : undefined;
 
   return (
     <AppShell
       workspace={space?.atlas ?? null}
-      available={readable ? AVAILABLE : NOTHING}
-      active={route.page === "catalogue" && readable ? "catalogue" : undefined}
-      // Le catalogue n'est offert que sur la page d'un espace lisible : y revenir est la seule navigation.
-      onNavigate={() => {
-        navigate(route);
+      available={sections.available}
+      active={active !== undefined && sections.available.has(active) ? active : undefined}
+      // Les entrées ne sont offertes que dans un espace confirmé : elles mènent à ses pages.
+      onNavigate={(section) => {
+        if (space !== null) {
+          navigate(section === "espace" ? { page: "members", space: space.id } : { page: "catalogue", space: space.id });
+        }
       }}
       breadcrumb={breadcrumb(route, current)}
-      pending={readable ? undefined : OUTSIDE}
+      pending={sections.pending}
       spaceSwitch={
         <SpaceSwitch
           spaces={listed.status === "ok" ? listed.value.spaces : listed.status === "loading" ? "loading" : null}
@@ -162,7 +200,15 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
       onLogout={onLogout}
     >
       {children}
-      <Page route={route} current={current} listed={listed} fetcher={fetcher} />
+      <Page
+        route={route}
+        current={current}
+        listed={listed}
+        fetcher={fetcher}
+        onWritten={() => {
+          setRevision((value) => value + 1);
+        }}
+      />
     </AppShell>
   );
 }
@@ -174,7 +220,13 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
   if (route.page === "prototype") {
     return ["Prototype graphique"];
   }
+  if (route.page === "create") {
+    return ["Vos espaces", "Nouvel espace"];
+  }
   if (current?.status === "ok") {
+    if (route.page === "members") {
+      return [current.value.name, "Membres et rôles"];
+    }
     return current.value.role === null ? [current.value.name] : [current.value.name, "Catalogue Atlas"];
   }
   return [current?.status === "not_found" ? "Espace introuvable" : "Espace"];
@@ -185,11 +237,23 @@ interface PageProps {
   current: Current;
   listed: { status: "loading" } | SpaceOutcome<SpaceList>;
   fetcher: Fetch;
+  onWritten: () => void;
 }
 
-function Page({ route, current, listed, fetcher }: PageProps) {
+function Page({ route, current, listed, fetcher, onWritten }: PageProps) {
   if (route.page === "home") {
     return <SpacesHome listed={listed} />;
+  }
+  if (route.page === "create") {
+    return (
+      <CreateSpacePage
+        listed={listed}
+        fetcher={fetcher}
+        onCreated={(space) => {
+          navigate({ page: "members", space: space.id });
+        }}
+      />
+    );
   }
   if (route.page === "prototype" || current === null) {
     return <PrototypePage />;
@@ -216,11 +280,26 @@ function Page({ route, current, listed, fetcher }: PageProps) {
       </>
     );
   }
+  if (route.page === "members") {
+    if (current.value.implicit) {
+      return (
+        <>
+          <Heading title="Membres et rôles" />
+          <Banner tone="neutral">En mode local, sans fournisseur d'identité, l'espace est implicite et vous en êtes l'administrateur : ses membres ne se gèrent pas.</Banner>
+        </>
+      );
+    }
+    // Le serveur décide : un rôle insuffisant est refusé par lui, et la page rend ce refus.
+    return <MembersPage key={current.value.id} space={current.value} fetcher={fetcher} onWritten={onWritten} />;
+  }
   if (current.value.role === null) {
     return (
       <>
         <Heading title={current.value.name} />
-        <Banner tone="neutral">Vous administrez la plateforme sans rôle dans cet espace : vous en gérez les membres, son catalogue ne vous est pas lisible.</Banner>
+        <Banner tone="neutral">
+          Vous administrez la plateforme sans rôle dans cet espace : vous en gérez les membres, son catalogue ne vous est pas lisible.{" "}
+          <a href={routeHash({ page: "members", space: current.value.id })}>Gérer les membres</a>
+        </Banner>
       </>
     );
   }

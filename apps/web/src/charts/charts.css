@@ -38,6 +38,8 @@
 }
 
 .sb-table-wrap {
+  /* Bloc conteneur des libellés masqués du tableau : sans lui, ils élargissent la page. */
+  position: relative;
   overflow-x: auto;
 }
 

@@ -2,12 +2,18 @@ import { useMemo, useSyncExternalStore } from "react";
 
 /**
  * Pages de l'application, adressées par l'ancre de l'URL (plan 04, C11). L'accueil liste les
- * espaces ; le catalogue se lit dans un espace (plan 08, 8.3) ; le prototype graphique reste
- * accessible hors espace, comme démonstration.
+ * espaces ; le catalogue et les membres se lisent dans un espace (plan 08, 8.3 et 8.4) ; le
+ * prototype graphique reste accessible hors espace, comme démonstration.
  */
-export type Route = { page: "home" } | { page: "prototype" } | { page: "catalogue"; space: string };
+export type Route =
+  | { page: "home" }
+  | { page: "prototype" }
+  | { page: "create" }
+  | { page: "catalogue"; space: string }
+  | { page: "members"; space: string };
 
 const PROTOTYPE_HASH = "#/prototype";
+const CREATE_HASH = "#/nouvel-espace";
 const SPACE_PREFIX = "#/espaces/";
 
 export function routeHash(route: Route): string {
@@ -16,8 +22,12 @@ export function routeHash(route: Route): string {
       return "#/";
     case "prototype":
       return PROTOTYPE_HASH;
+    case "create":
+      return CREATE_HASH;
     case "catalogue":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/catalogue`;
+    case "members":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/membres`;
   }
 }
 
@@ -34,11 +44,15 @@ export function routeFromHash(hash: string): Route {
   if (hash === PROTOTYPE_HASH) {
     return { page: "prototype" };
   }
+  if (hash === CREATE_HASH) {
+    return { page: "create" };
+  }
   if (hash.startsWith(SPACE_PREFIX)) {
-    // `#/espaces/<id>` ouvre la seule page livrée d'un espace : son catalogue.
-    const segment = /^([^/]+)(?:\/catalogue)?$/.exec(hash.slice(SPACE_PREFIX.length))?.[1];
-    if (segment !== undefined) {
-      return { page: "catalogue", space: decodeSegment(segment) };
+    // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
+    const match = /^([^/]+)(?:\/(catalogue|membres))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    if (match?.[1] !== undefined) {
+      const space = decodeSegment(match[1]);
+      return match[2] === "membres" ? { page: "members", space } : { page: "catalogue", space };
     }
   }
   return { page: "home" };

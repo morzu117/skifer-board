@@ -17,6 +17,14 @@
             "subject": "00u5d6e7f8"
           },
           "after": "reader"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": {
+          "name": "Dominique Leroy",
+          "email": "dominique.leroy@example.invalid"
         }
       },
       {
@@ -33,7 +41,12 @@
             "name": "finance-admins"
           },
           "after": "admin"
-        }
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": null
       },
       {
         "id": 1,
@@ -45,7 +58,12 @@
         "action": "space_created",
         "detail": {
           "name": "Finance"
-        }
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": null
       }
     ]
   }

@@ -4,6 +4,8 @@ import { afterEach, describe, it, vi } from "vitest";
 import catalogue from "../../../contracts/catalogue/liste.json";
 import espace from "../../../contracts/espaces/espace.json";
 import introuvable from "../../../contracts/espaces/introuvable.json";
+import journal from "../../../contracts/espaces/journal.json";
+import membres from "../../../contracts/espaces/membres.json";
 import liste from "../../../contracts/espaces/liste.json";
 import etabli from "../../../contracts/identite/me-etabli.json";
 import { THEMES } from "./charts/theme";
@@ -21,6 +23,9 @@ const ROUTES: Readonly<Record<string, Exemple>> = {
   "/api/spaces/inconnu": introuvable,
   "/api/spaces/plateforme": { status: 200, body: { ...espace.body, id: "plateforme", name: "Plateforme", role: null } },
   "/api/spaces/panne": { status: 500, body: {} },
+  // Membres et rôles, création d'un espace (plan 08, 8.4).
+  "/api/spaces/finance/members": membres,
+  "/api/spaces/finance/events": journal,
 };
 const fetcher = vi.fn<Fetch>().mockImplementation((url) => {
   const exemple = ROUTES[url];
@@ -35,6 +40,8 @@ describe.each(THEMES)("Accessibilité de la coque avec espaces · $label", (them
     ["espace introuvable", "#/espaces/inconnu/catalogue", () => screen.findByRole("heading", { name: "Espace introuvable" })],
     ["administration sans rôle", "#/espaces/plateforme/catalogue", () => screen.findByText(/sans rôle dans cet espace/)],
     ["espace indisponible", "#/espaces/panne/catalogue", () => screen.findByRole("heading", { level: 1, name: "Espace indisponible" })],
+    ["membres et rôles", "#/espaces/finance/membres", () => screen.findByRole("list", { name: "Journal de l'espace" })],
+    ["nouvel espace sans administration", "#/nouvel-espace", () => screen.findByText(/Seuls les administrateurs de la plateforme/)],
   ])("aucune violation axe : %s", async (_page, hash, attendre) => {
     window.history.replaceState(null, "", `/${hash}`);
     const { container } = renderThemed(<App fetcher={fetcher} leave={() => undefined} />, theme);

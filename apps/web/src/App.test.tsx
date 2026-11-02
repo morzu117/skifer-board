@@ -6,6 +6,7 @@ import catalogue from "../../../contracts/catalogue/liste.json";
 import espace from "../../../contracts/espaces/espace.json";
 import introuvable from "../../../contracts/espaces/introuvable.json";
 import liste from "../../../contracts/espaces/liste.json";
+import administration from "../../../contracts/espaces/liste-administration.json";
 import locale from "../../../contracts/espaces/liste-locale.json";
 
 import local from "../../../contracts/identite/me-local.json";
@@ -63,12 +64,13 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   render(<App />);
   const nav = await screen.findByRole("navigation", { name: "Navigation principale" });
   expect(within(nav).getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");
-  // À l'accueil, hors espace, aucune section n'est offerte ; le catalogue se lit « dans un espace ».
+  // À l'accueil, hors espace, aucune section n'est offerte ; le catalogue et les membres se lisent « dans un espace ».
   expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements", "Espace & connexions"]) {
+  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
     expect(within(nav).getByText(name)).toHaveTextContent("à venir");
   }
   expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
+  expect(within(nav).getByText("Espace & connexions")).toHaveTextContent("Espace & connexionsdans un espace");
   await userEvent.click(await screen.findByRole("link", { name: "Finance" }));
   await screen.findByRole("heading", { level: 1, name: "Catalogue Atlas" });
   await screen.findByRole("table");
@@ -77,9 +79,11 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(fetcher).toHaveBeenCalledWith("/api/spaces/finance/catalog", expect.anything());
   expect(screen.getByRole("navigation", { name: "Fil d'Ariane" })).toHaveTextContent("Catalogue Atlas");
   expect(within(screen.getByRole("navigation", { name: "Fil d'Ariane" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Finance", "Catalogue Atlas"]);
-  expect(within(nav).getAllByRole("button")).toHaveLength(1);
+  // L'espace confirmé dit « Administrateur » : Catalogue Atlas et Espace & connexions sont livrés (plan 08, 8.4).
+  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Catalogue Atlas", "Espace & connexions"]);
   expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
-  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements", "Espace & connexions"]) {
+  expect(within(nav).getByRole("button", { name: "Espace & connexions" })).not.toHaveAttribute("aria-current");
+  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
     expect(within(nav).getByText(name)).toHaveTextContent("à venir");
   }
   expect(nav).toHaveTextContent("skifer-atlas");
@@ -310,8 +314,10 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
   });
 
   it("l'administration de la plateforme sans rôle ne lit pas le catalogue de l'espace", async () => {
-    const fetcher = ouvrir("#/espaces/finance/catalogue", { ...ROUTES, "/api/me": etabli, "/api/spaces/finance": { status: 200, body: { ...espace.body, role: null } } });
+    const fetcher = ouvrir("#/espaces/finance/catalogue", { ...ROUTES, "/api/me": etabli, "/api/spaces": administration, "/api/spaces/finance": { status: 200, body: { ...espace.body, role: null } } });
     const bandeau = await screen.findByText(/Vous administrez la plateforme sans rôle dans cet espace/);
+    // Il en gère les membres (E6) : le bandeau y mène (plan 08, 8.4).
+    expect(within(bandeau).getByRole("link", { name: "Gérer les membres" })).toHaveAttribute("href", "#/espaces/finance/membres");
     expect(bandeau).toHaveTextContent("son catalogue ne vous est pas lisible");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Finance");
     // Le fil d'Ariane ne nomme pas un catalogue illisible.
@@ -320,8 +326,9 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
     expect(screen.queryByRole("heading", { name: "Catalogue Atlas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
-    expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-    expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
+    // Le catalogue est fermé « sans rôle » ; les membres, gérés par la plateforme, sont offerts.
+    await waitFor(() => { expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Espace & connexions"]); });
+    expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlassans rôle");
     // Laisser au catalogue le temps d'une lecture éventuelle : aucune ne doit partir.
     await act(async () => { await new Promise((fin) => setTimeout(fin, 20)); });
     expect(fetcher.mock.calls.map(([url]) => url).filter((url) => url.includes("catalog"))).toEqual([]);
@@ -535,15 +542,16 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
     expect(selecteur()).toHaveValue("finance");
   });
 
-  it("dans un espace lisible, Catalogue Atlas est livré ; hors espace et sans rôle il se lit « dans un espace »", async () => {
+  it("dans un espace lisible, Catalogue Atlas est livré ; hors d'un espace confirmé il se lit « dans un espace »", async () => {
     ouvrir("#/espaces/finance/catalogue", { ...ROUTES, "/api/me": etabli });
     await screen.findByRole("table");
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).queryByText("dans un espace")).not.toBeInTheDocument();
-    for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements", "Espace & connexions"]) {
+    for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
       expect(within(nav).getByText(name)).toHaveTextContent("à venir");
     }
+    expect(within(nav).getByRole("button", { name: "Espace & connexions" })).toBeInTheDocument();
     for (const hash of ["#/prototype", "#/espaces/inconnu", "#/"]) {
       naviguer(hash);
       await waitFor(() => { expect(within(nav).queryByRole("button", { name: "Catalogue Atlas" })).not.toBeInTheDocument(); });
