@@ -40,12 +40,64 @@ COLONNES = {
         "binding_fingerprint": False,
         "created_at": False,
     },
+    # Espaces, liaisons, personnes connues et journal (plan 08, 8.1, révision 0003).
+    "spaces": {
+        "id": False,
+        "name": False,
+        "atlas": False,
+        "created_at": False,
+        "created_by_issuer": False,
+        "created_by_subject": False,
+    },
+    "space_bindings": {
+        "id": False,
+        "space_id": False,
+        "kind": False,
+        "group_name": True,
+        "person_issuer": True,
+        "person_subject": True,
+        "principal_key": False,
+        "role": False,
+        "created_at": False,
+        "created_by_issuer": False,
+        "created_by_subject": False,
+    },
+    "people": {
+        "issuer": False,
+        "subject": False,
+        "name": True,
+        "email": True,
+        "name_key": True,
+        "email_key": True,
+        "last_login": False,
+    },
+    "space_events": {
+        "id": False,
+        "space_id": False,
+        "at": False,
+        "actor_issuer": False,
+        "actor_subject": False,
+        "action": False,
+        "detail": False,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
     "login_requests": {"created_at"},
+    "spaces": {"created_at"},
+    "space_bindings": {"created_at"},
+    "people": {"last_login"},
+    "space_events": {"at"},
 }
-CLES = {"sessions": ["fingerprint"], "login_requests": ["state_fingerprint"]}
+CLES = {
+    "sessions": ["fingerprint"],
+    "login_requests": ["state_fingerprint"],
+    "spaces": ["id"],
+    "space_bindings": ["id"],
+    "people": ["issuer", "subject"],
+    "space_events": ["id"],
+}
+TABLES = {*COLONNES, "alembic_version"}
 
 
 def session(empreinte: str = "a" * 64) -> dict[str, object]:
@@ -87,7 +139,8 @@ def test_base_vierge_sans_revision(engine: Engine) -> None:
 def test_migration_jusqu_a_la_derniere_revision(engine: Engine) -> None:
     upgrade(engine)
     assert current_revision(engine) == head_revision()
-    assert tables(engine) == {"sessions", "login_requests", "alembic_version"}
+    assert {"sessions", "login_requests", "alembic_version"} <= tables(engine)
+    assert tables(engine) == TABLES
 
 
 def test_rejouer_ne_change_rien(migre: Engine) -> None:
@@ -97,7 +150,8 @@ def test_rejouer_ne_change_rien(migre: Engine) -> None:
     upgrade(migre)
     upgrade(migre)
     assert current_revision(migre) == head_revision()
-    assert tables(migre) == {"sessions", "login_requests", "alembic_version"}
+    assert {"sessions", "login_requests", "alembic_version"} <= tables(migre)
+    assert tables(migre) == TABLES
     assert forme(migre) == avant
     with migre.connect() as connexion:
         lignes = connexion.execute(select(sessions)).mappings().all()
@@ -123,7 +177,8 @@ def test_tables_et_colonnes_du_plan(migre: Engine) -> None:
 
 
 def test_declarations_du_plan() -> None:
-    for table in (sessions, login_requests):
+    assert {sessions.name, login_requests.name} <= set(metadata.tables)
+    for table in metadata.tables.values():
         assert {c.name: c.nullable for c in table.columns} == COLONNES[table.name]
         assert [c.name for c in table.primary_key.columns] == CLES[table.name]
         for nom in INSTANTS[table.name]:

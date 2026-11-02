@@ -1,0 +1,47 @@
+"""Espaces, appartenance et rôles (plan 08)."""
+
+from .model import (
+    SPACE_ID,
+    Binding,
+    BindingNotFound,
+    GroupPrincipal,
+    LastAdmin,
+    Person,
+    PersonRef,
+    Principal,
+    Role,
+    Space,
+    SpaceError,
+    SpaceEvent,
+    SpaceExists,
+    SpaceNotFound,
+    UnknownPerson,
+    effective_role,
+    is_platform_admin,
+    matches,
+)
+from .store import EVENTS_LIMIT, PEOPLE_LIMIT, SpaceStore
+
+__all__ = [
+    "EVENTS_LIMIT",
+    "PEOPLE_LIMIT",
+    "SPACE_ID",
+    "Binding",
+    "BindingNotFound",
+    "GroupPrincipal",
+    "LastAdmin",
+    "Person",
+    "PersonRef",
+    "Principal",
+    "Role",
+    "Space",
+    "SpaceError",
+    "SpaceEvent",
+    "SpaceExists",
+    "SpaceNotFound",
+    "SpaceStore",
+    "UnknownPerson",
+    "effective_role",
+    "is_platform_admin",
+    "matches",
+]

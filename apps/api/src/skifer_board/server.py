@@ -41,6 +41,7 @@ from .identity import (
     is_loopback,
 )
 from .identity import config_from_env as identity_from_env
+from .spaces import SpaceStore
 from .state import (
     DATABASE_URL,
     PgLoginRequests,
@@ -228,6 +229,9 @@ def identity_runtime(
         lambda: datetime.now(UTC),
         PgSessionStore(engine, config.session_absolute, config.session_idle),
         PgLoginRequests(engine),
+        # Chaque connexion enregistre la personne, pour qu'on puisse la lier à un espace
+        # (plan 08, E5).
+        SpaceStore(engine).record_login,
     )
 
 

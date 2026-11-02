@@ -1,6 +1,6 @@
 # Plan 08 — Espaces, appartenance et rôles (lot 02, troisième tranche)
 
-Date : 2 novembre 2026 · Statut : **à réaliser**. Troisième tranche du lot 02 (« socle partagé »), après l'identité (plan 06) et la persistance (plan 07). Choix du porteur du 2 novembre, qui suit les recommandations : **appartenance par groupes du fournisseur et par personnes**, **groupe d'administration de la plateforme nommé en configuration**, **espaces, membres et rôles en base**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **en cours**. Troisième tranche du lot 02 (« socle partagé »), après l'identité (plan 06) et la persistance (plan 07). Choix du porteur du 2 novembre, qui suit les recommandations : **appartenance par groupes du fournisseur et par personnes**, **groupe d'administration de la plateforme nommé en configuration**, **espaces, membres et rôles en base**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §2 (propositions : consulter, créer, administrer), §4.1 (objet Espace), §4.3 (droits), §8 lot 02. Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §0.1 (rôles), §0.5 (coque), §1.1 (accueil des espaces), §9 (administration, « Membres et rôles »).
 
@@ -42,6 +42,13 @@ Créés : `apps/api/src/skifer_board/spaces/` (modèle, magasin en base, décisi
 - Enregistrement des personnes à la connexion (E5), et recherche par nom ou par adresse.
 
 Tests : rôle effectif sur toutes les combinaisons (aucune liaison, groupe seul, personne seule, plusieurs liaisons, groupe homonyme dans un autre espace, même sujet chez un autre émetteur) ; dernier administrateur, y compris quand deux retraits concurrents visent les deux derniers ; journal complet et en ajout seul ; isolation de deux espaces ; personne enregistrée et mise à jour à chaque connexion ; migration depuis une base vierge et concordance avec les déclarations.
+
+Écarts de réalisation :
+
+- `is_platform_admin` reçoit le nom du groupe d'administration (`config.admin_group`), pas toute la configuration : le modèle ne dépend pas de la configuration OIDC.
+- L'agent de test a trouvé un défaut, corrigé : la recherche de personnes reposait sur `ILIKE`, qui ne replie que la casse ASCII sur une base en locale C (« CHLOÉ » ne trouvait pas « Chloé »). La table `people` garde désormais deux clés de recherche, `name_key` et `email_key`, repliées par Board (NFC, puis `casefold`) ; la recherche est un `LIKE` sur ces clés, indépendant de la locale de la base. L'ordre des résultats départage aussi par émetteur.
+- Le magasin ne valide ni l'identifiant d'espace (E1) ni le nom d'un groupe : les routes de 8.2 refusent un identifiant hors format et un nom de groupe vide (E12), avant d'appeler le magasin.
+- Le pilote pg8000 rend une violation de clé étrangère comme `ProgrammingError`, pas `IntegrityError`. Le magasin n'en dépend pas : il verrouille l'espace et lève `SpaceNotFound` avant d'écrire.
 
 ### 8.2 — Routes des espaces
 

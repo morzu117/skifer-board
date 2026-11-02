@@ -19,9 +19,11 @@ PUBLIC_ORIGIN = "SKIFER_BOARD_PUBLIC_ORIGIN"
 GROUPS_CLAIM = "SKIFER_BOARD_OIDC_GROUPS_CLAIM"
 SESSION_HOURS = "SKIFER_BOARD_SESSION_HOURS"
 SESSION_IDLE_MINUTES = "SKIFER_BOARD_SESSION_IDLE_MINUTES"
+# Groupe d'administration de la plateforme (plan 08, E6) : crée les espaces.
+ADMIN_GROUP = "SKIFER_BOARD_ADMIN_GROUP"
 
 REQUIRED = (ISSUER, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, PUBLIC_ORIGIN)
-OPTIONAL = (GROUPS_CLAIM, SESSION_HOURS, SESSION_IDLE_MINUTES)
+OPTIONAL = (GROUPS_CLAIM, SESSION_HOURS, SESSION_IDLE_MINUTES, ADMIN_GROUP)
 
 LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
@@ -41,6 +43,8 @@ class OidcConfig:
     groups_claim: str = "groups"
     session_absolute: timedelta = timedelta(hours=8)
     session_idle: timedelta = timedelta(minutes=30)
+    # Sans groupe d'administration, personne ne crée d'espace (plan 08, E6).
+    admin_group: str | None = None
 
 
 def is_loopback(host: str) -> bool:
@@ -100,4 +104,5 @@ def config_from_env(environ: Mapping[str, str]) -> OidcConfig | None:
         groups_claim=present.get(GROUPS_CLAIM, "groups"),
         session_absolute=timedelta(hours=hours),
         session_idle=timedelta(minutes=idle),
+        admin_group=present.get(ADMIN_GROUP),
     )

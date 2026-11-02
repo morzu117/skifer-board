@@ -5,10 +5,12 @@ from datetime import timedelta
 import pytest
 from skifer_board.identity import ConfigError, config_from_env
 from skifer_board.identity.config import (
+    ADMIN_GROUP,
     CLIENT_ID,
     CLIENT_SECRET,
     GROUPS_CLAIM,
     ISSUER,
+    OPTIONAL,
     PUBLIC_ORIGIN,
     REDIRECT_URI,
     REQUIRED,
@@ -43,7 +45,9 @@ def test_variable_obligatoire_absente(variable: str, environnement: dict[str, st
     assert SECRET not in str(erreur.value)
 
 
-@pytest.mark.parametrize("variable", [GROUPS_CLAIM, SESSION_HOURS, SESSION_IDLE_MINUTES])
+@pytest.mark.parametrize(
+    "variable", [GROUPS_CLAIM, SESSION_HOURS, SESSION_IDLE_MINUTES, ADMIN_GROUP]
+)
 def test_option_seule_ne_replie_pas_en_local(variable: str) -> None:
     with pytest.raises(ConfigError) as erreur:
         config_from_env({variable: "1"})
@@ -116,6 +120,8 @@ def test_defauts_et_secret_cache(environnement: dict[str, str]) -> None:
     assert config.session_absolute == timedelta(hours=8)
     assert config.session_idle == timedelta(minutes=30)
     assert config.groups_claim == "groups"
+    # Sans groupe d'administration, personne ne crée d'espace (plan 08, E6).
+    assert config.admin_group is None
     assert SECRET not in repr(config)
     assert SECRET not in str(config)
 
@@ -127,6 +133,28 @@ def test_options_configurees(environnement: dict[str, str]) -> None:
     assert config.session_absolute == timedelta(hours=12)
     assert config.session_idle == timedelta(minutes=45)
     assert config.groups_claim == "equipes"
+    assert config.admin_group is None
+
+
+def test_options_et_variables_optionnelles() -> None:
+    assert set(OPTIONAL) == {GROUPS_CLAIM, SESSION_HOURS, SESSION_IDLE_MINUTES, ADMIN_GROUP}
+    assert not set(OPTIONAL) & set(REQUIRED)
+
+
+@pytest.mark.parametrize("valeur", ["plateforme", "Admins Board", "équipe-α"])
+def test_groupe_d_administration_lu(valeur: str, environnement: dict[str, str]) -> None:
+    environnement[ADMIN_GROUP] = valeur
+    config = config_from_env(environnement)
+    assert config is not None
+    assert config.admin_group == valeur
+
+
+def test_groupe_d_administration_vide_sans_effet(environnement: dict[str, str]) -> None:
+    environnement[ADMIN_GROUP] = ""
+    config = config_from_env(environnement)
+    assert config is not None
+    assert config.admin_group is None
+    assert config_from_env({ADMIN_GROUP: ""}) is None
 
 
 @pytest.mark.parametrize("variable", [SESSION_HOURS, SESSION_IDLE_MINUTES])

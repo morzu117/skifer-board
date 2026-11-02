@@ -33,6 +33,8 @@ class IdentityRuntime:
     flow: LoginFlow
     sessions: SessionStore
     clock: Callable[[], datetime]
+    # Appelé à chaque connexion réussie : Board y enregistre la personne (plan 08, E5).
+    on_login: Callable[[Identity, datetime], None] | None = None
 
 
 def _error(status: int, code: str, **fields: str) -> JSONResponse:
@@ -136,7 +138,10 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
         found = runtime.flow.finish(params, request.cookies.get(LOGIN_COOKIE))
         if isinstance(found, LoginRefusal):
             return back_to_app(found)
-        token = runtime.sessions.create(found, runtime.clock())
+        now = runtime.clock()
+        if runtime.on_login is not None:
+            runtime.on_login(found, now)
+        token = runtime.sessions.create(found, now)
         response = back_to_app(None)
         _set_cookie(
             response,
@@ -162,6 +167,7 @@ def build_runtime(
     clock: Callable[[], datetime],
     sessions: SessionStore | None = None,
     requests: LoginRequests | None = None,
+    on_login: Callable[[Identity, datetime], None] | None = None,
 ) -> IdentityRuntime:
     """Assemble fournisseur, parcours et magasins d'une configuration. Sans magasins fournis,
     ils sont en mémoire : un seul processus, ce que le serveur n'admet que dans les tests
@@ -177,4 +183,5 @@ def build_runtime(
             else sessions
         ),
         clock=clock,
+        on_login=on_login,
     )
