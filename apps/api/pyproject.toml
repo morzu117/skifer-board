@@ -8,10 +8,14 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "pyjwt[crypto]>=2.10",
+    "sqlalchemy>=2.1.6",
+    "alembic>=1.20.1",
+    "pg8000>=1.31.6",
 ]
 
 [project.scripts]
 skifer-board-api = "skifer_board.server:main"
+skifer-board-migrate = "skifer_board.state.migrate:main"
 
 [build-system]
 requires = ["uv_build>=0.6"]

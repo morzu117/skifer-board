@@ -1,6 +1,6 @@
 # Plan 07 — Persistance de l'état et migrations (lot 02, deuxième tranche)
 
-Date : 2 novembre 2026 · Statut : **à réaliser**. Deuxième tranche du lot 02 (« socle partagé »), qui suit le plan 06. Elle applique la décision D-3 : git garde les contenus, une base garde l'état. Choix du porteur du 2 novembre : **PostgreSQL** ; **tests sur une instance locale jetable** ; **SQLAlchemy Core, Alembic et pg8000**. Claude développe. Les tests sont écrits par un agent Claude distinct, plus par Codex, à la demande du porteur (« lance un autre agent claude, mon quota codex est pas très grand ») ; plan 03, T1.
+Date : 2 novembre 2026 · Statut : **en cours**. Deuxième tranche du lot 02 (« socle partagé »), qui suit le plan 06. Elle applique la décision D-3 : git garde les contenus, une base garde l'état. Choix du porteur du 2 novembre : **PostgreSQL** ; **tests sur une instance locale jetable** ; **SQLAlchemy Core, Alembic et pg8000**. Claude développe. Les tests sont écrits par un agent Claude distinct, plus par Codex, à la demande du porteur (« lance un autre agent claude, mon quota codex est pas très grand ») ; plan 03, T1.
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §8 lot 02 (« persistance et migrations »), §10.1 (PostgreSQL pour les métadonnées de Board), §10.2 D-3. Tranche précédente : [plan 06](06_identite_oidc_plan.md), dont I4 annonçait cette tranche.
 
@@ -24,6 +24,7 @@ Plan parent : [plan de développement](../plan-de-developpement.md), §8 lot 02 
 | P8 | **Horloge de Board, pas celle de la base.** Les instants écrits et comparés viennent de l'horloge injectée du serveur, en UTC, dans des colonnes `timestamptz`. Les tests restent déterministes et l'expiration a une seule source. | `now()` de PostgreSQL : deux horloges, et des tests qui dépendent du temps réel. |
 | P9 | **Tests sur une instance PostgreSQL locale jetable.** pytest crée un cluster temporaire avec `initdb`, joignable seulement par un fichier socket local, sans aucune écoute réseau (`listen_addresses=''`). Il donne une base vierge à chaque test et détruit le cluster à la fin. Les binaires PostgreSQL sont exigés, trouvés par `PATH` ou `pg_config`. S'ils manquent, **le gate échoue**, il ne saute pas les tests. | Docker : démon requis et image à télécharger. SQLite en test : un autre dialecte que la production. |
 | P10 | **Secret de connexion.** L'adresse de la base peut contenir un mot de passe. Elle n'apparaît ni dans une représentation d'objet, ni dans un journal, ni dans un message d'erreur. Les erreurs nomment l'hôte et la base, jamais l'adresse complète. | — |
+| P11 | **TLS vérifié vers une base distante.** Une base jointe par le réseau, hors de la boucle locale, exige `sslmode=verify-full` : certificat vérifié contre les autorités du système, nom d'hôte compris. Les seules options d'adresse admises sont `unix_sock`, `application_name` et `sslmode` ; toute autre est un refus de configuration. Décision ajoutée en réalisation (7.1). | Connexion en clair, ou TLS sans vérification (`sslmode=require`) : l'identité des personnes passerait en clair, ou vers un serveur non authentifié. |
 
 Dépendances nouvelles, toutes à licence permissive (I7) : **SQLAlchemy** (MIT), **Alembic** (MIT) et **pg8000** (BSD-3-Clause), avec leurs dépendances transitives : Mako (MIT), scramp (MIT) et ce qu'elles tirent. Les licences sont vérifiées à l'installation et listées dans le changelog.
 
@@ -47,6 +48,11 @@ Tests :
 - démarrage refusé pour une base injoignable, vide, en retard d'une révision ou portant une révision inconnue ; message sans mot de passe ;
 - OIDC sans base : refus de démarrer ; mode local sans base : démarrage comme aujourd'hui ;
 - adresse malformée ou d'un autre pilote refusée.
+
+Écarts de réalisation :
+
+- L'agent de test a trouvé deux défauts, corrigés. Un port illisible, ou un mot de passe contenant un `@` non encodé, provoquait une erreur brute qui recopiait une partie du mot de passe. Une option d'adresse inconnue du pilote (`sslmode=require`) provoquait une erreur brute à la première connexion au lieu d'un refus.
+- Le second défaut a montré qu'aucune connexion TLS n'était prévue : d'où la décision P11. Un `@` dans l'hôte, ou un `@` ou un `/` dans le nom de base, est refusé : il signale un mot de passe non encodé, dont des fragments seraient sinon lus comme hôte ou comme base, puis affichés. Ce troisième défaut a été trouvé par l'agent de test à sa deuxième passe.
 
 ### 7.2 — Sessions et demandes de connexion en base
 
