@@ -12,7 +12,21 @@
           "subject": "00u1a2b3c4"
         },
         "role": "creator",
-        "implicit": false
+        "implicit": false,
+        "environments": [
+          {
+            "code": "DEV",
+            "deploy": true
+          },
+          {
+            "code": "TEST",
+            "deploy": false
+          },
+          {
+            "code": "PROD",
+            "deploy": false
+          }
+        ]
       },
       {
         "id": "rh",
@@ -24,7 +38,21 @@
           "subject": "00u1a2b3c4"
         },
         "role": "reader",
-        "implicit": false
+        "implicit": false,
+        "environments": [
+          {
+            "code": "DEV",
+            "deploy": false
+          },
+          {
+            "code": "TEST",
+            "deploy": false
+          },
+          {
+            "code": "PROD",
+            "deploy": false
+          }
+        ]
       }
     ],
     "platform_admin": false

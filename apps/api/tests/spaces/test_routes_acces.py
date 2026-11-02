@@ -1,4 +1,4 @@
-"""Matrice d'accès des routes d'espaces (plan 08, 8.2 ; E2, E6, E7, E9).
+"""Matrice d'accès des routes d'espaces (plan 08, 8.2 ; E2, E6, E7, E9 ; plan 09, 9.2).
 
 Chaque route est appelée par chaque profil sur le serveur réel : lecteur, créateur et
 administrateur de l'espace (chacun par un groupe et par une liaison de personne), non-membre,
@@ -21,7 +21,7 @@ from identity.conftest import fournisseur as fournisseur
 from identity.conftest import horloge as horloge
 from skifer_board.catalog import CatalogService
 from skifer_board.server import create_app
-from skifer_board.spaces import Role
+from skifer_board.spaces import Environment, GroupPrincipal, Role
 from state.conftest import migre as migre
 
 from spaces.monde import (
@@ -85,6 +85,14 @@ def interdit(requis: str) -> dict[str, Any]:
     return {"error": {"code": "forbidden", "required": requis}}
 
 
+# Environnements d'un espace sans aucun accord : personne n'y déploie (plan 09, V4).
+SANS_DEPLOIEMENT = [
+    {"code": "DEV", "deploy": False},
+    {"code": "TEST", "deploy": False},
+    {"code": "PROD", "deploy": False},
+]
+
+
 def espace_json(monde: Monde, espace: str, nom: str, role: Role | None) -> dict[str, Any]:
     return {
         "id": espace,
@@ -94,6 +102,7 @@ def espace_json(monde: Monde, espace: str, nom: str, role: Role | None) -> dict[
         "created_by": {"issuer": PLATEFORME_SEULE.ref.issuer, "subject": "pia"},
         "role": None if role is None else role.value,
         "implicit": False,
+        "environments": SANS_DEPLOIEMENT,
     }
 
 
@@ -149,10 +158,12 @@ def test_matrice_des_routes(monde: Monde, service: CatalogService, profil: Profi
         espace_json(monde, A, "Finance", role) if vu else INTROUVABLE,
     )
 
-    # Membres et journal : administrateurs de l'espace et de la plateforme.
-    for route in ("members", "events"):
+    # Membres, journal et accords : administrateurs de l'espace et de la plateforme.
+    for route in ("members", "events", "deploy-grants"):
         if gere:
             obtenu = verifier("GET", f"/api/spaces/{A}/{route}", 200, ...)
+            if route == "deploy-grants":
+                assert obtenu == {"grants": []}
             if route == "members" and isinstance(obtenu, dict):
                 assert {m["id"] for m in obtenu["members"]} == liaisons_a
             if route == "events" and isinstance(obtenu, dict):
@@ -206,6 +217,29 @@ def test_matrice_des_routes(monde: Monde, service: CatalogService, profil: Profi
         verifier("DELETE", f"/api/spaces/{A}/members/{cible}", statut, refus)
         assert instantane(monde.moteur) == avant
 
+    # Accords de déploiement : accorder puis retirer, réservé aux mêmes (plan 09, V5).
+    accord = {"environment": "PROD", "principal": {"kind": "group", "name": "finance-ops"}}
+    existant = monde.magasin.grant(
+        A, Environment.TEST, GroupPrincipal("finance-qa"), PLATEFORME_SEULE.ref, monde.horloge()
+    )
+    if gere:
+        cree = verifier("POST", f"/api/spaces/{A}/deploy-grants", 200, ..., accord)
+        if isinstance(cree, dict):
+            assert cree["environment"] == "PROD"
+            assert cree["principal"] == accord["principal"]
+            assert cree["created_by"] == {"issuer": profil.ref.issuer, "subject": profil.sujet}
+        verifier("DELETE", f"/api/spaces/{A}/deploy-grants/{existant.id}", 204, None)
+        assert {g.id for g in monde.magasin.grants(A)} == (
+            {cree["id"]} if isinstance(cree, dict) else set()
+        )
+    else:
+        statut, refus = (403, interdit("admin")) if vu else (404, INTROUVABLE)
+        avant_accords = monde.magasin.grants(A)
+        verifier("GET", f"/api/spaces/{A}/deploy-grants", statut, refus)
+        verifier("POST", f"/api/spaces/{A}/deploy-grants", statut, refus, accord)
+        verifier("DELETE", f"/api/spaces/{A}/deploy-grants/{existant.id}", statut, refus)
+        assert monde.magasin.grants(A) == avant_accords
+
     creation = {
         "id": "nouveau",
         "name": "Nouveau",
@@ -243,11 +277,13 @@ HORS_FORMAT = (
     "finance%0A",
 )
 DESIGNATIONS = (A, B, "%66inance", "inconnu", "a" * 40, *HORS_FORMAT)
+GRANT_INCONNU = "5b0e4c1e-0000-4000-8000-000000000000"
 
 
 def routes_d_espace(monde: Monde, espace: str) -> list[tuple[str, str, object]]:
     liaison = monde.liaisons["a-axel"]
     valide = {"principal": {"kind": "group", "name": "intrus"}, "role": "admin"}
+    accord = {"environment": "PROD", "principal": {"kind": "group", "name": "intrus"}}
     return [
         ("GET", f"/api/spaces/{espace}", None),
         ("GET", f"/api/spaces/{espace}/members", None),
@@ -257,6 +293,12 @@ def routes_d_espace(monde: Monde, espace: str) -> list[tuple[str, str, object]]:
         ("DELETE", f"/api/spaces/{espace}/members/{liaison}", None),
         ("DELETE", f"/api/spaces/{espace}/members/inconnue", None),
         ("GET", f"/api/spaces/{espace}/events", None),
+        ("GET", f"/api/spaces/{espace}/deploy-grants", None),
+        ("POST", f"/api/spaces/{espace}/deploy-grants", accord),
+        ("POST", f"/api/spaces/{espace}/deploy-grants", {"environment": "QA"}),
+        ("POST", f"/api/spaces/{espace}/deploy-grants", b"{illisible"),
+        ("DELETE", f"/api/spaces/{espace}/deploy-grants/{GRANT_INCONNU}", None),
+        ("DELETE", f"/api/spaces/{espace}/deploy-grants/inconnu", None),
         *[("GET", f"/api/spaces/{espace}{route}", None) for route in CATALOGUE],
     ]
 
@@ -367,12 +409,18 @@ def test_role_annonce_par_le_navigateur_ignore(monde: Monde) -> None:
     for methode, chemin in (
         ("GET", f"/api/spaces/{A}/members?role=admin&platform_admin=true"),
         ("GET", f"/api/spaces/{A}/events?role=admin"),
+        ("GET", f"/api/spaces/{A}/deploy-grants?role=admin"),
+        ("DELETE", f"/api/spaces/{A}/deploy-grants/{GRANT_INCONNU}?role=admin"),
         ("GET", "/api/people?q=Nom&role=admin"),
         ("DELETE", f"/api/spaces/{A}/members/{monde.liaisons['a-stagiaires']}?role=admin"),
     ):
         reponse = monde.client.request(methode, chemin, headers=entetes)
         assert (reponse.status_code, reponse.json()) == (403, interdit("admin")), chemin
     corps = {"id": "pirate", "name": "Pirate", "first_admin": {"kind": "group", "name": "x"}}
+    accord = {"environment": "DEV", "principal": {"kind": "group", "name": "finance-lecteurs"}}
+    reponse = monde.client.post(f"/api/spaces/{A}/deploy-grants", json=accord, headers=entetes)
+    assert (reponse.status_code, reponse.json()) == (403, interdit("admin"))
+    assert monde.magasin.grants(A) == []
     reponse = monde.client.post("/api/spaces?platform_admin=true", json={**corps}, headers=entetes)
     assert (reponse.status_code, reponse.json()) == (403, interdit("platform_admin"))
     vu = monde.client.get(f"/api/spaces/{A}", headers=entetes).json()

@@ -29,7 +29,7 @@ from .model import (
     matches,
 )
 from .store import EVENTS_LIMIT, PEOPLE_LIMIT, SpaceStore
-from .web import Refused, install_spaces
+from .web import Guards, Refused, install_spaces
 
 __all__ = [
     "ENVIRONMENTS",
@@ -45,6 +45,7 @@ __all__ = [
     "Environment",
     "GrantNotFound",
     "GroupPrincipal",
+    "Guards",
     "LastAdmin",
     "LocalMode",
     "Person",

@@ -1,4 +1,5 @@
-"""Chaque exemple de `contracts/espaces/` est produit par le serveur réel (plan 08, 8.2).
+"""Chaque exemple de `contracts/espaces/` est produit par le serveur réel (plan 08, 8.2 ;
+plan 09, 9.2).
 
 Base migrée, fournisseur OIDC simulé, horloge réglée sur les instants des exemples : les
 réponses sont comparées exactement, sauf les identifiants de liaison, tirés au hasard (ils
@@ -40,13 +41,18 @@ from spaces.monde import ORIGINE, PLATEFORME, espaces_en_base
 
 CONTRATS = Path(__file__).resolve().parents[4] / "contracts" / "espaces"
 ATTENDUS = {
+    "accord",
+    "accord-inconnu",
+    "accords",
     "creation",
     "dernier-administrateur",
+    "environnement-invalide",
     "espace",
     "espace-existant",
     "interdit",
     "introuvable",
     "journal",
+    "journal-accords",
     "liaison",
     "liaison-inconnue",
     "liste",
@@ -59,6 +65,7 @@ ATTENDUS = {
     "recherche-invalide",
     "requete-invalide",
     "retrait",
+    "retrait-accord",
 }
 PLATEFORME_SUJET = "00u1a2b3c4"
 DOMINIQUE = "00u5d6e7f8"
@@ -235,6 +242,51 @@ def reponses(
         ]
         obtenues["dernier-administrateur"] = scenario.appel(
             "admin", "DELETE", f"/api/spaces/finance/members/{administrateurs}"
+        )
+
+        # Accords du droit de déployer (plan 09, 9.2). Dominique n'est que lectrice : son
+        # accord reste sans effet (V3), et survit au retrait de sa liaison (V5).
+        horloge.instant = a(9, 30)
+        obtenues["accord"] = scenario.appel(
+            "plateforme",
+            "POST",
+            "/api/spaces/finance/deploy-grants",
+            {"environment": "TEST", "principal": dominique},
+        )
+        horloge.instant = a(9, 45)
+        createurs = {"kind": "group", "name": "finance-createurs"}
+        pose = scenario.appel(
+            "plateforme",
+            "POST",
+            "/api/spaces/finance/deploy-grants",
+            {"environment": "DEV", "principal": createurs},
+        )
+        assert pose.status_code == 200
+        # Un administrateur s'accorde lui-même un droit, puis le retire : le journal le dit (V4).
+        horloge.instant = a(9, 50)
+        pose = scenario.appel(
+            "admin",
+            "POST",
+            "/api/spaces/finance/deploy-grants",
+            {"environment": "PROD", "principal": {"kind": "group", "name": "finance-admins"}},
+        )
+        assert pose.status_code == 200
+        horloge.instant = a(9, 55)
+        obtenues["retrait-accord"] = scenario.appel(
+            "admin", "DELETE", f"/api/spaces/finance/deploy-grants/{pose.json()['id']}"
+        )
+        obtenues["accords"] = scenario.appel("admin", "GET", "/api/spaces/finance/deploy-grants")
+        obtenues["journal-accords"] = scenario.appel("admin", "GET", "/api/spaces/finance/events")
+        obtenues["accord-inconnu"] = scenario.appel(
+            "admin",
+            "DELETE",
+            "/api/spaces/finance/deploy-grants/5b0e4c1e-0000-4000-8000-000000000000",
+        )
+        obtenues["environnement-invalide"] = scenario.appel(
+            "admin",
+            "POST",
+            "/api/spaces/finance/deploy-grants",
+            {"environment": "QA", "principal": createurs},
         )
 
         horloge.instant = a(10)

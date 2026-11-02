@@ -13,7 +13,15 @@ from fastapi.testclient import TestClient
 from skifer_board.catalog import CatalogService
 from skifer_board.identity.model import Identity
 from skifer_board.server import create_app
-from skifer_board.spaces import LOCAL_PERSON, LOCAL_SPACE, LocalMode, PersonRef, Spaces
+from skifer_board.spaces import (
+    LOCAL_PERSON,
+    LOCAL_SPACE,
+    Environment,
+    GroupPrincipal,
+    LocalMode,
+    PersonRef,
+    Spaces,
+)
 
 ORIGINE_LOCALE = "http://127.0.0.1:5173"
 MODE_LOCAL = {"error": {"code": "local_mode"}}
@@ -26,6 +34,7 @@ CATALOGUE = (
 )
 CREATION = {"id": "nouveau", "name": "Nouveau", "first_admin": {"kind": "group", "name": "g"}}
 LIAISON = {"principal": {"kind": "group", "name": "g"}, "role": "reader"}
+ACCORD = {"environment": "PROD", "principal": {"kind": "group", "name": "g"}}
 
 
 @pytest.fixture
@@ -57,6 +66,12 @@ def test_un_seul_espace_implicite(local: TestClient, service: CatalogService) ->
         "created_by": {"issuer": "local", "subject": "local"},
         "role": "admin",
         "implicit": True,
+        # La personne locale déploie dans les trois environnements (plan 09, V8).
+        "environments": [
+            {"code": "DEV", "deploy": True},
+            {"code": "TEST", "deploy": True},
+            {"code": "PROD", "deploy": True},
+        ],
     }
     # Le même espace, au même instant, à chaque lecture.
     seul = local.get("/api/spaces/local").json()
@@ -83,6 +98,9 @@ def test_tout_autre_espace_introuvable(local: TestClient, espace_demande: str) -
         ("GET", "/events", None),
         ("POST", "/members", LIAISON),
         ("DELETE", "/members/liaison", None),
+        ("GET", "/deploy-grants", None),
+        ("POST", "/deploy-grants", ACCORD),
+        ("DELETE", "/deploy-grants/5b0e4c1e-0000-4000-8000-000000000000", None),
         *[("GET", route, None) for route in CATALOGUE],
     ):
         reponse = local.request(methode, f"/api/spaces/{espace_demande}{route}", json=corps)
@@ -104,6 +122,19 @@ def test_tout_autre_espace_introuvable(local: TestClient, espace_demande: str) -
         ("POST", "/api/spaces/local/members", b""),
         ("DELETE", "/api/spaces/local/members/liaison", None),
         ("DELETE", "/api/spaces/local/members/5b0e4c1e-0000-4000-8000-000000000000", None),
+        # Les accords de déploiement ne se gèrent pas en mode local (plan 09, V8), même avec
+        # un corps invalide ou un identifiant hors format.
+        ("GET", "/api/spaces/local/deploy-grants", None),
+        (
+            "POST",
+            "/api/spaces/local/deploy-grants",
+            b'{"environment": "PROD", "principal": {"kind": "group", "name": "g"}}',
+        ),
+        ("POST", "/api/spaces/local/deploy-grants", b'{"environment": "QA"}'),
+        ("POST", "/api/spaces/local/deploy-grants", b"{illisible"),
+        ("POST", "/api/spaces/local/deploy-grants", b""),
+        ("DELETE", "/api/spaces/local/deploy-grants/accord", None),
+        ("DELETE", "/api/spaces/local/deploy-grants/5b0e4c1e-0000-4000-8000-000000000000", None),
         (
             "POST",
             "/api/spaces",
@@ -135,6 +166,8 @@ def test_gestion_refusee_en_mode_local(
         ("POST", "/api/spaces/local/members", LIAISON),
         ("DELETE", "/api/spaces/local/members/liaison", None),
         ("POST", "/api/spaces/autre/members", LIAISON),
+        ("POST", "/api/spaces/local/deploy-grants", ACCORD),
+        ("DELETE", "/api/spaces/local/deploy-grants/accord", None),
     ],
 )
 def test_ecritures_hors_boucle_locale_refusees(
@@ -168,6 +201,8 @@ def test_espaces_locaux_ferment_tout_acces_hors_session() -> None:
         [vu] = espaces.visible(spectateur)
         assert vu.implicit and vu.role is not None and vu.manages
         assert vu.space.created_by == LOCAL_PERSON == PersonRef("local", "local")
+        assert vu.environments == (Environment.DEV, Environment.TEST, Environment.PROD)
+        assert vu.deploy == frozenset(Environment)
         assert espaces.access(spectateur, LOCAL_SPACE) == vu
         assert espaces.access(spectateur, "autre") is None
         assert espaces.platform_admin(spectateur) is False
@@ -178,6 +213,9 @@ def test_espaces_locaux_ferment_tout_acces_hors_session() -> None:
         lambda: espaces.search_people("nom"),
         lambda: espaces.person(PersonRef("i", "s")),
         lambda: espaces.remove_binding(personne, LOCAL_SPACE, "x"),
+        lambda: espaces.grants(LOCAL_SPACE),
+        lambda: espaces.grant(personne, LOCAL_SPACE, Environment.PROD, GroupPrincipal("g")),
+        lambda: espaces.revoke(personne, LOCAL_SPACE, "x"),
     ):
         with pytest.raises(LocalMode):
             appel()

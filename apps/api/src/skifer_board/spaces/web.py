@@ -1,4 +1,5 @@
-"""Routes des espaces (plan 08, 8.2).
+"""Routes des espaces (plan 08, 8.2), de leurs environnements et du droit de déployer
+(plan 09, 9.2).
 
 Toute décision d'accès est prise ici, à partir de la session : aucun rôle reçu du navigateur
 n'est cru (E7). Un espace inconnu et un espace dont on n'est pas membre donnent la même
@@ -11,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
@@ -22,6 +24,9 @@ from .model import (
     SPACE_ID,
     Binding,
     BindingNotFound,
+    DeployGrant,
+    Environment,
+    GrantNotFound,
     GroupPrincipal,
     LocalMode,
     Person,
@@ -37,6 +42,7 @@ GROUP_MAX = 256
 REF_MAX = 2048
 QUERY_MAX = 200
 BODY_MAX = 64 * 1024
+# Identifiant de liaison ou d'accord, tiré par le magasin.
 BINDING_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 # Statut HTTP de chaque refus du magasin.
@@ -44,6 +50,7 @@ _STATUS = {
     "space_exists": 409,
     "space_not_found": 404,
     "binding_not_found": 404,
+    "grant_not_found": 404,
     "unknown_person": 422,
     "last_admin": 409,
     "local_mode": 409,
@@ -114,6 +121,11 @@ def _access_json(access: Access) -> dict[str, Any]:
         "created_by": _ref_json(space.created_by),
         "role": None if access.role is None else access.role.value,
         "implicit": access.implicit,
+        # Ordre de promotion, et droit de déployer de la session dans chacun (V7).
+        "environments": [
+            {"code": environment.value, "deploy": environment in access.deploy}
+            for environment in access.environments
+        ],
     }
 
 
@@ -134,8 +146,9 @@ def _event_json(
 
 
 def _detail_person(event: SpaceEvent) -> PersonRef | None:
-    """Personne visée par un événement de liaison, telle que le journal l'a gardée. Un détail
-    inattendu n'en désigne aucune : il est rendu tel quel, sans faire tomber le journal."""
+    """Personne visée par un événement de liaison ou d'accord, telle que le journal l'a
+    gardée. Un détail inattendu n'en désigne aucune : il est rendu tel quel, sans faire tomber
+    le journal."""
     detail: object = event.detail
     if not isinstance(detail, dict):
         return None
@@ -187,6 +200,12 @@ def _principal(value: object, field: str) -> Principal:
     raise Invalid(f"{field}.kind")
 
 
+def _environment(value: object, field: str) -> Environment:
+    if not isinstance(value, str) or value not in tuple(Environment):
+        raise Invalid(field)
+    return Environment(value)
+
+
 def _role(value: object, field: str) -> Role:
     if not isinstance(value, str) or value not in tuple(Role):
         raise Invalid(field)
@@ -224,9 +243,18 @@ async def _body(request: Request) -> object:
         raise Invalid("body") from None
 
 
-def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Access]:
-    """Pose les routes des espaces. Rend la garde des routes d'un espace qui exigent le rôle
-    lecteur, à utiliser comme dépendance (catalogue, E9)."""
+@dataclass(frozen=True)
+class Guards:
+    """Gardes des routes d'un espace, à utiliser comme dépendances. `reader` exige le rôle
+    lecteur (catalogue, plan 08, E9) ; `deployer` exige le droit de déployer dans
+    l'environnement `environment` de la route (plan 09, V7)."""
+
+    reader: Callable[[Request, str], Access]
+    deployer: Callable[[Request, str, str], Access]
+
+
+def install_spaces(app: FastAPI, spaces: Spaces) -> Guards:
+    """Pose les routes des espaces et rend leurs gardes."""
 
     @app.exception_handler(Refused)
     async def refused(request: Request, error: Refused) -> JSONResponse:
@@ -254,6 +282,14 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
         # Un administrateur de la plateforme sans rôle ne lit pas le catalogue (E6).
         if found.role is None:
             raise _forbidden(Role.READER.value)
+        return found
+
+    def deployer(request: Request, space_id: str, environment: str) -> Access:
+        found = access(request, space_id)
+        target = _environment(environment, "environment")
+        # Recalculé à chaque requête : un accord retiré ne vaut plus à la suivante.
+        if target not in found.deploy:
+            raise Refused(403, "forbidden", required="deploy", environment=target.value)
         return found
 
     def manager(request: Request, space_id: str) -> Access:
@@ -344,6 +380,46 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
         spaces.remove_binding(viewer(request), found.space.id, binding_id)
         return Response(status_code=204)
 
+    def grants_json(grants: list[DeployGrant]) -> list[dict[str, Any]]:
+        persons = [g.principal for g in grants if isinstance(g.principal, PersonRef)]
+        people = people_of(persons + [g.created_by for g in grants])
+        return [
+            {
+                "id": grant.id,
+                "environment": grant.environment.value,
+                "principal": _principal_json(grant.principal),
+                "person": (
+                    people[grant.principal] if isinstance(grant.principal, PersonRef) else None
+                ),
+                "created_at": grant.created_at.isoformat(),
+                "created_by": _ref_json(grant.created_by),
+                "created_by_person": people[grant.created_by],
+            }
+            for grant in grants
+        ]
+
+    @app.get("/api/spaces/{space_id}/deploy-grants")
+    def list_grants(request: Request, space_id: str) -> JSONResponse:
+        found = manager(request, space_id)
+        return JSONResponse({"grants": grants_json(spaces.grants(found.space.id))})
+
+    @app.post("/api/spaces/{space_id}/deploy-grants")
+    async def grant(request: Request, space_id: str) -> JSONResponse:
+        found = manager(request, space_id)
+        body = _object(await _body(request), "body", {"environment", "principal"})
+        environment = _environment(body["environment"], "environment")
+        principal = _principal(body["principal"], "principal")
+        granted = spaces.grant(viewer(request), found.space.id, environment, principal)
+        return JSONResponse(grants_json([granted])[0])
+
+    @app.delete("/api/spaces/{space_id}/deploy-grants/{grant_id}")
+    def revoke(request: Request, space_id: str, grant_id: str) -> Response:
+        found = manager(request, space_id)
+        if BINDING_ID.fullmatch(grant_id) is None:
+            raise GrantNotFound(grant_id)
+        spaces.revoke(viewer(request), found.space.id, grant_id)
+        return Response(status_code=204)
+
     @app.get("/api/spaces/{space_id}/events")
     def list_events(request: Request, space_id: str) -> JSONResponse:
         found = manager(request, space_id)
@@ -375,4 +451,4 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Callable[[Request, str], Acc
         found = spaces.search_people(query)
         return JSONResponse({"people": [_person_json(person) for person in found]})
 
-    return reader
+    return Guards(reader, deployer)

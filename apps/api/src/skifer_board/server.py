@@ -118,7 +118,7 @@ def create_app(
         raise ValueError("Le groupe d'administration des espaces diffère de celui de l'identité.")
     app = FastAPI(title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None)
     install_identity(app, identity)
-    reader = Depends(install_spaces(app, spaces))
+    reader = Depends(install_spaces(app, spaces).reader)
     catalog_path = "/api/spaces/{space_id}/catalog"
 
     @app.exception_handler(HTTPException)

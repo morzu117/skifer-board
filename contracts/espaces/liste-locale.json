@@ -12,7 +12,21 @@
           "subject": "local"
         },
         "role": "admin",
-        "implicit": true
+        "implicit": true,
+        "environments": [
+          {
+            "code": "DEV",
+            "deploy": true
+          },
+          {
+            "code": "TEST",
+            "deploy": true
+          },
+          {
+            "code": "PROD",
+            "deploy": true
+          }
+        ]
       }
     ],
     "platform_admin": false

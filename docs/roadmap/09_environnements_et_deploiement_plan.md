@@ -58,6 +58,14 @@ Modifiés : `spaces/web.py`. Exemples versionnés dans `contracts/espaces/`.
 
 Tests : chaque route avec chaque rôle, non-membre et administration de la plateforme seule ; un lecteur ne peut pas accorder ; révocation effective à la requête suivante ; garde du déployeur sur une route de test ; mode local ; exemples produits par le serveur réel.
 
+Écarts de réalisation :
+
+- `install_spaces` rend un objet `Guards` (`reader`, `deployer`) au lieu de la seule garde du lecteur. La garde du déployeur lit l'environnement dans le chemin de la route (`{environment}`) et l'examine dans cet ordre : espace (404, identique pour un non-membre), puis code d'environnement (400 `invalid_request`, `field: "environment"`), puis droit (403 `forbidden`, `required: "deploy"`, `environment`).
+- `POST …/deploy-grants` répond `200`, comme `POST …/members` ; un accord déjà posé est rendu tel qu'il a été posé (auteur et instant d'origine).
+- Un accord à une personne connue qui n'est pas membre de l'espace est accepté et reste sans effet (V3, V5).
+- Aucun exemple versionné ne montre le refus `required: "deploy"` : aucune route réelle n'emploie la garde avant le lot 09. Il est vérifié sur une route de test.
+- L'agent de test n'a trouvé aucun défaut ; neuf régressions volontaires ont été attrapées.
+
 ### 9.3 — Environnements dans la coque
 
 Modifiés : `apps/web/src/App.tsx`, `shell/*`, `spaces/*`.
