@@ -27,15 +27,15 @@ ADRESSE = "catalogue@example.invalid"
 
 # Requêtes qui ont produit chaque exemple versionné du plan 05.
 REQUETES = {
-    "versions-revenu-net": "/api/catalog/revenu-net/versions",
-    "versions-concept": "/api/catalog/commande/versions",
-    "versions-indisponible": "/api/catalog/revenu-net/versions",
-    "ecart-revenu-net": "/api/catalog/revenu-net/diff?base=4&other=5",
-    "ecart-identique": "/api/catalog/revenu-net/diff?base=5&other=5",
-    "ecart-version-inconnue": "/api/catalog/revenu-net/diff?base=4&other=9",
-    "ecart-concept": "/api/catalog/commande/diff?base=1&other=2",
-    "ecart-irresoluble": "/api/catalog/revenu-net/diff?base=3&other=5",
-    "ecart-parametre-invalide": "/api/catalog/revenu-net/diff?base=v4&other=5",
+    "versions-revenu-net": "/api/spaces/local/catalog/revenu-net/versions",
+    "versions-concept": "/api/spaces/local/catalog/commande/versions",
+    "versions-indisponible": "/api/spaces/local/catalog/revenu-net/versions",
+    "ecart-revenu-net": "/api/spaces/local/catalog/revenu-net/diff?base=4&other=5",
+    "ecart-identique": "/api/spaces/local/catalog/revenu-net/diff?base=5&other=5",
+    "ecart-version-inconnue": "/api/spaces/local/catalog/revenu-net/diff?base=4&other=9",
+    "ecart-concept": "/api/spaces/local/catalog/commande/diff?base=1&other=2",
+    "ecart-irresoluble": "/api/spaces/local/catalog/revenu-net/diff?base=3&other=5",
+    "ecart-parametre-invalide": "/api/spaces/local/catalog/revenu-net/diff?base=v4&other=5",
 }
 # Seules valeurs qui dépendent de l'horloge du commit ou des hashs git.
 VARIABLES = {"body.provenance.commit", "body.versions[].commit", "body.versions[].date"}
@@ -65,7 +65,7 @@ def erreur(code: str, **champs: str) -> dict[str, Any]:
 
 def test_versions(client: TestClient, service: CatalogService, espace_versionne: Path) -> None:
     """200 : le JSON est celui du service, dates avec fuseau, provenance fraîche."""
-    reponse = client.get("/api/catalog/revenu-net/versions")
+    reponse = client.get("/api/spaces/local/catalog/revenu-net/versions")
     assert reponse.status_code == 200
     corps = reponse.json()
     assert corps == server.to_json(service.versions("revenu-net"))
@@ -81,7 +81,7 @@ def test_versions(client: TestClient, service: CatalogService, espace_versionne:
 
 @pytest.mark.parametrize("identifiant", ["inconnu", "revenu-net--nordis-fr"])
 def test_versions_document_absent(client: TestClient, identifiant: str) -> None:
-    reponse = client.get(f"/api/catalog/{identifiant}/versions")
+    reponse = client.get(f"/api/spaces/local/catalog/{identifiant}/versions")
     assert reponse.status_code == 404
     assert reponse.json() == erreur("document_not_found", id=identifiant)
 
@@ -113,9 +113,9 @@ def test_historique_indisponible(
 ) -> None:
     """503 à code fermé, même quand la fiche reste servie depuis l'ancien index (V2)."""
     if ancien:
-        assert client.get(f"/api/catalog/revenu-net{route}").status_code == 200
+        assert client.get(f"/api/spaces/local/catalog/revenu-net{route}").status_code == 200
     probleme = _rendre_illisible(espace_versionne, tmp_path, panne)
-    reponse = client.get(f"/api/catalog/revenu-net{route}")
+    reponse = client.get(f"/api/spaces/local/catalog/revenu-net{route}")
     assert reponse.status_code == 503
     corps = reponse.json()
     assert set(corps) == {"error"}
@@ -125,7 +125,7 @@ def test_historique_indisponible(
     assert corps["error"]["detail"]
     if panne == "absent":
         assert corps["error"]["detail"] == DETAIL_ABSENT
-    fiche = client.get("/api/catalog/revenu-net")
+    fiche = client.get("/api/spaces/local/catalog/revenu-net")
     assert fiche.status_code == (200 if ancien else 503)
     if ancien:
         assert fiche.json()["provenance"]["freshness"] == "stale"
@@ -136,7 +136,9 @@ def test_historique_indisponible(
 
 def test_ecart(client: TestClient, service: CatalogService) -> None:
     """200 : rapport d'Atlas relayé, sans les alignements de nœuds."""
-    reponse = client.get("/api/catalog/revenu-net/diff", params={"base": "4", "other": "5"})
+    reponse = client.get(
+        "/api/spaces/local/catalog/revenu-net/diff", params={"base": "4", "other": "5"}
+    )
     assert reponse.status_code == 200
     corps = reponse.json()
     assert corps == server.to_json(service.diff("revenu-net", 4, 5))
@@ -189,7 +191,7 @@ def test_parametre_invalide_sans_appel_du_service(
     """400 avant toute lecture ; `base` est vérifié avant `other`."""
     espion = Mock(side_effect=AssertionError("Le service ne doit pas être appelé."))
     monkeypatch.setattr(service, "diff", espion)
-    reponse = client.get(f"/api/catalog/{identifiant}/diff", params=parametres)
+    reponse = client.get(f"/api/spaces/local/catalog/{identifiant}/diff", params=parametres)
     assert reponse.status_code == 400
     assert reponse.json() == erreur(
         "invalid_parameter", parameter=parametre, detail=DETAIL_PARAMETRE
@@ -208,7 +210,7 @@ def test_versions_transmises_en_entiers(
     """Les numéros écrits en chiffres ASCII sont transmis tels quels, dans l'ordre."""
     espion = Mock(wraps=service.diff)
     monkeypatch.setattr(service, "diff", espion)
-    client.get("/api/catalog/revenu-net/diff", params={"base": base, "other": other})
+    client.get("/api/spaces/local/catalog/revenu-net/diff", params={"base": base, "other": other})
     espion.assert_called_once_with("revenu-net", int(base), int(other))
 
 
@@ -216,7 +218,7 @@ def test_versions_transmises_en_entiers(
     ("route", "statut", "attendu"),
     [
         (
-            "/api/catalog/revenu-net/diff?base=4&other=9",
+            "/api/spaces/local/catalog/revenu-net/diff?base=4&other=9",
             404,
             erreur(
                 "version_not_found",
@@ -225,7 +227,7 @@ def test_versions_transmises_en_entiers(
             ),
         ),
         (
-            "/api/catalog/commande/diff?base=1&other=2",
+            "/api/spaces/local/catalog/commande/diff?base=1&other=2",
             400,
             erreur(
                 "diff_not_supported",
@@ -234,7 +236,7 @@ def test_versions_transmises_en_entiers(
             ),
         ),
         (
-            "/api/catalog/revenu-net/diff?base=3&other=5",
+            "/api/spaces/local/catalog/revenu-net/diff?base=3&other=5",
             422,
             erreur(
                 "diff_unavailable",
@@ -243,12 +245,12 @@ def test_versions_transmises_en_entiers(
             ),
         ),
         (
-            "/api/catalog/inconnu/diff?base=4&other=5",
+            "/api/spaces/local/catalog/inconnu/diff?base=4&other=5",
             404,
             erreur("document_not_found", id="inconnu"),
         ),
         (
-            "/api/catalog/revenu-net--nordis-fr/diff?base=1&other=2",
+            "/api/spaces/local/catalog/revenu-net--nordis-fr/diff?base=1&other=2",
             404,
             erreur("document_not_found", id="revenu-net--nordis-fr"),
         ),
@@ -268,7 +270,7 @@ def test_echec_git_de_l_ecart(client: TestClient, monkeypatch: pytest.MonkeyPatc
         "skifer_board.catalog.service.read_diff",
         Mock(side_effect=RepoError("git_timeout", "git show n'a pas répondu en 30 s.")),
     )
-    reponse = client.get("/api/catalog/revenu-net/diff?base=4&other=5")
+    reponse = client.get("/api/spaces/local/catalog/revenu-net/diff?base=4&other=5")
     assert reponse.status_code == 503
     assert reponse.json() == erreur(
         "history_unavailable",
@@ -279,7 +281,10 @@ def test_echec_git_de_l_ecart(client: TestClient, monkeypatch: pytest.MonkeyPatc
 
 @pytest.mark.parametrize(
     ("route", "methode"),
-    [("/api/catalog/revenu-net/versions", "versions"), (REQUETES["ecart-revenu-net"], "diff")],
+    [
+        ("/api/spaces/local/catalog/revenu-net/versions", "versions"),
+        (REQUETES["ecart-revenu-net"], "diff"),
+    ],
 )
 def test_exception_interne_masquee(
     client: TestClient,

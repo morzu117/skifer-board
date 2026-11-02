@@ -1,0 +1,32 @@
+{
+  "status": 200,
+  "body": {
+    "spaces": [
+      {
+        "id": "finance",
+        "name": "Finance",
+        "atlas": "skifer-atlas",
+        "created_at": "2026-11-02T09:00:00+00:00",
+        "created_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "role": "creator",
+        "implicit": false
+      },
+      {
+        "id": "rh",
+        "name": "Ressources humaines",
+        "atlas": "skifer-atlas",
+        "created_at": "2026-11-02T10:00:00+00:00",
+        "created_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "role": "reader",
+        "implicit": false
+      }
+    ],
+    "platform_admin": false
+  }
+}

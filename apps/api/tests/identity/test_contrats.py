@@ -13,8 +13,11 @@ from skifer_board.catalog import CatalogService
 from skifer_board.identity.flow import LoginRefusal
 from skifer_board.identity.web import IdentityRuntime
 from skifer_board.server import create_app
+from spaces.monde import espaces_en_base
+from sqlalchemy import Engine
+from state.conftest import migre as migre
 
-from identity.conftest import Cles, Fournisseur
+from identity.conftest import Cles, Fournisseur, Horloge
 from identity.test_web import ORIGINE, connecter
 from identity.test_web import runtime as runtime
 
@@ -37,6 +40,8 @@ def test_contrat_contre_serveur(
     fournisseur: Fournisseur,
     cles: Cles,
     claims: dict[str, Any],
+    migre: Engine,
+    horloge: Horloge,
 ) -> None:
     attendu = json.loads(fichier.read_text())
     assert {p.stem for p in CONTRATS.glob("*.json")} == {
@@ -48,9 +53,12 @@ def test_contrat_contre_serveur(
         "refus-connexion",
     }
     local = fichier.stem == "me-local"
-    with TestClient(
-        create_app(service, None if local else runtime), base_url=ORIGINE, follow_redirects=False
-    ) as client:
+    app = (
+        create_app(service)
+        if local
+        else create_app(service, runtime, espaces_en_base(migre, horloge, None))
+    )
+    with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if fichier.stem == "refus-connexion":
             assert set(attendu) == {"login_error"}
             assert len(attendu["login_error"]) == len(LoginRefusal)

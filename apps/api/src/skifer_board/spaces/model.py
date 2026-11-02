@@ -16,6 +16,9 @@ from typing import Any
 
 from ..identity.model import Identity
 
+# Défini avec l'identité, pour que `/api/me` le dise (E6) ; réexporté ici.
+from ..identity.model import is_platform_admin as is_platform_admin
+
 SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,38}[a-z0-9]")
 
 
@@ -123,6 +126,12 @@ class LastAdmin(SpaceError):
     code = "last_admin"
 
 
+class LocalMode(SpaceError):
+    """En mode local, l'espace implicite n'a pas de membres à gérer (E11)."""
+
+    code = "local_mode"
+
+
 def matches(principal: Principal, identity: Identity) -> bool:
     if isinstance(principal, GroupPrincipal):
         return principal.name in identity.groups
@@ -133,8 +142,3 @@ def effective_role(identity: Identity, bindings: Iterable[Binding]) -> Role | No
     """Le plus élevé des rôles des liaisons qui correspondent à la session (E3)."""
     roles = [b.role for b in bindings if matches(b.principal, identity)]
     return max(roles, key=lambda role: role.rank, default=None)
-
-
-def is_platform_admin(identity: Identity, admin_group: str | None) -> bool:
-    """Membre du groupe d'administration de la plateforme (E6). Aucun rôle dans un espace."""
-    return admin_group is not None and admin_group in identity.groups

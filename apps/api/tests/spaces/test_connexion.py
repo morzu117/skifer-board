@@ -26,16 +26,18 @@ from skifer_board.identity.config import ADMIN_GROUP, REQUIRED
 from skifer_board.identity.model import Identity
 from skifer_board.identity.web import IdentityRuntime, build_runtime
 from skifer_board.server import create_app
-from skifer_board.spaces import Person, PersonRef, SpaceStore, is_platform_admin
+from skifer_board.spaces import Person, PersonRef, Spaces, SpaceStore, is_platform_admin
 from skifer_board.state.schema import people
 from sqlalchemy import Engine, select
 
 from .conftest import compter
 
 
-def client_de(service: CatalogService, runtime: IdentityRuntime) -> TestClient:
+def client_de(service: CatalogService, runtime: IdentityRuntime, moteur: Engine) -> TestClient:
+    # Avec OIDC, les espaces en base sont obligatoires (plan 08, 8.2).
+    spaces = Spaces.database(SpaceStore(moteur), "skifer-atlas", None, runtime.clock)
     return TestClient(
-        create_app(service, runtime),
+        create_app(service, runtime, spaces),
         base_url=ORIGINE,
         follow_redirects=False,
         raise_server_exceptions=False,
@@ -56,8 +58,10 @@ def runtime(
 
 
 @pytest.fixture
-def client(service: CatalogService, runtime: IdentityRuntime) -> Iterator[TestClient]:
-    with client_de(service, runtime) as connexion:
+def client(
+    service: CatalogService, runtime: IdentityRuntime, migre: Engine
+) -> Iterator[TestClient]:
+    with client_de(service, runtime, migre) as connexion:
         yield connexion
 
 
@@ -129,6 +133,7 @@ def test_echec_de_l_enregistrement_aucune_session(
     cles: Cles,
     claims: dict[str, Any],
     horloge: Horloge,
+    migre: Engine,
 ) -> None:
     sessions = MemorySessionStore(config.session_absolute, config.session_idle)
     appels: list[tuple[Identity, datetime]] = []
@@ -138,7 +143,7 @@ def test_echec_de_l_enregistrement_aucune_session(
         raise RuntimeError("base perdue")
 
     runtime = build_runtime(config, fournisseur, horloge, sessions, on_login=en_panne)
-    with client_de(service, runtime) as client:
+    with client_de(service, runtime, migre) as client:
         debut = client.get("/auth/login")
         params = parametres(debut.headers["location"])
         fournisseur.reponse = {"id_token": cles.signer({**claims, "nonce": params["nonce"]})}
@@ -159,12 +164,13 @@ def test_enregistrement_au_meme_instant_que_la_session(
     cles: Cles,
     claims: dict[str, Any],
     horloge: Horloge,
+    migre: Engine,
 ) -> None:
     appels: list[tuple[Identity, datetime]] = []
     runtime = build_runtime(
         config, fournisseur, horloge, on_login=lambda i, t: appels.append((i, t))
     )
-    with client_de(service, runtime) as client:
+    with client_de(service, runtime, migre) as client:
         connecter(client, fournisseur, cles, claims)
         session = runtime.sessions.get(client.cookies["__Host-sb_session"], horloge())
     assert session is not None
@@ -222,7 +228,7 @@ def test_identity_runtime_enregistre_la_personne_en_base(
     runtime = server.identity_runtime(environnement, "board.example.invalid", migre)
     assert runtime is not None
     assert runtime.config.admin_group is None
-    with client_de(service, runtime) as client:
+    with client_de(service, runtime, migre) as client:
         connecter(client, fournisseur, cles, claims)
         assert client.get("/api/me").status_code == 200
     personne = SpaceStore(migre).get_person(PersonRef(claims["iss"], claims["sub"]))

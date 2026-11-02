@@ -35,6 +35,7 @@ from skifer_board.identity.config import REQUIRED
 from skifer_board.identity.sessions import fingerprint
 from skifer_board.identity.web import IdentityRuntime, build_runtime
 from skifer_board.server import create_app
+from skifer_board.spaces import Spaces, SpaceStore
 from skifer_board.state import (
     DATABASE_URL,
     PgLoginRequests,
@@ -45,6 +46,7 @@ from skifer_board.state import (
     upgrade,
 )
 from skifer_board.state import config_from_env as database_from_env
+from spaces.monde import ouvrir_aux_lecteurs
 from sqlalchemy import Engine, MetaData, create_engine, func, select, text
 from sqlalchemy.engine import URL
 
@@ -113,8 +115,12 @@ def demarrer(
             )
         else:
             runtime = build_runtime(config, fournisseur, horloge)
+        # Avec OIDC, les espaces en base sont obligatoires (plan 08, 8.2).
+        espaces = Spaces.database(
+            SpaceStore(migre if moteur is None else moteur), "skifer-atlas", None, horloge
+        )
         client = TestClient(
-            create_app(service, runtime),
+            create_app(service, runtime, espaces),
             base_url=ORIGINE,
             follow_redirects=False,
             raise_server_exceptions=False,
@@ -210,13 +216,19 @@ def test_connexion_ouverte_sur_a_terminee_sur_b(
 
 
 def test_session_partagee_et_deconnexion_croisee(
-    demarrer: Demarrer, fournisseur: Fournisseur, cles: Cles, claims: dict[str, Any]
+    demarrer: Demarrer,
+    fournisseur: Fournisseur,
+    cles: Cles,
+    claims: dict[str, Any],
+    migre: Engine,
+    horloge: Horloge,
 ) -> None:
+    catalogue = ouvrir_aux_lecteurs(migre, horloge())
     a, b = demarrer(), demarrer()
     connecte(terminer(a, ouvrir(a), fournisseur, cles, claims))
     jeton = a.client.cookies[SESSION]
     assert presenter(b, jeton).status_code == 200
-    assert b.client.get("/api/catalog").status_code == 200
+    assert b.client.get(catalogue).status_code == 200
     sortie = b.client.post("/auth/logout", headers={"Origin": ORIGINE})
     assert sortie.status_code == 200
     for serveur in (a, b):
@@ -403,12 +415,14 @@ def test_identity_runtime_range_sessions_et_demandes_en_base(
 ) -> None:
     serveurs: list[Serveur] = []
     for _ in range(2):
-        runtime = server.identity_runtime(
-            environnement_oidc, "board.example.invalid", moteur_de_production(database_url, pile)
-        )
+        moteur = moteur_de_production(database_url, pile)
+        runtime = server.identity_runtime(environnement_oidc, "board.example.invalid", moteur)
         assert runtime is not None
         assert isinstance(runtime.sessions, PgSessionStore)
-        client = TestClient(create_app(service, runtime), base_url=ORIGINE, follow_redirects=False)
+        espaces = server.spaces_for(runtime, moteur, "skifer-atlas")
+        client = TestClient(
+            create_app(service, runtime, espaces), base_url=ORIGINE, follow_redirects=False
+        )
         serveurs.append(Serveur(runtime, pile.enter_context(client)))
     a, b = serveurs
     ouverture = ouvrir(a)
@@ -502,21 +516,25 @@ def test_base_supprimee_pendant_l_usage(
     demarrer: Demarrer,
     postgres_cluster: Cluster,
     database_url: URL,
+    migre: Engine,
     fournisseur: Fournisseur,
     cles: Cles,
     claims: dict[str, Any],
+    horloge: Horloge,
 ) -> None:
     base = str(database_url.database)
+    catalogue = ouvrir_aux_lecteurs(migre, horloge())
+    migre.dispose()
     a = demarrer()
     connecte(terminer(a, ouvrir(a), fournisseur, cles, claims))
     jeton = a.client.cookies[SESSION]
-    assert a.client.get("/api/catalog").status_code == 200
+    assert a.client.get(catalogue).status_code == 200
     ouverture = ouvrir(a)
     a.client.cookies.delete(LOGIN)
 
     administrer(postgres_cluster, f'DROP DATABASE "{base}" WITH (FORCE)')
     try:
-        for route in ("/api/me", "/api/catalog"):
+        for route in ("/api/me", catalogue):
             jamais_servi(presenter(a, jeton), postgres_cluster, base)
             jamais_servi(a.client.get(route), postgres_cluster, base)
         a.client.cookies.delete(SESSION)

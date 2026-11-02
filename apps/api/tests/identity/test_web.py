@@ -17,6 +17,9 @@ from skifer_board.catalog import CatalogService
 from skifer_board.identity import OidcConfig
 from skifer_board.identity.web import IdentityRuntime, build_runtime
 from skifer_board.server import create_app
+from spaces.monde import espaces_en_base, ouvrir_aux_lecteurs
+from sqlalchemy import Engine
+from state.conftest import migre as migre
 
 from identity.conftest import SECRET, Cles, Fournisseur, Horloge
 from identity.test_flow import parametres
@@ -30,10 +33,12 @@ def runtime(config: OidcConfig, fournisseur: Fournisseur, horloge: Horloge) -> I
 
 
 @pytest.fixture
-def client(service: CatalogService, runtime: IdentityRuntime) -> Iterator[TestClient]:
-    with TestClient(
-        create_app(service, runtime), base_url=ORIGINE, follow_redirects=False
-    ) as connexion:
+def client(
+    service: CatalogService, runtime: IdentityRuntime, migre: Engine, horloge: Horloge
+) -> Iterator[TestClient]:
+    # Avec OIDC, les espaces en base sont obligatoires (plan 08, 8.2).
+    app = create_app(service, runtime, espaces_en_base(migre, horloge, None))
+    with TestClient(app, base_url=ORIGINE, follow_redirects=False) as connexion:
         yield connexion
 
 
@@ -84,7 +89,10 @@ def test_parcours_complet_et_absence_de_secrets(
     fournisseur: Fournisseur,
     cles: Cles,
     claims: dict[str, Any],
+    migre: Engine,
 ) -> None:
+    # Le catalogue se lit dans un espace où le groupe `lecteurs` des claims est lecteur.
+    catalogue = ouvrir_aux_lecteurs(migre, runtime.clock())
     retour, jeton = connecter(client, fournisseur, cles, claims)
     cookie = client.cookies["__Host-sb_session"]
     session = runtime.sessions.get(cookie, runtime.clock())
@@ -101,8 +109,9 @@ def test_parcours_complet_et_absence_de_secrets(
             "groups": claims["groups"],
         },
         "expires_at": (runtime.clock() + timedelta(hours=8)).isoformat(),
+        "platform_admin": False,
     }
-    assert client.get("/api/catalog").status_code == 200
+    assert client.get(catalogue).status_code == 200
     sortie = client.post("/auth/logout", headers={"Origin": ORIGINE})
     assert sortie.status_code == 200
     assert sortie.json() == {"redirect": "/"}
@@ -128,14 +137,31 @@ def test_toutes_les_routes_api_exigent_une_session(
     cles: Cles,
     claims: dict[str, Any],
     expiration: str | None,
+    migre: Engine,
 ) -> None:
-    app = create_app(service, runtime)
+    app = create_app(service, runtime, espaces_en_base(migre, horloge, runtime.config.admin_group))
     routes = [
         route
         for route in app.routes
         if isinstance(route, APIRoute) and route.path.startswith("/api/")
     ]
     assert routes
+    # Toutes les routes des espaces (plan 08, 8.2) sont sous la garde.
+    assert {(methode, route.path) for route in routes for methode in route.methods or ()} == {
+        ("GET", "/api/me"),
+        ("GET", "/api/spaces"),
+        ("POST", "/api/spaces"),
+        ("GET", "/api/spaces/{space_id}"),
+        ("GET", "/api/spaces/{space_id}/members"),
+        ("POST", "/api/spaces/{space_id}/members"),
+        ("DELETE", "/api/spaces/{space_id}/members/{binding_id}"),
+        ("GET", "/api/spaces/{space_id}/events"),
+        ("GET", "/api/people"),
+        ("GET", "/api/spaces/{space_id}/catalog"),
+        ("GET", "/api/spaces/{space_id}/catalog/{document_id}"),
+        ("GET", "/api/spaces/{space_id}/catalog/{document_id}/versions"),
+        ("GET", "/api/spaces/{space_id}/catalog/{document_id}/diff"),
+    }
     with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if expiration is not None:
             connecter(client, fournisseur, cles, claims)
@@ -149,11 +175,12 @@ def test_toutes_les_routes_api_exigent_une_session(
         for route in routes:
             assert route.methods is not None
             for methode in route.methods:
-                reponse = client.request(
-                    methode,
-                    route.path.replace("{document_id}", "revenu-net"),
-                    headers={"Origin": ORIGINE},
+                chemin = (
+                    route.path.replace("{document_id}", "revenu-net")
+                    .replace("{space_id}", "finance")
+                    .replace("{binding_id}", "liaison")
                 )
+                reponse = client.request(methode, chemin, headers={"Origin": ORIGINE})
                 assert reponse.status_code == 401
                 assert reponse.json() == {
                     "error": {"code": "unauthenticated", "login_url": "/auth/login"}
@@ -232,10 +259,15 @@ def test_chemin_de_retour_configurable(
     horloge: Horloge,
     cles: Cles,
     claims: dict[str, Any],
+    migre: Engine,
 ) -> None:
     config = replace(config, redirect_uri=f"{ORIGINE}/connexion/retour")
     with TestClient(
-        create_app(service, build_runtime(config, fournisseur, horloge)),
+        create_app(
+            service,
+            build_runtime(config, fournisseur, horloge),
+            espaces_en_base(migre, horloge, None),
+        ),
         base_url=ORIGINE,
         follow_redirects=False,
     ) as client:
@@ -257,9 +289,9 @@ def test_chemin_de_retour_configurable(
 def test_mode_local(service: CatalogService, origine: str | None, statut: int) -> None:
     with TestClient(create_app(service), base_url=ORIGINE, follow_redirects=False) as client:
         assert client.get("/api/me").json() == {"established": False}
-        assert client.get("/api/catalog").status_code == 200
+        assert client.get("/api/spaces/local/catalog").status_code == 200
         reponse = client.post(
-            "/api/catalog", headers={} if origine is None else {"Origin": origine}
+            "/api/spaces/local/catalog", headers={} if origine is None else {"Origin": origine}
         )
         assert reponse.status_code == statut
         assert reponse.json() == {
@@ -292,6 +324,6 @@ def test_origine_malformee_refusee(service: CatalogService) -> None:
     with TestClient(
         create_app(service), base_url=ORIGINE, follow_redirects=False, raise_server_exceptions=False
     ) as client:
-        reponse = client.post("/api/catalog", headers={"Origin": "http://[::1"})
+        reponse = client.post("/api/spaces/local/catalog", headers={"Origin": "http://[::1"})
         assert reponse.status_code == 403
         assert reponse.json() == {"error": {"code": "origin_refused"}}

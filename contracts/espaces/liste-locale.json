@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "body": {
+    "spaces": [
+      {
+        "id": "local",
+        "name": "Local",
+        "atlas": "skifer-atlas",
+        "created_at": "2026-11-02T08:00:00+00:00",
+        "created_by": {
+          "issuer": "local",
+          "subject": "local"
+        },
+        "role": "admin",
+        "implicit": true
+      }
+    ],
+    "platform_admin": false
+  }
+}

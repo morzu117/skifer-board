@@ -14,8 +14,15 @@ class Identity:
     subject: str
     name: str | None
     email: str | None
-    # Lus, pas encore interprétés : aucun droit n'en dépend avant les espaces (I9).
+    # Groupes du jeton reçu à la connexion : ils donnent un rôle dans un espace par une
+    # liaison (plan 08, E3 et E4), jamais un droit sur les données.
     groups: tuple[str, ...]
+
+
+def is_platform_admin(identity: Identity, admin_group: str | None) -> bool:
+    """Membre du groupe d'administration de la plateforme (plan 08, E6). Ce n'est pas un rôle
+    dans un espace : il ne donne ni la lecture d'un catalogue, ni aucune donnée."""
+    return admin_group is not None and admin_group in identity.groups
 
 
 class RefusalCode(StrEnum):

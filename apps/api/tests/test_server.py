@@ -93,7 +93,7 @@ def test_liste_et_transmission_des_filtres(
     )
     espion = Mock(wraps=service.list)
     monkeypatch.setattr(service, "list", espion)
-    reponse = client.get("/api/catalog", params=parametres)
+    reponse = client.get("/api/spaces/local/catalog", params=parametres)
     assert reponse.status_code == 200
     assert reponse.json() == server.to_json(attendu)
     espion.assert_called_once_with(**arguments)
@@ -120,7 +120,7 @@ def test_parametre_invalide_sans_appel_du_service(
     """Une valeur hors contrat est refusée avant toute lecture du catalogue."""
     espion = Mock(side_effect=AssertionError("Le service ne doit pas être appelé."))
     monkeypatch.setattr(service, "list", espion)
-    reponse = client.get("/api/catalog", params={parametre: valeur})
+    reponse = client.get("/api/spaces/local/catalog", params={parametre: valeur})
     assert reponse.status_code == 400
     assert reponse.json() == {
         "error": {
@@ -135,7 +135,7 @@ def test_parametre_invalide_sans_appel_du_service(
 @pytest.mark.parametrize("identifiant", ["revenu-net", "commande", "invalide"])
 def test_fiche(client: TestClient, service: CatalogService, identifiant: str) -> None:
     """KPI, concept et diagnostics restent identiques à la fiche du service."""
-    reponse = client.get(f"/api/catalog/{identifiant}")
+    reponse = client.get(f"/api/spaces/local/catalog/{identifiant}")
     assert reponse.status_code == 200
     assert reponse.json() == server.to_json(service.get(identifiant))
     assert reponse.json()["document"]["entry"]["id"] == identifiant
@@ -144,12 +144,14 @@ def test_fiche(client: TestClient, service: CatalogService, identifiant: str) ->
 @pytest.mark.parametrize("identifiant", ["inconnu", "revenu-net--nordis-fr"])
 def test_fiche_absente(client: TestClient, identifiant: str) -> None:
     """Une déclinaison ne devient pas une fiche autonome."""
-    reponse = client.get(f"/api/catalog/{identifiant}")
+    reponse = client.get(f"/api/spaces/local/catalog/{identifiant}")
     assert reponse.status_code == 404
     assert reponse.json() == {"error": {"code": "document_not_found", "id": identifiant}}
 
 
-@pytest.mark.parametrize("route", ["/api/catalog", "/api/catalog/revenu-net"])
+@pytest.mark.parametrize(
+    "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]
+)
 def test_indisponible_sans_index(
     client: TestClient,
     espace: Path,
@@ -169,7 +171,9 @@ def test_indisponible_sans_index(
     }
 
 
-@pytest.mark.parametrize("route", ["/api/catalog", "/api/catalog/revenu-net"])
+@pytest.mark.parametrize(
+    "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]
+)
 def test_ancien_apres_retrait_du_clone(
     client: TestClient,
     service: CatalogService,
@@ -201,7 +205,7 @@ def test_ancien_apres_retrait_du_clone(
         ("GET", route, 404, "route_not_found")
         for route in ("/inconnue", "/docs", "/redoc", "/openapi.json")
     ]
-    + [("POST", "/api/catalog", 405, "method_not_allowed")],
+    + [("POST", "/api/spaces/local/catalog", 405, "method_not_allowed")],
 )
 def test_routes_et_methodes_fermees(
     client: TestClient,
@@ -217,10 +221,33 @@ def test_routes_et_methodes_fermees(
 
 
 @pytest.mark.parametrize(
+    "route",
+    [
+        "/api/catalog",
+        "/api/catalog?q=revenu",
+        "/api/catalog/revenu-net",
+        "/api/catalog/revenu-net/versions",
+        "/api/catalog/revenu-net/diff?base=4&other=5",
+    ],
+)
+def test_anciennes_routes_du_catalogue_disparues(
+    client: TestClient, service: CatalogService, monkeypatch: pytest.MonkeyPatch, route: str
+) -> None:
+    """Le catalogue se lit dans un espace : l'ancienne adresse globale n'existe plus (plan 08,
+    E9), et le service n'est pas appelé."""
+    for nom in ("list", "get", "versions", "diff"):
+        espion = Mock(side_effect=AssertionError("Le service ne doit pas être appelé."))
+        monkeypatch.setattr(service, nom, espion)
+    reponse = client.get(route)
+    assert reponse.status_code == 404
+    assert reponse.json() == {"error": {"code": "route_not_found"}}
+
+
+@pytest.mark.parametrize(
     ("route", "methode"),
     [
-        ("/api/catalog", "list"),
-        ("/api/catalog/revenu-net", "get"),
+        ("/api/spaces/local/catalog", "list"),
+        ("/api/spaces/local/catalog/revenu-net", "get"),
     ],
 )
 def test_exception_interne_masquee(
@@ -296,18 +323,18 @@ def test_contrats_versionnes(
 ) -> None:
     """Chaque exemple est comparé à une réponse réelle, sans ignorer un champ additionnel."""
     routes = {
-        "liste": "/api/catalog",
-        "liste-ancienne": "/api/catalog",
-        "fiche-revenu-net": "/api/catalog/revenu-net",
-        "fiche-invalide": "/api/catalog/invalide",
-        "fiche-commande": "/api/catalog/commande",
-        "fiche-inconnue": "/api/catalog/inconnu",
-        "parametre-invalide": "/api/catalog?status=publie",
-        "indisponible": "/api/catalog",
+        "liste": "/api/spaces/local/catalog",
+        "liste-ancienne": "/api/spaces/local/catalog",
+        "fiche-revenu-net": "/api/spaces/local/catalog/revenu-net",
+        "fiche-invalide": "/api/spaces/local/catalog/invalide",
+        "fiche-commande": "/api/spaces/local/catalog/commande",
+        "fiche-inconnue": "/api/spaces/local/catalog/inconnu",
+        "parametre-invalide": "/api/spaces/local/catalog?status=publie",
+        "indisponible": "/api/spaces/local/catalog",
     }
     assert {p.stem for p in EXEMPLES} == routes.keys()
     if fichier.stem == "liste-ancienne":
-        assert client.get("/api/catalog").status_code == 200
+        assert client.get("/api/spaces/local/catalog").status_code == 200
     if fichier.stem in ("liste-ancienne", "indisponible"):
         espace.rename(tmp_path / "clone-retire")
     exemple = json.loads(fichier.read_text(encoding="utf-8"))
@@ -373,7 +400,9 @@ def test_demarrage_sans_ouvrir_de_port(
 
 
 @pytest.mark.parametrize("ancien", [False, True], ids=["sans-index", "ancien"])
-@pytest.mark.parametrize("route", ["/api/catalog", "/api/catalog/revenu-net"])
+@pytest.mark.parametrize(
+    "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]
+)
 def test_clone_illisible_sans_chemin_prive(
     client: TestClient,
     espace: Path,
@@ -395,7 +424,9 @@ def test_clone_illisible_sans_chemin_prive(
 
 
 @pytest.mark.parametrize("ancien", [False, True], ids=["sans-index", "ancien"])
-@pytest.mark.parametrize("route", ["/api/catalog", "/api/catalog/revenu-net"])
+@pytest.mark.parametrize(
+    "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]
+)
 def test_reference_git_cassee_sans_chemin_prive(
     client: TestClient,
     espace: Path,

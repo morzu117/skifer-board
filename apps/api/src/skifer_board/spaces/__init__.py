@@ -1,11 +1,13 @@
 """Espaces, appartenance et rôles (plan 08)."""
 
+from .access import LOCAL_PERSON, LOCAL_SPACE, Access, Spaces
 from .model import (
     SPACE_ID,
     Binding,
     BindingNotFound,
     GroupPrincipal,
     LastAdmin,
+    LocalMode,
     Person,
     PersonRef,
     Principal,
@@ -21,18 +23,24 @@ from .model import (
     matches,
 )
 from .store import EVENTS_LIMIT, PEOPLE_LIMIT, SpaceStore
+from .web import Refused, install_spaces
 
 __all__ = [
     "EVENTS_LIMIT",
+    "LOCAL_PERSON",
+    "LOCAL_SPACE",
     "PEOPLE_LIMIT",
     "SPACE_ID",
+    "Access",
     "Binding",
     "BindingNotFound",
     "GroupPrincipal",
     "LastAdmin",
+    "LocalMode",
     "Person",
     "PersonRef",
     "Principal",
+    "Refused",
     "Role",
     "Space",
     "SpaceError",
@@ -40,8 +48,10 @@ __all__ = [
     "SpaceExists",
     "SpaceNotFound",
     "SpaceStore",
+    "Spaces",
     "UnknownPerson",
     "effective_role",
+    "install_spaces",
     "is_platform_admin",
     "matches",
 ]

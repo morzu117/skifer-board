@@ -13,7 +13,8 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
+from sqlalchemy.engine import ExceptionContext
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import DatabaseConfig
@@ -30,7 +31,18 @@ def connect(config: DatabaseConfig) -> Engine:
     # Contexte par défaut : certificat vérifié contre les autorités du système, nom d'hôte compris.
     options = {"ssl_context": ssl.create_default_context()} if config.tls else {}
     # `pool_pre_ping` : une connexion rompue est remplacée avant usage, pas servie en erreur.
-    return create_engine(config.url, pool_pre_ping=True, connect_args=options)
+    engine = create_engine(config.url, pool_pre_ping=True, connect_args=options)
+    event.listen(engine, "handle_error", _discard_on_driver_failure)
+    return engine
+
+
+def _discard_on_driver_failure(context: ExceptionContext) -> None:
+    """Une erreur du pilote qui ne vient pas de la base (un texte qu'il ne sait pas encoder,
+    par exemple) peut laisser le protocole à mi-message : la connexion est jetée, jamais
+    rendue au pool, sans quoi toutes les requêtes suivantes échoueraient."""
+    if not isinstance(context.original_exception, context.dialect.loaded_dbapi.Error):
+        context.is_disconnect = True
+        context.invalidate_pool_on_disconnect = False
 
 
 def _alembic() -> Config:

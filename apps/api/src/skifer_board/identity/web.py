@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from .config import OidcConfig, is_loopback
 from .flow import LoginFlow, LoginRefusal, LoginRequests
 from .keys import Http, ProviderError, ProviderKeys
-from .model import Identity
+from .model import Identity, is_platform_admin
 from .sessions import MemorySessionStore, Session, SessionStore
 
 SESSION_COOKIE = "__Host-sb_session"
@@ -108,6 +108,8 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
                 "established": True,
                 "identity": _identity_json(session.identity),
                 "expires_at": session.expires_at.isoformat(),
+                # Crée les espaces et gère leurs membres ; aucun rôle ni donnée (plan 08, E6).
+                "platform_admin": is_platform_admin(session.identity, runtime.config.admin_group),
             }
         )
 

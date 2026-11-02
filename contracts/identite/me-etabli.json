@@ -12,6 +12,7 @@
         "controle-gestion"
       ]
     },
-    "expires_at": "2026-11-02T17:30:00+00:00"
+    "expires_at": "2026-11-02T17:30:00+00:00",
+    "platform_admin": false
   }
 }

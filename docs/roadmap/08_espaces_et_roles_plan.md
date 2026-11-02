@@ -64,6 +64,13 @@ Modifiés : `server.py` (catalogue par espace, E9), `identity/web.py` (`/api/me`
 
 Tests : chaque route avec chaque rôle, plus non-membre et administrateur de la plateforme seul. Deux espaces isolés : un membre de A ne lit rien de B, et la réponse ne distingue pas un espace inconnu. Révocation effective à la requête suivante. Un lecteur ne peut pas écrire. Mode local (E11). Exemples produits par le serveur réel.
 
+Écarts de réalisation :
+
+- L'agent de test a trouvé trois défauts, corrigés. Le plus grave : un nom de groupe contenant un demi-code UTF-16 isolé faisait échouer le pilote au milieu d'un message ; la connexion, rendue au pool désynchronisée, faisait ensuite échouer toutes les requêtes du serveur. Deux parades : tout texte qui part en base est validé (ni U+0000, ni demi-code isolé), et la base jette toute connexion sur laquelle le pilote a échoué pour une autre raison qu'une erreur de la base (plan 07). Les deux autres : U+0000 dans un texte, et un JSON très imbriqué, donnaient `500` au lieu de `400`.
+- Décisions prises sur les points soulevés : une clé JSON en double est refusée ; une clé inconnue n'est pas renvoyée (le champ en cause est l'objet qui la contient) ; `binding_not_found` ne renvoie pas l'identifiant reçu, et un identifiant hors format n'atteint pas la base ; un corps dépasse au plus 64 Kio ; la recherche de personnes est rognée.
+- `create_app` refuse des espaces dont le groupe d'administration diffère de celui de l'identité : `/api/me` et `/api/spaces` ne peuvent pas se contredire.
+- L'espace local répond `implicit: true`, pour que la coque n'offre pas la gestion de ses membres.
+
 ### 8.3 — Espaces dans la coque
 
 Modifiés : `apps/web/src/App.tsx`, `shell/*`, `catalogue/*`.

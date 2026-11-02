@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "people": [
+      {
+        "issuer": "https://id.example.invalid",
+        "subject": "00u5d6e7f8",
+        "name": "Dominique Leroy",
+        "email": "dominique.leroy@example.invalid",
+        "last_login": "2026-11-02T08:45:00+00:00"
+      }
+    ]
+  }
+}

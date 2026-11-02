@@ -1,5 +1,5 @@
-"""Serveur HTTP de Board : routes du catalogue, en lecture (plan 04, C9), et identité
-(plan 06).
+"""Serveur HTTP de Board : routes du catalogue, en lecture (plan 04, C9), identité (plan 06)
+et espaces (plan 08). Le catalogue se lit dans un espace, avec le rôle lecteur (plan 08, E9).
 
 Avec OIDC, toute route `/api` exige une session. Sans OIDC, le serveur n'écoute que sur la
 boucle locale, sans identité, et refuse de démarrer ailleurs (plan 06, I7). Une erreur est
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 from starlette.exceptions import HTTPException
@@ -41,7 +41,7 @@ from .identity import (
     is_loopback,
 )
 from .identity import config_from_env as identity_from_env
-from .spaces import SpaceStore
+from .spaces import Spaces, SpaceStore, install_spaces
 from .state import (
     DATABASE_URL,
     PgLoginRequests,
@@ -102,9 +102,24 @@ def _history_unavailable(found: HistoryUnavailable) -> JSONResponse:
     return _error(503, "history_unavailable", problem=found.problem.value, detail=found.detail)
 
 
-def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None) -> FastAPI:
+def create_app(
+    catalog: CatalogService,
+    identity: IdentityRuntime | None = None,
+    spaces: Spaces | None = None,
+) -> FastAPI:
+    """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
+    les espaces en base sont obligatoires."""
+    if spaces is None:
+        if identity is not None:
+            raise ValueError("Avec OIDC, les espaces en base sont obligatoires.")
+        spaces = Spaces.local(catalog.config.repository.name, lambda: datetime.now(UTC))
+    elif identity is not None and spaces.admin_group != identity.config.admin_group:
+        # `/api/me` et les espaces doivent nommer le même groupe d'administration (E6).
+        raise ValueError("Le groupe d'administration des espaces diffère de celui de l'identité.")
     app = FastAPI(title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None)
     install_identity(app, identity)
+    reader = Depends(install_spaces(app, spaces))
+    catalog_path = "/api/spaces/{space_id}/catalog"
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, error: HTTPException) -> JSONResponse:
@@ -115,7 +130,7 @@ def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None)
     async def internal_error(request: Request, error: Exception) -> JSONResponse:
         return _error(500, "internal_error")
 
-    @app.get("/api/catalog")
+    @app.get(catalog_path, dependencies=[reader])
     def list_catalog(
         q: str | None = None,
         domain: str | None = None,
@@ -138,7 +153,7 @@ def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None)
             return _unavailable(found)
         return JSONResponse(to_json(found))
 
-    @app.get("/api/catalog/{document_id}")
+    @app.get(catalog_path + "/{document_id}", dependencies=[reader])
     def get_document(document_id: str) -> JSONResponse:
         found = catalog.get(document_id)
         if found is None:
@@ -147,7 +162,7 @@ def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None)
             return _unavailable(found)
         return JSONResponse(to_json(found))
 
-    @app.get("/api/catalog/{document_id}/versions")
+    @app.get(catalog_path + "/{document_id}/versions", dependencies=[reader])
     def get_versions(document_id: str) -> JSONResponse:
         found = catalog.versions(document_id)
         if found is None:
@@ -156,7 +171,7 @@ def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None)
             return _history_unavailable(found)
         return JSONResponse(to_json(found))
 
-    @app.get("/api/catalog/{document_id}/diff")
+    @app.get(catalog_path + "/{document_id}/diff", dependencies=[reader])
     def get_diff(
         document_id: str, base: str | None = None, other: str | None = None
     ) -> JSONResponse:
@@ -203,6 +218,17 @@ def state_engine(environ: Mapping[str, str]) -> Engine | None:
     return engine
 
 
+def spaces_for(
+    identity: IdentityRuntime | None, engine: Engine | None, atlas: str
+) -> Spaces | None:
+    """Espaces en base avec OIDC ; `None` en mode local, où l'espace est implicite (E11)."""
+    if identity is None:
+        return None
+    if engine is None:
+        raise SystemExit(f"Avec OIDC, la base d'état est obligatoire : {DATABASE_URL} est absente.")
+    return Spaces.database(SpaceStore(engine), atlas, identity.config.admin_group, identity.clock)
+
+
 def identity_runtime(
     environ: Mapping[str, str], host: str, engine: Engine | None
 ) -> IdentityRuntime | None:
@@ -237,6 +263,9 @@ def identity_runtime(
 
 def main() -> None:
     host = os.environ.get("SKIFER_BOARD_HOST", "127.0.0.1")
-    identity = identity_runtime(os.environ, host, state_engine(os.environ))
-    app = create_app(CatalogService(config_from_env(os.environ)), identity)
+    engine = state_engine(os.environ)
+    identity = identity_runtime(os.environ, host, engine)
+    catalog = config_from_env(os.environ)
+    spaces = spaces_for(identity, engine, catalog.repository.name)
+    app = create_app(CatalogService(catalog), identity, spaces)
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))
