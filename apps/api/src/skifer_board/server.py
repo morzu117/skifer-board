@@ -41,7 +41,14 @@ from .identity import (
     is_loopback,
 )
 from .identity import config_from_env as identity_from_env
-from .state import DATABASE_URL, SchemaError, check_schema, connect
+from .state import (
+    DATABASE_URL,
+    PgLoginRequests,
+    PgSessionStore,
+    SchemaError,
+    check_schema,
+    connect,
+)
 from .state import config_from_env as database_from_env
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
@@ -213,7 +220,15 @@ def identity_runtime(
         return None
     if engine is None:
         raise SystemExit(f"Avec OIDC, la base d'état est obligatoire : {DATABASE_URL} est absente.")
-    return build_runtime(config, UrllibHttp(), lambda: datetime.now(UTC))
+    # Sessions et demandes de connexion en base : plusieurs processus, et un redémarrage ne
+    # déconnecte personne (plan 07, P6 et P7).
+    return build_runtime(
+        config,
+        UrllibHttp(),
+        lambda: datetime.now(UTC),
+        PgSessionStore(engine, config.session_absolute, config.session_idle),
+        PgLoginRequests(engine),
+    )
 
 
 def main() -> None:

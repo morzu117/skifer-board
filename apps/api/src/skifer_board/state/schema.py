@@ -7,7 +7,7 @@ migrations Alembic les créent ; un test vérifie que migrations et déclaration
 from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, Index, MetaData, String, Table, Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import JSONB
 
 metadata = MetaData()
 
@@ -20,7 +20,9 @@ sessions = Table(
     Column("subject", Text, nullable=False),
     Column("name", Text, nullable=True),
     Column("email", Text, nullable=True),
-    Column("groups", ARRAY(Text), nullable=False),
+    # JSON plutôt qu'un tableau : pg8000 y perdait un groupe nommé « null » (révision 0002).
+    # `none_as_null` : `None` devient un NULL SQL, refusé, et non la valeur JSON `null`.
+    Column("groups", JSONB(none_as_null=True), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("last_seen", DateTime(timezone=True), nullable=False),
     Column("expires_at", DateTime(timezone=True), nullable=False),

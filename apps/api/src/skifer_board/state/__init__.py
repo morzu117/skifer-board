@@ -12,11 +12,14 @@ from .database import (
     upgrade,
 )
 from .schema import login_requests, metadata, sessions
+from .stores import PgLoginRequests, PgSessionStore
 
 __all__ = [
     "DATABASE_URL",
     "MIGRATE_COMMAND",
     "DatabaseConfig",
+    "PgLoginRequests",
+    "PgSessionStore",
     "SchemaError",
     "check_schema",
     "config_from_env",

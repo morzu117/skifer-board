@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from .config import OidcConfig, is_loopback
-from .flow import LoginFlow, LoginRefusal
+from .flow import LoginFlow, LoginRefusal, LoginRequests
 from .keys import Http, ProviderError, ProviderKeys
 from .model import Identity
 from .sessions import MemorySessionStore, Session, SessionStore
@@ -156,13 +156,25 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
         return response
 
 
-def build_runtime(config: OidcConfig, http: Http, clock: Callable[[], datetime]) -> IdentityRuntime:
-    """Assemble fournisseur, parcours et magasin de sessions d'une configuration."""
+def build_runtime(
+    config: OidcConfig,
+    http: Http,
+    clock: Callable[[], datetime],
+    sessions: SessionStore | None = None,
+    requests: LoginRequests | None = None,
+) -> IdentityRuntime:
+    """Assemble fournisseur, parcours et magasins d'une configuration. Sans magasins fournis,
+    ils sont en mémoire : un seul processus, ce que le serveur n'admet que dans les tests
+    (plan 07, P5)."""
     keys = ProviderKeys(config, http, clock)
     return IdentityRuntime(
         config=config,
         keys=keys,
-        flow=LoginFlow(config, keys, http, clock),
-        sessions=MemorySessionStore(config.session_absolute, config.session_idle),
+        flow=LoginFlow(config, keys, http, clock, requests),
+        sessions=(
+            MemorySessionStore(config.session_absolute, config.session_idle)
+            if sessions is None
+            else sessions
+        ),
         clock=clock,
     )

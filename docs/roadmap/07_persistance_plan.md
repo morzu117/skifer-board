@@ -1,6 +1,6 @@
 # Plan 07 — Persistance de l'état et migrations (lot 02, deuxième tranche)
 
-Date : 2 novembre 2026 · Statut : **en cours**. Deuxième tranche du lot 02 (« socle partagé »), qui suit le plan 06. Elle applique la décision D-3 : git garde les contenus, une base garde l'état. Choix du porteur du 2 novembre : **PostgreSQL** ; **tests sur une instance locale jetable** ; **SQLAlchemy Core, Alembic et pg8000**. Claude développe. Les tests sont écrits par un agent Claude distinct, plus par Codex, à la demande du porteur (« lance un autre agent claude, mon quota codex est pas très grand ») ; plan 03, T1.
+Date : 2 novembre 2026 · Statut : **réalisé** (7.1 et 7.2). Deuxième tranche du lot 02 (« socle partagé »), qui suit le plan 06. Elle applique la décision D-3 : git garde les contenus, une base garde l'état. Choix du porteur du 2 novembre : **PostgreSQL** ; **tests sur une instance locale jetable** ; **SQLAlchemy Core, Alembic et pg8000**. Claude développe. Les tests sont écrits par un agent Claude distinct, plus par Codex, à la demande du porteur (« lance un autre agent claude, mon quota codex est pas très grand ») ; plan 03, T1.
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §8 lot 02 (« persistance et migrations »), §10.1 (PostgreSQL pour les métadonnées de Board), §10.2 D-3. Tranche précédente : [plan 06](06_identite_oidc_plan.md), dont I4 annonçait cette tranche.
 
@@ -71,6 +71,15 @@ Tests :
 - une session expirée n'est jamais prolongée, même si la lecture et l'expiration se croisent ;
 - purge des sessions et des demandes expirées ;
 - aucune colonne ne contient un identifiant de session en clair, un jeton du fournisseur ou le secret client.
+
+Écarts de réalisation :
+
+- Le module s'appelle `state/stores.py`, et non `state/sessions.py` : ce nom aurait masqué la table `sessions` exportée par le paquet.
+- `server.py` assemble les magasins en base et les passe à `build_runtime`, au lieu que celui-ci reçoive la base. `identity` ne dépend ainsi pas de `state`.
+- L'agent de test a trouvé deux défauts, corrigés :
+  - Les instants relus portaient le fuseau de la session PostgreSQL, et non UTC, et `/api/me` les rendait ainsi. Ils sont ramenés en UTC à la lecture.
+  - Un groupe nommé « null », dans une autre casse que « NULL », devenait un NULL SQL dans le tableau écrit par pg8000 et était perdu. La révision `0002` passe la colonne `groups` en JSONB, en avant seulement (P3). Un `None` Python y reste un NULL SQL, refusé par la contrainte, et non la valeur JSON `null`.
+- Base perdue pendant l'usage : toute route qui la lit répond `500 internal_error`, jamais avec des données, et sans adresse ni mot de passe.
 
 ## 4. Rayon d'impact
 

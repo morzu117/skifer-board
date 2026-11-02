@@ -18,8 +18,8 @@ from sqlalchemy.engine import URL
 
 from identity.conftest import Horloge
 
-# Le runtime de cette tranche ne lit pas encore la base (plan 07, 7.2) : un moteur factice
-# suffit tant que le test ne la touche pas.
+# Assembler le runtime ne touche pas la base (plan 07, 7.2) : un moteur factice suffit tant
+# que le test n'ouvre ni session ni demande de connexion.
 BASE_FACTICE = Mock(spec=Engine)
 
 

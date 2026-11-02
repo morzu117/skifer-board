@@ -16,6 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from typing import Protocol
 from urllib.parse import urlencode
 
 from .config import OidcConfig
@@ -46,11 +47,50 @@ class LoginStart:
 
 
 @dataclass(frozen=True)
-class _Pending:
+class PendingLogin:
+    """Demande de connexion en cours. Le lien navigateur n'est gardé que par son empreinte."""
+
     nonce: str
     verifier: str
-    binding: str
+    binding_fingerprint: str
     created_at: datetime
+
+
+class LoginRequests(Protocol):
+    """Demandes en cours, rangées par l'empreinte de leur `state` (plan 07, P7)."""
+
+    def put(self, state: str, pending: PendingLogin) -> None:
+        """Range la demande et purge celles qui ont plus de `LOGIN_LIFETIME`."""
+        ...
+
+    def take(self, state: str) -> PendingLogin | None:
+        """Retire et rend la demande : un même `state` n'est jamais rendu deux fois."""
+        ...
+
+    def count(self) -> int: ...
+
+
+class MemoryLoginRequests:
+    """Demandes en mémoire, pour un seul processus et pour les tests."""
+
+    def __init__(self) -> None:
+        self._pending: dict[str, PendingLogin] = {}
+        self._lock = threading.Lock()
+
+    def put(self, state: str, pending: PendingLogin) -> None:
+        with self._lock:
+            limit = pending.created_at - LOGIN_LIFETIME
+            for key in [k for k, p in self._pending.items() if p.created_at <= limit]:
+                del self._pending[key]
+            self._pending[fingerprint(state)] = pending
+
+    def take(self, state: str) -> PendingLogin | None:
+        with self._lock:
+            return self._pending.pop(fingerprint(state), None)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._pending)
 
 
 def _challenge(verifier: str) -> str:
@@ -69,19 +109,18 @@ class LoginFlow:
         keys: ProviderKeys,
         http: Http,
         clock: Callable[[], datetime],
+        requests: LoginRequests | None = None,
     ) -> None:
         self._config, self._keys, self._http, self._clock = config, keys, http, clock
-        self._pending: dict[str, _Pending] = {}
-        self._lock = threading.Lock()
+        self._requests: LoginRequests = MemoryLoginRequests() if requests is None else requests
 
     def start(self) -> LoginStart:
         """Adresse du fournisseur ; lève `ProviderError` si sa découverte échoue."""
         metadata = self._keys.metadata()
         state, nonce, verifier, binding = (new_token() for _ in range(4))
-        now = self._clock()
-        with self._lock:
-            self._purge(now)
-            self._pending[fingerprint(state)] = _Pending(nonce, verifier, binding, now)
+        self._requests.put(
+            state, PendingLogin(nonce, verifier, fingerprint(binding), self._clock())
+        )
         query = urlencode(
             {
                 "response_type": "code",
@@ -103,14 +142,13 @@ class LoginFlow:
         if not state:
             return LoginRefusal.INVALID_STATE
         now = self._clock()
-        with self._lock:
-            # Usage unique : la demande est retirée avant tout contrôle.
-            pending = self._pending.pop(fingerprint(state), None)
+        # Usage unique : la demande est retirée avant tout contrôle.
+        pending = self._requests.take(state)
         if (
             pending is None
             or now - pending.created_at >= LOGIN_LIFETIME
             or binding is None
-            or not _same(binding, pending.binding)
+            or not _same(fingerprint(binding), pending.binding_fingerprint)
         ):
             return LoginRefusal.INVALID_STATE
         if "error" in params:
@@ -145,10 +183,4 @@ class LoginFlow:
         return found
 
     def pending_count(self) -> int:
-        with self._lock:
-            return len(self._pending)
-
-    def _purge(self, now: datetime) -> None:
-        expired = [k for k, p in self._pending.items() if now - p.created_at >= LOGIN_LIFETIME]
-        for key in expired:
-            del self._pending[key]
+        return self._requests.count()

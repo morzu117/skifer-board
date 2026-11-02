@@ -1,7 +1,15 @@
 """Identité de la personne, établie par le backend auprès d'un fournisseur OIDC (plan 06)."""
 
 from .config import ConfigError, OidcConfig, config_from_env, is_loopback
-from .flow import LOGIN_LIFETIME, LoginFlow, LoginRefusal, LoginStart
+from .flow import (
+    LOGIN_LIFETIME,
+    LoginFlow,
+    LoginRefusal,
+    LoginRequests,
+    LoginStart,
+    MemoryLoginRequests,
+    PendingLogin,
+)
 from .keys import Http, ProviderError, ProviderKeys, ProviderMetadata, UrllibHttp, discover
 from .model import Identity, Refusal, RefusalCode
 from .sessions import MemorySessionStore, Session, SessionStore, fingerprint
@@ -29,9 +37,12 @@ __all__ = [
     "IdentityRuntime",
     "LoginFlow",
     "LoginRefusal",
+    "LoginRequests",
     "LoginStart",
+    "MemoryLoginRequests",
     "MemorySessionStore",
     "OidcConfig",
+    "PendingLogin",
     "ProviderError",
     "ProviderKeys",
     "ProviderMetadata",
