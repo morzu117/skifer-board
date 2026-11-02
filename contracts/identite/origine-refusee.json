@@ -1,0 +1,8 @@
+{
+  "status": 403,
+  "body": {
+    "error": {
+      "code": "origin_refused"
+    }
+  }
+}

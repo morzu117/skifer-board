@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "body": {
+    "established": true,
+    "identity": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u1a2b3c4",
+      "name": "Camille Martin",
+      "email": "camille.martin@example.invalid",
+      "groups": [
+        "finance-lecteurs",
+        "controle-gestion"
+      ]
+    },
+    "expires_at": "2026-11-02T17:30:00+00:00"
+  }
+}

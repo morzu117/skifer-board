@@ -1,8 +1,9 @@
-"""Serveur HTTP de Board : routes du catalogue, en lecture (plan 04, C9).
+"""Serveur HTTP de Board : routes du catalogue, en lecture (plan 04, C9), et identité
+(plan 06).
 
-Pas d'identité avant le lot 02 : le catalogue est lisible par tous les rôles et le serveur
-écoute sur `127.0.0.1` par défaut. Une erreur est une réponse JSON à code fermé, jamais
-une trace.
+Avec OIDC, toute route `/api` exige une session. Sans OIDC, le serveur n'écoute que sur la
+boucle locale, sans identité, et refuse de démarrer ailleurs (plan 06, I7). Une erreur est
+une réponse JSON à code fermé, jamais une trace.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 import dataclasses
 import os
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,15 @@ from .catalog import (
     DocumentKind,
     HistoryUnavailable,
 )
+from .identity import (
+    ConfigError,
+    IdentityRuntime,
+    UrllibHttp,
+    build_runtime,
+    install_identity,
+    is_loopback,
+)
+from .identity import config_from_env as identity_from_env
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
 STATE_VARIABLE = "SKIFER_BOARD_STATE_DIR"
@@ -81,8 +91,9 @@ def _history_unavailable(found: HistoryUnavailable) -> JSONResponse:
     return _error(503, "history_unavailable", problem=found.problem.value, detail=found.detail)
 
 
-def create_app(catalog: CatalogService) -> FastAPI:
+def create_app(catalog: CatalogService, identity: IdentityRuntime | None = None) -> FastAPI:
     app = FastAPI(title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None)
+    install_identity(app, identity)
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, error: HTTPException) -> JSONResponse:
@@ -163,7 +174,24 @@ def config_from_env(environ: Mapping[str, str]) -> CatalogConfig:
     return CatalogConfig(Path(environ[REPOSITORY_VARIABLE]), Path(environ[STATE_VARIABLE]))
 
 
+def identity_runtime(environ: Mapping[str, str], host: str) -> IdentityRuntime | None:
+    """Identité du serveur, ou `None` en mode local. Refuse de démarrer hors de la boucle
+    locale sans OIDC, et sur une configuration OIDC incomplète (plan 06, I7)."""
+    try:
+        config = identity_from_env(environ)
+    except ConfigError as error:
+        raise SystemExit(str(error)) from error
+    if config is None:
+        if not is_loopback(host):
+            raise SystemExit(
+                f"Sans OIDC, le serveur n'écoute que sur la boucle locale ; {host} est refusé."
+            )
+        return None
+    return build_runtime(config, UrllibHttp(), lambda: datetime.now(UTC))
+
+
 def main() -> None:
-    app = create_app(CatalogService(config_from_env(os.environ)))
     host = os.environ.get("SKIFER_BOARD_HOST", "127.0.0.1")
+    identity = identity_runtime(os.environ, host)
+    app = create_app(CatalogService(config_from_env(os.environ)), identity)
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

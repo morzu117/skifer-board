@@ -211,7 +211,7 @@ def test_routes_et_methodes_fermees(
     code: str,
 ) -> None:
     """Ni documentation exposée ni erreur HTML par défaut."""
-    reponse = client.request(methode, route)
+    reponse = client.request(methode, route, headers={"Origin": "http://127.0.0.1:5173"})
     assert reponse.status_code == statut
     assert reponse.json() == {"error": {"code": code}}
 
@@ -352,7 +352,7 @@ def test_demarrage_sans_ouvrir_de_port(
         server.STATE_VARIABLE: str(configuration.state_dir),
     }
     if personnalise:
-        environnement.update(SKIFER_BOARD_HOST="0.0.0.0", SKIFER_BOARD_PORT="8123")
+        environnement.update(SKIFER_BOARD_HOST="localhost", SKIFER_BOARD_PORT="8123")
     monkeypatch.setattr(os, "environ", environnement)
     constructeur = Mock(wraps=CatalogService)
     creer = Mock(wraps=server.create_app)
@@ -367,7 +367,7 @@ def test_demarrage_sans_ouvrir_de_port(
     lancer.assert_called_once()
     assert isinstance(lancer.call_args.args[0], FastAPI)
     assert lancer.call_args.kwargs == {
-        "host": "0.0.0.0" if personnalise else "127.0.0.1",
+        "host": "localhost" if personnalise else "127.0.0.1",
         "port": 8123 if personnalise else 8000,
     }
 

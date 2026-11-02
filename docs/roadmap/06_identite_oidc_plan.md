@@ -1,6 +1,6 @@
 # Plan 06 — Identité OIDC et sessions (lot 02, première tranche)
 
-Date : 2 novembre 2026 · Statut : **en cours** (6.1 réalisé). Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **en cours** (6.1 et 6.2 réalisés). Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §4.3 (droits et contexte de consultation), §8 lot 02, §10.2 D-1 et D-2. Écran : pastille d'identité de la coque ([plan 02](02_socle_web_et_prototype_graphique_plan.md), W11).
 
@@ -64,6 +64,13 @@ Tests :
 - `401` sur chaque route `/api` sans session ; `403` sur une modification sans origine ou d'une autre origine ;
 - refus de démarrer sur une adresse non locale sans OIDC, ou avec une configuration incomplète ;
 - aucun jeton du fournisseur dans la session ni dans une réponse.
+
+Écarts de réalisation :
+
+- La demande de connexion est liée au navigateur qui l'a ouverte par un cookie `__Host-sb_login`, en plus du `state`, contre la connexion forcée. Le plan ne le disait pas.
+- La déconnexion supprime la session de Board et renvoie vers `/`. Elle ne déconnecte pas du fournisseur (`end_session_endpoint`), ce que le plan ne promettait pas.
+- Le point de jeton est appelé avec `client_secret_post`. Un fournisseur qui n'accepte que `client_secret_basic` refusera l'échange (`code_rejected`) ; à vérifier sur le fournisseur choisi.
+- Codex a trouvé un défaut, corrigé : une origine illisible donnait une erreur 500 au lieu d'un refus.
 
 ### 6.3 — Identité dans la coque
 

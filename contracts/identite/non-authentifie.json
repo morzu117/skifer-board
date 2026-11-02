@@ -1,0 +1,9 @@
+{
+  "status": 401,
+  "body": {
+    "error": {
+      "code": "unauthenticated",
+      "login_url": "/auth/login"
+    }
+  }
+}

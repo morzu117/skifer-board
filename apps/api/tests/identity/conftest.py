@@ -58,6 +58,9 @@ class Fournisseur(Http):
         self.jwks: dict[str, Any] = {"keys": [cles.jwk("RS256"), cles.jwk("ES256")]}
         self.appels: list[str] = []
         self.erreur: ProviderError | None = None
+        self.reponse: Mapping[str, Any] | None = None
+        self.erreur_echange: ProviderError | None = None
+        self.formulaires: list[tuple[str, dict[str, str]]] = []
 
     def get_json(self, url: str) -> Mapping[str, Any]:
         self.appels.append(url)
@@ -69,7 +72,11 @@ class Fournisseur(Http):
         return self.jwks
 
     def post_form(self, url: str, form: Mapping[str, str]) -> Mapping[str, Any]:
-        raise AssertionError("Aucun échange de code attendu pendant la vérification")
+        self.formulaires.append((url, dict(form)))
+        if self.erreur_echange is not None:
+            raise self.erreur_echange
+        assert self.reponse is not None, "Échange de code non configuré"
+        return self.reponse
 
 
 @pytest.fixture(scope="session")

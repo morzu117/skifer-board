@@ -1,0 +1,9 @@
+{
+  "login_error": [
+    "login_cancelled",
+    "invalid_state",
+    "code_rejected",
+    "provider_unavailable",
+    "token_refused"
+  ]
+}
