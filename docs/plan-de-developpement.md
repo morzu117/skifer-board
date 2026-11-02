@@ -108,7 +108,7 @@ Options, avec leur coût réel :
 
 Variante A′, apparue à la discussion du 31 octobre 2026 : Board **embarque skifer comme bibliothèque** (modèle sémantique, `QueryResolver`, politique de certification, evidence, tous importables sans Spark, comme Atlas le fait déjà avec `skifer` épinglé) et exécute le SQL produit par le résolveur avec **ses propres connecteurs** (Databricks SQL, DuckDB) après transpilation sqlglot. Les invariants tiennent : Board n’écrit pas de SQL, le résolveur skifer l’écrit ; la frontière est la bibliothèque skifer, unique. Ce qui change par rapport à B : SK-01 et SK-02 sont réalisés dans le backend Board au lieu d’attendre skifer, et la décision D10 de `main` (aucun import `skifer` dans Board) tombe. Ce qui ne change pas : SK-08 (identité, RLS) reste à construire quelque part, et un coffre côté serveur est inévitable dans **toutes** les options pour une application web partagée, B compris, puisque l’API skifer devrait alors détenir les identifiants. L’objection Atlas « jamais de token sur un serveur » vaut pour une application de bureau, pas pour Board.
 
-Proposition de ce plan, **à valider par le porteur** : B comme cible contractuelle de Board (Board ne parle qu’à une API skifer, un seul client, invariants I1 à I3 conservés), C comme trajectoire de l’écosystème pour n’avoir qu’un compilateur. L’option A est écartée : elle ferait de Board ce que le projet a décidé qu’il ne serait pas. Tant que B n’est pas livré côté skifer, Board se développe contre un simulateur de cette API (comme la suite de contrat de `main`, §3.4) et **aucun lot qui touche des données réelles n’est considéré livré**.
+Décision du 2 novembre 2026 : **A′ est retenue** (§10.2, D-1). Le paragraphe suivant est la proposition antérieure, conservée pour l’historique. Proposition de ce plan, **à valider par le porteur** : B comme cible contractuelle de Board (Board ne parle qu’à une API skifer, un seul client, invariants I1 à I3 conservés), C comme trajectoire de l’écosystème pour n’avoir qu’un compilateur. L’option A est écartée : elle ferait de Board ce que le projet a décidé qu’il ne serait pas. Tant que B n’est pas livré côté skifer, Board se développe contre un simulateur de cette API (comme la suite de contrat de `main`, §3.4) et **aucun lot qui touche des données réelles n’est considéré livré**.
 
 Tant que l’arbitrage n’est pas rendu, les mentions « connexions Board », « liaison de connexion », « référence de secret » et « secrets côté serveur » dans ce document (§4.1, §5.1, §7, lot 03) se lisent comme **l’option A, non retenue**, conservées pour que la comparaison reste lisible.
 
@@ -467,6 +467,21 @@ Décisions complémentaires du 31 octobre 2026, à l’issue du plan 01 :
 - **Frontend en Vite** (React, TypeScript). Le développement frontend attend les maquettes.
 
 Deux arbitrages n’ont pas été discutés et restent ouverts : règles de validation en PROD (avant le lot 09) et profondeur de personnalisation V1 (lot 01).
+
+### 10.2 Décisions du porteur, 2 novembre 2026
+
+Prises sur la base des attendus relus dans le code ([skifer](attendus/skifer.md), [Atlas](attendus/atlas.md)). Elles remplacent les propositions correspondantes du §3.3 et du §10.1.
+
+| # | Arbitrage | Décision | Conséquence |
+|---|---|---|---|
+| D-1 | Qui exécute (§3.3) | **A′ : skifer en bibliothèque dans Board, le résolveur de skifer produit le SQL dans le dialecte cible** (Databricks SQL, DuckDB). Board exécute ce SQL avec ses connecteurs et ne touche jamais à son texte : ni transpilation, ni ajout. | La proposition « B puis C » du §3.3 est abandonnée, et la décision D10 de `main` (aucun import `skifer`) tombe. La frontière unique est la bibliothèque skifer, isolée dans un seul module de Board, comme `skifer_atlas` (plan 04, C2). Côté skifer, SK-01 se réduit à un point d’extension public pour le backend, au dialecte cible du résolveur et à la règle de `sql_hash` ; SK-02 se réduit au refus d’accès structuré. SK-08 (RLS dans le planner) reste côté skifer. Les identifiants de connexion vivent dans un coffre côté serveur de Board. |
+| D-2 | Identité | **OIDC générique**, émetteur configurable. Le vérificateur est strict : émetteur, audience, expiration sans tolérance, scopes, sur le modèle de `mcp/auth.py` de skifer. Le jeton de la personne est transmis à Databricks quand la fédération existe. | Lot 02. Le compte de l’hébergeur git reste une liaison du profil. Sans fédération, la RLS vient de skifer (SK-08) ; Board ne pose jamais lui-même une restriction. |
+| D-3 | Stockage des contenus | **Git comme vérité des contenus** (analyses, dashboards, thèmes, manifestes de release en YAML), **base comme index et état** (releases actives, journal, cache, événements). | Lots 06 à 09. Board écrit dans le dépôt de contenus avec une identité de service. |
+| D-4 | Bibliothèque graphique | **ECharts, rendu SVG par défaut** ; ADR 0001 acceptée. | Le canvas est réservé aux tuiles très denses, sans changer les constructeurs. |
+| D-5 | Forme étroite des graphiques | **Acceptée** ; les seuils de 760 px (coque) et 480 px (graphiques) entrent dans les tokens du design system. | Un point de plan à venir : tokens, concordance et usages. |
+| D-6 | Calcul du total de sélection | **Backend Board**, une seule implémentation des règles (plan 01). | Lot 05 ; la latence de l’aller-retour y est mesurée. |
+
+Restent ouverts : le portage des attendus vers `../skifer` et `../skifer-atlas` (propriétaires, forme), les objectifs chiffrés de performance (ADR 0001, point 3), les règles de validation en PROD et la profondeur de personnalisation V1.
 
 ## 11. Hors périmètre initial
 

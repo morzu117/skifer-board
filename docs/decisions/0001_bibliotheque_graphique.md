@@ -1,6 +1,6 @@
 # 0001 — Bibliothèque graphique
 
-Date : 1er novembre 2026 · Statut : **proposée**, en attente de validation du porteur · Plan : `docs/roadmap/02_socle_web_et_prototype_graphique_plan.md`, 2.5 · Lot : 01 (`docs/plan-de-developpement.md` §6.3)
+Date : 1er novembre 2026 · Statut : **acceptée** le 2 novembre 2026 par le porteur, avec la forme étroite ; seuils à ajouter aux tokens. Objectifs de performance (point 3) toujours ouverts · Plan : `docs/roadmap/02_socle_web_et_prototype_graphique_plan.md`, 2.5 · Lot : 01 (`docs/plan-de-developpement.md` §6.3)
 
 ## Contexte
 

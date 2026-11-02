@@ -10,7 +10,7 @@ Ce document dit ce que Board attend de `skifer-atlas`, ce qui existe déjà et c
 - État relu le 2 novembre 2026 sur `origin/main` au commit `c49b66a`, qui ajoute le plan 0028 d'Atlas (base partagée entre processus, ADR 0032). Les plans 0001 à 0028 d'Atlas sont listés dans `docs/plans/README.md`.
 - Les constats ci-dessous citent le code d'Atlas à ce commit. Aucun n'a été vérifié contre un dépôt GitHub réel ni contre une plateforme de données.
 
-L'arbitrage du §3.3 (A′ : skifer en bibliothèque dans Board ; B : API skifer distante) n'est pas tranché. Chaque attendu dit s'il en dépend.
+L'arbitrage du §3.3 est tranché le 2 novembre 2026 : **A′**, skifer en bibliothèque dans Board (plan de développement, §10.2, D-1). Les mentions « sous B » sont conservées pour l'historique.
 
 ## 2. Synthèse
 

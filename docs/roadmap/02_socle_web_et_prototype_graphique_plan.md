@@ -90,7 +90,7 @@ Création d'une application à côté de `apps/api`, sans appelant existant. Seu
 
 ## 6. Choix ouverts que ce plan ne prend pas
 
-- **Placement du calcul contextuel** pour les sélections : backend Board (une seule implémentation des règles, aller-retour local) ou navigateur (pas d'aller-retour, règles en double). Recommandation : backend. À trancher avant le lot 05.
+- **Placement du calcul contextuel** pour les sélections : backend Board (une seule implémentation des règles, aller-retour local) ou navigateur (pas d'aller-retour, règles en double). Recommandation : backend. **Tranché le 2 novembre 2026 : backend** (plan de développement, §10.2, D-6).
 - **Perspective** pour les tableaux et pivots : évalué au lot 05 sur des volumes réels ; le tableau d'alternative du lot 01 est un tableau HTML.
 - **Profondeur de personnalisation V1** : le prototype en donne la matière, la liste des contrôles reste à figer avec le porteur.
 

@@ -12,7 +12,7 @@ Ce document dit ce que Board attend de skifer, l'état réel du code et ce que B
 
 ## 2. Les deux options du §3.3
 
-L'arbitrage du §3.3 n'est pas tranché ; ce document ne le présume pas. Pour chaque attendu, il dit ce qui change selon l'option.
+Mise à jour du 2 novembre 2026 : **A′ est retenue**, le résolveur de skifer produisant le SQL dans le dialecte cible (plan de développement, §10.2, D-1). Les colonnes « Sous A′ » font désormais foi ; les colonnes « Sous B » sont conservées pour l'historique. Sous A′, SK-01 ne demande plus que Board transpile : le résolveur doit produire le dialecte cible, et Board n'écrit jamais le texte SQL.
 
 - **A′ : skifer en bibliothèque.** Board importe le modèle sémantique, `QueryResolver`, la politique de certification et l'evidence, et exécute le SQL produit par le résolveur avec ses propres connecteurs. La frontière unique est la bibliothèque skifer.
 - **B : API skifer.** Board n'appelle qu'une API REST de skifer, qui exécute. La frontière unique est cette API.
@@ -57,9 +57,10 @@ Constat qui pèse sur l'arbitrage sans le trancher :
 **Sous A′.** Board exécute le SQL du résolveur avec ses connecteurs. Il faut alors à skifer :
 
 - un **point d'extension public** pour le backend, à la place de `core._get_backend()` et d'un faux « cœur » portant `db` et `config`, que l'API de skifer contourne déjà avec `_CatalogOnlyCore` (`services/container.py:39-47`) ;
-- une règle écrite pour `sql_hash` : il reste calculé sur le SQL du résolveur, avant la transpilation faite par Board, et l'evidence porte le dialecte d'exécution.
+- un **dialecte cible dans le résolveur** (`databricks`, `duckdb`), retenu par la décision D-1 : Board reçoit un SQL prêt à exécuter et n'en touche jamais le texte. Il faut aussi les tests de non-régression qui prouvent, exemple par exemple, que chaque dialecte rend les mêmes lignes que Spark ;
+- une règle écrite pour `sql_hash` : il porte sur le SQL exécuté, et l'evidence porte le dialecte, pour que la clé de cache de Board les combine.
 
-La transpilation et ses tests de non-régression deviennent alors un travail de Board. Ils doivent prouver, exemple par exemple, que le SQL transpilé rend les mêmes lignes que Spark.
+Écartée par D-1 : la transpilation faite par Board, qui l'aurait fait manipuler du texte SQL.
 
 **Sous B.** Tout l'attendu est côté skifer, et il va contre deux décisions écrites de skifer (Plans 26 et 41). Il faut une décision de skifer avant un plan.
 
