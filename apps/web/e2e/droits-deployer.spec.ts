@@ -8,6 +8,7 @@ import liste from "../../../contracts/espaces/liste.json" with { type: "json" };
 import administration from "../../../contracts/espaces/liste-administration.json" with { type: "json" };
 import locale from "../../../contracts/espaces/liste-locale.json" with { type: "json" };
 import membres from "../../../contracts/espaces/membres.json" with { type: "json" };
+import parametres from "../../../contracts/espaces/parametres.json" with { type: "json" };
 import personnes from "../../../contracts/espaces/personnes.json" with { type: "json" };
 import etabli from "../../../contracts/identite/me-etabli.json" with { type: "json" };
 import { catalogueHorsEspace, enregistrerLectures, simulerEspaces, simulerIdentite, type Exemple } from "./aides";
@@ -97,10 +98,13 @@ async function repondre(route: Route, exemple: Exemple): Promise<void> {
   else await route.fulfill({ status: exemple.status, json: exemple.body });
 }
 
-/** Branche le serveur simulé : liste et espace (exemples réels), accords, journal, membres, personnes. */
+/**
+ * Branche le serveur simulé : liste et espace (exemples réels), accords, journal, membres, personnes,
+ * et la configuration des paramètres (exemple réel), dont le pipeline dit la complétude (plan 10, 10.4).
+ */
 async function simuler(page: Page, serveur: Serveur, table: Readonly<Record<string, Exemple>> = {}): Promise<void> {
   await simulerEspaces(page, { "/api/spaces": administration, "/api/spaces/finance": espace, ...table });
-  await page.route((url) => /^\/api\/spaces\/finance\/(deploy-grants(\/[^/]+)?|events|members)$/.test(url.pathname), async (route) => {
+  await page.route((url) => /^\/api\/spaces\/finance\/(deploy-grants(\/[^/]+)?|events|members|parameters)$/.test(url.pathname), async (route) => {
     const requete = route.request();
     const chemin = new URL(requete.url()).pathname;
     const refus = table[`${requete.method()} ${chemin}`];
@@ -108,6 +112,7 @@ async function simuler(page: Page, serveur: Serveur, table: Readonly<Record<stri
     if (requete.method() === "GET") {
       if (chemin.endsWith("/events")) await repondre(route, { status: 200, body: { events: serveur.journal } });
       else if (chemin.endsWith("/members")) await repondre(route, membres);
+      else if (chemin.endsWith("/parameters")) await repondre(route, parametres);
       else await repondre(route, { status: 200, body: { grants: serveur.accords } });
       return;
     }
@@ -325,6 +330,7 @@ test("accès refusé : un créateur voit le refus du serveur, sans formulaire", 
     "/api/spaces/finance": { status: 200, body: { ...espace.body, role: "creator" } },
     "GET /api/spaces/finance/deploy-grants": interdit,
     "GET /api/spaces/finance/events": interdit,
+    "GET /api/spaces/finance/parameters": interdit,
   });
   await page.goto("/#/espaces/finance/environnements");
   await expect(page.getByRole("alert")).toHaveText(["Votre rôle ne permet pas cette action.", "Votre rôle ne permet pas cette action."]);
@@ -341,7 +347,7 @@ test("mode local : les droits ne se gèrent pas, et rien n'est lu", async ({ pag
   await expect(page.getByRole("heading", { level: 1, name: "Environnements" })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "mode local" })).toContainText("les droits de déployer ne se gèrent pas");
   await page.waitForTimeout(200);
-  expect(lectures.filter((chemin) => chemin.includes("/deploy-grants") || chemin.includes("/events") || chemin.startsWith("/api/people"))).toEqual([]);
+  expect(lectures.filter((chemin) => chemin.includes("/deploy-grants") || chemin.includes("/events") || chemin.includes("/parameters") || chemin.startsWith("/api/people"))).toEqual([]);
 });
 
 test("pipeline : trois cartes reliées par des flèches, la cible sur fond cuivre clair et bordure cuivre 2 px", async ({ page }) => {
@@ -491,7 +497,7 @@ for (const [largeur, nom, accord] of [[390, "Dominique Leroy", "TEST"], [390, `G
 for (const etat of ["écran", "confirmation", "refus", "doublon", "accès refusé", "mode local"] as const) {
   test(`axe sur la page entière, contraste compris : ${etat}`, async ({ page }) => {
     if (etat === "accès refusé") {
-      await simuler(page, new Serveur(), { "/api/spaces": liste, "/api/spaces/finance": { status: 200, body: { ...espace.body, role: "creator" } }, "GET /api/spaces/finance/deploy-grants": interdit, "GET /api/spaces/finance/events": interdit });
+      await simuler(page, new Serveur(), { "/api/spaces": liste, "/api/spaces/finance": { status: 200, body: { ...espace.body, role: "creator" } }, "GET /api/spaces/finance/deploy-grants": interdit, "GET /api/spaces/finance/events": interdit, "GET /api/spaces/finance/parameters": interdit });
       await page.goto("/#/espaces/finance/environnements");
       await expect(page.getByRole("alert")).toHaveCount(2);
     } else if (etat === "mode local") {
@@ -510,6 +516,81 @@ for (const etat of ["écran", "confirmation", "refus", "doublon", "accès refus�
         await expect(page.getByRole("alert")).toHaveText("La demande est incomplète ou mal formée. Champ en cause : environnement.");
       }
     }
+    await polices(page);
+    const resultat = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();
+    expect(resultat.violations.map((violation) => violation.id), `Règles axe en échec : ${etat}`).toEqual([]);
+  });
+}
+
+test("chaque carte dit la complétude des paramètres (exemple réel) et mène à « Paramètres »", async ({ page }) => {
+  await ouvrirEcran(page);
+  const completude = (code: Code) => etape(page, code).locator(".sb-pipeline__parameters");
+  await expect(completude("DEV")).toHaveText("incomplet · 1 manquant Paramètres");
+  await expect(completude("TEST")).toHaveText("incomplet · 2 manquants Paramètres");
+  await expect(completude("PROD")).toHaveText("incomplet · 2 manquants Paramètres");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  for (const code of ["DEV", "TEST", "PROD"] as const) await expect(etape(page, code).getByRole("link", { name: `Paramètres de ${code}` })).toHaveAttribute("href", "#/espaces/finance/parametres");
+  await etape(page, "TEST").getByRole("link", { name: "Paramètres de TEST" }).click();
+  await expect(page).toHaveURL(/#\/espaces\/finance\/parametres$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Paramètres" })).toBeVisible();
+});
+
+// Défaut trouvé par ces tests, corrigé (`.sb-pipeline__link`) : le lien gardait le bleu par défaut du
+// navigateur au lieu de `--sb-link` (#1F4E7C), que suivent les onglets et les liens de l'accueil.
+test("le lien « Paramètres » d'une carte a la couleur des liens du système (--sb-link)", async ({ page }) => {
+  await ouvrirEcran(page);
+  const attendue = await page.evaluate(() => {
+    const temoin = document.createElement("span");
+    temoin.style.color = "var(--sb-link)";
+    document.body.append(temoin);
+    const couleur = getComputedStyle(temoin).color;
+    temoin.remove();
+    return couleur;
+  });
+  expect(attendue).toBe("rgb(31, 78, 124)");
+  for (const code of ["DEV", "TEST", "PROD"] as const) await expect(etape(page, code).getByRole("link", { name: `Paramètres de ${code}` })).toHaveCSS("color", attendue);
+});
+
+// Défaut trouvé par ces tests, corrigé : le lien avait la hauteur d'une ligne de texte (≈ 17 px), alors
+// que RULES §1 exige des cibles interactives ≥ 44 px (`--sb-target-min`).
+test("le lien « Paramètres » d'une carte est une cible d'au moins 44 px de haut (RULES §1)", async ({ page }) => {
+  await ouvrirEcran(page);
+  for (const code of ["DEV", "TEST", "PROD"] as const) {
+    const boite = await etape(page, code).getByRole("link", { name: `Paramètres de ${code}` }).boundingBox();
+    expect(boite?.height ?? 0, code).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test("complétude refusée : le bandeau unique dit que c'est la complétude qui manque", async ({ page }) => {
+  await ouvrirEcran(page, new Serveur(), { "GET /api/spaces/finance/parameters": interdit });
+  await expect(page.getByRole("alert")).toHaveText(["Complétude des paramètres indisponible : Votre rôle ne permet pas cette action."]);
+  await expect(etape(page, "DEV").locator(".sb-pipeline__parameters")).toHaveText("Complétude indisponible. Paramètres");
+});
+
+test("complétude indisponible : un seul bandeau au-dessus du pipeline, les droits restent gérables", async ({ page }) => {
+  await ouvrirEcran(page, new Serveur(), { "GET /api/spaces/finance/parameters": { status: 500, body: {} } });
+  await expect(page.getByRole("alert")).toHaveText(["Complétude des paramètres indisponible : Réponse inattendue du serveur (HTTP 500). Rien n'est affiché."]);
+  for (const code of ["DEV", "TEST", "PROD"] as const) await expect(etape(page, code).locator(".sb-pipeline__parameters")).toHaveText("Complétude indisponible. Paramètres");
+  await expect(formulaire(page)).toBeVisible();
+});
+
+for (const largeur of [320, 390]) {
+  for (const etat of ["complétude", "complétude indisponible"] as const) {
+    test(`aucun défilement horizontal de page à ${largeur} px : ${etat}`, async ({ page }) => {
+      await page.setViewportSize({ width: largeur, height: 900 });
+      await ouvrirEcran(page, new Serveur(), etat === "complétude" ? {} : { "GET /api/spaces/finance/parameters": { status: 500, body: {} } });
+      await expect(etape(page, "PROD").locator(".sb-pipeline__parameters")).toContainText(etat === "complétude" ? "incomplet" : "indisponible");
+      await expect.poll(() => page.evaluate(() => document.documentElement.clientWidth)).toBe(largeur);
+      await expect.poll(() => debordement(page)).toBeLessThanOrEqual(0);
+      expect(await sortiesDeCarte(page)).toEqual([]);
+    });
+  }
+}
+
+for (const etat of ["complétude indisponible"] as const) {
+  test(`axe sur la page entière, contraste compris : ${etat}`, async ({ page }) => {
+    await ouvrirEcran(page, new Serveur(), { "GET /api/spaces/finance/parameters": { status: 502, body: {} } });
+    await expect(page.getByRole("alert")).toHaveCount(1);
     await polices(page);
     const resultat = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();
     expect(resultat.violations.map((violation) => violation.id), `Règles axe en échec : ${etat}`).toEqual([]);

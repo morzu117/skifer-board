@@ -82,6 +82,11 @@ class Serveur {
     };
   }
 
+  /** Déclaration telle que le journal du serveur la range (plan 10, P7). */
+  private static declaration(source: Pick<Declaration, "type" | "constraints" | "required" | "default" | "description">) {
+    return { type: source.type, constraints: source.constraints, required: source.required, default: source.default, description: source.description };
+  }
+
   private noter(action: string, detail: unknown): void {
     this.journal.unshift({ id: this.evenement++, at: INSTANT, actor: MOI, actor_person: MOI_NOMME, action, detail, principal_person: null });
   }
@@ -127,7 +132,7 @@ class Serveur {
     const declaration: Declaration = { ...saisie, name: saisie.name, created_at: INSTANT, created_by: MOI, created_by_person: MOI_NOMME, updated_at: INSTANT, updated_by: MOI, updated_by_person: MOI_NOMME };
     this.parametres.push(declaration);
     this.parametres.sort((a, b) => a.name.localeCompare(b.name));
-    this.noter("parameter_declared", { name: saisie.name });
+    this.noter("parameter_declared", { name: saisie.name, declaration: Serveur.declaration(saisie) });
     return { status: 201, body: declaration };
   }
 
@@ -139,16 +144,24 @@ class Serveur {
     if (champ !== null) return { status: 400, body: { error: { code: "invalid_request", field: champ } } };
     const enCause = CODES.filter((code) => { const propre = this.valeurs[code].get(nom); return propre !== undefined && !this.valide(saisie, propre.value); });
     if (enCause.length > 0) return { status: 409, body: { error: { code: "values_incompatible", environments: enCause } } };
+    const avant = Serveur.declaration(existant);
     Object.assign(existant, saisie, { updated_at: INSTANT, updated_by: MOI, updated_by_person: MOI_NOMME });
-    this.noter("parameter_changed", { name: nom });
+    this.noter("parameter_changed", { name: nom, before: avant, after: Serveur.declaration(existant) });
     return { status: 200, body: existant };
   }
 
   retirer(nom: string): Exemple {
-    if (!this.parametres.some((parametre) => parametre.name === nom)) return { status: 404, body: { error: { code: "parameter_not_found" } } };
-    this.parametres = this.parametres.filter((parametre) => parametre.name !== nom);
-    for (const code of CODES) this.valeurs[code].delete(nom);
-    this.noter("parameter_removed", { name: nom });
+    const retire = this.parametres.find((parametre) => parametre.name === nom);
+    if (retire === undefined) return { status: 404, body: { error: { code: "parameter_not_found" } } };
+    this.parametres = this.parametres.filter((parametre) => parametre !== retire);
+    // Rangées en JSONB, les valeurs ne gardent pas l'ordre de promotion : PROD d'abord, exprès.
+    const values: Record<string, Valeur> = {};
+    for (const code of [...CODES].reverse()) {
+      const propre = this.valeurs[code].get(nom);
+      if (propre !== undefined) values[code] = propre.value;
+      this.valeurs[code].delete(nom);
+    }
+    this.noter("parameter_removed", { name: nom, values, declaration: Serveur.declaration(retire) });
     return { status: 204, body: null };
   }
 
@@ -158,15 +171,18 @@ class Serveur {
     if (declaration === undefined) return { status: 404, body: { error: { code: "parameter_not_found" } } };
     if (!this.valide(declaration, corps.value)) return { status: 400, body: { error: { code: "invalid_request", field: "value" } } };
     const posee: Posee = { value: corps.value as Valeur, set_at: INSTANT, set_by: MOI, set_by_person: MOI_NOMME };
+    const avant = this.valeurs[code].get(nom)?.value ?? null;
     this.valeurs[code].set(nom, posee);
-    this.noter("value_set", { name: nom, environment: code, after: corps.value });
+    // Une écriture sans changement n'est pas journalisée (plan 08, E12).
+    if (avant !== corps.value) this.noter("value_set", { name: nom, environment: code, before: avant, after: corps.value });
     return { status: 200, body: { name: nom, environment: code, ...posee } };
   }
 
   vider(nom: string, code: Code): Exemple {
     if (!this.canSet[code]) return { status: 403, body: { error: { code: "forbidden", required: "deploy", environment: code } } };
     if (!this.parametres.some((parametre) => parametre.name === nom)) return { status: 404, body: { error: { code: "parameter_not_found" } } };
-    if (this.valeurs[code].delete(nom)) this.noter("value_cleared", { name: nom, environment: code });
+    const avant = this.valeurs[code].get(nom);
+    if (avant !== undefined && this.valeurs[code].delete(nom)) this.noter("value_cleared", { name: nom, environment: code, before: avant.value });
     return { status: 204, body: null };
   }
 }
@@ -297,7 +313,7 @@ test("déclare un entier : la grille l'ajoute avec son défaut, le journal le ra
   await expect(ligne(page, "plafond").locator(":scope > *").nth(1)).toHaveText("Entier · de 1 à 10");
   for (const code of CODES) await expect(cellule(page, "plafond", code)).toContainText("5par défaut");
   await expect(formulaire.getByRole("textbox", { name: /^Nom/ })).toHaveValue("");
-  await expect(journalEntrees(page).nth(0)).toContainText("parameter_declared");
+  await expect(journalEntrees(page).nth(0)).toContainText("a déclaré le paramètre plafond : Entier · de 1 à 10, obligatoire, défaut 5.");
 });
 
 test("pose une valeur depuis la grille : focalisée, vide sur un défaut, préremplie sur une valeur propre, envoyée en nombre", async ({ page }) => {
@@ -525,8 +541,8 @@ for (const largeur of [320, 390, 768, 1280]) {
 
 for (const largeur of [320, 390]) {
   test(`aucun défilement horizontal de page à ${largeur} px avec le journal des paramètres`, async ({ page }) => {
-    // Le journal rend encore les événements de paramètres en « action non reconnue : » suivie du
-    // détail JSON (libellés prévus en 10.4) ; ces lignes se coupent et ne font pas défiler la page.
+    // Le journal raconte les événements de paramètres (plan 10, 10.4) ; ses phrases se coupent et ne
+    // font pas défiler la page.
     await page.setViewportSize({ width: largeur, height: 900 });
     await ouvrirEcran(page);
     await expect.poll(() => debordement(page)).toBeLessThanOrEqual(0);
@@ -603,6 +619,107 @@ for (const etat of ["écran", "confirmation", "modification", "refus", "valeur c
     const resultat = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();
     expect(resultat.violations.map((violation) => violation.id), `Règles axe en échec : ${etat}`).toEqual([]);
   });
+}
+
+// Complétude dans le pipeline et journal partagé (plan 10, 10.4).
+const pipeline = (page: Page) => page.getByRole("list", { name: "Droits de déployer, dans l'ordre de promotion" });
+const carte = (page: Page, code: Code) => pipeline(page).locator(":scope > li").filter({ has: page.getByRole("heading", { level: 2, name: new RegExp(`^${code}`) }) });
+const completude = (page: Page, code: Code) => carte(page, code).locator(".sb-pipeline__parameters");
+const onglet = (page: Page, nom: string) => page.getByRole("navigation", { name: "Administration de l'espace" }).getByRole("link", { name: nom, exact: true });
+const PHRASES_REELLES = [
+  "Alix a retiré le paramètre lignes_max et ses valeurs (TEST : 20000).",
+  "Alix a vidé la valeur de catalogue en DEV (était finance_dev).",
+  "Alix a modifié la déclaration de region : défaut aucun → eu-west.",
+  "Alix a posé la valeur de lignes_max en TEST : 20000.",
+  "Alix a posé la valeur de catalogue en DEV : finance_dev.",
+  "Alix a déclaré le paramètre region : Choix · eu-west, eu-central, obligatoire, sans défaut.",
+  "Alix a déclaré le paramètre lignes_max : Entier · de 1 à 100000, facultatif, défaut 5000.",
+  "Alix a déclaré le paramètre catalogue : Identifiant, obligatoire, sans défaut.",
+];
+const phrases = async (page: Page, combien: number) => (await journalEntrees(page).allTextContents()).slice(0, combien).map((texte) => texte.replace(/^.*UTC/, ""));
+
+test("le journal raconte l'exemple réel du serveur, phrase par phrase, sur les trois écrans", async ({ page }) => {
+  await ouvrirEcran(page);
+  expect(await phrases(page, PHRASES_REELLES.length)).toEqual(PHRASES_REELLES);
+  await expect(page.getByRole("list", { name: "Journal de l'espace" })).not.toContainText("action non reconnue");
+  for (const nom of ["Environnements", "Membres et rôles"]) {
+    await onglet(page, nom).click();
+    await expect(onglet(page, nom)).toHaveAttribute("aria-current", "page");
+    await expect(journalEntrees(page)).toHaveCount(journalParametres.body.events.length);
+    expect(await phrases(page, PHRASES_REELLES.length), nom).toEqual(PHRASES_REELLES);
+  }
+});
+
+test("parcours : une carte incomplète mène à « Paramètres » ; une valeur posée y change la complétude au retour ; le journal le raconte", async ({ page }) => {
+  const serveur = new Serveur();
+  await simuler(page, serveur);
+  await page.goto("/#/espaces/finance/environnements");
+  await expect(pipeline(page)).toBeVisible();
+  await expect(completude(page, "DEV")).toHaveText("incomplet · 1 manquant Paramètres");
+  await expect(completude(page, "DEV").locator(".sb-badge")).toHaveClass(/sb-badge--danger/);
+  await expect(completude(page, "TEST")).toHaveText("incomplet · 2 manquants Paramètres");
+  await carte(page, "DEV").getByRole("link", { name: "Paramètres de DEV" }).click();
+  await expect(page).toHaveURL(/#\/espaces\/finance\/parametres$/);
+  await expect(grille(page)).toBeVisible();
+  await expect(enteteEnv(page, "DEV")).toHaveText("DEVenvironnement affichéincomplet · 1 manquant");
+  await cellule(page, "region", "DEV").getByRole("button", { name: "Poser la valeur de region en DEV" }).click();
+  await formValeur(page).getByRole("combobox", { name: /^Valeur/ }).selectOption("eu-central");
+  await formValeur(page).getByRole("button", { name: "Poser la valeur" }).click();
+  await expect(bandeau(page)).toHaveText("region en DEV : eu-central.");
+  await expect(journalEntrees(page).nth(0)).toHaveText(/Camille Martin a posé la valeur de region en DEV : eu-central\.$/);
+  await onglet(page, "Environnements").click();
+  await expect(completude(page, "DEV")).toHaveText("paramètres complets Paramètres");
+  await expect(completude(page, "DEV").locator(".sb-badge")).toHaveClass(/sb-badge--success/);
+  await expect(completude(page, "TEST")).toHaveText("incomplet · 2 manquants Paramètres");
+  await expect(journalEntrees(page).nth(0)).toHaveText(/Camille Martin a posé la valeur de region en DEV : eu-central\.$/);
+  // Changer une valeur propre, puis la vider : les phrases disent l'avant et l'après.
+  await carte(page, "TEST").getByRole("link", { name: "Paramètres de TEST" }).click();
+  await cellule(page, "lignes_max", "TEST").getByRole("button", { name: "Changer la valeur de lignes_max en TEST" }).click();
+  await formValeur(page).getByRole("textbox", { name: "Valeur" }).fill("300");
+  await formValeur(page).getByRole("button", { name: "Poser la valeur" }).click();
+  await expect(journalEntrees(page).nth(0)).toHaveText(/a posé la valeur de lignes_max en TEST : 20000 → 300\.$/);
+  await cellule(page, "region", "DEV").getByRole("button", { name: "Vider la valeur de region en DEV" }).click();
+  await cellule(page, "region", "DEV").getByRole("button", { name: "Vider", exact: true }).click();
+  await expect(journalEntrees(page).nth(0)).toHaveText(/a vidé la valeur de region en DEV \(était eu-central\)\.$/);
+  await onglet(page, "Environnements").click();
+  await expect(completude(page, "DEV")).toHaveText("incomplet · 1 manquant Paramètres");
+  expect(serveur.ecritures.map((ecriture) => `${ecriture.methode} ${ecriture.chemin}`)).toEqual([
+    "PUT /api/spaces/finance/parameters/region/values/DEV",
+    "PUT /api/spaces/finance/parameters/lignes_max/values/TEST",
+    "DELETE /api/spaces/finance/parameters/region/values/DEV",
+  ]);
+});
+
+test("parcours : modifier puis retirer une déclaration ; le journal dit le changement et les valeurs retirées dans l'ordre", async ({ page }) => {
+  const serveur = new Serveur();
+  serveur.valeurs.PROD.set("lignes_max", { value: 7, set_at: INSTANT, set_by: MOI, set_by_person: MOI_NOMME });
+  await ouvrirEcran(page, serveur);
+  await ligne(page, "lignes_max").getByRole("button", { name: "Modifier la déclaration de lignes_max" }).click();
+  const formulaire = page.getByRole("form", { name: "Modifier la déclaration de lignes_max" });
+  await formulaire.getByRole("checkbox", { name: /^Obligatoire/ }).check();
+  await formulaire.getByRole("textbox", { name: /^Valeur par défaut/ }).fill("");
+  await formulaire.getByRole("button", { name: "Enregistrer la déclaration" }).click();
+  await expect(bandeau(page)).toHaveText("Déclaration de lignes_max enregistrée.");
+  await expect(journalEntrees(page).nth(0)).toHaveText(/a modifié la déclaration de lignes_max : facultatif → obligatoire ; défaut 5000 → aucun\.$/);
+  await ligne(page, "lignes_max").getByRole("button", { name: "Retirer le paramètre lignes_max" }).click();
+  await ligne(page, "lignes_max").getByRole("button", { name: "Retirer", exact: true }).click();
+  await expect(bandeau(page)).toHaveText("Paramètre lignes_max retiré, avec ses valeurs.");
+  await expect(journalEntrees(page).nth(0)).toHaveText(/a retiré le paramètre lignes_max et ses valeurs \(TEST : 20000, PROD : 7\)\.$/);
+});
+
+for (const largeur of [320, 390]) {
+  for (const ecran of ["environnements", "membres"] as const) {
+    test(`aucun défilement horizontal de page à ${largeur} px : « ${ecran} » avec le journal des paramètres`, async ({ page }) => {
+      await page.setViewportSize({ width: largeur, height: 900 });
+      await simuler(page, new Serveur());
+      await page.goto(`/#/espaces/finance/${ecran}`);
+      await expect(page.getByRole("list", { name: "Journal de l'espace" })).toBeVisible();
+      if (ecran === "environnements") await expect(completude(page, "DEV")).toContainText("incomplet");
+      await polices(page);
+      await expect.poll(() => page.evaluate(() => document.documentElement.clientWidth)).toBe(largeur);
+      await expect.poll(() => debordement(page)).toBeLessThanOrEqual(0);
+    });
+  }
 }
 
 /** TEST choisi dans la coque sur « Environnements », puis l'onglet « Paramètres ». */

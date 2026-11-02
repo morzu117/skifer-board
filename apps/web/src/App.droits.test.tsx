@@ -14,6 +14,7 @@ import liste from "../../../contracts/espaces/liste.json";
 import administration from "../../../contracts/espaces/liste-administration.json";
 import locale from "../../../contracts/espaces/liste-locale.json";
 import membres from "../../../contracts/espaces/membres.json";
+import parametres from "../../../contracts/espaces/parametres.json";
 import etabli from "../../../contracts/identite/me-etabli.json";
 import local from "../../../contracts/identite/me-local.json";
 import type { Fetch } from "./identity/api";
@@ -34,6 +35,7 @@ const FINANCE: Readonly<Record<string, Reponse>> = {
   "GET /api/spaces/finance/members": membres,
   "GET /api/spaces/finance/events": journalAccords,
   "GET /api/spaces/finance/deploy-grants": accords,
+  "GET /api/spaces/finance/parameters": parametres,
 };
 function routeur(table: Readonly<Record<string, Reponse>>): Mock<Fetch> {
   return vi.fn<Fetch>().mockImplementation((url, init) => {
@@ -185,7 +187,7 @@ describe("« Environnements » dans la coque (plan 09, 9.4)", () => {
 
   it("un créateur à l'adresse directe voit le refus du serveur rendu, sans formulaire", async () => {
     const createur = { status: 200, body: { ...espace.body, role: "creator" } };
-    const fetcher = ouvrir("#/espaces/finance/environnements", { ...FINANCE, "GET /api/spaces/finance": createur, "GET /api/spaces/finance/deploy-grants": interdit, "GET /api/spaces/finance/events": interdit });
+    const fetcher = ouvrir("#/espaces/finance/environnements", { ...FINANCE, "GET /api/spaces/finance": createur, "GET /api/spaces/finance/deploy-grants": interdit, "GET /api/spaces/finance/events": interdit, "GET /api/spaces/finance/parameters": interdit });
     expect(await screen.findByRole("heading", { level: 1, name: "Environnements" })).toBeInTheDocument();
     await waitFor(() => { expect(screen.getAllByRole("alert")).toHaveLength(2); });
     for (const alerte of screen.getAllByRole("alert")) expect(alerte).toHaveTextContent("Votre rôle ne permet pas cette action.");
@@ -195,7 +197,7 @@ describe("« Environnements » dans la coque (plan 09, 9.4)", () => {
 
   it("un lecteur (exemple réel de la liste : rh) voit aussi le refus rendu", async () => {
     const rh = { status: 200, body: { ...espace.body, id: "rh", name: "Ressources humaines", role: "reader" } };
-    ouvrir("#/espaces/rh/environnements", { ...FINANCE, "GET /api/spaces/rh": rh, "GET /api/spaces/rh/deploy-grants": interdit, "GET /api/spaces/rh/events": interdit });
+    ouvrir("#/espaces/rh/environnements", { ...FINANCE, "GET /api/spaces/rh": rh, "GET /api/spaces/rh/deploy-grants": interdit, "GET /api/spaces/rh/events": interdit, "GET /api/spaces/rh/parameters": interdit });
     await waitFor(() => { expect(screen.getAllByRole("alert")).toHaveLength(2); });
     expect(filAriane()).toEqual(["Ressources humaines", "Environnements"]);
     expect(screen.queryByRole("list", { name: /ordre de promotion/ })).not.toBeInTheDocument();
@@ -261,5 +263,27 @@ describe("« Environnements » dans la coque (plan 09, 9.4)", () => {
     await ecran();
     await userEvent.click(within(nav()).getByRole("button", { name: "Espace & connexions" }));
     await waitFor(() => { expect(window.location.hash).toBe("#/espaces/finance/membres"); });
+  });
+
+  it("le lien « Paramètres » d'une carte mène à l'écran des paramètres du même espace, cible gardée (plan 10, 10.4)", async () => {
+    ouvrir("#/espaces/finance/environnements");
+    await ecran();
+    await userEvent.click(within(bascule()).getByRole("button", { name: "PROD" }));
+    const carte = within(pipeline()).getByRole("heading", { level: 2, name: /^PROD/ }).closest("li") as HTMLElement;
+    await waitFor(() => { expect(carte).toHaveTextContent("incomplet · 2 manquants"); });
+    await userEvent.click(within(carte).getByRole("link", { name: "Paramètres de PROD" }));
+    await waitFor(() => { expect(window.location.hash).toBe("#/espaces/finance/parametres"); });
+    expect(await screen.findByRole("heading", { level: 1, name: "Paramètres" })).toBeInTheDocument();
+    expect(filAriane()).toEqual(["Finance", "Paramètres"]);
+    expect(await screen.findByRole("table", { name: "Paramètres et valeurs par environnement" })).toBeInTheDocument();
+    expect(within(bascule()).getByRole("button", { name: "PROD" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("en mode local, les paramètres ne sont pas lus non plus", async () => {
+    const fetcher = ouvrir("#/espaces/local/environnements", { "GET /api/me": local, "GET /api/spaces": locale, "GET /api/spaces/local": { status: 200, body: locale.body.spaces[0] } });
+    expect(await screen.findByRole("heading", { level: 1, name: "Environnements" })).toBeInTheDocument();
+    await act(async () => { await new Promise((fin) => setTimeout(fin, 20)); });
+    expect(lus(fetcher).filter((cle) => cle.includes("/parameters"))).toEqual([]);
+    expect(screen.queryByRole("link", { name: /^Paramètres de / })).not.toBeInTheDocument();
   });
 });

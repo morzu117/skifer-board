@@ -1,6 +1,6 @@
 # Plan 10 — Paramètres de déploiement (lot 02, cinquième tranche)
 
-Date : 2 novembre 2026 · Statut : **à réaliser**. Cinquième tranche du lot 02 (« socle partagé »), après les environnements et le droit de déployer (plan 09). Choix du porteur du 2 novembre, qui suit les recommandations : **déclarations et valeurs en base pour l'instant**, **cinq types fermés sans secret ni connexion**, **une valeur se modifie avec le rôle administrateur et le droit de déployer dans l'environnement**, **une configuration incomplète se montre, une valeur n'est jamais invalidée en silence**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **réalisé (10.1 à 10.4)**. Cinquième tranche du lot 02 (« socle partagé »), après les environnements et le droit de déployer (plan 09). Choix du porteur du 2 novembre, qui suit les recommandations : **déclarations et valeurs en base pour l'instant**, **cinq types fermés sans secret ni connexion**, **une valeur se modifie avec le rôle administrateur et le droit de déployer dans l'environnement**, **une configuration incomplète se montre, une valeur n'est jamais invalidée en silence**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §4.1 (objet Environnement), §5.1 (paramètres), §5.2 (contenu d'une release), §8 lot 02 (« les environnements d'un même espace possèdent des configurations distinctes »), §10.1 (« un environnement, c'est surtout des paramètres de connexion »), §10.2 D-3 (contenus dans git). Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §9 (« Paramètres de déploiement déclarés »), §5 (un filtre ne cible jamais un paramètre). Design : `docs/design/RULES.md`, `DESIGN-SYSTEM.md`.
 
@@ -101,6 +101,13 @@ Modifiés : écran « Environnements », journal partagé.
 - Le journal de l'espace raconte déclarations et valeurs, sur les trois écrans.
 
 Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+- L'écran « Environnements » lit aussi `GET /parameters`, relu après chaque écriture. Une carte dit « paramètres complets », « incomplet · n manquants » ou « aucun paramètre déclaré ».
+- Si la lecture des paramètres échoue alors que les droits se sont lus, un seul bandeau le dit au-dessus du pipeline, refus compris (« Complétude des paramètres indisponible : … »), et chaque carte dit « Complétude indisponible ». Si les droits eux-mêmes sont refusés, ce refus suffit : il n'est pas dit deux fois.
+- Le lien « Paramètres » d'une carte mène à l'écran des paramètres, qui montre les trois environnements. La cible de la coque ne change pas.
+- Le journal décode les déclarations avec le décodeur de l'écran (`decodeDeclaration`). Une modification est dite champ par champ (contraintes, obligatoire, défaut, « description modifiée »), et « sans changement » si rien ne diffère. Les valeurs d'un retrait sont remises dans l'ordre de promotion, puisque le JSONB ne le garde pas. Tout détail hors contrat reste montré brut.
+- Tests écrits par un agent Claude indépendant. Il a trouvé trois défauts, corrigés avant le commit : un lien sans la couleur des liens, une cible de lien sous 44 px, et un refus de lecture affiché sans dire que c'est la complétude qui manque.
 
 ## 4. Rayon d'impact
 

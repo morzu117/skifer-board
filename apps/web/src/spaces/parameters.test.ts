@@ -8,9 +8,11 @@ import { ContractError } from "../catalogue/decode";
 import {
   constraintsLabel,
   decodeConfiguration,
+  decodeDeclaration,
   decodeParameter,
   decodeStoredValue,
   integerOrText,
+  missingLabel,
   PARAMETER_TYPES,
   STATE_LABELS,
   STATES,
@@ -384,5 +386,67 @@ describe("Libellés", () => {
     expect(Object.keys(TYPE_LABELS)).toEqual([...PARAMETER_TYPES]);
     expect(STATES).toEqual(["value", "default", "missing", "absent"]);
     expect(STATE_LABELS).toEqual({ value: "valeur propre", default: "par défaut", missing: "manquant", absent: "absent" });
+  });
+});
+
+describe("Déclaration seule (`decodeDeclaration`, plan 10, 10.4) : à plat ou dans le journal", () => {
+  const brute = (extra: Brut = {}): Brut => ({ type: "integer", constraints: { minimum: 1, maximum: 100000 }, required: false, default: 5000, description: "", ...extra });
+
+  it("décode les cinq champs d'une déclaration du journal réel, et rien d'autre", () => {
+    expect(decodeDeclaration({ type: "integer", default: 5000, required: false, constraints: { maximum: 100000, minimum: 1 }, description: "" }, "détail")).toEqual({
+      constraints: { type: "integer", minimum: 1, maximum: 100000 },
+      required: false,
+      default: 5000,
+      description: "",
+    });
+  });
+
+  it.each([
+    [{ type: "text", constraints: { max_length: 8 }, required: true, default: "abc", description: "d" }, { constraints: { type: "text", maxLength: 8 }, required: true, default: "abc", description: "d" }],
+    [{ type: "boolean", constraints: {}, required: false, default: false, description: "" }, { constraints: { type: "boolean" }, required: false, default: false, description: "" }],
+    [{ type: "choice", constraints: { choices: ["a", "b"] }, required: true, default: null, description: "" }, { constraints: { type: "choice", choices: ["a", "b"] }, required: true, default: null, description: "" }],
+    [{ type: "identifier", constraints: {}, required: true, default: "finance", description: "" }, { constraints: { type: "identifier" }, required: true, default: "finance", description: "" }],
+    [{ type: "integer", constraints: { minimum: null, maximum: null }, required: true, default: null, description: "" }, { constraints: { type: "integer", minimum: null, maximum: null }, required: true, default: null, description: "" }],
+  ])("type %#", (entree, attendu) => {
+    expect(decodeDeclaration(entree, "d")).toEqual(attendu);
+  });
+
+  it("donne la même déclaration que `decodeParameter` sur l'exemple réel", () => {
+    for (const [rang, brut] of parametres.body.parameters.entries()) {
+      expect(decodeDeclaration(brut, "d"), String(rang)).toEqual(decodeParameter(brut, "p").declaration);
+    }
+  });
+
+  it.each([
+    ["pas un objet", null, "d : objet attendu"],
+    ["liste", [], "d : objet attendu"],
+    ["type absent", (() => { const b = brute(); delete b.type; return b; })(), "d.type : champ attendu"],
+    ["type inconnu", brute({ type: "regex" }), "d.type : text | integer | boolean | choice | identifier attendu"],
+    ["contraintes absentes", (() => { const b = brute(); delete b.constraints; return b; })(), "d.constraints : champ attendu"],
+    ["contraintes d'un autre type", brute({ constraints: { max_length: 8 } }), "d.constraints.minimum : champ attendu"],
+    ["obligatoire non booléen", brute({ required: 1 }), "d.required : booléen attendu"],
+    ["défaut absent", (() => { const b = brute(); delete b.default; return b; })(), "d.default : champ attendu"],
+    ["défaut d'un autre type", brute({ default: "5000" }), "d.default : entier attendu"],
+    ["défaut décimal", brute({ default: 1.5 }), "d.default : entier attendu"],
+    ["description absente", (() => { const b = brute(); delete b.description; return b; })(), "d.description : champ attendu"],
+    ["description non textuelle", brute({ description: null }), "d.description : texte attendu"],
+  ])("refuse %s, en nommant le champ sous le chemin donné", (_cas, entree, message) => {
+    expect(() => decodeDeclaration(entree, "d")).toThrow(ContractError);
+    expect(() => decodeDeclaration(entree, "d")).toThrow(message);
+  });
+
+  it("le nom ne fait pas partie de la déclaration : il est ignoré s'il est là, et n'est pas exigé", () => {
+    expect(decodeDeclaration(brute({ name: 5 }), "d")).toEqual(decodeDeclaration(brute(), "d"));
+  });
+});
+
+describe("Manquants (`missingLabel`)", () => {
+  it.each([
+    [1, "1 manquant"],
+    [2, "2 manquants"],
+    [3, "3 manquants"],
+    [100, "100 manquants"],
+  ])("%i : « %s »", (nombre, attendu) => {
+    expect(missingLabel(nombre)).toBe(attendu);
   });
 });

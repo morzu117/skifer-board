@@ -120,13 +120,32 @@ function decodeValue(type: ParameterType): (value: unknown, path: string) => Par
   return type === "boolean" ? boolean : text;
 }
 
-const decodeRawParameter = object({
-  name: text,
+const decodeRawDeclaration = object({
   type: oneOf(PARAMETER_TYPES),
   constraints: (value: unknown) => value,
   required: boolean,
   default: (value: unknown) => value,
   description: text,
+});
+
+/** Déclaration telle que le serveur la rend, à plat ou dans le détail d'un événement du journal. */
+export function decodeDeclaration(value: unknown, path: string): Declaration {
+  const raw = decodeRawDeclaration(value, path);
+  return {
+    constraints: decodeConstraints(raw.type, raw.constraints, `${path}.constraints`),
+    required: raw.required,
+    default: nullable(decodeValue(raw.type))(raw.default, `${path}.default`),
+    description: raw.description,
+  };
+}
+
+const decodeRawParameter = object({
+  name: text,
+  type: (value: unknown) => value,
+  constraints: (value: unknown) => value,
+  required: (value: unknown) => value,
+  default: (value: unknown) => value,
+  description: (value: unknown) => value,
   created_at: instant,
   created_by: decodeRef,
   created_by_person: nullable(decodeKnown),
@@ -137,14 +156,10 @@ const decodeRawParameter = object({
 
 export function decodeParameter(value: unknown, path: string): Parameter {
   const raw = decodeRawParameter(value, path);
+  const { type, constraints, required, description } = raw;
   return {
     name: raw.name,
-    declaration: {
-      constraints: decodeConstraints(raw.type, raw.constraints, `${path}.constraints`),
-      required: raw.required,
-      default: nullable(decodeValue(raw.type))(raw.default, `${path}.default`),
-      description: raw.description,
-    },
+    declaration: decodeDeclaration({ type, constraints, required, default: raw.default, description }, path),
     createdAt: raw.created_at,
     createdBy: raw.created_by,
     createdByPerson: raw.created_by_person,
@@ -248,6 +263,11 @@ export interface DeclarationInput {
 export function integerOrText(raw: string): number | string {
   const parsed = Number(raw);
   return /^-?\d+$/.test(raw) && Number.isSafeInteger(parsed) ? parsed : raw;
+}
+
+/** « 1 manquant », « 2 manquants ». */
+export function missingLabel(count: number): string {
+  return count === 1 ? "1 manquant" : `${String(count)} manquants`;
 }
 
 /** Valeur affichée : un booléen en mot, le reste tel quel ; jamais arrondi ni mis en forme. */

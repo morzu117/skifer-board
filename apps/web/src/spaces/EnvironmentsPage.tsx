@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 
 import { formatInstant } from "../format/date";
+import { routeHash } from "../shell/route";
 import { ENVIRONMENTS, type Environment } from "../shell/sections";
+import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { useRefreshed } from "../ui/useOutcome";
-import { AdminTabs, Confirm, FeedbackRegion, Journal, PrincipalCell, ReadFailure, Reading, samePrincipal, useAdminWrite } from "./AdminParts";
-import { fetchEvents, fetchGrants, grantDeploy, revokeDeploy, type AdminOutcome } from "./admin";
+import { AdminTabs, Confirm, FeedbackRegion, Journal, PrincipalCell, ReadFailure, Reading, refusalText, samePrincipal, useAdminWrite } from "./AdminParts";
+import { fetchEvents, fetchGrants, fetchParameters, grantDeploy, revokeDeploy, type AdminOutcome } from "./admin";
 import type { Fetch } from "./api";
 import { EMPTY_DRAFT, PrincipalField, principalOf, type PrincipalDraft } from "./PrincipalField";
 import { personLabel, principalLabel, type DeployGrant, type Principal, type Space } from "./model";
+import { missingLabel, type Configuration, type EnvironmentConfiguration } from "./parameters";
 import "../catalogue/catalogue.css";
 import "./spaces.css";
 
@@ -37,6 +40,7 @@ export function EnvironmentsPage({ space, fetcher, target, onWritten }: Environm
   });
   const grants = useRefreshed(`grants:${space.id}`, version, (signal) => fetchGrants(space.id, signal, fetcher));
   const events = useRefreshed(`events:${space.id}`, version, (signal) => fetchEvents(space.id, signal, fetcher));
+  const parameters = useRefreshed(`parameters:${space.id}`, version, (signal) => fetchParameters(space.id, signal, fetcher));
 
   return (
     <>
@@ -53,8 +57,14 @@ export function EnvironmentsPage({ space, fetcher, target, onWritten }: Environm
         <strong>{DEPLOY_REMINDER}</strong> Il dit qui pourra déployer, et où ; les déploiements arriveront avec les releases.
       </Banner>
       <FeedbackRegion feedback={feedback} announced={announced} />
+      {/* Sans pipeline, sa complétude n'a pas lieu d'être dite : le refus des droits suffit, une seule fois. */}
+      {grants.status !== "ok" || parameters.status === "ok" || parameters.status === "loading" ? null : (
+        <CompletenessFailure outcome={parameters} />
+      )}
       <Pipeline
+        space={space}
         grants={grants}
+        parameters={parameters}
         target={target}
         pending={pending}
         busy={busy}
@@ -85,7 +95,10 @@ export function EnvironmentsPage({ space, fetcher, target, onWritten }: Environm
 }
 
 interface PipelineProps {
+  space: Space;
   grants: { status: "loading" } | AdminOutcome<readonly DeployGrant[]>;
+  /** Complétude de chaque environnement (plan 10, 10.4), calculée par le serveur. */
+  parameters: { status: "loading" } | AdminOutcome<Configuration>;
   target: Environment;
   pending: DeployGrant | null;
   busy: boolean;
@@ -94,7 +107,7 @@ interface PipelineProps {
 }
 
 /** Pipeline d'environnements (DESIGN-SYSTEM §5) : trois étapes reliées, la cible mise en avant. */
-function Pipeline({ grants, target, pending, busy, onPending, onRevoke }: PipelineProps) {
+function Pipeline({ space, grants, parameters, target, pending, busy, onPending, onRevoke }: PipelineProps) {
   if (grants.status === "loading") {
     return (
       <Card title="Droits de déployer">
@@ -120,6 +133,12 @@ function Pipeline({ grants, target, pending, busy, onPending, onRevoke }: Pipeli
               <span className="sb-mono">{environment}</span>
               {isTarget ? <span className="sb-pipeline__note">environnement affiché</span> : null}
             </h2>
+            <p className="sb-pipeline__parameters">
+              <Completeness parameters={parameters} environment={environment} />{" "}
+              <a className="sb-pipeline__link" href={routeHash({ page: "parameters", space: space.id })} aria-label={`Paramètres de ${environment}`}>
+                Paramètres
+              </a>
+            </p>
             {here.length === 0 ? (
               <p className="sb-members__state">Personne ne peut y déployer.</p>
             ) : (
@@ -140,6 +159,38 @@ function Pipeline({ grants, target, pending, busy, onPending, onRevoke }: Pipeli
         );
       })}
     </ol>
+  );
+}
+
+/** Au-dessus d'un pipeline lu et gérable, un refus dit aussi ce qui manque : la complétude, pas les droits. */
+function CompletenessFailure({ outcome }: { outcome: Exclude<PipelineProps["parameters"], { status: "loading" } | { status: "ok" }> }) {
+  if (outcome.status === "refused") {
+    return <Banner tone="danger">Complétude des paramètres indisponible : {refusalText(outcome)}</Banner>;
+  }
+  return <ReadFailure outcome={outcome} title="Complétude des paramètres indisponible" />;
+}
+
+/** Complétude d'un environnement ; une lecture refusée ou en échec est dite une fois, au-dessus du pipeline. */
+function Completeness({ parameters, environment }: { parameters: PipelineProps["parameters"]; environment: Environment }) {
+  if (parameters.status === "loading") {
+    return (
+      <span role="status" aria-busy="true" className="sb-members__state">
+        Lecture des paramètres…
+      </span>
+    );
+  }
+  if (parameters.status !== "ok") {
+    return <span className="sb-members__state">Complétude indisponible.</span>;
+  }
+  // Le décodage garantit les trois environnements dans l'ordre de promotion (plan 10, 10.3).
+  const configuration = parameters.value.environments[ENVIRONMENTS.indexOf(environment)] as EnvironmentConfiguration;
+  if (configuration.values.length === 0) {
+    return <span className="sb-members__state">Aucun paramètre déclaré.</span>;
+  }
+  return configuration.complete ? (
+    <Badge tone="success">paramètres complets</Badge>
+  ) : (
+    <Badge tone="danger">incomplet · {missingLabel(configuration.missing.length)}</Badge>
   );
 }
 

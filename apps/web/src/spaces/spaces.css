@@ -316,6 +316,23 @@
   font-size: var(--sb-text-lg);
 }
 
+.sb-pipeline__parameters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-3);
+  margin: 0;
+  font-size: var(--sb-text-sm);
+}
+
+/* Lien vers « Paramètres » : couleur des liens et cible de 44 px (RULES §1), comme les liens de l'accueil. */
+.sb-pipeline__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  color: var(--sb-link);
+}
+
 .sb-pipeline__note {
   color: var(--sb-copper-ink);
   font-size: var(--sb-text-sm);

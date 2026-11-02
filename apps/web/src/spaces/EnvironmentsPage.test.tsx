@@ -11,6 +11,7 @@ import interdit from "../../../../contracts/espaces/interdit.json";
 import introuvable from "../../../../contracts/espaces/introuvable.json";
 import journalAccords from "../../../../contracts/espaces/journal-accords.json";
 import modeLocal from "../../../../contracts/espaces/mode-local.json";
+import parametres from "../../../../contracts/espaces/parametres.json";
 import inconnue from "../../../../contracts/espaces/personne-inconnue.json";
 import personnes from "../../../../contracts/espaces/personnes.json";
 import retraitAccord from "../../../../contracts/espaces/retrait-accord.json";
@@ -29,6 +30,7 @@ const reponse = (exemple: Exemple) => (exemple.body === null ? new Response(null
 const FINANCE = decodeSpace(espace.body, "espace");
 const ACCORDS = "GET /api/spaces/finance/deploy-grants";
 const JOURNAL = "GET /api/spaces/finance/events";
+const PARAMETRES = "GET /api/spaces/finance/parameters";
 const ACCORDER = "POST /api/spaces/finance/deploy-grants";
 const ID_DOMINIQUE = "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f";
 const ID_CREATEURS = "7a4b9c0d-1e2f-4a3b-9c4d-5e6f7a8b9c0d";
@@ -37,7 +39,9 @@ const RETIRER_CREATEURS = `DELETE /api/spaces/finance/deploy-grants/${ID_CREATEU
 const DOMINIQUE = { kind: "person", issuer: "https://id.example.invalid", subject: "00u5d6e7f8" } as const;
 const CAMILLE = { issuer: "https://id.example.invalid", subject: "00u1a2b3c4" };
 
-function serveur(table: Readonly<Record<string, Reponse>>): Mock<Fetch> {
+// La complétude des paramètres (plan 10, 10.4) se lit aussi : l'exemple réel, sauf avis contraire.
+function serveur(entrees: Readonly<Record<string, Reponse>>): Mock<Fetch> {
+  const table: Readonly<Record<string, Reponse>> = { [PARAMETRES]: parametres, ...entrees };
   return vi.fn<Fetch>().mockImplementation((url, init) => {
     const cle = `${init?.method ?? "GET"} ${url}`;
     const exemple = table[cle];
@@ -105,6 +109,7 @@ describe("Environnements : lecture (écrans §9, plan 09, 9.4)", () => {
     expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method, init?.signal instanceof AbortSignal])).toEqual([
       ["/api/spaces/finance/deploy-grants", "GET", true],
       ["/api/spaces/finance/events", "GET", true],
+      ["/api/spaces/finance/parameters", "GET", true],
     ]);
     await act(async () => { lus.resolve(reponse(accords)); evenements.resolve(reponse(journalAccords)); await Promise.resolve(); });
     await screen.findByRole("list", { name: "Droits de déployer, dans l'ordre de promotion" });
@@ -232,11 +237,11 @@ describe("Environnements : lecture (écrans §9, plan 09, 9.4)", () => {
   });
 
   it("encode l'identifiant de l'espace dans ses adresses", async () => {
-    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(Response.json(url.endsWith("/deploy-grants") ? { grants: [] } : { events: [] })));
+    const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(Response.json(url.endsWith("/deploy-grants") ? { grants: [] } : url.endsWith("/parameters") ? { parameters: [], environments: [] } : { events: [] })));
     render(<EnvironmentsPage space={{ ...FINANCE, id: "a/b c" }} fetcher={fetcher} target="DEV" />);
     await screen.findByText("Aucun événement.");
     await screen.findByRole("list", { name: "Droits de déployer, dans l'ordre de promotion" });
-    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/a%2Fb%20c/deploy-grants", "/api/spaces/a%2Fb%20c/events"]);
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/a%2Fb%20c/deploy-grants", "/api/spaces/a%2Fb%20c/events", "/api/spaces/a%2Fb%20c/parameters"]);
   });
 
   it("les onglets relient « Membres et rôles », « Environnements », celui-ci courant, et « Paramètres »", async () => {
@@ -252,7 +257,7 @@ describe("Environnements : lecture (écrans §9, plan 09, 9.4)", () => {
 
 describe("Environnements : lecture refusée ou en panne", () => {
   it("un rôle insuffisant est rendu tel que le serveur le dit, sans pipeline ni formulaire, le rappel gardé", async () => {
-    const fetcher = serveur({ [ACCORDS]: interdit, [JOURNAL]: interdit });
+    const fetcher = serveur({ [ACCORDS]: interdit, [JOURNAL]: interdit, [PARAMETRES]: interdit });
     render(<EnvironmentsPage space={{ ...FINANCE, role: "creator" }} fetcher={fetcher} target="DEV" />);
     await waitFor(() => { expect(screen.getAllByRole("alert")).toHaveLength(2); });
     for (const alerte of screen.getAllByRole("alert")) expect(alerte).toHaveTextContent(/^Votre rôle ne permet pas cette action\.$/);
@@ -287,6 +292,7 @@ describe("Environnements : lecture refusée ou en panne", () => {
     const perdu = vi.fn();
     const quitter = onSpaceLost(perdu);
     try {
+      // Les paramètres se lisent : seuls accords et journal disent l'espace perdu.
       render(<EnvironmentsPage space={FINANCE} fetcher={serveur({ [ACCORDS]: introuvable, [JOURNAL]: introuvable })} target="DEV" />);
       await waitFor(() => { expect(perdu).toHaveBeenCalledTimes(2); });
       expect(screen.getAllByRole("alert")[0]).toHaveTextContent("Espace introuvable.");

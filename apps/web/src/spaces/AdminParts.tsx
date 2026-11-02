@@ -6,6 +6,7 @@ import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { ENVIRONMENTS } from "../shell/sections";
 import { REFUSAL_LABELS, type AdminOutcome, type Refusal } from "./admin";
+import { constraintsLabel, decodeDeclaration, valueLabel, type Declaration, type ParameterValue } from "./parameters";
 import { personDetail, personLabel, ROLE_LABELS, ROLES, type Known, type Principal, type Role, type Space, type SpaceEvent } from "./model";
 import "./spaces.css";
 
@@ -224,6 +225,11 @@ const ACTION_LABELS = {
   binding_removed: "a retiré",
   deploy_granted: "a accordé le droit de déployer",
   deploy_revoked: "a retiré le droit de déployer",
+  parameter_declared: "a déclaré le paramètre",
+  parameter_changed: "a modifié la déclaration de",
+  parameter_removed: "a retiré le paramètre",
+  value_set: "a posé la valeur de",
+  value_cleared: "a vidé la valeur de",
 } as const;
 
 export function Journal({ events }: { events: { status: "loading" } | AdminOutcome<readonly SpaceEvent[]> }) {
@@ -285,12 +291,104 @@ function journalPrincipal(value: unknown, person: SpaceEvent["principalPerson"])
   return null;
 }
 
+function isValue(value: unknown): value is ParameterValue {
+  return typeof value === "string" || typeof value === "boolean" || Number.isSafeInteger(value);
+}
+
+/** Déclaration du détail d'un événement, ou `null` si elle n'est pas au contrat : la ligne reste alors brute. */
+function journalDeclaration(value: unknown): Declaration | null {
+  try {
+    return decodeDeclaration(value, "détail");
+  } catch {
+    return null;
+  }
+}
+
+function defaultLabel(value: ParameterValue | null): string {
+  return value === null ? "aucun" : valueLabel(value);
+}
+
+/** « Choix · eu-west, eu-central, obligatoire, sans défaut ». */
+function declarationLabel(declaration: Declaration): string {
+  const fallback = declaration.default === null ? "sans défaut" : `défaut ${valueLabel(declaration.default)}`;
+  return `${constraintsLabel(declaration.constraints)}, ${declaration.required ? "obligatoire" : "facultatif"}, ${fallback}`;
+}
+
+/** Ce qui a changé d'une déclaration à l'autre, dans l'ordre de l'écran ; rien n'est tu. */
+function declarationChanges(before: Declaration, after: Declaration): string {
+  const changes: string[] = [];
+  if (JSON.stringify(before.constraints) !== JSON.stringify(after.constraints)) {
+    changes.push(`${constraintsLabel(before.constraints)} → ${constraintsLabel(after.constraints)}`);
+  }
+  if (before.required !== after.required) {
+    changes.push(before.required ? "obligatoire → facultatif" : "facultatif → obligatoire");
+  }
+  if (before.default !== after.default) {
+    changes.push(`défaut ${defaultLabel(before.default)} → ${defaultLabel(after.default)}`);
+  }
+  if (before.description !== after.description) {
+    changes.push("description modifiée");
+  }
+  return changes.length === 0 ? "sans changement" : changes.join(" ; ");
+}
+
+/** Valeurs retirées avec un paramètre, dans l'ordre de promotion ; `null` si une entrée sort du contrat. */
+function removedValues(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  const entries = Object.entries(value);
+  if (!entries.every(([environment, found]) => isEnvironment(environment) && isValue(found))) {
+    return null;
+  }
+  // Le détail est rangé en JSONB, qui ne garde pas l'ordre des clés (plan 10, 10.2) : il est remis ici.
+  const shown = ENVIRONMENTS.flatMap((environment) => entries.filter(([key]) => key === environment).map(([key, found]) => `${key} : ${valueLabel(found as ParameterValue)}`));
+  return shown.length === 0 ? ", sans valeur posée" : ` et ses valeurs (${shown.join(", ")})`;
+}
+
+/** Phrase d'un événement de paramètre (plan 10, 10.4), ou `null` si l'action ou son détail sortent du contrat. */
+function describeParameter(action: string, detail: Record<string, unknown>): string | null {
+  const { name } = detail;
+  if (!isText(name)) {
+    return null;
+  }
+  if (action === "parameter_declared") {
+    const declaration = journalDeclaration(detail.declaration);
+    return declaration === null ? null : `${ACTION_LABELS.parameter_declared} ${name} : ${declarationLabel(declaration)}.`;
+  }
+  if (action === "parameter_changed") {
+    const before = journalDeclaration(detail.before);
+    const after = journalDeclaration(detail.after);
+    return before === null || after === null ? null : `${ACTION_LABELS.parameter_changed} ${name} : ${declarationChanges(before, after)}.`;
+  }
+  if (action === "parameter_removed") {
+    const values = removedValues(detail.values);
+    return values === null ? null : `${ACTION_LABELS.parameter_removed} ${name}${values}.`;
+  }
+  if (!isEnvironment(detail.environment)) {
+    return null;
+  }
+  const where = `${name} en ${detail.environment}`;
+  if (action === "value_set" && isValue(detail.after) && (detail.before === null || isValue(detail.before))) {
+    const change = detail.before === null ? valueLabel(detail.after) : `${valueLabel(detail.before)} → ${valueLabel(detail.after)}`;
+    return `${ACTION_LABELS.value_set} ${where} : ${change}.`;
+  }
+  if (action === "value_cleared" && isValue(detail.before)) {
+    return `${ACTION_LABELS.value_cleared} ${where} (était ${valueLabel(detail.before)}).`;
+  }
+  return null;
+}
+
 /** Phrase d'un événement. Une action ou un détail inattendus sont montrés tels quels, sans être interprétés. */
 function describe(event: SpaceEvent): string {
   const raw = `${event.action} ${JSON.stringify(event.detail)}`;
   const detail = typeof event.detail === "object" && event.detail !== null ? (event.detail as Record<string, unknown>) : {};
   if (event.action === "space_created" && isText(detail.name)) {
     return `${ACTION_LABELS.space_created} « ${detail.name} ».`;
+  }
+  const parameter = describeParameter(event.action, detail);
+  if (parameter !== null) {
+    return parameter;
   }
   const target = journalPrincipal(detail.principal, event.principalPerson);
   if (target === null) {

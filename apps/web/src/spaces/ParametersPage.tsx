@@ -22,6 +22,7 @@ import { personLabel, type Space } from "./model";
 import {
   constraintsLabel,
   integerOrText,
+  missingLabel,
   PARAMETER_TYPES,
   STATE_LABELS,
   TYPE_LABELS,
@@ -173,10 +174,6 @@ interface ParametersGridProps {
   onConfirm: (pending: Pending) => void;
   onEdit: (parameter: Parameter) => void;
   onSelect: (name: string, environment: Environment) => void;
-}
-
-function missingLabel(count: number): string {
-  return count === 1 ? "1 manquant" : `${String(count)} manquants`;
 }
 
 /** Grille paramètres × environnements, dans l'ordre DEV | TEST | PROD ; la complétude en tête de colonne. */
