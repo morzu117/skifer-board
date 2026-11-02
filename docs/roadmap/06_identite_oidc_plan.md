@@ -1,6 +1,6 @@
 # Plan 06 — Identité OIDC et sessions (lot 02, première tranche)
 
-Date : 2 novembre 2026 · Statut : **à réaliser**. Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **en cours** (6.1 réalisé). Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §4.3 (droits et contexte de consultation), §8 lot 02, §10.2 D-1 et D-2. Écran : pastille d'identité de la coque ([plan 02](02_socle_web_et_prototype_graphique_plan.md), W11).
 
@@ -41,6 +41,8 @@ Créés : `apps/api/src/skifer_board/identity/{__init__,config,keys,verify,model
 - `verify_id_token(token, nonce) -> Identity | Refusal` : règles d'I2, refus à codes fermés.
 
 Tests : un fournisseur simulé avec clés RSA et EC générées. Chaque règle d'I2 a son cas de refus : algorithme `none` et HMAC, mauvais émetteur, mauvaise audience, `azp`, expiré d'une seconde, `nbf` futur, `nonce` absent ou différent, `sub` vide ou non textuel, claims de mauvais type. Sont aussi testés la rotation de clé, le `kid` inconnu après relecture, l'émetteur de découverte différent et une configuration incomplète.
+
+Écart de réalisation : Codex a trouvé quatre défauts avant le commit, corrigés par Claude : `kid` non textuel, `alg` liste ou objet, JWK illisible, `exp` à NaN. Les tests qui les montrent restent dans la suite.
 
 ### 6.2 — Parcours de connexion et sessions
 

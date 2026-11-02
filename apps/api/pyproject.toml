@@ -7,6 +7,7 @@ dependencies = [
     "skifer-atlas",
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    "pyjwt[crypto]>=2.10",
 ]
 
 [project.scripts]
