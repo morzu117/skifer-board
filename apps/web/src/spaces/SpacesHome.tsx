@@ -75,6 +75,9 @@ function SpaceList({ spaces, platformAdmin }: { spaces: readonly Space[]; platfo
               <a className="sb-spaces__members" href={routeHash({ page: "environments", space: space.id })} aria-label={`Environnements de ${space.name}`}>
                 Environnements
               </a>
+              <a className="sb-spaces__members" href={routeHash({ page: "parameters", space: space.id })} aria-label={`Paramètres de ${space.name}`}>
+                Paramètres
+              </a>
             </span>
           ) : null}
         </li>

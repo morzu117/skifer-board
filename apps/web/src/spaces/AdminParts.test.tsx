@@ -14,17 +14,18 @@ const liens = () => within(onglets()).getAllByRole("link").map((lien) => [lien.t
 
 describe("Onglets d'administration (écrans §9)", () => {
   it.each([
-    ["members", [["Membres et rôles", "#/espaces/finance/membres", "page"], ["Environnements", "#/espaces/finance/environnements", null]]],
-    ["environments", [["Membres et rôles", "#/espaces/finance/membres", null], ["Environnements", "#/espaces/finance/environnements", "page"]]],
+    ["members", [["Membres et rôles", "#/espaces/finance/membres", "page"], ["Environnements", "#/espaces/finance/environnements", null], ["Paramètres", "#/espaces/finance/parametres", null]]],
+    ["environments", [["Membres et rôles", "#/espaces/finance/membres", null], ["Environnements", "#/espaces/finance/environnements", "page"], ["Paramètres", "#/espaces/finance/parametres", null]]],
+    ["parameters", [["Membres et rôles", "#/espaces/finance/membres", null], ["Environnements", "#/espaces/finance/environnements", null], ["Paramètres", "#/espaces/finance/parametres", "page"]]],
   ] as const)("l'onglet courant (%s) porte aria-current=\"page\", et lui seul", (courant, attendus) => {
     render(<AdminTabs space={FINANCE} current={courant} />);
     expect(liens()).toEqual(attendus);
     expect(onglets().querySelectorAll("[aria-current]")).toHaveLength(1);
   });
 
-  it("encode l'identifiant de l'espace dans les deux liens", () => {
+  it("encode l'identifiant de l'espace dans les trois liens", () => {
     render(<AdminTabs space={{ ...FINANCE, id: "a/b c#d" }} current="members" />);
-    expect(liens().map(([, href]) => href)).toEqual(["#/espaces/a%2Fb%20c%23d/membres", "#/espaces/a%2Fb%20c%23d/environnements"]);
+    expect(liens().map(([, href]) => href)).toEqual(["#/espaces/a%2Fb%20c%23d/membres", "#/espaces/a%2Fb%20c%23d/environnements", "#/espaces/a%2Fb%20c%23d/parametres"]);
   });
 
   it("sont des liens, pas des onglets ARIA : ils changent de page", () => {

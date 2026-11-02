@@ -239,12 +239,13 @@ describe("Environnements : lecture (écrans §9, plan 09, 9.4)", () => {
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/spaces/a%2Fb%20c/deploy-grants", "/api/spaces/a%2Fb%20c/events"]);
   });
 
-  it("les onglets relient « Membres et rôles » et « Environnements », celui-ci courant", async () => {
+  it("les onglets relient « Membres et rôles », « Environnements », celui-ci courant, et « Paramètres »", async () => {
     await ouvrir(serveur(BASE));
     const onglets = screen.getByRole("navigation", { name: "Administration de l'espace" });
     expect(within(onglets).getAllByRole("link").map((lien) => [lien.textContent, lien.getAttribute("href"), lien.getAttribute("aria-current")])).toEqual([
       ["Membres et rôles", "#/espaces/finance/membres", null],
       ["Environnements", "#/espaces/finance/environnements", "page"],
+      ["Paramètres", "#/espaces/finance/parametres", null],
     ]);
   });
 });

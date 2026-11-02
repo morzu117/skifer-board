@@ -16,6 +16,7 @@ import { CreateSpacePage } from "./spaces/CreateSpacePage";
 import { onSpaceLost } from "./spaces/lost";
 import { EnvironmentsPage } from "./spaces/EnvironmentsPage";
 import { MembersPage } from "./spaces/MembersPage";
+import { ParametersPage } from "./spaces/ParametersPage";
 import { manages, SPACE_ID, type Space, type SpaceList } from "./spaces/model";
 import { SpacesHome } from "./spaces/SpacesHome";
 import { Banner } from "./ui/Banner";
@@ -25,7 +26,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" ? route.space : null;
 }
 
 interface Sections {
@@ -171,7 +172,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" ? "espace" : undefined;
+  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -233,6 +234,9 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     }
     if (route.page === "environments") {
       return [current.value.name, "Environnements"];
+    }
+    if (route.page === "parameters") {
+      return [current.value.name, "Paramètres"];
     }
     return current.value.role === null ? [current.value.name] : [current.value.name, "Catalogue Atlas"];
   }
@@ -313,6 +317,17 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
       );
     }
     return <EnvironmentsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
+  }
+  if (route.page === "parameters") {
+    if (current.value.implicit) {
+      return (
+        <>
+          <Heading title="Paramètres" />
+          <Banner tone="neutral">En mode local, sans base d'état, les paramètres de déploiement ne se gèrent pas : aucune configuration n'est gardée.</Banner>
+        </>
+      );
+    }
+    return <ParametersPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
   }
   if (current.value.role === null) {
     return (

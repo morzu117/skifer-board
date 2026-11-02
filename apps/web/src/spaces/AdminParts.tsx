@@ -10,17 +10,20 @@ import { personDetail, personLabel, ROLE_LABELS, ROLES, type Known, type Princip
 import "./spaces.css";
 
 /**
- * Pièces communes aux écrans d'administration d'un espace (plan 08, 8.4 ; plan 09, 9.4) : onglets,
+ * Pièces communes aux écrans d'administration d'un espace (plan 08, 8.4 ; plan 09, 9.4 ; plan 10, 10.3) : onglets,
  * écriture relue, retours et refus du serveur, confirmation sur place, journal.
  */
 
 export type Feedback = { tone: "neutral"; text: string } | ({ tone: "danger" } & Refusal) | { tone: "error"; text: string };
 
 /** Onglets des écrans d'administration, reliés l'un à l'autre (écrans §9). */
-export function AdminTabs({ space, current }: { space: Space; current: "members" | "environments" }) {
-  const tabs: readonly { page: Route & { page: "members" | "environments" }; label: string }[] = [
+type AdminPage = "members" | "environments" | "parameters";
+
+export function AdminTabs({ space, current }: { space: Space; current: AdminPage }) {
+  const tabs: readonly { page: Route & { page: AdminPage }; label: string }[] = [
     { page: { page: "members", space: space.id }, label: "Membres et rôles" },
     { page: { page: "environments", space: space.id }, label: "Environnements" },
+    { page: { page: "parameters", space: space.id }, label: "Paramètres" },
   ];
   return (
     <nav className="sb-admin-tabs" aria-label="Administration de l'espace">
@@ -64,7 +67,8 @@ export function useAdminWrite(onWritten: (() => void) | undefined, onSettled?: (
     if (outcome.status === "ok") {
       setFeedback({ tone: "neutral", text: done });
     } else if (outcome.status === "refused") {
-      setFeedback({ tone: "danger", code: outcome.code, field: outcome.field });
+      const { code, field, environments, environment } = outcome;
+      setFeedback({ tone: "danger", code, field, environments, environment });
     } else {
       setFeedback({ tone: "error", text: outcome.message });
     }
@@ -97,7 +101,7 @@ function FeedbackBanner({ feedback }: { feedback: Feedback }) {
   return <Banner tone="danger">{refusalText(feedback)}</Banner>;
 }
 
-/** Libellé des champs qu'un `invalid_request` peut nommer (plan 08, E12 ; plan 09, V9). */
+/** Libellé des champs qu'un `invalid_request` peut nommer (plan 08, E12 ; plan 09, V9 ; plan 10, P8). */
 const FIELD_LABELS: Record<string, string> = {
   id: "identifiant",
   name: "nom",
@@ -113,11 +117,27 @@ const FIELD_LABELS: Record<string, string> = {
   "first_admin.name": "nom du groupe",
   "first_admin.issuer": "personne",
   "first_admin.subject": "personne",
+  type: "type",
+  constraints: "contraintes",
+  "constraints.max_length": "longueur maximale",
+  "constraints.minimum": "minimum",
+  "constraints.maximum": "maximum",
+  "constraints.choices": "valeurs possibles",
+  required: "obligatoire",
+  default: "valeur par défaut",
+  description: "description",
+  value: "valeur",
   body: "corps de la demande",
 };
 
 export function refusalText(refusal: Refusal): string {
+  if (refusal.environment !== undefined) {
+    return `Cette action demande le droit de déployer en ${refusal.environment}.`;
+  }
   const label = REFUSAL_LABELS[refusal.code];
+  if (refusal.environments !== undefined && refusal.environments.length > 0) {
+    return `${label} Environnements en cause : ${refusal.environments.join(", ")}.`;
+  }
   if (refusal.field === null) {
     return label;
   }

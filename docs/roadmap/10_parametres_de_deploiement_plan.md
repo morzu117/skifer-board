@@ -82,6 +82,17 @@ Créés : `apps/web/src/spaces/` (écran d'administration). Modifiés : onglets,
 
 Tests : composants, axe, parcours Playwright, captures.
 
+Écarts de réalisation :
+- Le décodage refuse une configuration incohérente plutôt que d'en afficher une partie. Le refus vaut si un état ne s'accorde pas avec sa valeur ou son auteur, si une entrée n'est pas à la place de sa déclaration, ou si `complete` et `missing` ne correspondent pas aux états « manquant ».
+- La colonne de l'environnement affiché est dite en mots (« environnement affiché ») et pas seulement par la couleur. Le nom du paramètre reste figé à gauche quand la grille défile, et la ligne dont la déclaration est ouverte est repérée.
+- Les boutons d'une cellule disent « Poser » ou « Changer », pour ne pas se confondre avec le « Modifier » de la déclaration. Choisir une cellule ne préremplit que depuis une valeur propre : un défaut recopié deviendrait une valeur propre.
+- Un seul bouton principal par vue, « Poser la valeur » ; la déclaration s'envoie par un bouton ordinaire.
+- Les aides des champs (contraintes, formats, longueurs) sont liées par `aria-describedby` : elles ne s'ajoutent pas au nom accessible.
+- Un `forbidden` faute de droit de déployer nomme l'environnement : « Cette action demande le droit de déployer en PROD. ».
+- Un entier saisi « 007 » part comme 7 : c'est le même entier. Les valeurs s'affichent brutes, sans groupement des milliers, parce qu'elles sont des valeurs de configuration et non des mesures.
+- Ouvrir la modification d'une déclaration remplace un brouillon de création en cours.
+- Le détail d'un journal sans espace ne déborde plus de l'écran à 320 et 390 px. Les phrases du journal pour les paramètres viennent en 10.4.
+
 ### 10.4 — Complétude dans le pipeline et journal
 
 Modifiés : écran « Environnements », journal partagé.

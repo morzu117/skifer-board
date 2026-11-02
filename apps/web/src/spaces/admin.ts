@@ -2,7 +2,7 @@ import { ContractError } from "../catalogue/decode";
 import { reportSessionLost } from "../identity/session";
 import { spaceUrl, type Fetch } from "./api";
 import { reportSpaceLost } from "./lost";
-import type { Environment } from "../shell/sections";
+import { ENVIRONMENTS, type Environment } from "../shell/sections";
 import {
   decodeBinding,
   decodeEvents,
@@ -19,14 +19,15 @@ import {
   type Space,
   type SpaceEvent,
 } from "./model";
+import { decodeConfiguration, decodeParameter, decodeStoredValue, type Configuration, type DeclarationInput, type Parameter, type StoredValue } from "./parameters";
 
 /**
- * Administration d'un espace (plan 08, 8.4 ; plan 09, 9.4) : membres, droits de déployer, journal,
- * recherche de personnes, création.
+ * Administration d'un espace (plan 08, 8.4 ; plan 09, 9.4 ; plan 10, 10.3) : membres, droits de
+ * déployer, paramètres, journal, recherche de personnes, création.
  * Le serveur décide de tout (E7) : l'écran rend ses refus tels quels, avec leur raison.
  */
 
-/** Refus à codes fermés du serveur (plan 08, E8, E11, E12 ; plan 09, V9 ; contrôle d'origine du plan 06). */
+/** Refus à codes fermés du serveur (plan 08, E8, E11, E12 ; plan 09, V9 ; plan 10, P8 ; contrôle d'origine du plan 06). */
 export const REFUSALS = [
   "invalid_request",
   "invalid_parameter",
@@ -35,6 +36,10 @@ export const REFUSALS = [
   "last_admin",
   "binding_not_found",
   "grant_not_found",
+  "parameter_not_found",
+  "parameter_exists",
+  "parameter_limit",
+  "values_incompatible",
   "space_not_found",
   "forbidden",
   "local_mode",
@@ -47,6 +52,10 @@ export interface Refusal {
   code: RefusalCode;
   /** Champ en cause d'un `invalid_request`. */
   field: string | null;
+  /** Environnements dont il faut d'abord vider la valeur, pour `values_incompatible` (plan 10, P5). */
+  environments?: readonly Environment[] | undefined;
+  /** Environnement où manque le droit de déployer, pour un `forbidden` qui le demande (plan 10, P6). */
+  environment?: Environment | undefined;
 }
 
 export type AdminOutcome<T> = { status: "ok"; value: T } | ({ status: "refused" } & Refusal) | { status: "error"; message: string };
@@ -59,6 +68,10 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   last_admin: "C'est la dernière liaison administrateur de l'espace : ajoutez d'abord un autre administrateur.",
   binding_not_found: "Cette liaison n'existe plus : la liste a été relue.",
   grant_not_found: "Ce droit de déployer n'existe plus : la liste a été relue.",
+  parameter_not_found: "Ce paramètre n'existe plus : la liste a été relue.",
+  parameter_exists: "Un paramètre porte déjà ce nom dans l'espace.",
+  parameter_limit: "L'espace a déjà 100 paramètres, le maximum.",
+  values_incompatible: "Des valeurs déjà posées ne respecteraient plus cette déclaration : videz-les d'abord.",
   space_not_found: "Espace introuvable.",
   forbidden: "Votre rôle ne permet pas cette action.",
   local_mode: "En mode local, l'espace implicite ne se gère pas.",
@@ -78,12 +91,23 @@ function refusalOf(value: unknown): Refusal | null {
     return null;
   }
   const field = "field" in error && typeof error.field === "string" ? error.field : null;
+  if (code === "values_incompatible" && "environments" in error && Array.isArray(error.environments)) {
+    // Dans l'ordre de promotion, et seulement des environnements connus : le reste n'est pas recopié.
+    const named: readonly unknown[] = error.environments;
+    return { code, field, environments: ENVIRONMENTS.filter((environment) => named.includes(environment)) };
+  }
+  if (code === "forbidden" && "required" in error && error.required === "deploy" && "environment" in error) {
+    const environment = ENVIRONMENTS.find((known) => known === error.environment);
+    if (environment !== undefined) {
+      return { code, field, environment };
+    }
+  }
   return { code, field };
 }
 
 interface Call<T> {
   url: string;
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   decode: (value: unknown) => T;
 }
@@ -171,6 +195,59 @@ export function grantDeploy(space: string, environment: Environment, principal: 
 
 export function revokeDeploy(space: string, grant: string, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
   return call({ url: `${spaceUrl(space)}/deploy-grants/${encodeURIComponent(grant)}`, method: "DELETE", decode: () => null }, undefined, fetcher);
+}
+
+export function fetchParameters(space: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<Configuration>> {
+  return call({ url: `${spaceUrl(space)}/parameters`, decode: decodeConfiguration }, signal, fetcher);
+}
+
+function parameterUrl(space: string, name: string): string {
+  return `${spaceUrl(space)}/parameters/${encodeURIComponent(name)}`;
+}
+
+export function declareParameter(space: string, name: string, declaration: DeclarationInput, fetcher: Fetch = fetch): Promise<AdminOutcome<Parameter>> {
+  return call(
+    {
+      url: `${spaceUrl(space)}/parameters`,
+      method: "POST",
+      body: { name, ...declaration },
+      decode: (value) => decodeParameter(value, "paramètre"),
+    },
+    undefined,
+    fetcher,
+  );
+}
+
+/** Change une déclaration ; le nom, immuable, n'est que dans l'adresse (plan 10, P3). */
+export function redeclareParameter(space: string, name: string, declaration: DeclarationInput, fetcher: Fetch = fetch): Promise<AdminOutcome<Parameter>> {
+  return call(
+    { url: parameterUrl(space, name), method: "PUT", body: declaration, decode: (value) => decodeParameter(value, "paramètre") },
+    undefined,
+    fetcher,
+  );
+}
+
+/** Retire la déclaration et ses valeurs (plan 10, P5). */
+export function removeParameter(space: string, name: string, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
+  return call({ url: parameterUrl(space, name), method: "DELETE", decode: () => null }, undefined, fetcher);
+}
+
+export function setParameterValue(
+  space: string,
+  name: string,
+  environment: Environment,
+  value: unknown,
+  fetcher: Fetch = fetch,
+): Promise<AdminOutcome<StoredValue>> {
+  return call(
+    { url: `${parameterUrl(space, name)}/values/${environment}`, method: "PUT", body: { value }, decode: (found) => decodeStoredValue(found, "valeur") },
+    undefined,
+    fetcher,
+  );
+}
+
+export function clearParameterValue(space: string, name: string, environment: Environment, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
+  return call({ url: `${parameterUrl(space, name)}/values/${environment}`, method: "DELETE", decode: () => null }, undefined, fetcher);
 }
 
 export interface NewSpace {

@@ -2,9 +2,9 @@ import { useMemo, useSyncExternalStore } from "react";
 
 /**
  * Pages de l'application, adressées par l'ancre de l'URL (plan 04, C11). L'accueil liste les
- * espaces ; le catalogue, les membres et les environnements se lisent dans un espace (plan 08, 8.3
- * et 8.4 ; plan 09, 9.4) ; le
- * prototype graphique reste accessible hors espace, comme démonstration.
+ * espaces ; le catalogue, les membres, les environnements et les paramètres se lisent dans un
+ * espace (plan 08, 8.3 et 8.4 ; plan 09, 9.4 ; plan 10, 10.3) ; le prototype graphique reste
+ * accessible hors espace, comme démonstration.
  */
 export type Route =
   | { page: "home" }
@@ -12,11 +12,19 @@ export type Route =
   | { page: "create" }
   | { page: "catalogue"; space: string }
   | { page: "members"; space: string }
-  | { page: "environments"; space: string };
+  | { page: "environments"; space: string }
+  | { page: "parameters"; space: string };
 
 const PROTOTYPE_HASH = "#/prototype";
 const CREATE_HASH = "#/nouvel-espace";
 const SPACE_PREFIX = "#/espaces/";
+/** Page d'un espace selon le dernier segment de l'ancre. */
+const SPACE_PAGES = {
+  catalogue: "catalogue",
+  membres: "members",
+  environnements: "environments",
+  parametres: "parameters",
+} as const;
 
 export function routeHash(route: Route): string {
   switch (route.page) {
@@ -32,6 +40,8 @@ export function routeHash(route: Route): string {
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/membres`;
     case "environments":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/environnements`;
+    case "parameters":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/parametres`;
   }
 }
 
@@ -53,10 +63,12 @@ export function routeFromHash(hash: string): Route {
   }
   if (hash.startsWith(SPACE_PREFIX)) {
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
-    const match = /^([^/]+)(?:\/(catalogue|membres|environnements))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres))?$/.exec(hash.slice(SPACE_PREFIX.length));
     if (match?.[1] !== undefined) {
       const space = decodeSegment(match[1]);
-      return match[2] === "membres" ? { page: "members", space } : match[2] === "environnements" ? { page: "environments", space } : { page: "catalogue", space };
+      // Le motif n'admet que les segments de `SPACE_PAGES`.
+      const segment = (match[2] ?? "catalogue") as keyof typeof SPACE_PAGES;
+      return { page: SPACE_PAGES[segment], space };
     }
   }
   return { page: "home" };

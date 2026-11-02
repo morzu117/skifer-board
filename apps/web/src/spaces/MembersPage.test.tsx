@@ -180,12 +180,13 @@ describe("Membres et rôles : lecture (écrans §9, plan 08, 8.4)", () => {
     } finally { quitter(); }
   });
 
-  it("les onglets relient « Membres et rôles », courant, et « Environnements » (plan 09, 9.4)", async () => {
+  it("les onglets relient « Membres et rôles », courant, « Environnements » (plan 09, 9.4) et « Paramètres » (plan 10, 10.3)", async () => {
     await ouvrir(serveur(BASE));
     const onglets = screen.getByRole("navigation", { name: "Administration de l'espace" });
     expect(within(onglets).getAllByRole("link").map((lien) => [lien.textContent, lien.getAttribute("href"), lien.getAttribute("aria-current")])).toEqual([
       ["Membres et rôles", "#/espaces/finance/membres", "page"],
       ["Environnements", "#/espaces/finance/environnements", null],
+      ["Paramètres", "#/espaces/finance/parametres", null],
     ]);
     // Les onglets suivent le titre et précèdent le rappel.
     const titre = screen.getByRole("heading", { level: 1, name: "Membres et rôles" });

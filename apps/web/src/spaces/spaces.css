@@ -233,6 +233,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sb-space-1) var(--sb-space-5);
+  /* Un détail sans espace ne pousse pas la page au-delà de l'écran. */
+  overflow-wrap: anywhere;
 }
 
 .sb-journal__at {
@@ -379,4 +381,144 @@
     line-height: var(--sb-space-8);
     content: "↓" / "";
   }
+}
+
+/* Paramètres de déploiement (plan 10, 10.3) : grille paramètres × environnements. */
+.sb-field__hint {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-field textarea {
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-table);
+}
+
+.sb-params th,
+.sb-params td {
+  vertical-align: top;
+}
+
+.sb-params__name {
+  min-width: 10rem;
+}
+
+/* Le nom et son en-tête restent visibles quand la grille défile vers les environnements. */
+.sb-params thead th:first-child,
+.sb-params th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--sb-surface);
+}
+
+.sb-params .sb-row--selected th[scope="row"] {
+  background: var(--sb-copper-soft);
+  box-shadow: inset 3px 0 0 var(--sb-copper);
+}
+
+/* La cible se dit aussi en mots, sous le code (RULES §2). */
+.sb-params__note {
+  display: block;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-params__actions .sb-button {
+  white-space: nowrap;
+}
+
+.sb-params__name,
+.sb-params__value {
+  overflow-wrap: anywhere;
+}
+
+.sb-params__description {
+  display: block;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-params__env {
+  min-width: 9rem;
+}
+
+.sb-params__env .sb-badge {
+  display: block;
+  width: fit-content;
+  margin-top: var(--sb-space-2);
+}
+
+/* Colonne de l'environnement affiché dans la coque : repère cuivre, comme la carte cible du pipeline. */
+.sb-params__env--target,
+.sb-params__value--target {
+  background: var(--sb-copper-soft);
+}
+
+.sb-params__resolved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
+}
+
+.sb-params__none {
+  color: var(--sb-ink-2);
+}
+
+.sb-params__meta {
+  display: block;
+  margin-top: var(--sb-space-2);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-params__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-3);
+}
+
+.sb-params__value .sb-confirm {
+  justify-content: flex-start;
+  margin-top: var(--sb-space-3);
+}
+
+.sb-params__declaration {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sb-space-5);
+  max-width: 640px;
+}
+
+.sb-params__declaration .sb-field {
+  flex: none;
+}
+
+.sb-params__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sb-space-3);
+  color: var(--sb-ink);
+}
+
+.sb-params__check input {
+  min-height: auto;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.sb-params__submit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3);
 }

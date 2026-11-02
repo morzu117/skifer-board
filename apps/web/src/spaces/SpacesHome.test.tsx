@@ -201,10 +201,10 @@ describe("Accueil des espaces : lien « Environnements » (plan 09, 9.4)", () =>
     expect(screen.getAllByRole("link", { name: /^Environnements de/ })).toHaveLength(1);
   });
 
-  it("les deux liens d'administration vont ensemble, dans l'ordre des onglets, dans l'entrée de l'espace", async () => {
+  it("les trois liens d'administration vont ensemble, dans l'ordre des onglets, dans l'entrée de l'espace", async () => {
     await ouvrirListe({ spaces: [espace("a", "admin")], platform_admin: false });
     const [entree] = items();
-    expect(within(entree as HTMLElement).getAllByRole("link").map((lien) => lien.textContent)).toEqual(["Espace a", "Membres et rôles", "Environnements"]);
+    expect(within(entree as HTMLElement).getAllByRole("link").map((lien) => lien.textContent)).toEqual(["Espace a", "Membres et rôles", "Environnements", "Paramètres"]);
   });
 
   it("l'administration de la plateforme a le lien, même sans rôle (E6)", async () => {
