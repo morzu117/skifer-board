@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import local from "../../../contracts/identite/me-local.json" with { type: "json" };
 
 export const titresGraphiques = [
   "CA net par région",
@@ -27,4 +28,11 @@ export async function choisirTheme(page: Page, nom: string): Promise<void> {
   await groupe.getByRole("button", { name: nom, exact: true }).click();
   await expect(groupe.getByRole("button", { pressed: true })).toHaveText(nom);
   await expect(groupe.getByRole("button", { pressed: false })).toHaveCount(1);
+}
+
+/** L'identité n'est pas servie par vite preview : exemple réel du backend, sans réseau. */
+export async function simulerIdentite(page: Page, exemple: { status: number; body: unknown } = local): Promise<void> {
+  await page.route("**/api/me", async (route) => {
+    await route.fulfill({ status: exemple.status, json: exemple.body });
+  });
 }

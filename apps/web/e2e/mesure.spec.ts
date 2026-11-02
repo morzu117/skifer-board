@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import { simulerIdentite } from "./aides";
+
+test.beforeEach(async ({ page }) => {
+  await simulerIdentite(page);
+});
+
 test("la page de mesure affiche les 24 configurations", async ({ page }) => {
   // Le travail de mesure précède le rendu React ; délai maximal, sans attente fixe.
   test.setTimeout(120_000);

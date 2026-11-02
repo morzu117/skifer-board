@@ -1,3 +1,4 @@
+import { reportSessionLost } from "../identity/session";
 import { ContractError } from "./decode";
 import {
   decodeCatalogPage,
@@ -73,6 +74,11 @@ async function interpret<T>(response: Response, { decode, unavailable }: Contrac
     }
     if (response.status === 404) {
       return { status: "not_found" };
+    }
+    if (response.status === 401) {
+      // Session expirée ou révoquée : la coque passe à l'écran de connexion (plan 06, 6.3).
+      reportSessionLost();
+      return { status: "error", message: "Session expirée : reconnectez-vous." };
     }
     return { status: "error", message: `Réponse inattendue du serveur (HTTP ${String(response.status)}).` };
   } catch (error) {

@@ -6,6 +6,7 @@ import { AppShell } from "./AppShell";
 import { EnvironmentSwitch } from "./EnvironmentSwitch";
 import { IdentityPill } from "./IdentityPill";
 import type { SectionId } from "./sections";
+import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar", () => {
@@ -44,7 +45,7 @@ describe("EnvironmentSwitch", () => {
 
 describe("IdentityPill", () => {
   it("affiche les droits évalués", () => {
-    render(<IdentityPill identity={{ subject: "Claire M.", entity: "FR" }} />);
+    render(<IdentityPill identity={{ name: "Claire M.", entity: "FR" }} />);
     expect(screen.getByText(/Données évaluées pour Claire M\. · Entité FR/)).not.toHaveClass("sb-identity--unknown");
   });
 
@@ -85,4 +86,25 @@ describe("AppShell", () => {
     );
     expect(screen.getByRole("button", { name: "Dashboards" })).toHaveAttribute("aria-current", "page");
   });
+});
+
+it("n'invente aucune entité pour l'identité établie", () => {
+  render(<IdentityPill identity={{ name: "Camille Martin", entity: null }} />);
+  expect(screen.getByText("Données évaluées pour Camille Martin", { exact: true })).toBeInTheDocument();
+  expect(screen.queryByText(/Entité/)).not.toBeInTheDocument();
+});
+it.each([false, true])("TopBar propose la déconnexion seulement avec une action : %s", async (avecAction) => {
+  const onLogout = vi.fn();
+  render(<TopBar breadcrumb={["Accueil"]} environment="DEV" onEnvironmentChange={vi.fn()} identity={{ name: "Camille", entity: null }} onLogout={avecAction ? onLogout : undefined} />);
+  if (avecAction) {
+    await userEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
+    expect(onLogout).toHaveBeenCalledOnce();
+  } else expect(screen.queryByRole("button", { name: "Se déconnecter" })).not.toBeInTheDocument();
+});
+it("la coque transmet l'identité et l'action de déconnexion", async () => {
+  const onLogout = vi.fn();
+  render(<AppShell workspace={null} available={new Set()} onNavigate={vi.fn()} breadcrumb={["Accueil"]} environment="DEV" onEnvironmentChange={vi.fn()} identity={{ name: "Camille", entity: null }} onLogout={onLogout}><h1>Accueil</h1></AppShell>);
+  expect(screen.getByText("Données évaluées pour Camille", { exact: true })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
+  expect(onLogout).toHaveBeenCalledOnce();
 });

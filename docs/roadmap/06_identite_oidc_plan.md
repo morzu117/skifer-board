@@ -1,6 +1,6 @@
 # Plan 06 — Identité OIDC et sessions (lot 02, première tranche)
 
-Date : 2 novembre 2026 · Statut : **en cours** (6.1 et 6.2 réalisés). Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
+Date : 2 novembre 2026 · Statut : **réalisé** (6.1 à 6.3). Première tranche du lot 02 (« socle partagé »), ouverte par la décision D-2 du 2 novembre : **OIDC générique, émetteur configurable, vérificateur strict**. Claude développe ; les tests sont écrits par Codex, ou par un agent Claude distinct si Codex est indisponible (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §4.3 (droits et contexte de consultation), §8 lot 02, §10.2 D-1 et D-2. Écran : pastille d'identité de la coque ([plan 02](02_socle_web_et_prototype_graphique_plan.md), W11).
 
@@ -82,6 +82,14 @@ Modifiés : `apps/web/src/shell/*`, `apps/web/src/App.tsx`, `apps/web/src/catalo
 - Un refus de connexion revenu du fournisseur s'affiche avec son libellé fermé.
 
 Tests : décodeur de `/api/me` sur les exemples versionnés, composants, accessibilité axe, parcours Playwright avec réponses simulées, captures de référence.
+
+Écarts de réalisation :
+
+- « Se déconnecter » est un bouton à côté de la pastille, pas un menu : la pastille n'a qu'une action, un menu ajouterait un niveau sans rien offrir de plus. Le bouton n'existe que si une identité est établie ; en mode local, il n'y a rien à quitter.
+- Pendant la lecture de `/api/me`, et si elle échoue, aucune coque n'est affichée : l'écran dit « Lecture de l'identité… », ou « Identité indisponible » avec « Réessayer ». Une identité qu'on ne connaît pas n'ouvre pas la coque (fail-closed).
+- Codex a trouvé un défaut, corrigé : une lecture de `/api/me` abandonnée par « Réessayer », mais dont la réponse arrivait quand même, remplaçait l'issue plus récente.
+- Les specs Playwright importent les exemples JSON avec l'attribut `with { type: "json" }`, que Playwright exige en module ES.
+- Modifiés en plus : `apps/web/vite.config.ts` (le serveur de développement relaie `/auth` vers le backend) et le nouveau dossier `apps/web/src/identity/`.
 
 ## 4. Rayon d'impact
 

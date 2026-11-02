@@ -1,3 +1,4 @@
+import { onSessionLost } from "../identity/session";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -166,4 +167,24 @@ it("utilise fetch global par défaut pour les versions et l'écart", async () =>
   expect(await fetchVersions("revenu-net", new AbortController().signal)).toMatchObject({ status: "ok" });
   expect(await fetchDiff("revenu-net", 4, 5, new AbortController().signal)).toMatchObject({ status: "ok" });
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(["/api/catalog/revenu-net/versions", "/api/catalog/revenu-net/diff?base=4&other=5"]);
+});
+
+describe.each(["liste", "fiche"] as const)("Session du catalogue : %s", (route) => {
+  const lire = (status: number) => {
+    const fetcher = vi.fn<Fetch>().mockResolvedValue(Response.json({}, { status }));
+    return route === "liste" ? fetchCatalog(EMPTY_QUERY, new AbortController().signal, fetcher)
+      : fetchDocument("revenu-net", new AbortController().signal, fetcher);
+  };
+  it("signale le 401 aux abonnés et demande une reconnexion", async () => {
+    const perdu = vi.fn(); const quitter = onSessionLost(perdu);
+    try {
+      expect(await lire(401)).toEqual({ status: "error", message: "Session expirée : reconnectez-vous." });
+      expect(perdu).toHaveBeenCalledOnce();
+    } finally { quitter(); }
+  });
+  it.each([200, 400, 403, 404, 500, 503])("ne signale aucune session perdue pour HTTP %i", async (status) => {
+    const perdu = vi.fn(); const quitter = onSessionLost(perdu);
+    try { await lire(status); expect(perdu).not.toHaveBeenCalled(); }
+    finally { quitter(); }
+  });
 });

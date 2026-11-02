@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { attendreGraphiques, choisirTheme, titresGraphiques } from "./aides";
+import { simulerIdentite, attendreGraphiques, choisirTheme, titresGraphiques } from "./aides";
 
 test.beforeEach(async ({ page }) => {
+  await simulerIdentite(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Prototype graphique" })).toBeVisible();
   await attendreGraphiques(page);

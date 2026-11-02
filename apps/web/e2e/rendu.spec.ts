@@ -1,7 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-import { attendreGraphiques, choisirTheme, themes } from "./aides";
+import { simulerIdentite, attendreGraphiques, choisirTheme, themes } from "./aides";
+
+test.beforeEach(async ({ page }) => {
+  await simulerIdentite(page);
+});
 
 for (const theme of themes) {
   test(`la page entière respecte axe, contraste inclus, sous ${theme.nom}`, async ({ page }) => {

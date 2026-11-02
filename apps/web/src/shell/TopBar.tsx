@@ -9,9 +9,11 @@ interface TopBarProps {
   environment: Environment;
   onEnvironmentChange: (environment: Environment) => void;
   identity: Identity | null;
+  /** Présent quand une session est ouverte : bouton « Se déconnecter ». */
+  onLogout?: (() => void) | undefined;
 }
 
-export function TopBar({ breadcrumb, environment, onEnvironmentChange, identity }: TopBarProps) {
+export function TopBar({ breadcrumb, environment, onEnvironmentChange, identity, onLogout }: TopBarProps) {
   return (
     <header className="sb-topbar">
       <nav aria-label="Fil d'Ariane" className="sb-topbar__crumbs">
@@ -25,6 +27,11 @@ export function TopBar({ breadcrumb, environment, onEnvironmentChange, identity 
       </nav>
       <EnvironmentSwitch value={environment} onChange={onEnvironmentChange} />
       <IdentityPill identity={identity} />
+      {onLogout === undefined ? null : (
+        <button type="button" className="sb-button" onClick={onLogout}>
+          Se déconnecter
+        </button>
+      )}
     </header>
   );
 }

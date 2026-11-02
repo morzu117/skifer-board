@@ -15,16 +15,17 @@ interface AppShellProps {
   environment: Environment;
   onEnvironmentChange: (environment: Environment) => void;
   identity: Identity | null;
+  onLogout?: (() => void) | undefined;
   children: ReactNode;
 }
 
 /** Coque des pages de gestion : navigation latérale, barre supérieure, contenu (RULES §4). */
-export function AppShell({ workspace, available, active, onNavigate, breadcrumb, environment, onEnvironmentChange, identity, children }: AppShellProps) {
+export function AppShell({ workspace, available, active, onNavigate, breadcrumb, environment, onEnvironmentChange, identity, onLogout, children }: AppShellProps) {
   return (
     <div className="sb-shell">
       <Sidebar available={available} onNavigate={onNavigate} workspace={workspace} active={active} />
       <div className="sb-shell__main">
-        <TopBar breadcrumb={breadcrumb} environment={environment} onEnvironmentChange={onEnvironmentChange} identity={identity} />
+        <TopBar breadcrumb={breadcrumb} environment={environment} onEnvironmentChange={onEnvironmentChange} identity={identity} onLogout={onLogout} />
         <main className="sb-shell__content">{children}</main>
       </div>
     </div>

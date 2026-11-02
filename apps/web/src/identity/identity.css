@@ -1,0 +1,45 @@
+/* Écran de connexion (plan 06, 6.3) : une carte centrée, sans navigation ni donnée. */
+.sb-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--sb-space-7);
+  background: var(--sb-ground);
+}
+
+.sb-login__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  width: 100%;
+  max-width: var(--sb-detail-max);
+  padding: var(--sb-space-8);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+}
+
+.sb-login__title {
+  margin: 0;
+  color: var(--sb-ink);
+  font-size: var(--sb-text-xl);
+  font-weight: 600;
+}
+
+.sb-login__text {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-md);
+}
+
+.sb-login__action {
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+/* Pleine page, sans défilement horizontal sur téléphone (plan 02, 2.5). */
+@media (max-width: 760px) {
+  .sb-login { padding: var(--sb-space-5); }
+  .sb-login__card { padding: var(--sb-space-6); }
+}

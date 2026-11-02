@@ -3,8 +3,9 @@ import "./shell.css";
 
 export interface Identity {
   /** Nom affiché du lecteur dont les droits évaluent les données. */
-  subject: string;
-  entity: string;
+  name: string;
+  /** Entité du lecteur ; `null` tant que les espaces n'existent pas (plan 06, 6.3). */
+  entity: string | null;
 }
 
 interface IdentityPillProps {
@@ -13,7 +14,8 @@ interface IdentityPillProps {
 
 /**
  * Pastille d'identité, présente sur toute vue qui affiche des données (RULES §1). Sans identité
- * établie, elle le dit sur fond neutre plutôt que d'afficher des droits fictifs (plan 02, W11).
+ * établie, elle le dit sur fond neutre plutôt que d'afficher des droits fictifs (plan 02, W11) ;
+ * elle n'invente pas non plus d'entité.
  */
 export function IdentityPill({ identity }: IdentityPillProps) {
   if (identity === null) {
@@ -26,7 +28,8 @@ export function IdentityPill({ identity }: IdentityPillProps) {
   return (
     <span className="sb-identity">
       <LockIcon />
-      Données évaluées pour {identity.subject} · Entité {identity.entity}
+      Données évaluées pour {identity.name}
+      {identity.entity === null ? null : ` · Entité ${identity.entity}`}
     </span>
   );
 }

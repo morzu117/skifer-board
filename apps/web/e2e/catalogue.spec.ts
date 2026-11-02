@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { simulerIdentite } from "./aides";
+
+test.beforeEach(async ({ page }) => {
+  await simulerIdentite(page);
+});
+
 interface Exemple {
   status: number;
   body: {
