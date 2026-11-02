@@ -1,5 +1,5 @@
 """Chaque exemple de `contracts/espaces/` est produit par le serveur réel (plan 08, 8.2 ;
-plan 09, 9.2).
+plan 09, 9.2 ; plan 10, 10.2).
 
 Base migrée, fournisseur OIDC simulé, horloge réglée sur les instants des exemples : les
 réponses sont comparées exactement, sauf les identifiants de liaison, tirés au hasard (ils
@@ -53,6 +53,7 @@ ATTENDUS = {
     "introuvable",
     "journal",
     "journal-accords",
+    "journal-parametres",
     "liaison",
     "liaison-inconnue",
     "liste",
@@ -60,6 +61,17 @@ ATTENDUS = {
     "liste-locale",
     "membres",
     "mode-local",
+    "parametre",
+    "parametre-existant",
+    "parametre-inconnu",
+    "parametre-modifie",
+    "parametres",
+    "retrait-parametre",
+    "valeur",
+    "valeur-interdite",
+    "valeur-invalide",
+    "valeur-sans-role",
+    "valeurs-incompatibles",
     "personne-inconnue",
     "personnes",
     "recherche-invalide",
@@ -311,6 +323,121 @@ def reponses(
         obtenues["liste"] = scenario.appel("membre", "GET", "/api/spaces")
         obtenues["retrait"] = scenario.appel(
             "admin", "DELETE", f"/api/spaces/finance/members/{obtenues['liaison'].json()['id']}"
+        )
+
+        # Paramètres de déploiement (plan 10, 10.2). Les administrateurs de l'espace reçoivent
+        # le droit de déployer en DEV et en TEST, pas en PROD : ils y lisent sans modifier (P6).
+        horloge.instant = a(10, 30)
+        administrateurs = {"kind": "group", "name": "finance-admins"}
+        for environnement in ("DEV", "TEST"):
+            pose = scenario.appel(
+                "plateforme",
+                "POST",
+                "/api/spaces/finance/deploy-grants",
+                {"environment": environnement, "principal": administrateurs},
+            )
+            assert pose.status_code == 200
+        horloge.instant = a(10, 35)
+        catalogue = {
+            "name": "catalogue",
+            "type": "identifier",
+            "constraints": {},
+            "required": True,
+            "default": None,
+            "description": "Catalogue des tables publiées",
+        }
+        obtenues["parametre"] = scenario.appel(
+            "admin", "POST", "/api/spaces/finance/parameters", catalogue
+        )
+        horloge.instant = a(10, 36)
+        lignes = {
+            "type": "integer",
+            "constraints": {"minimum": 1, "maximum": 100000},
+            "required": False,
+            "default": 5000,
+            "description": "",
+        }
+        pose = scenario.appel(
+            "admin", "POST", "/api/spaces/finance/parameters", {"name": "lignes_max", **lignes}
+        )
+        assert pose.status_code == 201
+        horloge.instant = a(10, 37)
+        region = {
+            "type": "choice",
+            "constraints": {"choices": ["eu-west", "eu-central"]},
+            "required": True,
+            "default": None,
+            "description": "Région de calcul",
+        }
+        pose = scenario.appel(
+            "admin", "POST", "/api/spaces/finance/parameters", {"name": "region", **region}
+        )
+        assert pose.status_code == 201
+        horloge.instant = a(10, 40)
+        obtenues["valeur"] = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/catalogue/values/DEV",
+            {"value": "finance_dev"},
+        )
+        horloge.instant = a(10, 41)
+        pose = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/lignes_max/values/TEST",
+            {"value": 20000},
+        )
+        assert pose.status_code == 200
+        obtenues["valeur-interdite"] = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/catalogue/values/PROD",
+            {"value": "finance"},
+        )
+        obtenues["valeur-invalide"] = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/region/values/DEV",
+            {"value": "us-east"},
+        )
+        obtenues["parametres"] = scenario.appel("admin", "GET", "/api/spaces/finance/parameters")
+        obtenues["valeurs-incompatibles"] = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/lignes_max",
+            {**lignes, "constraints": {"minimum": 1, "maximum": 10000}},
+        )
+        obtenues["parametre-existant"] = scenario.appel(
+            "admin", "POST", "/api/spaces/finance/parameters", catalogue
+        )
+        obtenues["parametre-inconnu"] = scenario.appel(
+            "admin", "DELETE", "/api/spaces/finance/parameters/inconnu"
+        )
+        horloge.instant = a(10, 50)
+        obtenues["parametre-modifie"] = scenario.appel(
+            "admin",
+            "PUT",
+            "/api/spaces/finance/parameters/region",
+            {**region, "default": "eu-west"},
+        )
+        # L'administration de la plateforme déclare, mais ne pose aucune valeur (P6).
+        obtenues["valeur-sans-role"] = scenario.appel(
+            "plateforme",
+            "PUT",
+            "/api/spaces/finance/parameters/region/values/DEV",
+            {"value": "eu-central"},
+        )
+        horloge.instant = a(10, 52)
+        vide = scenario.appel(
+            "admin", "DELETE", "/api/spaces/finance/parameters/catalogue/values/DEV"
+        )
+        assert vide.status_code == 204
+        horloge.instant = a(10, 55)
+        obtenues["retrait-parametre"] = scenario.appel(
+            "admin", "DELETE", "/api/spaces/finance/parameters/lignes_max"
+        )
+        obtenues["journal-parametres"] = scenario.appel(
+            "admin", "GET", "/api/spaces/finance/events"
         )
 
         with TestClient(

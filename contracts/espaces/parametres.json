@@ -1,0 +1,211 @@
+{
+  "status": 200,
+  "body": {
+    "parameters": [
+      {
+        "name": "catalogue",
+        "type": "identifier",
+        "constraints": {},
+        "required": true,
+        "default": null,
+        "description": "Catalogue des tables publiées",
+        "created_at": "2026-11-02T10:35:00+00:00",
+        "created_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "created_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "updated_at": "2026-11-02T10:35:00+00:00",
+        "updated_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "updated_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        }
+      },
+      {
+        "name": "lignes_max",
+        "type": "integer",
+        "constraints": {
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "required": false,
+        "default": 5000,
+        "description": "",
+        "created_at": "2026-11-02T10:36:00+00:00",
+        "created_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "created_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "updated_at": "2026-11-02T10:36:00+00:00",
+        "updated_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "updated_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        }
+      },
+      {
+        "name": "region",
+        "type": "choice",
+        "constraints": {
+          "choices": [
+            "eu-west",
+            "eu-central"
+          ]
+        },
+        "required": true,
+        "default": null,
+        "description": "Région de calcul",
+        "created_at": "2026-11-02T10:37:00+00:00",
+        "created_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "created_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "updated_at": "2026-11-02T10:37:00+00:00",
+        "updated_by": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "updated_by_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        }
+      }
+    ],
+    "environments": [
+      {
+        "code": "DEV",
+        "can_set": true,
+        "complete": false,
+        "missing": [
+          "region"
+        ],
+        "values": [
+          {
+            "name": "catalogue",
+            "state": "value",
+            "value": "finance_dev",
+            "set_at": "2026-11-02T10:40:00+00:00",
+            "set_by": {
+              "issuer": "https://id.example.invalid",
+              "subject": "00u9admin"
+            },
+            "set_by_person": {
+              "name": "Alix",
+              "email": "alix@ex.invalid"
+            }
+          },
+          {
+            "name": "lignes_max",
+            "state": "default",
+            "value": 5000,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          },
+          {
+            "name": "region",
+            "state": "missing",
+            "value": null,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          }
+        ]
+      },
+      {
+        "code": "TEST",
+        "can_set": true,
+        "complete": false,
+        "missing": [
+          "catalogue",
+          "region"
+        ],
+        "values": [
+          {
+            "name": "catalogue",
+            "state": "missing",
+            "value": null,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          },
+          {
+            "name": "lignes_max",
+            "state": "value",
+            "value": 20000,
+            "set_at": "2026-11-02T10:41:00+00:00",
+            "set_by": {
+              "issuer": "https://id.example.invalid",
+              "subject": "00u9admin"
+            },
+            "set_by_person": {
+              "name": "Alix",
+              "email": "alix@ex.invalid"
+            }
+          },
+          {
+            "name": "region",
+            "state": "missing",
+            "value": null,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          }
+        ]
+      },
+      {
+        "code": "PROD",
+        "can_set": false,
+        "complete": false,
+        "missing": [
+          "catalogue",
+          "region"
+        ],
+        "values": [
+          {
+            "name": "catalogue",
+            "state": "missing",
+            "value": null,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          },
+          {
+            "name": "lignes_max",
+            "state": "default",
+            "value": 5000,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          },
+          {
+            "name": "region",
+            "state": "missing",
+            "value": null,
+            "set_at": null,
+            "set_by": null,
+            "set_by_person": null
+          }
+        ]
+      }
+    ]
+  }
+}

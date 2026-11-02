@@ -1,5 +1,5 @@
 """Routes des espaces (plan 08, 8.2), de leurs environnements et du droit de déployer
-(plan 09, 9.2).
+(plan 09, 9.2), de leurs paramètres de déploiement (plan 10, 10.2).
 
 Toute décision d'accès est prise ici, à partir de la session : aucun rôle reçu du navigateur
 n'est cru (E7). Un espace inconnu et un espace dont on n'est pas membre donnent la même
@@ -36,6 +36,16 @@ from .model import (
     SpaceError,
     SpaceEvent,
 )
+from .parameters import (
+    Configuration,
+    Declaration,
+    InvalidParameter,
+    Parameter,
+    ParameterNotFound,
+    ParameterValue,
+    ValuesIncompatible,
+    check_name,
+)
 
 NAME_MAX = 80
 GROUP_MAX = 256
@@ -54,7 +64,13 @@ _STATUS = {
     "unknown_person": 422,
     "last_admin": 409,
     "local_mode": 409,
+    "parameter_not_found": 404,
+    "parameter_exists": 409,
+    "parameter_limit": 409,
+    "values_incompatible": 409,
 }
+# Champs d'une déclaration, tous exigés : aucun n'est complété en silence (plan 10, P3).
+DECLARATION_KEYS = {"type", "constraints", "required", "default", "description"}
 
 
 class Refused(Exception):
@@ -219,6 +235,20 @@ def _space_name(value: object, field: str) -> str:
     return name
 
 
+def _declaration(body: dict[str, Any]) -> Declaration:
+    return Declaration.parse(
+        body["type"], body["constraints"], body["required"], body["default"], body["description"]
+    )
+
+
+def _parameter_name(value: str) -> str:
+    """Nom d'un paramètre dans le chemin ; hors format, il ne désigne aucun paramètre."""
+    try:
+        return check_name(value)
+    except InvalidParameter:
+        raise ParameterNotFound(value) from None
+
+
 def _space_id(value: object, field: str) -> str:
     if not isinstance(value, str) or SPACE_ID.fullmatch(value) is None:
         raise Invalid(field)
@@ -264,9 +294,17 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Guards:
     async def invalid(request: Request, error: Invalid) -> JSONResponse:
         return JSONResponse({"error": {"code": "invalid_request", "field": error.field}}, 400)
 
+    @app.exception_handler(InvalidParameter)
+    async def invalid_parameter(request: Request, error: InvalidParameter) -> JSONResponse:
+        return JSONResponse({"error": {"code": "invalid_request", "field": error.field}}, 400)
+
     @app.exception_handler(SpaceError)
     async def space_error(request: Request, error: SpaceError) -> JSONResponse:
-        return JSONResponse({"error": {"code": error.code}}, _STATUS[error.code])
+        fields: dict[str, Any] = {}
+        if isinstance(error, ValuesIncompatible):
+            # Les environnements dont il faut d'abord vider la valeur (P5).
+            fields["environments"] = [environment.value for environment in error.environments]
+        return JSONResponse({"error": {"code": error.code, **fields}}, _STATUS[error.code])
 
     def access(request: Request, space_id: str) -> Access:
         # Un identifiant hors format ne peut désigner aucun espace : même réponse.
@@ -418,6 +456,131 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Guards:
         if BINDING_ID.fullmatch(grant_id) is None:
             raise GrantNotFound(grant_id)
         spaces.revoke(viewer(request), found.space.id, grant_id)
+        return Response(status_code=204)
+
+    def value_setter(
+        request: Request, space_id: str, environment: str
+    ) -> tuple[Access, Environment]:
+        """Poser ou vider une valeur : rôle administrateur dans l'espace et droit de déployer
+        dans l'environnement (plan 10, P6). L'administration de la plateforme n'y suffit pas."""
+        found = manager(request, space_id)
+        target = _environment(environment, "environment")
+        if found.role is None or not found.role.allows(Role.ADMIN):
+            raise _forbidden(Role.ADMIN.value)
+        if target not in found.sets_values:
+            raise Refused(403, "forbidden", required="deploy", environment=target.value)
+        return found, target
+
+    def parameter_json(
+        parameter: Parameter, people: dict[PersonRef, dict[str, str | None] | None]
+    ) -> dict[str, Any]:
+        return {
+            "name": parameter.name,
+            **parameter.declaration.to_json(),
+            "created_at": parameter.created_at.isoformat(),
+            "created_by": _ref_json(parameter.created_by),
+            "created_by_person": people[parameter.created_by],
+            "updated_at": parameter.updated_at.isoformat(),
+            "updated_by": _ref_json(parameter.updated_by),
+            "updated_by_person": people[parameter.updated_by],
+        }
+
+    def value_json(
+        found: ParameterValue, people: dict[PersonRef, dict[str, str | None] | None]
+    ) -> dict[str, Any]:
+        return {
+            "name": found.name,
+            "environment": found.environment.value,
+            "value": found.value,
+            "set_at": found.set_at.isoformat(),
+            "set_by": _ref_json(found.set_by),
+            "set_by_person": people[found.set_by],
+        }
+
+    def configuration_json(found: Access, configuration: Configuration) -> dict[str, Any]:
+        parameters = configuration.parameters
+        people = people_of(
+            [p.created_by for p in parameters]
+            + [p.updated_by for p in parameters]
+            + [v.set_by for v in configuration.values]
+        )
+        environments = []
+        for environment in found.environments:
+            resolved = []
+            for parameter, state in configuration.resolved(environment):
+                own = configuration.own(parameter.name, environment)
+                # Valeur résolue et son état, calculés ici : le navigateur ne les recalcule pas
+                # (P4). Une valeur propre dit qui l'a posée, et quand.
+                resolved.append(
+                    {
+                        "name": parameter.name,
+                        "state": state.state.value,
+                        "value": state.value,
+                        "set_at": None if own is None else own.set_at.isoformat(),
+                        "set_by": None if own is None else _ref_json(own.set_by),
+                        "set_by_person": None if own is None else people[own.set_by],
+                    }
+                )
+            environments.append(
+                {
+                    "code": environment.value,
+                    "can_set": environment in found.sets_values,
+                    "complete": configuration.complete(environment),
+                    "missing": list(configuration.missing(environment)),
+                    "values": resolved,
+                }
+            )
+        return {
+            "parameters": [parameter_json(p, people) for p in parameters],
+            "environments": environments,
+        }
+
+    @app.get("/api/spaces/{space_id}/parameters")
+    def list_parameters(request: Request, space_id: str) -> JSONResponse:
+        found = manager(request, space_id)
+        configuration = spaces.configuration(found.space.id)
+        return JSONResponse(configuration_json(found, configuration))
+
+    @app.post("/api/spaces/{space_id}/parameters")
+    async def declare(request: Request, space_id: str) -> JSONResponse:
+        found = manager(request, space_id)
+        body = _object(await _body(request), "body", {"name", *DECLARATION_KEYS})
+        name = check_name(body["name"])
+        declaration = _declaration(body)
+        parameter = spaces.declare(viewer(request), found.space.id, name, declaration)
+        return JSONResponse(parameter_json(parameter, people_of([parameter.created_by])), 201)
+
+    @app.put("/api/spaces/{space_id}/parameters/{name}")
+    async def redeclare(request: Request, space_id: str, name: str) -> JSONResponse:
+        found = manager(request, space_id)
+        parameter_name = _parameter_name(name)
+        declaration = _declaration(_object(await _body(request), "body", DECLARATION_KEYS))
+        parameter = spaces.redeclare(viewer(request), found.space.id, parameter_name, declaration)
+        people = people_of([parameter.created_by, parameter.updated_by])
+        return JSONResponse(parameter_json(parameter, people))
+
+    @app.delete("/api/spaces/{space_id}/parameters/{name}")
+    def remove_parameter(request: Request, space_id: str, name: str) -> Response:
+        found = manager(request, space_id)
+        spaces.remove_parameter(viewer(request), found.space.id, _parameter_name(name))
+        return Response(status_code=204)
+
+    @app.put("/api/spaces/{space_id}/parameters/{name}/values/{environment}")
+    async def set_value(
+        request: Request, space_id: str, name: str, environment: str
+    ) -> JSONResponse:
+        found, target = value_setter(request, space_id, environment)
+        parameter_name = _parameter_name(name)
+        body = _object(await _body(request), "body", {"value"})
+        stored = spaces.set_value(
+            viewer(request), found.space.id, parameter_name, target, body["value"]
+        )
+        return JSONResponse(value_json(stored, people_of([stored.set_by])))
+
+    @app.delete("/api/spaces/{space_id}/parameters/{name}/values/{environment}")
+    def clear_value(request: Request, space_id: str, name: str, environment: str) -> Response:
+        found, target = value_setter(request, space_id, environment)
+        spaces.clear_value(viewer(request), found.space.id, _parameter_name(name), target)
         return Response(status_code=204)
 
     @app.get("/api/spaces/{space_id}/events")

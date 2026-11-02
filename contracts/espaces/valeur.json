@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "body": {
+    "name": "catalogue",
+    "environment": "DEV",
+    "value": "finance_dev",
+    "set_at": "2026-11-02T10:40:00+00:00",
+    "set_by": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u9admin"
+    },
+    "set_by_person": {
+      "name": "Alix",
+      "email": "alix@ex.invalid"
+    }
+  }
+}

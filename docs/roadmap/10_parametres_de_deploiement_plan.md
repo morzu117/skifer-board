@@ -61,6 +61,16 @@ Modifiés : `spaces/web.py`. Exemples versionnés dans `contracts/espaces/`.
 
 Tests : chaque route avec chaque rôle, avec et sans droit de déployer, non-membre et administration de la plateforme seule ; chaque refus de P8 ; mode local ; exemples produits par le serveur réel.
 
+Écarts de réalisation :
+- Une déclaration (`POST` et `PUT`) exige ses cinq champs, `default` et `description` compris : rien n'est complété en silence. Le nom ne se renvoie pas dans le corps d'un `PUT` (`invalid_request`, champ `body`) : il est dans le chemin, et immuable.
+- Un nom hors format dans le chemin ne désigne aucun paramètre : `404 parameter_not_found`, avant la lecture du corps, comme un identifiant de liaison hors format.
+- `GET` rend, par environnement, une entrée par paramètre dans l'ordre des déclarations (`name`, `state`, `value` résolue, et `set_at`, `set_by`, `set_by_person` pour une valeur propre seulement), puis `complete`, `missing` et `can_set`.
+- Ordre des contrôles d'une valeur : espace, mode local, gestion de l'espace, environnement du chemin (400), rôle administrateur dans l'espace (`forbidden`, `required: "admin"`), droit de déployer (`forbidden`, `required: "deploy"`, avec l'environnement), nom, corps, paramètre, valeur. L'administration de la plateforme seule reçoit donc `invalid_request` pour un environnement inconnu avant `forbidden` : gardé, comme la garde `deployer` du plan 09.
+- Comme toutes les routes, une barre oblique encodée (`%2F`) dans le nom suit la route décodée par Starlette ; les droits de la route atteinte s'appliquent, testé.
+- Le détail du journal est rangé en JSONB : l'ordre de ses clés n'est pas conservé (les valeurs d'un `parameter_removed` ne sortent pas dans l'ordre de promotion). L'écran les remettra dans l'ordre.
+- Douze exemples dans `contracts/espaces/`, dont `valeur-sans-role` et un `value_cleared` dans `journal-parametres`, ajoutés après la relecture du testeur.
+- Tests écrits par un agent Claude indépendant (289 tests) ; sept régressions volontaires attrapées, aucun défaut trouvé.
+
 ### 10.3 — Écran « Paramètres »
 
 Créés : `apps/web/src/spaces/` (écran d'administration). Modifiés : onglets, route, coque.

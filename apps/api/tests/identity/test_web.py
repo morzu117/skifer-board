@@ -146,8 +146,8 @@ def test_toutes_les_routes_api_exigent_une_session(
         if isinstance(route, APIRoute) and route.path.startswith("/api/")
     ]
     assert routes
-    # Toutes les routes des espaces (plan 08, 8.2) et des accords de déploiement (plan 09,
-    # 9.2) sont sous la garde.
+    # Toutes les routes des espaces (plan 08, 8.2), des accords de déploiement (plan 09,
+    # 9.2) et des paramètres de déploiement (plan 10, 10.2) sont sous la garde.
     assert {(methode, route.path) for route in routes for methode in route.methods or ()} == {
         ("GET", "/api/me"),
         ("GET", "/api/spaces"),
@@ -160,6 +160,12 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/deploy-grants"),
         ("POST", "/api/spaces/{space_id}/deploy-grants"),
         ("DELETE", "/api/spaces/{space_id}/deploy-grants/{grant_id}"),
+        ("GET", "/api/spaces/{space_id}/parameters"),
+        ("POST", "/api/spaces/{space_id}/parameters"),
+        ("PUT", "/api/spaces/{space_id}/parameters/{name}"),
+        ("DELETE", "/api/spaces/{space_id}/parameters/{name}"),
+        ("PUT", "/api/spaces/{space_id}/parameters/{name}/values/{environment}"),
+        ("DELETE", "/api/spaces/{space_id}/parameters/{name}/values/{environment}"),
         ("GET", "/api/people"),
         ("GET", "/api/spaces/{space_id}/catalog"),
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}"),
@@ -184,6 +190,8 @@ def test_toutes_les_routes_api_exigent_une_session(
                     .replace("{space_id}", "finance")
                     .replace("{binding_id}", "liaison")
                     .replace("{grant_id}", "5b0e4c1e-0000-4000-8000-000000000000")
+                    .replace("{name}", "catalogue")
+                    .replace("{environment}", "PROD")
                 )
                 reponse = client.request(methode, chemin, headers={"Origin": ORIGINE})
                 assert reponse.status_code == 401
