@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from httpx2 import Response
 from skifer_board import server
 from skifer_board.catalog import AtlasStatus, CatalogConfig, CatalogService, DocumentKind
+from skifer_board.catalog.atlas import RepoError
 from skifer_board.telemetry import Recorder
 
 CONTRATS = Path(__file__).resolve().parents[3] / "contracts" / "catalogue"
@@ -201,6 +202,64 @@ def test_ancien_apres_retrait_du_clone(
 
 
 @pytest.mark.parametrize(
+    ("route", "code"),
+    [
+        ("/api/spaces/local/catalog", "catalog_unavailable"),
+        ("/api/spaces/local/catalog/revenu-net", "catalog_unavailable"),
+        ("/api/spaces/local/catalog/revenu-net/versions", "history_unavailable"),
+        ("/api/spaces/local/catalog/revenu-net/diff?base=4&other=5", "history_unavailable"),
+    ],
+)
+def test_index_occupe_refuse_sans_relire_la_meme_base(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, route: str, code: str
+) -> None:
+    """Le verrou Atlas garde son code et n'ouvre pas une seconde fois la base."""
+    ouvrir = Mock(side_effect=RepoError("index_busy", "L'index de l'espace est occupé."))
+    repli = Mock(side_effect=AssertionError("La base occupée ne doit pas être rouverte."))
+    monkeypatch.setattr("skifer_board.catalog.service.open_fresh_index", ouvrir)
+    monkeypatch.setattr("skifer_board.catalog.service.open_last_index", repli)
+    reponse = client.get(route)
+    exemple = "index-occupe.json" if code == "catalog_unavailable" else "versions-index-occupe.json"
+    contrat = json.loads((CONTRATS / exemple).read_text(encoding="utf-8"))
+    assert reponse.status_code == contrat["status"]
+    assert reponse.json() == contrat["body"]
+    ouvrir.assert_called_once()
+    repli.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]
+)
+@pytest.mark.parametrize(
+    ("code", "problem"),
+    [("index_busy", "index_busy"), ("git_failed", "repository_unreadable")],
+)
+def test_ancien_index_indisponible_apres_perte_du_clone(
+    client: TestClient,
+    espace: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    route: str,
+    code: str,
+    problem: str,
+) -> None:
+    """Un clone absent puis une base illisible restent un 503 explicite."""
+    espace.rename(tmp_path / "clone-retire")
+    repli = Mock(side_effect=RepoError(code, "La base de l'espace est indisponible."))
+    monkeypatch.setattr("skifer_board.catalog.service.open_last_index", repli)
+    reponse = client.get(route)
+    assert reponse.status_code == 503
+    assert reponse.json() == {
+        "error": {
+            "code": "catalog_unavailable",
+            "problem": problem,
+            "detail": "La base de l'espace est indisponible.",
+        }
+    }
+    repli.assert_called_once()
+
+
+@pytest.mark.parametrize(
     ("methode", "route", "statut", "code"),
     [
         ("GET", route, 404, "route_not_found")
@@ -321,6 +380,7 @@ def test_contrats_versionnes(
     espace: Path,
     tmp_path: Path,
     fichier: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Chaque exemple est comparé à une réponse réelle, sans ignorer un champ additionnel."""
     routes = {
@@ -332,12 +392,18 @@ def test_contrats_versionnes(
         "fiche-inconnue": "/api/spaces/local/catalog/inconnu",
         "parametre-invalide": "/api/spaces/local/catalog?status=publie",
         "indisponible": "/api/spaces/local/catalog",
+        "index-occupe": "/api/spaces/local/catalog",
     }
     assert {p.stem for p in EXEMPLES} == routes.keys()
     if fichier.stem == "liste-ancienne":
         assert client.get("/api/spaces/local/catalog").status_code == 200
     if fichier.stem in ("liste-ancienne", "indisponible"):
         espace.rename(tmp_path / "clone-retire")
+    if fichier.stem == "index-occupe":
+        monkeypatch.setattr(
+            "skifer_board.catalog.service.open_fresh_index",
+            Mock(side_effect=RepoError("index_busy", "L'index de l'espace est occupé.")),
+        )
     exemple = json.loads(fichier.read_text(encoding="utf-8"))
     reponse = client.get(routes[fichier.stem])
     assert reponse.status_code == exemple["status"]

@@ -40,7 +40,7 @@ Les fonctions de propositions (`skifer_atlas.proposals`) ne sont pas utilisables
 
 **Board en attendant.** Rien : le lot 04 est livré sur cette base. La synchronisation du clone est une opération d'exploitation, hors du lot 04 (C1) ; elle n'attend rien d'Atlas.
 
-**À la montée de commit.** Depuis `c49b66a`, l'ouverture d'une base attend jusqu'à 10 secondes puis lève `RepoError("index_busy")`. Board doit relayer ce code comme une indisponibilité, pas comme un clone illisible.
+**Montée de commit de Board (plan 13).** Depuis `c49b66a`, l'ouverture d'une base attend jusqu'à 10 secondes puis lève `RepoError("index_busy")`. Board épingle `db9e9df6`, qui complète la reconnaissance du verrou, et relaie ce code comme une indisponibilité distincte d'un clone illisible. Une base occupée n'est pas rouverte pour chercher l'ancien index.
 
 ### AT-02 — Correspondance KPI Atlas → modèle sémantique skifer
 

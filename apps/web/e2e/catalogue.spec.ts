@@ -144,7 +144,7 @@ test("sert la liste ancienne avec bandeau, âge figé et provenance", async ({ p
 });
 test("annonce l'indisponibilité sans tableau vide", async ({ page }) => {
   await ouvrirCatalogue(page, "indisponible");
-  await expect(page.getByRole("alert")).toContainText("aucun index antérieur");
+  await expect(page.getByRole("alert")).toContainText("Aucun index antérieur");
   await expect(page.getByRole("table")).toHaveCount(0);
 });
 for (const width of [390, 768, 1280]) {

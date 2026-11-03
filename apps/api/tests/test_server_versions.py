@@ -30,6 +30,7 @@ REQUETES = {
     "versions-revenu-net": "/api/spaces/local/catalog/revenu-net/versions",
     "versions-concept": "/api/spaces/local/catalog/commande/versions",
     "versions-indisponible": "/api/spaces/local/catalog/revenu-net/versions",
+    "versions-index-occupe": "/api/spaces/local/catalog/revenu-net/versions",
     "ecart-revenu-net": "/api/spaces/local/catalog/revenu-net/diff?base=4&other=5",
     "ecart-identique": "/api/spaces/local/catalog/revenu-net/diff?base=5&other=5",
     "ecart-version-inconnue": "/api/spaces/local/catalog/revenu-net/diff?base=4&other=9",
@@ -362,6 +363,7 @@ def test_contrats_versionnes(
     client: TestClient,
     espace_versionne: Path,
     fichier: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Chaque exemple est comparé à la réponse réelle, champ par champ."""
     exemple = json.loads(fichier.read_text(encoding="utf-8"))
@@ -374,6 +376,11 @@ def test_contrats_versionnes(
     if fichier.stem == "versions-indisponible":
         assert client.get(REQUETES[fichier.stem]).status_code == 200
         shutil.rmtree(espace_versionne)
+    if fichier.stem == "versions-index-occupe":
+        monkeypatch.setattr(
+            "skifer_board.catalog.service.open_fresh_index",
+            Mock(side_effect=RepoError("index_busy", "L'index de l'espace est occupé.")),
+        )
     reponse = client.get(REQUETES[fichier.stem])
     assert reponse.status_code == exemple["status"]
     corps = reponse.json()

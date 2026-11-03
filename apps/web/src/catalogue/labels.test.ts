@@ -7,6 +7,7 @@ it("traduit les types, statuts, modes et problèmes sans code technique seul", (
   expect(MODE_LABELS).toEqual({ override: "Surcharge", from_scratch: "Définition propre" });
   expect(PROBLEM_LABELS.repository_missing).toContain("introuvable");
   expect(PROBLEM_LABELS.repository_unreadable).toContain("illisible");
+  expect(PROBLEM_LABELS.index_busy).toContain("occupé");
   expect(versionLabel(null)).toBe("—");
   expect(versionLabel(4)).toBe("v4");
   expect(shortCommit("d7eba96de96a")).toBe("d7eba96");

@@ -7,7 +7,7 @@ export const ATLAS_STATUSES = ["validated", "draft", "needs_curation", "invalid"
 export const AVAILABILITY_STATES = ["executable", "unresolved"] as const;
 export const UNRESOLVED_REASONS = ["mapping_absent", "not_validated"] as const;
 export const FRESHNESS = ["fresh", "stale"] as const;
-export const SOURCE_PROBLEMS = ["repository_missing", "repository_unreadable"] as const;
+export const SOURCE_PROBLEMS = ["repository_missing", "repository_unreadable", "index_busy"] as const;
 
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type AtlasStatus = (typeof ATLAS_STATUSES)[number];

@@ -1,6 +1,6 @@
 # Plan 13 — Catalogue Atlas : index occupé (lot 04c)
 
-Date : 3 novembre 2026 · Statut : **13.1 planifié**. Suite ciblée des plans [04](04_catalogue_atlas_plan.md) et [05](05_versions_atlas_plan.md), indépendante de l'exécution bloquée du lot 03.
+Date : 3 novembre 2026 · Statut : **13.1 réalisé**. Suite ciblée des plans [04](04_catalogue_atlas_plan.md) et [05](05_versions_atlas_plan.md), indépendante de l'exécution bloquée du lot 03.
 
 ## 1. Constat et portée
 
@@ -24,3 +24,5 @@ Aujourd'hui, `CatalogService._read_fresh` convertit tout `RepoError` en `reposit
 Mettre à jour la dépendance Atlas et son verrou ; adapter `catalog/model.py`, `catalog/service.py`, les décodeurs et libellés web, les messages de liste et de fiche, les exemples de contrat pertinents et le changelog. Tester le `RepoError("index_busy")` sur les quatre lectures, l'absence de second accès, la sérialisation HTTP, le refus d'un code inconnu, le message web et le repli `stale` conservé pour les autres raisons. Les tests sont sans réseau ni processus Atlas externe ; le gate complet `pnpm run check` doit passer.
 
 Un seul commit de code `feat(plan13-13.1)`. Le présent plan est commité avant ce code. Board ne modifie ni le dépôt Atlas ni le dépôt skifer.
+
+Réalisation : Atlas épinglé au commit complet `db9e9df63b6eb8b8b85151ef397c761b5d699bd8`, avec skifer inchangé à `v4.0.0`. `index_busy` traverse le service, les quatre routes du catalogue, les contrats JSON et le décodeur web. Une première ouverture occupée n'entraîne aucun repli ; si seul l'ancien index est occupé, le service rend également une indisponibilité typée. Les pannes du clone gardent le repli antérieur. Les messages de liste et de fiche distinguent le verrou de l'absence d'index. Vérifications : API 4 602 tests et web 2 335 tests, chacun à 100 % de couverture ; Playwright 575 passés et un saut prévu ; documentation vérifiée.

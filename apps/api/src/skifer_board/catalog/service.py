@@ -233,7 +233,12 @@ class CatalogService:
         try:
             connection = open_fresh_index(config.repository, config.index_path)
         except RepoError as error:
-            return HistoryUnavailable(SourceProblem.REPOSITORY_UNREADABLE, str(error.message))
+            problem = (
+                SourceProblem.INDEX_BUSY
+                if error.code == "index_busy"
+                else SourceProblem.REPOSITORY_UNREADABLE
+            )
+            return HistoryUnavailable(problem, str(error.message))
         try:
             commit, read_at = indexed_commit(connection), self._clock()
             self._record(commit, read_at)
@@ -244,12 +249,26 @@ class CatalogService:
     def _read[T](
         self, reader: Callable[[duckdb.DuckDBPyConnection, Provenance], T]
     ) -> T | CatalogUnavailable:
-        """Comme `_read_fresh`, puis, si le clone est illisible, le dernier index en `stale`."""
+        """Comme `_read_fresh`, puis ancien index `stale` si le clone est illisible.
+
+        Une base occupée est indisponible sans seconde tentative sur le même fichier.
+        """
         fresh = self._read_fresh(reader)
         if not isinstance(fresh, HistoryUnavailable):
             return fresh
         problem, detail = fresh.problem, fresh.detail
-        last = open_last_index(self.config.index_path)
+        if problem is SourceProblem.INDEX_BUSY:
+            # L'ancien index occupe la même base : un second accès peut échouer aussi.
+            return CatalogUnavailable(problem, detail)
+        try:
+            last = open_last_index(self.config.index_path)
+        except RepoError as error:
+            problem = (
+                SourceProblem.INDEX_BUSY
+                if error.code == "index_busy"
+                else SourceProblem.REPOSITORY_UNREADABLE
+            )
+            return CatalogUnavailable(problem, str(error.message))
         if last is None:
             return CatalogUnavailable(problem, detail)
         try:

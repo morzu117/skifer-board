@@ -180,6 +180,11 @@ describe("Indisponibilité par route (plan 05, V2)", () => {
   it("garde catalog_unavailable comme code par défaut", () => {
     expect(decodeUnavailable(exemple("indisponible").body)).toMatchObject({ problem: "repository_missing" });
   });
+  it("accepte index_busy comme indisponibilité fermée", () => {
+    expect(decodeUnavailable(exemple("versions-index-occupe").body, "history_unavailable")).toEqual({
+      code: "history_unavailable", problem: "index_busy", detail: "L'index de l'espace est occupé.",
+    });
+  });
   it.each<[string, "catalog_unavailable" | "history_unavailable" | undefined]>([
     ["versions-indisponible", "catalog_unavailable"],
     ["versions-indisponible", undefined],

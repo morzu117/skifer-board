@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 13, 13.1 : Atlas épinglé sur le correctif de verrou DuckDB `db9e9df6`. Une base d'index occupée répond `index_busy` sur la liste, la fiche, les versions et l'écart ; Board ne tente pas de rouvrir cette même base pour un repli et l'écran nomme l'attente sans dire que le clone est illisible. Le repli sur ancien index reste réservé aux pannes du clone.
+
 - Plan 12, 12.6 : écran d'administration des connexions par espace, avec liaisons DEV/TEST/PROD, état de l'identifiant, écriture à usage unique, essai sans requête métier et confirmations de retrait. Accès par les onglets d'administration, états de lecture et refus explicites, sans valeur secrète conservée dans le navigateur.
 
 - Plan 12, 12.3 : points d'accès DuckDB et Databricks déclarés côté serveur, essai de connexion réservé à l'administration en mode hébergé et essai DuckDB déclaré en mode local, sans requête métier ni secret en réponse. DuckDB ouvre le fichier déclaré en lecture seule et interdit les accès externes depuis SQL ; le transport Databricks vérifie TLS, sans proxy ni redirection, avec réponses bornées. Interface interne d'exécution, de suivi, d'annulation et de résultat pour les deux connecteurs, encore inaccessible par HTTP avant la barrière skifer du point 12.4.

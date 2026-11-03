@@ -61,10 +61,11 @@ class Freshness(StrEnum):
 
 
 class SourceProblem(StrEnum):
-    """Pourquoi le clone de l'espace n'a pas pu être lu."""
+    """Pourquoi le catalogue Atlas n'a pas pu être lu."""
 
     REPOSITORY_MISSING = "repository_missing"
     REPOSITORY_UNREADABLE = "repository_unreadable"
+    INDEX_BUSY = "index_busy"
 
 
 @dataclass(frozen=True)
@@ -185,7 +186,7 @@ class DocumentPage:
 
 @dataclass(frozen=True)
 class CatalogUnavailable:
-    """Le clone est illisible et aucun index antérieur n'existe : rien à servir."""
+    """La source ou l'index est indisponible : rien à servir."""
 
     problem: SourceProblem
     detail: str
@@ -218,7 +219,7 @@ class VersionsPage:
 
 @dataclass(frozen=True)
 class HistoryUnavailable:
-    """Le clone n'a pas pu être relu : aucun historique n'est servi (plan 05, V2)."""
+    """La source ou l'index n'a pas pu être relu : aucun historique n'est servi."""
 
     problem: SourceProblem
     detail: str

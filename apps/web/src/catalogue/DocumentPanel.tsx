@@ -73,7 +73,7 @@ export function DocumentPanel({ space, id, fetcher, now, onClose }: DocumentPane
       )}
       {result.status === "unavailable" && (
         <Banner tone="danger">
-          Atlas est indisponible : {PROBLEM_LABELS[result.problem]}, et aucun index antérieur n'existe.
+          Atlas est indisponible : {PROBLEM_LABELS[result.problem]}. {result.problem === "index_busy" ? "La fiche ne peut pas être servie maintenant." : "Aucun index antérieur n'existe."}
         </Banner>
       )}
       {result.status === "error" && <Banner tone="danger">La fiche n'a pas pu être lue. {result.message}</Banner>}

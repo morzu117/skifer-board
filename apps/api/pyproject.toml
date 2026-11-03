@@ -31,5 +31,5 @@ module-name = "skifer_board"
 # Atlas est lu en bibliothèque, épinglé par commit (plan 04, C2). uv n'applique pas les
 # sources d'une dépendance : celle de `skifer`, dépendance d'Atlas, est répétée ici.
 [tool.uv.sources]
-skifer-atlas = { git = "https://github.com/morzu117/skifer-atlas.git", rev = "fe334267ddbab650824247789e907ccecfee60f0", subdirectory = "core" }
+skifer-atlas = { git = "https://github.com/morzu117/skifer-atlas.git", rev = "db9e9df63b6eb8b8b85151ef397c761b5d699bd8", subdirectory = "core" }
 skifer = { git = "https://github.com/morzu117/skifer.git", rev = "v4.0.0" }

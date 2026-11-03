@@ -1422,7 +1422,7 @@ dependencies = [
 [[package]]
 name = "skifer-atlas"
 version = "0.0.1"
-source = { git = "https://github.com/morzu117/skifer-atlas.git?subdirectory=core&rev=fe334267ddbab650824247789e907ccecfee60f0#fe334267ddbab650824247789e907ccecfee60f0" }
+source = { git = "https://github.com/morzu117/skifer-atlas.git?subdirectory=core&rev=db9e9df63b6eb8b8b85151ef397c761b5d699bd8#db9e9df63b6eb8b8b85151ef397c761b5d699bd8" }
 dependencies = [
     { name = "duckdb" },
     { name = "fastapi" },
@@ -1463,7 +1463,7 @@ requires-dist = [
     { name = "pg8000", specifier = ">=1.31.6" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
-    { name = "skifer-atlas", git = "https://github.com/morzu117/skifer-atlas.git?subdirectory=core&rev=fe334267ddbab650824247789e907ccecfee60f0" },
+    { name = "skifer-atlas", git = "https://github.com/morzu117/skifer-atlas.git?subdirectory=core&rev=db9e9df63b6eb8b8b85151ef397c761b5d699bd8" },
     { name = "sqlalchemy", specifier = ">=2.1.6" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]

@@ -7,6 +7,7 @@ import revenu from "../../../../contracts/catalogue/fiche-revenu-net.json";
 import invalide from "../../../../contracts/catalogue/fiche-invalide.json";
 import commande from "../../../../contracts/catalogue/fiche-commande.json";
 import indisponible from "../../../../contracts/catalogue/indisponible.json";
+import busy from "../../../../contracts/catalogue/index-occupe.json";
 import inconnue from "../../../../contracts/catalogue/fiche-inconnue.json";
 import versions from "../../../../contracts/catalogue/versions-revenu-net.json";
 import { CataloguePage } from "./CataloguePage";
@@ -146,6 +147,14 @@ describe("Liste du catalogue", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
+  it("nomme l'index occupé sans accuser le clone ni prétendre que l'index manque", async () => {
+    render(<CataloguePage space="finance" fetcher={vi.fn<Fetch>().mockResolvedValue(response(busy))} now={now} />);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("l'index de l'espace est occupé");
+    expect(alert).not.toHaveTextContent("clone");
+    expect(alert).not.toHaveTextContent("aucun index antérieur");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
   it.each([false, true])("sert l'index ancien avec âge, commit et détail, provenance incomplète : %s", async (fallback) => {
     const page = decodeCatalogPage(ancienne.body);
     if (fallback) { page.provenance.problem = null; page.provenance.detail = null; }
@@ -217,6 +226,15 @@ describe("Fiche depuis la liste", () => {
     expect(screen.getByText("Chargement de la fiche…")).toBeInTheDocument();
     await settle(() => { pending.resolve(response(sample)); });
     expect(screen.getByRole("complementary")).toHaveTextContent(message);
+  });
+  it("annonce l'index occupé sur la fiche sans inventer l'absence d'un ancien index", async () => {
+    const fetcher = vi.fn<Fetch>().mockResolvedValueOnce(response(liste)).mockResolvedValueOnce(response(busy));
+    render(<CataloguePage space="finance" fetcher={fetcher} now={now} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Revenu net" }));
+    const panel = screen.getByRole("complementary");
+    await waitFor(() => { expect(panel).toHaveTextContent("l'index de l'espace est occupé"); });
+    expect(panel).not.toHaveTextContent("clone");
+    expect(panel).not.toHaveTextContent("aucun index antérieur");
   });
   it("abandonne la fiche fermée en cours de chargement", async () => {
     let reject!: (reason: Error) => void;

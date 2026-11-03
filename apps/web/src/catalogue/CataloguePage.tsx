@@ -64,7 +64,7 @@ export function CataloguePage({ space, fetcher = fetch, now = () => new Date() }
         <PageHead />
         <Card title="Catalogue indisponible">
           <Banner tone="danger">
-            Atlas est indisponible : {PROBLEM_LABELS[result.problem]}, et aucun index antérieur n'existe. Le catalogue ne peut pas être servi.
+            Atlas est indisponible : {PROBLEM_LABELS[result.problem]}. {result.problem === "index_busy" ? "Le catalogue ne peut pas être servi maintenant." : "Aucun index antérieur n'existe ; le catalogue ne peut pas être servi."}
             <span className="sb-catalogue__detail">{result.detail}</span>
           </Banner>
         </Card>

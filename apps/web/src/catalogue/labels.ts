@@ -13,6 +13,7 @@ export const STATUS_LABELS: Record<AtlasStatus, { label: string; tone: BadgeTone
 export const PROBLEM_LABELS: Record<SourceProblem, string> = {
   repository_missing: "le clone de l'espace est introuvable",
   repository_unreadable: "le clone de l'espace est illisible",
+  index_busy: "l'index de l'espace est occupé, réessayez dans un instant",
 };
 
 /**
