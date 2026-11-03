@@ -251,6 +251,7 @@ describe("Environnements : lecture (écrans §9, plan 09, 9.4)", () => {
       ["Membres et rôles", "#/espaces/finance/membres", null],
       ["Environnements", "#/espaces/finance/environnements", "page"],
       ["Paramètres", "#/espaces/finance/parametres", null],
+      ["Connexions", "#/espaces/finance/connexions", null],
     ]);
   });
 });

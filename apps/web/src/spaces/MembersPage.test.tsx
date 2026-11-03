@@ -187,6 +187,7 @@ describe("Membres et rôles : lecture (écrans §9, plan 08, 8.4)", () => {
       ["Membres et rôles", "#/espaces/finance/membres", "page"],
       ["Environnements", "#/espaces/finance/environnements", null],
       ["Paramètres", "#/espaces/finance/parametres", null],
+      ["Connexions", "#/espaces/finance/connexions", null],
     ]);
     // Les onglets suivent le titre et précèdent le rappel.
     const titre = screen.getByRole("heading", { level: 1, name: "Membres et rôles" });

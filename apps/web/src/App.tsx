@@ -13,6 +13,7 @@ import type { Environment, SectionId } from "./shell/sections";
 import { SpaceSwitch } from "./shell/SpaceSwitch";
 import { fetchSpace, fetchSpaces, type SpaceOutcome } from "./spaces/api";
 import { CreateSpacePage } from "./spaces/CreateSpacePage";
+import { ConnectionsPage } from "./spaces/ConnectionsPage";
 import { onSpaceLost } from "./spaces/lost";
 import { EnvironmentsPage } from "./spaces/EnvironmentsPage";
 import { MembersPage } from "./spaces/MembersPage";
@@ -27,7 +28,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? route.space : null;
 }
 
 interface Sections {
@@ -173,7 +174,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" ? "espace" : undefined;
+  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -241,6 +242,9 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     }
     if (route.page === "parameters") {
       return [current.value.name, "Paramètres"];
+    }
+    if (route.page === "connections") {
+      return [current.value.name, "Connexions"];
     }
     return current.value.role === null ? [current.value.name] : [current.value.name, "Catalogue Atlas"];
   }
@@ -335,6 +339,17 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
       );
     }
     return <ParametersPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
+  }
+  if (route.page === "connections") {
+    if (current.value.implicit) {
+      return (
+        <>
+          <Heading title="Connexions" />
+          <Banner tone="neutral">En mode local, les connexions d'un espace ne se gèrent pas. Seul l'essai d'un DuckDB déclaré sur le serveur est disponible.</Banner>
+        </>
+      );
+    }
+    return <ConnectionsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
   }
   if (current.value.role === null) {
     return (

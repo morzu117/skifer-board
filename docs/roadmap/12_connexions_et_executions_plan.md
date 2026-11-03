@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.3 réalisés ; 12.4 à 12.7 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.3 et 12.6 réalisés ; 12.4, 12.5 et 12.7 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -68,6 +68,8 @@ Migration des exécutions et de leur état ; soumission, lecture, annulation, d�
 ### 12.6 — Administration des connexions
 
 Dans l'administration d'un espace, montrer connexions logiques, liaisons DEV/TEST/PROD, état d'identifiant et essai, sans afficher de valeur secrète. Créer et retirer une connexion, configurer ou retirer une liaison, écrire/remplacer ou supprimer un identifiant de service, puis lancer l'essai sans SQL. La configuration du point d'accès reste une clé déclarée côté serveur ; l'écran ne propose ni URL, ni chemin, ni jeton OIDC personnel comme identifiant de source. Le champ de secret est effacé après soumission ou échec et n'est jamais prérempli, renvoyé par l'API ou conservé dans le stockage du navigateur. Les états de chargement, vide, refus, mode local, échec et essai en cours ont chacun un message. L'accès est réservé aux administrateurs d'espace et de plateforme, vérifié par le serveur ; l'interface masque les actions aux autres rôles. Tests de décodeurs, composants, accessibilité, parcours Playwright et captures téléphone/ordinateur. Ce point est indépendant de la barrière skifer de 12.4 et ne donne aucun droit de lire des données métier.
+
+Réalisation : route et onglet d'administration « Connexions », registre des liaisons par environnement, formulaires et confirmations des écritures, état du coffre et essai sans SQL. La saisie d'identifiant reste dans un champ non contrôlé, effacé avant l'appel réseau ; les réponses et le journal ne présentent aucune valeur. Les décodeurs ferment les réponses hors contrat et les refus serveur sont explicités. Tests de décodeurs, composants et accessibilité sous les deux thèmes ; parcours et six captures de référence ordinateur/téléphone, plus neuf captures téléphone d'administration réactualisées pour le nouvel onglet. `pnpm run check:api` : 4 592 tests, 100 % de couverture ; `pnpm run check:web` : 2 332 tests, 100 % ; `pnpm run check:e2e` : 575 passés, un saut prévu ; `pnpm run check:docs` : passé.
 
 ### 12.7 — Centre d'exécutions
 

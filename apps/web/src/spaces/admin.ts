@@ -44,6 +44,19 @@ export const REFUSALS = [
   "forbidden",
   "local_mode",
   "origin_refused",
+  "connection_exists",
+  "connection_not_found",
+  "connection_binding_not_found",
+  "connection_in_use",
+  "vault_unavailable",
+  "credential_not_found",
+  "credential_not_allowed",
+  "connector_unavailable",
+  "endpoint_not_configured",
+  "identity_unavailable",
+  "credential_rejected",
+  "redirect_refused",
+  "invalid_upstream",
 ] as const;
 
 export type RefusalCode = (typeof REFUSALS)[number];
@@ -76,6 +89,19 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   forbidden: "Votre rôle ne permet pas cette action.",
   local_mode: "En mode local, l'espace implicite ne se gère pas.",
   origin_refused: "La demande ne vient pas de cette page : elle a été refusée.",
+  connection_exists: "Une connexion porte déjà ce nom dans l'espace.",
+  connection_not_found: "Cette connexion n'existe plus : la liste a été relue.",
+  connection_binding_not_found: "Cette liaison n'existe plus : la liste a été relue.",
+  connection_in_use: "Cette connexion possède encore une liaison : retirez ses liaisons avant de la supprimer.",
+  vault_unavailable: "Le coffre des identifiants est indisponible.",
+  credential_not_found: "Aucun identifiant n'est configuré pour cette liaison.",
+  credential_not_allowed: "Cette liaison n'accepte pas d'identifiant de service.",
+  connector_unavailable: "La source ne répond pas pour le moment.",
+  endpoint_not_configured: "Ce point d'accès n'est pas déclaré sur le serveur.",
+  identity_unavailable: "L'identité personnelle n'est pas encore disponible pour cette source.",
+  credential_rejected: "La source a refusé cet identifiant.",
+  redirect_refused: "La source a tenté une redirection, refusée par Board.",
+  invalid_upstream: "La source a renvoyé une réponse hors contrat.",
 };
 
 function refusalOf(value: unknown): Refusal | null {

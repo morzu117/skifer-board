@@ -297,6 +297,7 @@ describe("Paramètres : lecture (écrans §9, plan 10, 10.3)", () => {
       ["Membres et rôles", "#/espaces/finance/membres", null],
       ["Environnements", "#/espaces/finance/environnements", null],
       ["Paramètres", "#/espaces/finance/parametres", "page"],
+      ["Connexions", "#/espaces/finance/connexions", null],
     ]);
     const titre = screen.getByRole("heading", { level: 1, name: "Paramètres" });
     expect(titre.compareDocumentPosition(onglets) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

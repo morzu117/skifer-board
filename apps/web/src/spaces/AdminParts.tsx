@@ -18,13 +18,14 @@ import "./spaces.css";
 export type Feedback = { tone: "neutral"; text: string } | ({ tone: "danger" } & Refusal) | { tone: "error"; text: string };
 
 /** Onglets des écrans d'administration, reliés l'un à l'autre (écrans §9). */
-type AdminPage = "members" | "environments" | "parameters";
+type AdminPage = "members" | "environments" | "parameters" | "connections";
 
 export function AdminTabs({ space, current }: { space: Space; current: AdminPage }) {
   const tabs: readonly { page: Route & { page: AdminPage }; label: string }[] = [
     { page: { page: "members", space: space.id }, label: "Membres et rôles" },
     { page: { page: "environments", space: space.id }, label: "Environnements" },
     { page: { page: "parameters", space: space.id }, label: "Paramètres" },
+    { page: { page: "connections", space: space.id }, label: "Connexions" },
   ];
   return (
     <nav className="sb-admin-tabs" aria-label="Administration de l'espace">
@@ -128,6 +129,10 @@ const FIELD_LABELS: Record<string, string> = {
   default: "valeur par défaut",
   description: "description",
   value: "valeur",
+  connector: "connecteur",
+  endpoint_key: "clé du point d'accès",
+  identity_mode: "mode d'identité",
+  secret: "identifiant",
   body: "corps de la demande",
 };
 
