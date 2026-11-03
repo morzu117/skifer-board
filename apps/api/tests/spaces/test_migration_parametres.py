@@ -124,7 +124,8 @@ def test_revision_0005_en_avant_apres_0004() -> None:
     assert script is not None
     assert script.down_revision == "0004"
     assert not hasattr(script.module, "downgrade")
-    assert head_revision() == "0005"
+    # La tête a avancé depuis (révision 0006, télémétrie) : 0005 reste dans la chaîne.
+    assert head_revision() != "0005"
 
 
 def test_depuis_une_base_vierge(engine: Engine) -> None:
@@ -137,7 +138,7 @@ def test_depuis_une_base_vierge(engine: Engine) -> None:
 
 
 def test_depuis_une_base_vierge_directement(engine: Engine) -> None:
-    upgrade(engine)
+    jusqu_a(engine, "0005")
     assert current_revision(engine) == "0005"
     assert NOUVELLES <= set(inspect(engine).get_table_names())
 
@@ -158,7 +159,7 @@ def test_depuis_0004_peuplee(engine: Engine) -> None:
     )
     assert current_revision(engine) == "0004"
     avant = contenu(engine)
-    upgrade(engine)
+    jusqu_a(engine, "0005")
     assert current_revision(engine) == "0005"
     # Rien n'est perdu ni repris : un espace migré n'a encore aucun paramètre.
     assert contenu(engine) == avant

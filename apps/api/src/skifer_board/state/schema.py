@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Double,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -219,4 +220,25 @@ space_events = Table(
     Column("action", String(40), nullable=False),
     Column("detail", JSONB(none_as_null=True), nullable=False),
     Index("ix_space_events_space", "space_id", "id"),
+)
+
+# Mesures de télémétrie (plan 11, T1 à T3) : une liste fermée de champs, ni personne, ni chemin
+# brut, ni valeur. Aucune clé étrangère : une mesure survit à l'espace retiré, et son écriture
+# ne dépend d'aucune autre table.
+telemetry = Table(
+    "telemetry",
+    metadata,
+    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    Column("at", DateTime(timezone=True), nullable=False),
+    Column("kind", String(16), nullable=False),
+    Column("operation", String(200), nullable=False),
+    Column("method", String(10), nullable=True),
+    Column("status", SmallInteger, nullable=True),
+    Column("outcome", String(40), nullable=False),
+    Column("space_id", String(40), nullable=True),
+    Column("environment", String(10), nullable=True),
+    Column("duration_ms", Double, nullable=False),
+    Column("rows", BigInteger, nullable=True),
+    Column("size", BigInteger, nullable=True),
+    Index("ix_telemetry_at", "at"),
 )

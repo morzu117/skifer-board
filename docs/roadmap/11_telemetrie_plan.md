@@ -37,6 +37,13 @@ Créés : révision `0006`, `apps/api/src/skifer_board/telemetry/` (modèle et m
 
 Tests : chaque champ à ses bornes ; résumé sur des distributions connues (centiles, parts, tailles) ; fenêtre glissante ; purge ; migration d'une base vierge et d'une base en `0005` peuplée.
 
+Écarts de réalisation :
+- Le résumé rend des nombres exacts (mesures, erreurs, refus), pas des parts : l'écran les divise pour l'affichage, sans arrondi caché dans la réponse. Une erreur est un 5xx, ou une lecture d'Atlas qui n'a pas abouti ; un refus est un 4xx.
+- La fenêtre est `[maintenant − durée, maintenant]`, bornes comprises ; à p95 égal, les opérations se rangent par genre, opération et méthode, dans l'ordre des points de code.
+- Lignes, taille et statut doivent être des entiers exacts : un nombre à virgule ou un booléen est refusé, parce que la base l'arrondirait. Le genre doit être un `Kind`. Un instant sans fuseau est refusé à la purge et au résumé, sinon la base le lirait dans le fuseau de sa session. La ligne JSON donne l'instant en UTC, comme la table.
+- La liste fermée des codes comprend ceux de l'écart de versions du catalogue (`version_not_found`, `diff_not_supported`, `diff_unavailable`), qu'un test compare aux codes des exemples de contrat et de `server.py`.
+- Tests écrits par un agent Claude indépendant. Il a trouvé quatre défauts, corrigés avant le commit : trois codes de refus manquants, des nombres à virgule acceptés pour les lignes, la taille et le statut, et un genre non vérifié. Il a aussi essayé 37 régressions volontaires, toutes attrapées par les tests.
+
 ### 11.2 — Mesure des requêtes et d'Atlas
 
 Créés : intergiciel ASGI de mesure, enregistreur (file, fil d'écriture, purge, journal). Modifiés : `server.py`, `catalog/`.

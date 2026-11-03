@@ -124,6 +124,21 @@ COLONNES = {
         "set_by_issuer": False,
         "set_by_subject": False,
     },
+    # Mesures de télémétrie (plan 11, 11.1, révision 0006).
+    "telemetry": {
+        "id": False,
+        "at": False,
+        "kind": False,
+        "operation": False,
+        "method": True,
+        "status": True,
+        "outcome": False,
+        "space_id": True,
+        "environment": True,
+        "duration_ms": False,
+        "rows": True,
+        "size": True,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
@@ -136,6 +151,7 @@ INSTANTS = {
     "deploy_grants": {"created_at"},
     "deploy_parameters": {"created_at", "updated_at"},
     "parameter_values": {"set_at"},
+    "telemetry": {"at"},
 }
 CLES = {
     "sessions": ["fingerprint"],
@@ -148,6 +164,7 @@ CLES = {
     "deploy_grants": ["id"],
     "deploy_parameters": ["space_id", "name"],
     "parameter_values": ["space_id", "name", "environment"],
+    "telemetry": ["id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 
