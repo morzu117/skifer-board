@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Prérequis du plan 12.4 : skifer `4.1.0` est épinglé depuis PyPI avec l'extra `analyzer`, qui fournit le dialecte DuckDB ; la source Git `v4.0.0` est retirée. Les routes de requête restent fermées jusqu'aux tests de l'adaptateur Board.
+
 - Plan 13, 13.1 : Atlas épinglé sur le correctif de verrou DuckDB `db9e9df6`. Une base d'index occupée répond `index_busy` sur la liste, la fiche, les versions et l'écart ; Board ne tente pas de rouvrir cette même base pour un repli et l'écran nomme l'attente sans dire que le clone est illisible. Le repli sur ancien index reste réservé aux pannes du clone.
 
 - Plan 12, 12.6 : écran d'administration des connexions par espace, avec liaisons DEV/TEST/PROD, état de l'identifiant, écriture à usage unique, essai sans requête métier et confirmations de retrait. Accès par les onglets d'administration, états de lecture et refus explicites, sans valeur secrète conservée dans le navigateur.

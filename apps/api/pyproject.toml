@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "pyarrow>=17",
     "skifer-atlas",
+    "skifer[analyzer]==4.1.0",
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "pyjwt[crypto]>=2.10",
@@ -28,8 +29,7 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "skifer_board"
 
-# Atlas est lu en bibliothèque, épinglé par commit (plan 04, C2). uv n'applique pas les
-# sources d'une dépendance : celle de `skifer`, dépendance d'Atlas, est répétée ici.
+# Atlas est lu en bibliothèque, épinglé par commit (plan 04, C2).
+# skifer est une dépendance directe, épinglée à la publication PyPI du plan 45.
 [tool.uv.sources]
 skifer-atlas = { git = "https://github.com/morzu117/skifer-atlas.git", rev = "db9e9df63b6eb8b8b85151ef397c761b5d699bd8", subdirectory = "core" }
-skifer = { git = "https://github.com/morzu117/skifer.git", rev = "v4.0.0" }

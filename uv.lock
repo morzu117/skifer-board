@@ -1412,11 +1412,20 @@ wheels = [
 
 [[package]]
 name = "skifer"
-version = "4.0.0"
-source = { git = "https://github.com/morzu117/skifer.git?rev=v4.0.0#ffbf8f40688f76f78edf1689b4154924b9c2579b" }
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/f7/ed7e1aff24748a196d162826b0888bdb40d942e3ef95ab193ab4a3a699c8/skifer-4.1.0.tar.gz", hash = "sha256:888ca36d6c3903b093b05d008c085d973c90b1085ed6285ceca38c3f6c3824fc", size = 1025439, upload-time = "2026-11-03T21:59:26.655Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/ac/df9183cb57208aea8b81179ddc746658a29777b56977b861a331988b2e81/skifer-4.1.0-py3-none-any.whl", hash = "sha256:da32c4a25a63231f662a94cbeee0730d473827aec2a4446a10603c3b160bf069", size = 660370, upload-time = "2026-11-03T21:59:24.923Z" },
+]
+
+[package.optional-dependencies]
+analyzer = [
+    { name = "sqlglot" },
 ]
 
 [[package]]
@@ -1449,6 +1458,7 @@ dependencies = [
     { name = "pg8000" },
     { name = "pyarrow" },
     { name = "pyjwt", extra = ["crypto"] },
+    { name = "skifer", extra = ["analyzer"] },
     { name = "skifer-atlas" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
@@ -1463,6 +1473,7 @@ requires-dist = [
     { name = "pg8000", specifier = ">=1.31.6" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
+    { name = "skifer", extras = ["analyzer"], specifier = "==4.1.0" },
     { name = "skifer-atlas", git = "https://github.com/morzu117/skifer-atlas.git?subdirectory=core&rev=db9e9df63b6eb8b8b85151ef397c761b5d699bd8" },
     { name = "sqlalchemy", specifier = ">=2.1.6" },
     { name = "uvicorn", specifier = ">=0.30" },

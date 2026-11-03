@@ -1,6 +1,9 @@
 [tool.uv.workspace]
 members = ["apps/api"]
 
+[tool.uv]
+no-sources-package = ["skifer"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.6",
