@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import logging
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
 from skifer_board.state.schema import telemetry
-from skifer_board.telemetry import Kind, Measure, TelemetryStore
+from skifer_board.telemetry import Kind, Measure, Recorder, TelemetryStore
+from skifer_board.telemetry.recorder import LOGGER
 from sqlalchemy import Engine, select
 from state.conftest import migre as migre
 
@@ -56,3 +60,76 @@ def lignes(moteur: Engine) -> list[dict[str, Any]]:
 @pytest.fixture
 def magasin(migre: Engine) -> TelemetryStore:
     return TelemetryStore(migre)
+
+
+# --- Enregistreur et journal (plan 11, 11.2) ---------------------------------------------------
+
+
+class Collecteur(Recorder):
+    """Enregistreur sans base qui garde, en plus du journal, les mesures confiées et les pertes."""
+
+    def __init__(self) -> None:
+        super().__init__(None)
+        self.mesures: list[Measure] = []
+        self.pertes = 0
+
+    def submit(self, measure: Measure) -> None:
+        self.mesures.append(measure)
+        super().submit(measure)
+
+    def lose(self, count: int) -> None:
+        self.pertes += count
+        super().lose(count)
+
+    def http(self) -> list[Measure]:
+        return [mesure for mesure in self.mesures if mesure.kind is Kind.HTTP]
+
+
+class Journal(logging.Handler):
+    """Capture du journal `skifer_board.telemetry`, tel qu'il partirait sur la sortie standard."""
+
+    def __init__(self) -> None:
+        super().__init__(logging.DEBUG)
+        self.enregistrements: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.enregistrements.append(record)
+
+    def textes(self) -> list[str]:
+        return [record.getMessage() for record in self.enregistrements]
+
+    def mesures(self) -> list[dict[str, Any]]:
+        """Lignes JSON des mesures, au niveau INFO."""
+        return [
+            json.loads(record.getMessage())
+            for record in self.enregistrements
+            if record.levelno == logging.INFO
+        ]
+
+    def avertissements(self) -> list[dict[str, Any]]:
+        return [
+            json.loads(record.getMessage())
+            for record in self.enregistrements
+            if record.levelno == logging.WARNING
+        ]
+
+
+@pytest.fixture
+def journal() -> Iterator[Journal]:
+    """Le journal de télémétrie, seul capteur de ses lignes ; rétabli après le test."""
+    logger = logging.getLogger(LOGGER)
+    handlers, niveau, propage = list(logger.handlers), logger.level, logger.propagate
+    capture = Journal()
+    logger.handlers = [capture]
+    logger.setLevel(logging.INFO)
+    try:
+        yield capture
+    finally:
+        logger.handlers = handlers
+        logger.setLevel(niveau)
+        logger.propagate = propage
+
+
+@pytest.fixture
+def collecteur(journal: Journal) -> Collecteur:
+    return Collecteur()

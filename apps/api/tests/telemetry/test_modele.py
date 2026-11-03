@@ -63,7 +63,8 @@ def test_fenetres_et_leur_duree() -> None:
 
 
 def test_methodes_et_issues() -> None:
-    assert METHODS == {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+    # `OTHER` range une méthode hors liste (plan 11, 11.2).
+    assert METHODS == {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "OTHER"}
     assert OUTCOMES == REFUSAL_CODES | {"ok", "error", "other"}
     assert not {"ok", "error", "other"} & REFUSAL_CODES
     # Les issues tiennent dans la colonne `outcome`.

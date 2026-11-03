@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from httpx2 import Response
 from skifer_board import server
 from skifer_board.catalog import AtlasStatus, CatalogConfig, CatalogService, DocumentKind
+from skifer_board.telemetry import Recorder
 
 CONTRATS = Path(__file__).resolve().parents[3] / "contracts" / "catalogue"
 # Exemples du plan 04 ; ceux du plan 05 (`versions-*`, `ecart-*`) sont rejoués par
@@ -388,9 +389,17 @@ def test_demarrage_sans_ouvrir_de_port(
     monkeypatch.setattr(server, "create_app", creer)
     monkeypatch.setattr(uvicorn, "run", lancer)
     server.main()
-    constructeur.assert_called_once_with(configuration)
+    constructeur.assert_called_once()
+    assert constructeur.call_args.args == (configuration,)
+    # Les lectures d'Atlas vont à l'enregistreur passé au serveur (plan 11, T2).
+    enregistreur = creer.call_args.args[3]
+    assert isinstance(enregistreur, Recorder)
+    assert constructeur.call_args.kwargs == {"measure": enregistreur.submit}
     creer.assert_called_once()
     assert creer.call_args.args[0].config == configuration
+    assert creer.call_args.args[1:3] == (None, None)
+    # Sans base, l'enregistreur n'écrit qu'au journal.
+    assert enregistreur._store is None
     lancer.assert_called_once()
     assert isinstance(lancer.call_args.args[0], FastAPI)
     assert lancer.call_args.kwargs == {

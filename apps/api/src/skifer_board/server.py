@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import dataclasses
 import os
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -51,6 +52,7 @@ from .state import (
     connect,
 )
 from .state import config_from_env as database_from_env
+from .telemetry import Recorder, TelemetryMiddleware, TelemetryStore, configure_logging
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
 STATE_VARIABLE = "SKIFER_BOARD_STATE_DIR"
@@ -106,9 +108,11 @@ def create_app(
     catalog: CatalogService,
     identity: IdentityRuntime | None = None,
     spaces: Spaces | None = None,
+    recorder: Recorder | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
-    les espaces en base sont obligatoires."""
+    les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
+    journal (plan 11, T4)."""
     if spaces is None:
         if identity is not None:
             raise ValueError("Avec OIDC, les espaces en base sont obligatoires.")
@@ -116,7 +120,20 @@ def create_app(
     elif identity is not None and spaces.admin_group != identity.config.admin_group:
         # `/api/me` et les espaces doivent nommer le même groupe d'administration (E6).
         raise ValueError("Le groupe d'administration des espaces diffère de celui de l'identité.")
-    app = FastAPI(title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None)
+    telemetry = Recorder(None) if recorder is None else recorder
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # Le fil d'écriture vit avec le serveur ; à l'arrêt, la file est vidée (plan 11, T5).
+        telemetry.start()
+        try:
+            yield
+        finally:
+            telemetry.stop()
+
+    app = FastAPI(
+        title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan
+    )
     install_identity(app, identity)
     reader = Depends(install_spaces(app, spaces).reader)
     catalog_path = "/api/spaces/{space_id}/catalog"
@@ -189,6 +206,13 @@ def create_app(
             return _error(status, found.reason.value, id=document_id, detail=found.detail)
         return JSONResponse(to_json(found))
 
+    # Ajouté en dernier, donc le plus extérieur : la garde d'identité et ses refus sont mesurés.
+    app.add_middleware(
+        TelemetryMiddleware,
+        routes=app.router.routes,
+        recorder=telemetry,
+        clock=lambda: datetime.now(UTC),
+    )
     return app
 
 
@@ -267,5 +291,9 @@ def main() -> None:
     identity = identity_runtime(os.environ, host, engine)
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
-    app = create_app(CatalogService(catalog), identity, spaces)
+    # Mesures en base s'il y en a une, toujours sur la sortie standard (plan 11, T4).
+    configure_logging()
+    recorder = Recorder(None if engine is None else TelemetryStore(engine))
+    service = CatalogService(catalog, measure=recorder.submit)
+    app = create_app(service, identity, spaces, recorder)
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

@@ -55,6 +55,14 @@ Créés : intergiciel ASGI de mesure, enregistreur (file, fil d'écriture, purge
 
 Tests : une mesure par requête, gabarit et non chemin ; aucune donnée de T3 dans la table ni dans la ligne JSON, sur toutes les routes ; panne de la base et file pleine sans effet sur la réponse, perte journalisée ; vidage à l'arrêt ; purge.
 
+Écarts de réalisation :
+- L'intergiciel est l'enveloppe la plus extérieure et résout lui-même le gabarit avant l'appel. La garde d'identité refuse avant le routage, donc le gabarit posé par Starlette n'existe pas encore pour un 401 : il serait sinon compté sous `unmatched`. Une route qui ne refuse que la méthode (405) donne aussi son gabarit.
+- Le code d'un refus n'est lu que dans une réponse JSON de statut 400 ou plus, dans ses 16 premiers kio. L'espace n'est gardé que s'il a la forme d'un identifiant d'espace, l'environnement que s'il est l'un des trois connus. Une méthode hors de la liste devient `OTHER`, ajoutée à la liste fermée. Une mesure que le modèle refuse (une adresse de retour OIDC hors format, par exemple) est comptée comme perdue et journalisée, et la réponse part inchangée.
+- Une lecture d'Atlas mesure le nombre de documents rendus (entrées d'une page, une fiche, versions d'un document) et la taille du fichier d'index. Une lecture qui lève est mesurée avec l'issue `error`, puis l'exception remonte.
+- En mode local, l'enregistreur n'a ni file ni fil : la ligne JSON seule. Le fil démarre et s'arrête avec le cycle de vie de l'application ; une mesure soumise après l'arrêt est comptée comme perdue.
+- La commande `skifer-board-telemetry purge` sort en 0 après la purge, en 1 si la base ou son schéma est en défaut, en 2 pour un usage ou une configuration invalide.
+- Tests écrits par un agent Claude indépendant ; ils appellent toutes les routes du serveur réel en OIDC avec des valeurs sentinelles, et n'en retrouvent aucune dans la table ni dans le journal. Il a trouvé un défaut, corrigé avant le commit : la borne du corps d'erreur ne valait pas pour un corps envoyé en un seul morceau, ce qui est le cas de toute réponse JSON. Il a aussi relevé une mesure soumise après l'arrêt qui restait dans la file sans être comptée ; elle est désormais comptée comme perdue. Il a essayé 38 régressions volontaires, toutes attrapées par les tests.
+
 ### 11.3 — Route de lecture
 
 Modifiés : `telemetry/`, `server.py`, `contracts/telemetrie/`.

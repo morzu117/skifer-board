@@ -326,7 +326,8 @@ def test_lecture_interne_sans_identite_en_mode_local(service: CatalogService) ->
     from skifer_board.identity.sessions import Session
 
     app = create_app(service)
-    garde = app.user_middleware[0].kwargs["dispatch"]
+    # La garde se reconnaît à sa clé `dispatch` : la télémétrie l'enveloppe (plan 11).
+    garde = next(m.kwargs["dispatch"] for m in app.user_middleware if "dispatch" in m.kwargs)
     assert callable(garde)
     lecteur = cast(Callable[[Request], Session | None], getclosurevars(garde).nonlocals["current"])
     requete = Request({"type": "http", "headers": []})

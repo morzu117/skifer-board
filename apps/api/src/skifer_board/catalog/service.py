@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -18,6 +19,7 @@ from pathlib import Path
 
 import duckdb
 
+from ..telemetry import Kind, Measure
 from .atlas import (
     RepoError,
     indexed_commit,
@@ -78,10 +80,71 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _ignore(measure: Measure) -> None:
+    del measure
+
+
+def _outcome(found: object) -> str:
+    """Issue d'une lecture d'Atlas, sur les codes que l'API rendra (plan 11, T3)."""
+    if found is None:
+        return "document_not_found"
+    if isinstance(found, CatalogUnavailable):
+        return "catalog_unavailable"
+    if isinstance(found, HistoryUnavailable):
+        return "history_unavailable"
+    if isinstance(found, DiffRefused):
+        return found.reason.value
+    return "ok"
+
+
+def _documents(found: object) -> int | None:
+    """Documents rendus : les entrées d'une page, une fiche, les versions d'un document."""
+    if isinstance(found, CatalogPage):
+        return len(found.entries)
+    if isinstance(found, DocumentPage):
+        return 1
+    if isinstance(found, VersionsPage):
+        return len(found.versions)
+    return None
+
+
 class CatalogService:
-    def __init__(self, config: CatalogConfig, clock: Callable[[], datetime] = _utc_now) -> None:
+    def __init__(
+        self,
+        config: CatalogConfig,
+        clock: Callable[[], datetime] = _utc_now,
+        measure: Callable[[Measure], None] = _ignore,
+    ) -> None:
         self.config = config
         self._clock = clock
+        self._measure = measure
+
+    def _measured[T](self, operation: str, read: Callable[[], T]) -> T:
+        """Mesure une lecture d'Atlas (plan 11, T2) : durée, documents rendus, taille de l'index."""
+        at, started = self._clock(), time.perf_counter()
+
+        def record(outcome: str, documents: int | None) -> None:
+            index = self.config.index_path
+            self._measure(
+                Measure(
+                    at=at,
+                    kind=Kind.ATLAS,
+                    operation=operation,
+                    outcome=outcome,
+                    duration_ms=(time.perf_counter() - started) * 1000,
+                    rows=documents,
+                    size=index.stat().st_size if index.is_file() else None,
+                )
+            )
+
+        try:
+            found = read()
+        except Exception:
+            # Une lecture qui échoue reste mesurée, comme une erreur ; l'exception remonte.
+            record("error", None)
+            raise
+        record(_outcome(found), _documents(found))
+        return found
 
     def list(
         self,
@@ -98,7 +161,7 @@ class CatalogService:
             )
             return CatalogPage(provenance, entries, read_facets(connection))
 
-        return self._read(reader)
+        return self._measured("atlas.list", lambda: self._read(reader))
 
     def get(self, document_id: str) -> DocumentPage | CatalogUnavailable | None:
         """Fiche d'un concept ou d'un KPI ; `None` si l'index ne le contient pas."""
@@ -109,7 +172,7 @@ class CatalogService:
             found = read_document(connection, document_id)
             return None if found is None else DocumentPage(provenance, found)
 
-        return self._read(reader)
+        return self._measured("atlas.document", lambda: self._read(reader))
 
     def versions(self, document_id: str) -> VersionsPage | HistoryUnavailable | None:
         """Versions taguées d'un document de l'index ; `None` s'il n'y figure pas. Jamais
@@ -128,7 +191,7 @@ class CatalogService:
                 return HistoryUnavailable(SourceProblem.REPOSITORY_UNREADABLE, str(error.message))
             return VersionsPage(provenance, document_id, found.entry.version, tagged)
 
-        return self._read_fresh(reader)
+        return self._measured("atlas.versions", lambda: self._read_fresh(reader))
 
     def diff(
         self, document_id: str, base: int, other: int
@@ -155,7 +218,7 @@ class CatalogService:
                 return DiffRefused(refusal, str(error.message))
             return DiffPage(provenance, document_id, report)
 
-        return self._read_fresh(reader)
+        return self._measured("atlas.diff", lambda: self._read_fresh(reader))
 
     def _read_fresh[T](
         self, reader: Callable[[duckdb.DuckDBPyConnection, Provenance], T]

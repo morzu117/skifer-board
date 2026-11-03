@@ -22,7 +22,8 @@ RETENTION = timedelta(days=90)
 # nommée (`catalog.list`) : jamais d'espace, de point d'interrogation ni de caractère d'un chemin
 # brut qui porterait une valeur.
 OPERATION = re.compile(r"[A-Za-z0-9_./{}-]{1,200}")
-METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"})
+# Une méthode hors de cette liste (requête d'un robot, par exemple) est comptée sous `OTHER`.
+METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "OTHER"})
 
 # Codes de refus et d'erreur que l'API rend ; tout autre code est rangé sous `other` (T3).
 REFUSAL_CODES = frozenset(

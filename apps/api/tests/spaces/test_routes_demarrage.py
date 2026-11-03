@@ -31,6 +31,7 @@ from skifer_board.identity.model import Identity
 from skifer_board.identity.web import build_runtime
 from skifer_board.spaces import GroupPrincipal, LocalMode, PersonRef, Role, Spaces, SpaceStore
 from skifer_board.state import DATABASE_URL
+from skifer_board.telemetry import Recorder, TelemetryStore
 from sqlalchemy import Engine
 from sqlalchemy.engine import URL
 from state.conftest import migre as migre
@@ -235,8 +236,12 @@ def test_main_avec_oidc_assemble_les_espaces_en_base(
     environnement[ADMIN_GROUP] = PLATEFORME
     server.main()
     creer.assert_called_once()
-    _, identite, espaces = creer.call_args.args
+    service, identite, espaces, enregistreur = creer.call_args.args
     assert isinstance(espaces, Spaces)
+    # Avec une base, les mesures y vont, par le même enregistreur que le catalogue (plan 11, T4).
+    assert isinstance(enregistreur, Recorder)
+    assert isinstance(enregistreur._store, TelemetryStore)
+    assert service._measure == enregistreur.submit
     assert isinstance(espaces.store, SpaceStore)
     assert espaces.admin_group == PLATEFORME == identite.config.admin_group
     assert espaces.atlas == espace.name
