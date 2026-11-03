@@ -30,6 +30,10 @@ REFUSAL_CODES = frozenset(
     {
         "binding_not_found",
         "catalog_unavailable",
+        "connection_binding_not_found",
+        "connection_exists",
+        "connection_in_use",
+        "connection_not_found",
         "diff_not_supported",
         "diff_unavailable",
         "document_not_found",

@@ -281,6 +281,7 @@ class Guards:
 
     reader: Callable[[Request, str], Access]
     deployer: Callable[[Request, str, str], Access]
+    manager: Callable[[Request, str], Access]
 
 
 def install_spaces(app: FastAPI, spaces: Spaces) -> Guards:
@@ -614,4 +615,4 @@ def install_spaces(app: FastAPI, spaces: Spaces) -> Guards:
         found = spaces.search_people(query)
         return JSONResponse({"people": [_person_json(person) for person in found]})
 
-    return Guards(reader, deployer)
+    return Guards(reader, deployer, manager)

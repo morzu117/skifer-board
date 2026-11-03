@@ -102,7 +102,7 @@ def test_revision_0006_en_avant_apres_0005() -> None:
     assert script is not None
     assert script.down_revision == "0005"
     assert not hasattr(script.module, "downgrade")
-    assert head_revision() == "0006"
+    assert head_revision() >= "0006"
 
 
 # --- Base vierge -----------------------------------------------------------------------------
@@ -119,7 +119,7 @@ def test_depuis_une_base_vierge_en_passant_par_0005(engine: Engine) -> None:
 
 def test_depuis_une_base_vierge_directement(engine: Engine) -> None:
     upgrade(engine)
-    assert current_revision(engine) == "0006"
+    assert current_revision(engine) == head_revision()
     assert lignes(engine) == []
 
 
@@ -164,7 +164,7 @@ def test_depuis_0005_peuplee(engine: Engine) -> None:
     avant_migration = contenu(engine)
     assert all(avant_migration)
     upgrade(engine)
-    assert current_revision(engine) == "0006"
+    assert current_revision(engine) == head_revision()
     # Rien n'est perdu ni repris ; la table des mesures part vide.
     assert contenu(engine) == avant_migration
     assert lignes(engine) == []
@@ -189,5 +189,5 @@ def test_rejouer_ne_change_rien(migre: Engine) -> None:
     avant_rejeu = (forme(migre), lignes(migre))
     upgrade(migre)
     upgrade(migre)
-    assert current_revision(migre) == "0006"
+    assert current_revision(migre) == head_revision()
     assert (forme(migre), lignes(migre)) == avant_rejeu

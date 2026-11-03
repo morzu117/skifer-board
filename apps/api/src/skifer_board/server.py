@@ -33,6 +33,7 @@ from .catalog import (
     DocumentKind,
     HistoryUnavailable,
 )
+from .execution import ConnectionStore, install_connections
 from .identity import (
     ConfigError,
     IdentityRuntime,
@@ -115,6 +116,7 @@ def create_app(
     identity: IdentityRuntime | None = None,
     spaces: Spaces | None = None,
     recorder: Recorder | None = None,
+    connections: ConnectionStore | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -126,6 +128,8 @@ def create_app(
     elif identity is not None and spaces.admin_group != identity.config.admin_group:
         # `/api/me` et les espaces doivent nommer le même groupe d'administration (E6).
         raise ValueError("Le groupe d'administration des espaces diffère de celui de l'identité.")
+    if connections is None and spaces.store is not None:
+        connections = ConnectionStore(spaces.store.engine)
     telemetry = Recorder(None) if recorder is None else recorder
 
     @asynccontextmanager
@@ -141,7 +145,9 @@ def create_app(
         title="Skifer Board", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan
     )
     install_identity(app, identity)
-    reader = Depends(install_spaces(app, spaces).reader)
+    guards = install_spaces(app, spaces)
+    reader = Depends(guards.reader)
+    install_connections(app, connections, guards.manager, spaces.clock)
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store
     install_telemetry(app, readable, spaces.platform_admin, telemetry.clock)
@@ -304,5 +310,11 @@ def main() -> None:
     configure_logging()
     recorder = Recorder(None if spaces is None or engine is None else TelemetryStore(engine))
     service = CatalogService(catalog, measure=recorder.submit)
-    app = create_app(service, identity, spaces, recorder)
+    app = create_app(
+        service,
+        identity,
+        spaces,
+        recorder,
+        None if engine is None or identity is None else ConnectionStore(engine),
+    )
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

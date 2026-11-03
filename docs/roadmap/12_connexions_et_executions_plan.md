@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **planifié, aucune tranche réalisée**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan est commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 réalisé ; 12.2 à 12.6 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -32,6 +32,10 @@ Chaque tranche de code a son test, une entrée dans `CHANGELOG.md` sous `Unrelea
 ### 12.1 — Contrat et registre de connexions
 
 Créer `skifer_board.execution` et `contracts/executions/`. Définir un modèle strict de connexion logique, liaison par environnement et mode d'identité ; migrer la base en `0007`. Les configurations ne contiennent aucun identifiant. Ajouter les opérations de création, lecture et retrait, avec journal d'espace, et les routes réservées aux administrateurs de l'espace ou de la plateforme. Une liaison référencée par une exécution ne peut être retirée en la laissant ambiguë : soit retrait refusé, soit version conservée jusqu'à la fin de l'exécution. Tester isolation de deux espaces, trois environnements, permissions, doublons, concurrence, migration de `0006`, sérialisation sans secret et mode local.
+
+Réalisation : `POST/GET /api/spaces/{space_id}/connections`, `PUT/DELETE …/{name}/bindings/{environment}`, `DELETE …/{name}`. Le point d'accès est une **clé** de configuration serveur, et l'état de l'identifiant est toujours `unconfigured` avant 12.2. Une liaison absente est rendue pour chacun des trois environnements ; une écriture identique ne refait pas le journal. Le retrait d'une connexion encore liée répond `connection_in_use`. Le magasin verrouille la connexion logique pendant les modifications de liaisons ; deux créations concurrentes n'en produisent qu'une. La migration `0007` garde les espaces existants et laisse le registre vide. Les routes sont sous la garde d'identité et le droit d'administration recalculé à chaque appel ; le mode local est dit `local_mode`. Les quatre refus propres au registre ont des exemples de contrat. La télémétrie connaît leurs codes, et son test de confidentialité parcourt aussi toutes ces routes avec des valeurs sentinelles. Aucun connecteur n'est activé.
+
+Vérification : `pnpm run check:api` (4 417 tests, 100 % de couverture), `pnpm run check:web` (2 279 tests, 100 %), `pnpm run check:e2e` (555 passés, un saut prévu), `pnpm run check:docs`. Le premier passage web du gate complet a rencontré une attente intermittente dans un test de création d'espace existant ; le test isolé et la suite web complète sont repassés sans modification web.
 
 ### 12.2 — Coffre et liaisons d'identifiants
 

@@ -25,6 +25,7 @@ from identity.conftest import horloge as horloge
 from identity.test_web import connecter
 from skifer_board import server
 from skifer_board.catalog import CatalogService
+from skifer_board.execution import ConnectionStore
 from skifer_board.identity import OidcConfig
 from skifer_board.identity.config import ADMIN_GROUP, REQUIRED
 from skifer_board.identity.model import Identity
@@ -236,11 +237,12 @@ def test_main_avec_oidc_assemble_les_espaces_en_base(
     environnement[ADMIN_GROUP] = PLATEFORME
     server.main()
     creer.assert_called_once()
-    service, identite, espaces, enregistreur = creer.call_args.args
+    service, identite, espaces, enregistreur, connexions = creer.call_args.args
     assert isinstance(espaces, Spaces)
     # Avec une base, les mesures y vont, par le même enregistreur que le catalogue (plan 11, T4).
     assert isinstance(enregistreur, Recorder)
     assert isinstance(enregistreur._store, TelemetryStore)
+    assert isinstance(connexions, ConnectionStore)
     assert service._measure == enregistreur.submit
     assert isinstance(espaces.store, SpaceStore)
     assert espaces.admin_group == PLATEFORME == identite.config.admin_group
@@ -308,10 +310,11 @@ def test_main_sans_oidc_avec_base_mesures_au_journal_seul(
     try:
         server.main()
         assert len(moteurs) == 1
-        service, identite, espaces, enregistreur = creer.call_args.args
+        service, identite, espaces, enregistreur, connexions = creer.call_args.args
         assert (identite, espaces) == (None, None)
         assert isinstance(enregistreur, Recorder)
         assert enregistreur.store is None
+        assert connexions is None
         assert service._measure == enregistreur.submit
     finally:
         for moteur in moteurs:

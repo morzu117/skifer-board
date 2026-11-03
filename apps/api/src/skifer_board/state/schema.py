@@ -242,3 +242,46 @@ telemetry = Table(
     Column("size", BigInteger, nullable=True),
     Index("ix_telemetry_at", "at"),
 )
+
+# Registre de connexions du lot 03 (plan 12, 12.1). Ces tables ne contiennent aucun secret :
+# endpoint_key désigne une configuration autorisée côté serveur, jamais une URL du navigateur.
+logical_connections = Table(
+    "logical_connections",
+    metadata,
+    Column(
+        "space_id",
+        String(40),
+        ForeignKey("spaces.id", name="fk_logical_connections_space"),
+        nullable=False,
+    ),
+    Column("name", String(63), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_by_issuer", Text, nullable=False),
+    Column("created_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "name", name="pk_logical_connections"),
+)
+
+connection_bindings = Table(
+    "connection_bindings",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("name", String(63), nullable=False),
+    Column("environment", String(10), nullable=False),
+    Column("connector", String(16), nullable=False),
+    Column("endpoint_key", String(63), nullable=False),
+    Column("identity_mode", String(16), nullable=False),
+    Column("set_at", DateTime(timezone=True), nullable=False),
+    Column("set_by_issuer", Text, nullable=False),
+    Column("set_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "name", "environment", name="pk_connection_bindings"),
+    ForeignKeyConstraint(
+        ["space_id", "name"],
+        ["logical_connections.space_id", "logical_connections.name"],
+        name="fk_connection_bindings_logical",
+    ),
+    ForeignKeyConstraint(
+        ["space_id", "environment"],
+        ["space_environments.space_id", "space_environments.code"],
+        name="fk_connection_bindings_environment",
+    ),
+)

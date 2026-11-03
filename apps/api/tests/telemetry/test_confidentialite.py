@@ -30,6 +30,7 @@ from identity.conftest import fournisseur as fournisseur
 from identity.conftest import horloge as horloge
 from identity.test_web import connecter
 from skifer_board.catalog import CatalogService
+from skifer_board.execution import ConnectionStore
 from skifer_board.identity import OidcConfig
 from skifer_board.identity.web import build_runtime
 from skifer_board.server import create_app
@@ -114,7 +115,9 @@ def serveur(
     )
     enregistreur = Recorder(TelemetryStore(moteur), horloge, wait=0.01)
     catalogue = CatalogService(service.config, lambda: INSTANT, measure=enregistreur.submit)
-    app = create_app(catalogue, runtime, espaces_en_base(moteur, horloge), enregistreur)
+    app = create_app(
+        catalogue, runtime, espaces_en_base(moteur, horloge), enregistreur, ConnectionStore(moteur)
+    )
     peupler(magasin, horloge)
     magasin.grant(
         A, Environment.DEV, GroupPrincipal("finance-admins"), PLATEFORME_SEULE.ref, horloge()
@@ -300,6 +303,26 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 204)
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 404)
 
+        x = s + "/connections"
+        xb = x + "/{name}/bindings/{environment}"
+        parcours("GET", f"/api/spaces/{A}/connections", x, 200)
+        parcours("POST", f"/api/spaces/{A}/connections", x, 201, {"name": "connexion_sentinelle"})
+        parcours(
+            "PUT",
+            f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV",
+            xb,
+            200,
+            {
+                "connector": "databricks",
+                "endpoint_key": "wh-sentinelle",
+                "identity_mode": "service",
+            },
+        )
+        parcours(
+            "DELETE", f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV", xb, 204
+        )
+        parcours("DELETE", f"/api/spaces/{A}/connections/connexion_sentinelle", x + "/{name}", 204)
+
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text
         trouvees = parcours("GET", "/api/people", "/api/people", 200, params={"q": "sentinelle"})
@@ -405,7 +428,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         porte = "{space_id}" in e["operation"]
         assert (e["space_id"] is not None) == porte
         assert e["space_id"] in {None, A, "espace-inexistant"}
-        if e["operation"] != v:
+        if e["operation"] not in (v, xb):
             assert e["environment"] is None
     # Environnement seulement s'il est dans la liste fermée (`env-sentinelle` : aucun).
     assert [e["environment"] for e in table if e["operation"] == v] == [
@@ -415,6 +438,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         None,
         "DEV",
     ]
+    assert [e["environment"] for e in table if e["operation"] == xb] == ["DEV", "DEV"]
 
     # Rien de T3, ni dans la table ni dans le journal.
     textes = [repr(sorted(e.items())) for e in table] + journal.textes()

@@ -201,6 +201,11 @@ class SpaceStore:
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
 
+    @property
+    def engine(self) -> Engine:
+        """Base partagée par les sous-registres de l'espace (plan 12, 12.1)."""
+        return self._engine
+
     # --- Personnes connues (E5).
 
     def record_login(self, identity: Identity, now: datetime) -> None:
