@@ -180,6 +180,13 @@ def run_semantic(
     except (SemanticQueryError, ConnectorError, OSError, ValueError, TypeError):
         raise SemanticRefusal("engine_unavailable") from None
     evidence = result.evidence.to_dict()
+    policy_models = {
+        item.get("model_key")
+        for item in evidence.get("normalized_filters", ())
+        if item.get("origin") == "policy"
+        and item.get("operator") == "eq"
+        and item.get("value") == "<redacted>"
+    }
     if (
         evidence.get("sql_hash") != backend.sql_hash
         or evidence.get("sql_dialect") != dialect
@@ -187,6 +194,8 @@ def run_semantic(
         or evidence.get("policy", {}).get("decision") not in {"ALLOW", "WARN"}
         or not evidence.get("evidence_id")
         or not evidence.get("sources")
+        or not evidence.get("model_keys")
+        or not set(evidence["model_keys"]).issubset(policy_models)
     ):
         raise SemanticRefusal("evidence_invalid")
     return SemanticOutput(result.dataframe, evidence)

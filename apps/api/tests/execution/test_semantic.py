@@ -173,6 +173,10 @@ def test_rls_two_readers_admin_filter_removed_and_evidence(
     assert alice.evidence["sql_hash"] != bob.evidence["sql_hash"]
     assert alice.evidence["policy"]["decision"] == "ALLOW"
     assert alice.evidence["evidence_id"]
+    assert any(
+        item.get("origin") == "policy" and item.get("operator") == "eq"
+        for item in alice.evidence["normalized_filters"]
+    )
     assert "'A'" not in str(alice.evidence)
     assert len(connector.sql) == 4
 
@@ -372,6 +376,8 @@ def test_status_identity_mismatch_is_refused(tmp_path: Path) -> None:
         ("policy", {"decision": "DENY"}),
         ("evidence_id", ""),
         ("sources", []),
+        ("model_keys", []),
+        ("normalized_filters", []),
     ],
 )
 def test_incoherent_evidence_is_never_a_success(
@@ -393,6 +399,15 @@ def test_incoherent_evidence_is_never_a_success(
                 "policy": {"decision": "ALLOW"},
                 "evidence_id": "evidence-1",
                 "sources": ["orders"],
+                "model_keys": ["orders"],
+                "normalized_filters": [
+                    {
+                        "model_key": "orders",
+                        "origin": "policy",
+                        "operator": "eq",
+                        "value": "<redacted>",
+                    }
+                ],
             }
             payload[field] = value
             return SimpleNamespace(
