@@ -19,6 +19,7 @@ import { MembersPage } from "./spaces/MembersPage";
 import { ParametersPage } from "./spaces/ParametersPage";
 import { manages, SPACE_ID, type Space, type SpaceList } from "./spaces/model";
 import { SpacesHome } from "./spaces/SpacesHome";
+import { TelemetryPage } from "./telemetry/TelemetryPage";
 import { Banner } from "./ui/Banner";
 import { useRefreshed } from "./ui/useOutcome";
 
@@ -228,6 +229,9 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
   if (route.page === "create") {
     return ["Vos espaces", "Nouvel espace"];
   }
+  if (route.page === "telemetry") {
+    return ["Vos espaces", "Télémétrie"];
+  }
   if (current?.status === "ok") {
     if (route.page === "members") {
       return [current.value.name, "Membres et rôles"];
@@ -267,6 +271,9 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
         }}
       />
     );
+  }
+  if (route.page === "telemetry") {
+    return <TelemetryPage fetcher={fetcher} />;
   }
   if (route.page === "prototype" || current === null) {
     return <PrototypePage />;

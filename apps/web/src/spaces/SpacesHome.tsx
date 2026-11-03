@@ -25,9 +25,14 @@ export function SpacesHome({ listed: result }: SpacesHomeProps) {
           <p className="sb-page-head__lead">Un rôle dans un espace ne donne aucun droit sur les données : elles restent évaluées pour vous.</p>
         </div>
         {platformAdmin ? (
-          <a className="sb-button sb-button--primary" href={routeHash({ page: "create" })}>
-            Créer un espace
-          </a>
+          <div className="sb-spaces__admin">
+            <a className="sb-button" href={routeHash({ page: "telemetry" })}>
+              Télémétrie
+            </a>
+            <a className="sb-button sb-button--primary" href={routeHash({ page: "create" })}>
+              Créer un espace
+            </a>
+          </div>
         ) : null}
       </div>
       {result.status === "loading" ? (

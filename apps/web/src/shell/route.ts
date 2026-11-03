@@ -4,12 +4,14 @@ import { useMemo, useSyncExternalStore } from "react";
  * Pages de l'application, adressées par l'ancre de l'URL (plan 04, C11). L'accueil liste les
  * espaces ; le catalogue, les membres, les environnements et les paramètres se lisent dans un
  * espace (plan 08, 8.3 et 8.4 ; plan 09, 9.4 ; plan 10, 10.3) ; le prototype graphique reste
- * accessible hors espace, comme démonstration.
+ * accessible hors espace, comme démonstration. La télémétrie se lit hors espace, par
+ * l'administration de la plateforme (plan 11, 11.4).
  */
 export type Route =
   | { page: "home" }
   | { page: "prototype" }
   | { page: "create" }
+  | { page: "telemetry" }
   | { page: "catalogue"; space: string }
   | { page: "members"; space: string }
   | { page: "environments"; space: string }
@@ -17,6 +19,7 @@ export type Route =
 
 const PROTOTYPE_HASH = "#/prototype";
 const CREATE_HASH = "#/nouvel-espace";
+const TELEMETRY_HASH = "#/telemetrie";
 const SPACE_PREFIX = "#/espaces/";
 /** Page d'un espace selon le dernier segment de l'ancre. */
 const SPACE_PAGES = {
@@ -34,6 +37,8 @@ export function routeHash(route: Route): string {
       return PROTOTYPE_HASH;
     case "create":
       return CREATE_HASH;
+    case "telemetry":
+      return TELEMETRY_HASH;
     case "catalogue":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/catalogue`;
     case "members":
@@ -60,6 +65,9 @@ export function routeFromHash(hash: string): Route {
   }
   if (hash === CREATE_HASH) {
     return { page: "create" };
+  }
+  if (hash === TELEMETRY_HASH) {
+    return { page: "telemetry" };
   }
   if (hash.startsWith(SPACE_PREFIX)) {
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.

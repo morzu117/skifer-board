@@ -1,0 +1,57 @@
+/* Écran « Télémétrie » (plan 11, 11.4) : tableau des opérations, les plus lentes d'abord. */
+.sb-telemetry__period,
+.sb-telemetry__empty {
+  margin: 0 0 var(--sb-space-4);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+/* Chiffres tabulaires : les colonnes se lisent d'un coup d'œil (T8). Un nombre ne se coupe pas ;
+   un en-tête, en texte courant, passe à la ligne pour que le tableau tienne à 1280 px. */
+.sb-telemetry td.sb-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sb-telemetry thead th.sb-num {
+  font-family: inherit;
+}
+
+.sb-telemetry th,
+.sb-telemetry td {
+  padding-inline: var(--sb-space-3);
+  vertical-align: top;
+}
+
+.sb-telemetry thead th {
+  vertical-align: bottom;
+}
+
+/* L'opération reste visible quand le tableau défile vers ses colonnes. */
+.sb-telemetry thead th:first-child,
+.sb-telemetry th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--sb-surface);
+}
+
+.sb-telemetry__operation {
+  min-width: 12rem;
+  color: var(--sb-ink);
+  font-weight: 500;
+  /* Coupé après une barre oblique ; au milieu d'un mot seulement s'il ne tient pas autrement. */
+  overflow-wrap: break-word;
+}
+
+.sb-telemetry__operation code {
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-telemetry__kind {
+  display: block;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}

@@ -1,6 +1,6 @@
 # Plan 11 — Télémétrie (lot 02, sixième tranche)
 
-Date : 3 novembre 2026 · Statut : **à réaliser**. Sixième et dernière tranche du lot 02 (« socle partagé »), après les paramètres de déploiement (plan 10). Choix du porteur du 3 novembre, qui suit les recommandations : **mesurer dès maintenant ce qui existe**, **jamais la personne ni une valeur**, **mesures brutes en base avec une ligne JSON sur la sortie standard**, **lecture réservée à l'administration de la plateforme**, **rétention de 90 jours**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+Date : 3 novembre 2026 · Statut : **réalisé (11.1 à 11.4)**. Sixième et dernière tranche du lot 02 (« socle partagé »), après les paramètres de déploiement (plan 10). Choix du porteur du 3 novembre, qui suit les recommandations : **mesurer dès maintenant ce qui existe**, **jamais la personne ni une valeur**, **mesures brutes en base avec une ligne JSON sur la sortie standard**, **lecture réservée à l'administration de la plateforme**, **rétention de 90 jours**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
 
 Plan parent : [plan de développement](../plan-de-developpement.md), §8 lot 02, §10 (« Volumes et performance : à étudier à l'usage ; on monitore d'abord. Le lot 02 livre la télémétrie (durée par exécution, lignes, taille, tuiles par dashboard) ; les seuils sont fixés après le pilote »). Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §9 (administration). Design : `docs/design/RULES.md`, `DESIGN-SYSTEM.md`.
 
@@ -88,6 +88,14 @@ Créés : `apps/web/src/telemetry/`. Modifiés : route, coque, accueil des espac
 - États : lecture, vide, refus, mode local, panne.
 
 Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+- Le lien « Télémétrie » est un bouton secondaire à côté de « Créer un espace », sur l'accueil ; hors espace, la page n'a pas d'entrée dans la navigation latérale. La fenêtre se choisit par une bascule du même dessin que celle des environnements, et elle n'est pas gardée dans l'adresse.
+- L'écran garde l'ordre du p95 décroissant même si le serveur le rompait ; à p95 égal, l'ordre du serveur est gardé. Il refuse une réponse d'une autre fenêtre que celle demandée, et une réponse dont la période et les opérations ne vont pas ensemble.
+- Durées au dixième de milliseconde, tailles en o, kio ou Mio, documents médians au dixième s'ils tombent entre deux ; erreurs et refus avec leur part des mesures. L'âge de la dernière mesure est calculé à l'affichage.
+- Le décodeur refuse aussi une fenêtre dont le début suit la fin, une plus ancienne mesure après la plus récente, et des durées où la médiane, le p95 et le maximum ne sont pas dans cet ordre.
+- Après un refus du droit ou du mode local, la bascule de fenêtre n'est pas offerte, puisque ni l'un ni l'autre ne dépend de la fenêtre ; après un autre refus, elle reste. Les en-têtes du tableau passent à la ligne pour qu'il tienne à 1280 px, et un gabarit se coupe après une barre oblique plutôt qu'au milieu d'un mot.
+- Tests écrits par un agent Claude indépendant. Il a trouvé deux défauts, corrigés avant le commit : une période à une seule borne était acceptée comme une fenêtre vide, et une taille arrondie jusqu'à l'unité supérieure restait dans l'unité inférieure (« 1 024,0 kio »). Ses remarques ont donné les trois points ci-dessus.
 
 ## 4. Rayon d'impact
 

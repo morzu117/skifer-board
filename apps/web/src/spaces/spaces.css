@@ -539,3 +539,10 @@
   flex-wrap: wrap;
   gap: var(--sb-space-3);
 }
+
+/* Actions de l'administration de la plateforme sur l'accueil (plan 11, 11.4). */
+.sb-spaces__admin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3);
+}

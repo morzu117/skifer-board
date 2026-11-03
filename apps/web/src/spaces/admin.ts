@@ -105,14 +105,14 @@ function refusalOf(value: unknown): Refusal | null {
   return { code, field };
 }
 
-interface Call<T> {
+export interface Call<T> {
   url: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   decode: (value: unknown) => T;
 }
 
-async function call<T>({ url, method = "GET", body, decode }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
+export async function call<T>({ url, method = "GET", body, decode }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
   let response: Response;
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
