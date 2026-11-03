@@ -34,6 +34,8 @@ REFUSAL_CODES = frozenset(
         "connection_exists",
         "connection_in_use",
         "connection_not_found",
+        "credential_not_allowed",
+        "credential_not_found",
         "diff_not_supported",
         "diff_unavailable",
         "document_not_found",
@@ -57,6 +59,7 @@ REFUSAL_CODES = frozenset(
         "unauthenticated",
         "unknown_person",
         "values_incompatible",
+        "vault_unavailable",
         "version_not_found",
     }
 )

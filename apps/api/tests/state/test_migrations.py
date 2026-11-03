@@ -157,6 +157,17 @@ COLONNES = {
         "set_by_issuer": False,
         "set_by_subject": False,
     },
+    "connection_credentials": {
+        "space_id": False,
+        "name": False,
+        "environment": False,
+        "key_id": False,
+        "nonce": False,
+        "ciphertext": False,
+        "set_at": False,
+        "set_by_issuer": False,
+        "set_by_subject": False,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
@@ -172,6 +183,7 @@ INSTANTS = {
     "telemetry": {"at"},
     "logical_connections": {"created_at"},
     "connection_bindings": {"set_at"},
+    "connection_credentials": {"set_at"},
 }
 CLES = {
     "sessions": ["fingerprint"],
@@ -187,6 +199,7 @@ CLES = {
     "telemetry": ["id"],
     "logical_connections": ["space_id", "name"],
     "connection_bindings": ["space_id", "name", "environment"],
+    "connection_credentials": ["space_id", "name", "environment"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 

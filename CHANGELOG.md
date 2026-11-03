@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.2 : coffre des identifiants de service par liaison et environnement, chiffré avec AES-256-GCM et clé versionnée hors de la base. Écriture, remplacement et suppression sans valeur en réponse, état de disponibilité dans le registre, journal sans secret, migration `0008` et commande explicite de rotation. Changer ou retirer une liaison supprime son identifiant dans la même transaction ; une clé absente ou un texte chiffré illisible désactive la liaison.
+
 - Plan 12, 12.1 : registre descriptif des connexions logiques par espace et de leurs liaisons DEV/TEST/PROD, migration `0007`, routes d'administration et journal. Un point d'accès est une clé de configuration serveur, jamais une URL libre ; aucune valeur secrète ni exécution de données n'est admise à ce stade. Les liaisons non configurées sont explicites, les écritures identiques sont idempotentes et une connexion liée ne peut être retirée.
 
 - Plan 01, 1.1 : squelette du dépôt après le reboot. uv workspace (`apps/api`, paquet `skifer_board`, Python 3.12), `pyarrow` comme format pivot des résultats, gate `pnpm run check` (ruff, mypy strict, pytest avec couverture de branches à 100 %, contrôle YAML et changelog), `CLAUDE.md` minimal portant les invariants du plan de développement.

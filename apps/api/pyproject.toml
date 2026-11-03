@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "pyjwt[crypto]>=2.10",
+    "cryptography>=50",
     "sqlalchemy>=2.1.6",
     "alembic>=1.20.1",
     "pg8000>=1.31.6",
@@ -17,6 +18,7 @@ dependencies = [
 skifer-board-api = "skifer_board.server:main"
 skifer-board-migrate = "skifer_board.state.migrate:main"
 skifer-board-telemetry = "skifer_board.telemetry.cli:main"
+skifer-board-vault-rotate = "skifer_board.execution.rotate:main"
 
 [build-system]
 requires = ["uv_build>=0.6"]

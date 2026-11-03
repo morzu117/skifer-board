@@ -15,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    LargeBinary,
     MetaData,
     PrimaryKeyConstraint,
     SmallInteger,
@@ -283,5 +284,30 @@ connection_bindings = Table(
         ["space_id", "environment"],
         ["space_environments.space_id", "space_environments.code"],
         name="fk_connection_bindings_environment",
+    ),
+)
+
+# Identifiants serveur : seul le coffre déchiffre ces octets (plan 12, 12.2).
+connection_credentials = Table(
+    "connection_credentials",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("name", String(63), nullable=False),
+    Column("environment", String(10), nullable=False),
+    Column("key_id", String(32), nullable=False),
+    Column("nonce", LargeBinary, nullable=False),
+    Column("ciphertext", LargeBinary, nullable=False),
+    Column("set_at", DateTime(timezone=True), nullable=False),
+    Column("set_by_issuer", Text, nullable=False),
+    Column("set_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "name", "environment", name="pk_connection_credentials"),
+    ForeignKeyConstraint(
+        ["space_id", "name", "environment"],
+        [
+            "connection_bindings.space_id",
+            "connection_bindings.name",
+            "connection_bindings.environment",
+        ],
+        name="fk_connection_credentials_binding",
     ),
 )

@@ -9,7 +9,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
 from ..spaces.model import Environment, PersonRef
-from ..state.schema import connection_bindings, logical_connections, space_events
+from ..state.schema import (
+    connection_bindings,
+    connection_credentials,
+    logical_connections,
+    space_events,
+)
 from .model import Binding, Connector, IdentityMode, LogicalConnection
 
 
@@ -149,6 +154,23 @@ class ConnectionStore:
                 identity_mode.value,
             ):
                 return _binding(old)
+            # Un identifiant est lié à la configuration exacte, pas seulement au nom logique.
+            removed_credential = connection.execute(
+                delete(connection_credentials).where(
+                    connection_credentials.c.space_id == space_id,
+                    connection_credentials.c.name == name,
+                    connection_credentials.c.environment == environment.value,
+                )
+            )
+            if removed_credential.rowcount:
+                self._event(
+                    connection,
+                    space_id,
+                    actor,
+                    at,
+                    "credential_removed",
+                    {"name": name, "environment": environment.value},
+                )
             values = dict(
                 connector=connector.value,
                 endpoint_key=endpoint_key,
@@ -189,6 +211,22 @@ class ConnectionStore:
             ).one_or_none()
             if parent is None:
                 raise ConnectionNotFound(name)
+            removed_credential = connection.execute(
+                delete(connection_credentials).where(
+                    connection_credentials.c.space_id == space_id,
+                    connection_credentials.c.name == name,
+                    connection_credentials.c.environment == environment.value,
+                )
+            )
+            if removed_credential.rowcount:
+                self._event(
+                    connection,
+                    space_id,
+                    actor,
+                    at,
+                    "credential_removed",
+                    {"name": name, "environment": environment.value},
+                )
             removed = connection.execute(
                 delete(connection_bindings).where(
                     connection_bindings.c.space_id == space_id,

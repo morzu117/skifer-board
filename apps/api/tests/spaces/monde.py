@@ -22,6 +22,7 @@ from httpx2 import Response
 from identity.conftest import Horloge
 from skifer_board.catalog import CatalogService
 from skifer_board.execution import ConnectionStore
+from skifer_board.execution.vault import VaultKeys
 from skifer_board.identity import MemorySessionStore, OidcConfig
 from skifer_board.identity.model import Identity
 from skifer_board.identity.web import IdentityRuntime, build_runtime
@@ -232,7 +233,11 @@ def monde(
         on_login=magasin.record_login,
     )
     app = create_app(
-        service, runtime, espaces_en_base(moteur, horloge), connections=ConnectionStore(moteur)
+        service,
+        runtime,
+        espaces_en_base(moteur, horloge),
+        connections=ConnectionStore(moteur),
+        vault_keys=VaultKeys("test", {"test": b"1" * 32}),
     )
     try:
         with TestClient(
