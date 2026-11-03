@@ -200,3 +200,14 @@ class Summary:
     oldest: datetime | None
     newest: datetime | None
     operations: tuple[OperationSummary, ...]
+
+    def to_json(self) -> dict[str, Any]:
+        """Réponse de lecture (T7) : la fenêtre demandée et la période réellement couverte."""
+        return {
+            "window": self.window.value,
+            "start": self.start.astimezone(UTC).isoformat(),
+            "end": self.end.astimezone(UTC).isoformat(),
+            "oldest": None if self.oldest is None else self.oldest.astimezone(UTC).isoformat(),
+            "newest": None if self.newest is None else self.newest.astimezone(UTC).isoformat(),
+            "operations": [operation.to_json() for operation in self.operations],
+        }

@@ -354,6 +354,11 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
             params={"base": "base-sentinelle"},
         )
 
+        # Lecture de la télémétrie (plan 11, 11.3) : ni personne ni valeur dans sa réponse.
+        t = "/api/telemetry"
+        lue = parcours("GET", t, t, 200, params={"window": "24h"})
+        assert "sentinelle" not in lue.text.lower()
+        parcours("GET", t, t, 400, params={"window": "fenetre-sentinelle"})
         # Sans route : `unmatched`, jamais le chemin.
         parcours("GET", "/api/chemin-sentinelle/x", "unmatched", 404)
         parcours("GET", "/page-sentinelle", "unmatched", 404)

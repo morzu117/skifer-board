@@ -52,7 +52,13 @@ from .state import (
     connect,
 )
 from .state import config_from_env as database_from_env
-from .telemetry import Recorder, TelemetryMiddleware, TelemetryStore, configure_logging
+from .telemetry import (
+    Recorder,
+    TelemetryMiddleware,
+    TelemetryStore,
+    configure_logging,
+    install_telemetry,
+)
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
 STATE_VARIABLE = "SKIFER_BOARD_STATE_DIR"
@@ -136,6 +142,9 @@ def create_app(
     )
     install_identity(app, identity)
     reader = Depends(install_spaces(app, spaces).reader)
+    # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
+    readable = None if spaces.store is None else telemetry.store
+    install_telemetry(app, readable, spaces.platform_admin, telemetry.clock)
     catalog_path = "/api/spaces/{space_id}/catalog"
 
     @app.exception_handler(HTTPException)
@@ -211,7 +220,7 @@ def create_app(
         TelemetryMiddleware,
         routes=app.router.routes,
         recorder=telemetry,
-        clock=lambda: datetime.now(UTC),
+        clock=telemetry.clock,
     )
     return app
 
@@ -291,9 +300,9 @@ def main() -> None:
     identity = identity_runtime(os.environ, host, engine)
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
-    # Mesures en base s'il y en a une, toujours sur la sortie standard (plan 11, T4).
+    # Mesures en base avec les espaces en base, toujours sur la sortie standard (plan 11, T4).
     configure_logging()
-    recorder = Recorder(None if engine is None else TelemetryStore(engine))
+    recorder = Recorder(None if spaces is None or engine is None else TelemetryStore(engine))
     service = CatalogService(catalog, measure=recorder.submit)
     app = create_app(service, identity, spaces, recorder)
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

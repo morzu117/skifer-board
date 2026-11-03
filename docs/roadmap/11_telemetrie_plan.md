@@ -72,6 +72,14 @@ Modifiés : `telemetry/`, `server.py`, `contracts/telemetrie/`.
 
 Tests : administration de la plateforme, personne sans ce droit, sans session ; mode local ; chaque fenêtre ; aucune donnée de T3 dans la réponse.
 
+Écarts de réalisation :
+- `window` est exigée, une seule fois : sans elle, aucune fenêtre n'est choisie à la place de l'appelant (`400 invalid_request`, `field: window`).
+- Le mode local est dit en premier, comme à la création d'un espace, puis le droit (`403 forbidden`, `required: platform_admin`), puis la fenêtre : une personne sans le droit n'apprend rien de la route.
+- Les durées et les médianes sont rendues telles que la base les calcule, sans arrondi ; l'écran les arrondit à l'affichage.
+- L'heure de la lecture est celle de l'enregistreur, la même que celle des mesures.
+- Le mode local est celui des espaces, pas l'absence de base. Avec une base d'état mais sans OIDC, personne ne peut avoir le droit de lire : la route dit `409 local_mode`, et les mesures ne vont que sur la sortie standard, comme le veut T4.
+- Tests écrits par l'agent Claude indépendant de 11.2. Les six exemples de contrat sortent tels quels du serveur réel. Il a trouvé un défaut, corrigé avant le commit : en mode local avec une base, les mesures allaient en base, et la route répondait `403` au lieu de dire le mode local. Il a aussi essayé 15 régressions volontaires, toutes attrapées par les tests.
+
 ### 11.4 — Écran « Télémétrie »
 
 Créés : `apps/web/src/telemetry/`. Modifiés : route, coque, accueil des espaces.

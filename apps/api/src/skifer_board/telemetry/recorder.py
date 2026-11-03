@@ -63,6 +63,15 @@ class Recorder:
         self._thread: threading.Thread | None = None
         self._closed = False
 
+    @property
+    def store(self) -> TelemetryStore | None:
+        """Magasin des mesures ; `None` en mode local, sans base."""
+        return self._store
+
+    @property
+    def clock(self) -> Callable[[], datetime]:
+        return self._clock
+
     def submit(self, measure: Measure) -> None:
         """Journalise la mesure et la confie au fil d'écriture ; ne bloque jamais."""
         self._logger.info(json.dumps(measure.to_json(), ensure_ascii=False))

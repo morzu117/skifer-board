@@ -147,7 +147,8 @@ def test_toutes_les_routes_api_exigent_une_session(
     ]
     assert routes
     # Toutes les routes des espaces (plan 08, 8.2), des accords de déploiement (plan 09,
-    # 9.2) et des paramètres de déploiement (plan 10, 10.2) sont sous la garde.
+    # 9.2), des paramètres de déploiement (plan 10, 10.2) et la lecture de la télémétrie
+    # (plan 11, 11.3) sont sous la garde.
     assert {(methode, route.path) for route in routes for methode in route.methods or ()} == {
         ("GET", "/api/me"),
         ("GET", "/api/spaces"),
@@ -167,6 +168,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("PUT", "/api/spaces/{space_id}/parameters/{name}/values/{environment}"),
         ("DELETE", "/api/spaces/{space_id}/parameters/{name}/values/{environment}"),
         ("GET", "/api/people"),
+        ("GET", "/api/telemetry"),
         ("GET", "/api/spaces/{space_id}/catalog"),
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}"),
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}/versions"),

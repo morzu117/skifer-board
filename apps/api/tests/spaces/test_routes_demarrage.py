@@ -282,6 +282,42 @@ def test_main_sans_groupe_d_administration(
         fermer(espaces)
 
 
+def test_main_sans_oidc_avec_base_mesures_au_journal_seul(
+    lancement: tuple[dict[str, str], Mock, Mock],
+    database_url: URL,
+    migre: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mode local avec une base d'état : l'espace reste implicite, et les mesures ne vont qu'à
+    la sortie standard ; l'enregistreur n'a pas de magasin (plan 11, T4)."""
+    environnement, creer, _ = lancement
+    for variable in REQUIRED:
+        del environnement[variable]
+    environnement["SKIFER_BOARD_HOST"] = "127.0.0.1"
+    environnement[DATABASE_URL] = database_url.render_as_string(hide_password=False)
+    moteurs: list[Engine] = []
+    ouvrir = server.state_engine
+
+    def ouvrir_et_garder(environ: Any) -> Engine | None:
+        moteur = ouvrir(environ)
+        assert moteur is not None
+        moteurs.append(moteur)
+        return moteur
+
+    monkeypatch.setattr(server, "state_engine", ouvrir_et_garder)
+    try:
+        server.main()
+        assert len(moteurs) == 1
+        service, identite, espaces, enregistreur = creer.call_args.args
+        assert (identite, espaces) == (None, None)
+        assert isinstance(enregistreur, Recorder)
+        assert enregistreur.store is None
+        assert service._measure == enregistreur.submit
+    finally:
+        for moteur in moteurs:
+            moteur.dispose()
+
+
 def test_main_sans_oidc_espace_local(
     lancement: tuple[dict[str, str], Mock, Mock], espace: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
