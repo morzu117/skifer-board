@@ -1,0 +1,71 @@
+# Plan 12 — Connexions et exécutions (lot 03)
+
+Date : 3 novembre 2026 · Statut : **planifié, aucune tranche réalisée**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan est commité avant tout code du lot, conformément à `CLAUDE.md`.
+
+Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
+
+## 1. Point de départ et limite de livraison
+
+- Board possède des sessions OIDC sans jeton du fournisseur, des espaces avec rôles, trois environnements `DEV`, `TEST`, `PROD`, des paramètres typés par environnement et une base PostgreSQL migrée jusqu'à `0006`. Il n'a ni connexion, ni coffre, ni exécution. Le mode local n'a pas de base d'état.
+- La décision D-1 retient skifer **en bibliothèque**, dans un seul adaptateur de Board. Le résolveur de skifer doit produire le SQL dans le dialecte cible ; Board le transmet sans le modifier. Board n'accepte et ne stocke jamais une chaîne SQL d'une personne.
+- Le tag `skifer` v4.0.0 épinglé par Board ne fournit ni dialecte cible dans `QueryResolver`, ni point d'extension public pour son backend, ni RLS dans le planner (SK-01, SK-08). La certification seule ne tient pas lieu de RLS. Le refus structuré attendu de SK-02 manque aussi. **Aucune requête de données réelles, même en DEV ou pour un administrateur, n'est activée tant que ces capacités ne sont pas disponibles et vérifiées**. Les premiers points livrent le registre, le coffre et les contrats ; l'exécution reste fermée. Rien n'est écrit dans `../skifer` ou `../skifer-atlas` dans ce plan.
+- Les paramètres de déploiement du plan 10 restent des valeurs non secrètes. Un paramètre `text` n'est pas une référence de coffre et aucune valeur de paramètre n'est interpolée dans du SQL.
+
+## 2. Décisions
+
+| # | Décision | Conséquence vérifiable |
+|---|---|---|
+| X1 | **Connexion logique par espace, liaison distincte par environnement.** Un nom stable désigne une source logique ; chaque liaison donne type de connecteur, point d'accès et référence d'identifiant. Les trois environnements ne partagent aucune liaison implicite. Un renommage passe par création et retrait, sans réécrire une analyse. | Clés composées d'espace et de nom ; une liaison absente est `unconfigured`, jamais empruntée à DEV. Les paramètres du plan 10 et les connexions ont des noms et des routes distincts. |
+| X2 | **Deux connecteurs bornés.** DuckDB sert aux tests et au développement local sur une source explicitement déclarée par l'exploitant ; Databricks SQL utilise Statement Execution API. Le navigateur ne choisit ni chemin de fichier, ni URL arbitraire, ni texte SQL. Les emplacements et hôtes admis sont configurés côté serveur. | Aucune route de création ne peut transformer Board en proxy vers une adresse fournie par le navigateur. Les connecteurs et leurs capacités d'annulation sont déclarés explicitement. |
+| X3 | **Coffre serveur séparé de l'état descriptif.** Les identifiants sont chiffrés au repos avec une clé stable fournie hors de la base et des fichiers de contenu ; la base ne garde que texte chiffré, version de clé et métadonnées nécessaires. Une clé absente en mode hébergé empêche d'activer ou de créer un identifiant. Rotation et suppression sont explicites. Aucun secret n'apparaît dans une réponse, une exception, le journal d'espace, la télémétrie ou `repr`. | Tests avec valeurs sentinelles sur toutes les sorties. Une base copiée sans la clé ne donne aucun identifiant. La perte de la clé n'entraîne aucun repli en clair. |
+| X4 | **Identité effective explicite.** Une liaison Databricks indique `person` (jeton délégué de la personne, si une fédération vérifiée existe) ou `service` (identifiant serveur). Le jeton OIDC de connexion de Board n'est jamais réutilisé par hypothèse comme jeton Databricks. En mode `service`, skifer doit appliquer la RLS du lecteur dans son planner et en rendre la preuve ; en mode `person`, les droits de la source s'ajoutent à la politique skifer. | Sans fédération réelle ou sans SK-08 vérifié, la route d'exécution répond à un refus fermé. Un rôle d'administrateur Board ne donne aucun droit de ligne. |
+| X5 | **Une exécution est liée à son contexte immuable.** Elle porte espace, environnement, personne (émetteur et sujet), connexion logique, empreinte de la demande sémantique, état, délais, limites, trace et preuve. Les détails n'exposent ces identifiants personnels qu'à la personne ou à l'administrateur de l'espace ; la télémétrie ne reçoit que des champs agrégables autorisés par le plan 11. | Lecture et annulation autorisées côté serveur à chaque requête ; un changement de session, d'espace ou d'environnement ne rend pas une exécution lisible. Les résultats ne sont jamais partagés par défaut. |
+| X6 | **États fermés** : `queued`, `running`, `succeeded`, `denied`, `failed`, `timed_out`, `cancelled`. L'annulation est demandée au connecteur et n'est dite effective que lorsqu'il la confirme ; un résultat arrivé pendant la course est arbitré une seule fois. Une expiration d'identifiant, un délai, une troncature et un refus de certification/RLS ont des codes distincts. | Transitions atomiques en base, y compris avec deux serveurs. Le contrat ne rend jamais des lignes sur `DENY` ou `REQUIRE_HUMAN`. |
+| X7 | **Résultat borné et provenance obligatoire.** Plafonds de durée, de lignes et d'octets côté serveur, annoncés dans la réponse. Le résultat voyage en Arrow ; un aperçu et son contrat indiquent `truncated`, grain, complétude, `evidence_id`, `sql_hash`, certification et âge. Une evidence incomplète ou incohérente invalide le succès. Aucun total tronqué n'est annoncé comme complet. | Même garde sur résultat direct et composantes de calcul contextuel. Pas de cache partagé dans ce lot. Le SQL et les identifiants de connexion ne sont pas rendus au navigateur. |
+| X8 | **Mesure d'exécution sur la télémétrie existante.** Genre `execution`, opération fixe issue d'une liste fermée, espace, environnement, issue normalisée, durée, lignes et octets. Ni personne, ni requête, ni nom de connexion, ni evidence dans la mesure. | Le tableau du plan 11 affiche ce genre sans nouveau chemin de collecte ; une panne de télémétrie ne change pas l'exécution. |
+| X9 | **Mode local explicite.** Il peut tester un DuckDB déclaré par l'exploitant, sans prétendre démontrer le RLS multi-lecteur. Les routes d'administration de connexions et de coffre répondent `409 local_mode` quand elles exigent une base. Le mode local n'autorise jamais une exécution réelle simplement parce qu'il n'y a pas d'OIDC. | Une démonstration locale ne satisfait pas l'acceptation du lot 03 sur deux lecteurs. |
+
+## 3. Tranches et commits
+
+Chaque tranche de code a son test, une entrée dans `CHANGELOG.md` sous `Unreleased` et un commit `feat(plan12-12.x)`. Le gate complet est lancé avant chaque commit. Les contrats HTTP sont produits par le serveur réel avec un connecteur simulé, sans réseau ni secret réel. Les tests vérifient le comportement et les refus ; la couverture seule ne suffit pas.
+
+### 12.1 — Contrat et registre de connexions
+
+Créer `skifer_board.execution` et `contracts/executions/`. Définir un modèle strict de connexion logique, liaison par environnement et mode d'identité ; migrer la base en `0007`. Les configurations ne contiennent aucun identifiant. Ajouter les opérations de création, lecture et retrait, avec journal d'espace, et les routes réservées aux administrateurs de l'espace ou de la plateforme. Une liaison référencée par une exécution ne peut être retirée en la laissant ambiguë : soit retrait refusé, soit version conservée jusqu'à la fin de l'exécution. Tester isolation de deux espaces, trois environnements, permissions, doublons, concurrence, migration de `0006`, sérialisation sans secret et mode local.
+
+### 12.2 — Coffre et liaisons d'identifiants
+
+Stocker les identifiants chiffrés, par espace et environnement ; fournir une écriture à usage unique et un remplacement qui ne rend jamais l'ancienne ni la nouvelle valeur. Ajouter le contrôle de configuration de la clé, rotation, suppression et audit **sans valeur**. Une référence manquante ou impossible à déchiffrer désactive la liaison. Vérifier le chiffrement, la séparation des espaces, la rotation, deux processus et l'absence de secret dans réponses, traces et journaux. La stratégie de clé et de rotation doit être documentée avant l'implémentation de cette tranche ; aucun secret dans une variable de déploiement n'est ajouté par défaut aux paramètres du plan 10.
+
+### 12.3 — Connecteurs et test de connexion
+
+Définir une interface étroite `execute / status / cancel / result` et des erreurs fermées. Implémenter DuckDB sur source déclarée et Databricks SQL Statement Execution API avec transport HTTP injecté. Tester une liaison sans exécuter une requête métier ; l'essai annonce identité utilisée, expiration et capacité d'annulation sans révéler le secret. Refuser URL privée/non autorisée, redirection, TLS non vérifié et réponse hors contrat. Tester avec faux transport et base locale, sans réseau ni cluster. Le test de connexion ne donne aucun droit de lecture sur une donnée métier.
+
+### 12.4 — Adaptateur skifer et barrière d'autorisation
+
+Un seul module importe skifer pour résoudre la demande sémantique, construire le contexte de la personne, appliquer la politique et obtenir la preuve. **Condition d'entrée :** version de skifer avec dialecte cible, point d'extension public ou contrat équivalent, refus structuré et RLS dans le planner (SK-01, SK-02 réduit, SK-08), épinglée et éprouvée par des tests de contrat. Sans elle, l'adaptateur refuse `engine_unavailable` avant le connecteur. Tests obligatoires avec deux lecteurs et des lignes différentes, filtre utilisateur retiré, rôle administrateur, `DENY`, `REQUIRE_HUMAN`, changement d'identité, preuve du RLS et même résultat logique sur les dialectes retenus. Board ne modifie pas le SQL rendu par skifer.
+
+### 12.5 — Exécutions suivies, résultat et télémétrie
+
+Migration des exécutions et de leur état ; soumission, lecture, annulation, délais et plafonds, résultat Arrow borné, preuve et erreurs typées. Définir une récupération sûre après redémarrage : une tâche dont l'état ne peut être établi devient `failed` avec cause fermée, jamais `succeeded` par supposition. Relier l'exécution à la mesure du plan 11 (X8). Tester courses annulation/fin, deux serveurs, perte du connecteur, identifiant expiré, limite de lignes et d'octets, réponse tronquée, preuve manquante, fuite entre personnes et espaces. Aucun résultat partagé ni cache de succès.
+
+### 12.6 — Écrans d'administration et centre d'exécutions
+
+Dans l'administration d'un espace, montrer connexions logiques, liaisons DEV/TEST/PROD, état d'identifiant et essai, sans afficher de secret. Centre d'exécutions : les miennes en cours et récentes ; pour l'administrateur, vue de l'espace ; état, durée, limites, troncature, annulation et détail avec preuve et trace. Chaque chargement, vide, refus, mode local, expiration, annulation en cours et panne a son message. Tests de décodeurs, composants, accessibilité, parcours Playwright et captures téléphone/ordinateur. Les commandes d'annulation restent visibles selon la capacité effective du connecteur.
+
+## 4. Acceptation du lot
+
+La recette traverse Board, skifer et les deux connecteurs, avec deux lecteurs dont les droits de ligne diffèrent : chacun ne reçoit que ses lignes ; retirer un filtre d'exploration ne change pas ce droit ; un administrateur Board ne le contourne pas. Le navigateur ne reçoit aucun secret ni SQL. Une connexion expirée, un délai dépassé, une annulation effective et un résultat tronqué ont des états distincts. Toute ligne et toute composante portent leur provenance et leur contexte d'autorisation. Une requête refusée ne rend aucune ligne. Les traces relient analyse, environnement, exécution et preuve sans inclure les identifiants. Le gate `pnpm run check` passe, avec essais d'échec délibérés des gardes critiques.
+
+Le lot ne sera pas déclaré achevé sur un simulateur ou sur DuckDB seul. Les points 12.4 et 12.5 restent bloqués tant que SK-01 et SK-08 ne sont pas livrés et vérifiés ; les autres points peuvent avancer sans les contourner.
+
+## 5. Risques et hors périmètre
+
+| Risque | Mesure prévue |
+|---|---|
+| Une liaison de service contourne les droits de la personne. | RLS skifer prouvée avant tout appel au connecteur ; refus fermé si elle manque. |
+| Une valeur secrète sort par une erreur ou une mesure. | Types sans `repr`, erreurs à codes fermés, valeurs sentinelles dans les tests de toutes les sorties. |
+| Une annulation est annoncée alors que la source continue. | État `running` jusqu'à confirmation ou état d'échec explicite ; suivi du connecteur. |
+| Le SQL ou une limite est modifié après la décision skifer. | Adaptateur unique, comparaison du texte transmis et du hash de preuve, limites appliquées par les interfaces sans réécrire le SQL. |
+
+Restent aux lots 05–09 : exploration et analyses, calculs contextuels sur résultats autorisés, dashboards, partage, cache éventuel, releases et activation. Le lot 03 ne crée ni éditeur SQL ni connexion libre depuis le navigateur.
