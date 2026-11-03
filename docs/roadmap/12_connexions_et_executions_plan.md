@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.3 réalisés ; 12.4 à 12.6 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.3 réalisés ; 12.4 à 12.7 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -65,9 +65,13 @@ Un seul module importe skifer pour résoudre la demande sémantique, construire 
 
 Migration des exécutions et de leur état ; soumission, lecture, annulation, délais et plafonds, résultat Arrow borné, preuve et erreurs typées. Définir une récupération sûre après redémarrage : une tâche dont l'état ne peut être établi devient `failed` avec cause fermée, jamais `succeeded` par supposition. Relier l'exécution à la mesure du plan 11 (X8). Tester courses annulation/fin, deux serveurs, perte du connecteur, identifiant expiré, limite de lignes et d'octets, réponse tronquée, preuve manquante, fuite entre personnes et espaces. Aucun résultat partagé ni cache de succès.
 
-### 12.6 — Écrans d'administration et centre d'exécutions
+### 12.6 — Administration des connexions
 
-Dans l'administration d'un espace, montrer connexions logiques, liaisons DEV/TEST/PROD, état d'identifiant et essai, sans afficher de secret. Centre d'exécutions : les miennes en cours et récentes ; pour l'administrateur, vue de l'espace ; état, durée, limites, troncature, annulation et détail avec preuve et trace. Chaque chargement, vide, refus, mode local, expiration, annulation en cours et panne a son message. Tests de décodeurs, composants, accessibilité, parcours Playwright et captures téléphone/ordinateur. Les commandes d'annulation restent visibles selon la capacité effective du connecteur.
+Dans l'administration d'un espace, montrer connexions logiques, liaisons DEV/TEST/PROD, état d'identifiant et essai, sans afficher de valeur secrète. Créer et retirer une connexion, configurer ou retirer une liaison, écrire/remplacer ou supprimer un identifiant de service, puis lancer l'essai sans SQL. La configuration du point d'accès reste une clé déclarée côté serveur ; l'écran ne propose ni URL, ni chemin, ni jeton OIDC personnel comme identifiant de source. Le champ de secret est effacé après soumission ou échec et n'est jamais prérempli, renvoyé par l'API ou conservé dans le stockage du navigateur. Les états de chargement, vide, refus, mode local, échec et essai en cours ont chacun un message. L'accès est réservé aux administrateurs d'espace et de plateforme, vérifié par le serveur ; l'interface masque les actions aux autres rôles. Tests de décodeurs, composants, accessibilité, parcours Playwright et captures téléphone/ordinateur. Ce point est indépendant de la barrière skifer de 12.4 et ne donne aucun droit de lire des données métier.
+
+### 12.7 — Centre d'exécutions
+
+Après 12.4 et 12.5 : les miennes en cours et récentes ; pour l'administrateur, vue de l'espace ; état, durée, limites, troncature, annulation et détail avec preuve et trace. Chaque chargement, vide, refus, mode local, expiration, annulation en cours et panne a son message. Tests de décodeurs, composants, accessibilité, parcours Playwright et captures téléphone/ordinateur. Les commandes d'annulation restent visibles selon la capacité effective du connecteur.
 
 ## 4. Acceptation du lot
 
