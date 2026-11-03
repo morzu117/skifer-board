@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.3 et 12.6 réalisés ; 12.4, 12.5 et 12.7 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.4 et 12.6 réalisés ; 12.5 et 12.7 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -9,7 +9,7 @@ Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8
 - Board possède des sessions OIDC sans jeton du fournisseur, des espaces avec rôles, trois environnements `DEV`, `TEST`, `PROD`, des paramètres typés par environnement et une base PostgreSQL migrée jusqu'à `0006`. Il n'a ni connexion, ni coffre, ni exécution. Le mode local n'a pas de base d'état.
 - La décision D-1 retient skifer **en bibliothèque**, dans un seul adaptateur de Board. Le résolveur de skifer doit produire le SQL dans le dialecte cible ; Board le transmet sans le modifier. Board n'accepte et ne stocke jamais une chaîne SQL d'une personne.
 - Au démarrage du plan, le tag `skifer` v4.0.0 épinglé par Board ne fournissait ni dialecte cible dans `QueryResolver`, ni point d'extension public pour son backend, ni RLS dans le planner (SK-01, SK-08). Le refus de certification était déjà structuré, mais son contrat Board restait à vérifier. **Aucune requête de données réelles, même en DEV ou pour un administrateur, n'est activée tant que ces capacités ne sont pas disponibles et vérifiées dans l'adaptateur.** Les premiers points livrent le registre, le coffre et les contrats ; l'exécution reste fermée.
-- Mise à jour du 3 novembre : `skifer[analyzer]==4.1.0` vient de PyPI et son plan 45 livre le backend public, les dialectes, le refus typé et la RLS. Le point 12.4 doit encore les éprouver dans Board avant d'ouvrir une route d'exécution.
+- Mise à jour du 3 novembre : `skifer[analyzer]==4.1.0` vient de PyPI et son plan 45 livre le backend public, les dialectes, le refus typé et la RLS. Le point 12.4 les éprouve dans l'adaptateur Board ; les routes métier attendent encore le suivi et les limites du point 12.5.
 - Les paramètres de déploiement du plan 10 restent des valeurs non secrètes. Un paramètre `text` n'est pas une référence de coffre et aucune valeur de paramètre n'est interpolée dans du SQL.
 
 ## 2. Décisions
@@ -62,6 +62,10 @@ Réalisation : configuration vérifiée au démarrage, interface interne `execut
 
 Un seul module importe skifer pour résoudre la demande sémantique, construire le contexte de la personne, appliquer la politique et obtenir la preuve. **Condition d'entrée :** version de skifer avec dialecte cible, point d'extension public ou contrat équivalent, refus structuré et RLS dans le planner (SK-01, SK-02 réduit, SK-08), épinglée et éprouvée par des tests de contrat. Sans elle, l'adaptateur refuse `engine_unavailable` avant le connecteur. Tests obligatoires avec deux lecteurs et des lignes différentes, filtre utilisateur retiré, rôle administrateur, `DENY`, `REQUIRE_HUMAN`, changement d'identité, preuve du RLS et même résultat logique sur les dialectes retenus. Board ne modifie pas le SQL rendu par skifer.
 
+Réalisation : `execution/semantic.py` est le seul import de skifer. Il reçoit une identité OIDC vérifiée et des attributs obtenus côté serveur, crée le `ConsumerContext` (identifiant stable dérivé de l'émetteur et du sujet), exige une politique de ligne sur **chaque** modèle du catalogue pour une liaison de service et refuse le mode `person` sans fédération. Le mode de certification vaut `enforce` par défaut ; `off` est une option explicite réservée aux tests et aux développements contrôlés. La décision de certification et la RLS précèdent le connecteur. Le backend transmet le SQL exact au connecteur, attend un état terminal dans un délai borné et compare le hash de cette transmission à la preuve expurgée de skifer. Un échec ou une preuve incohérente ne rend pas de lignes. Aucun point HTTP de lecture métier n'est encore ouvert.
+
+Vérification : contrat réel sur fichier DuckDB, contrats des deux dialectes avec deux lecteurs, administrateur, suppression d'un filtre d'exploration, changements d'identité, refus `DENY` et `REQUIRE_HUMAN` avant connecteur, attente/échec/délai, catalogue ou preuve invalides. `pnpm run check:api` et `pnpm run check:docs` passent.
+
 ### 12.5 — Exécutions suivies, résultat et télémétrie
 
 Migration des exécutions et de leur état ; soumission, lecture, annulation, délais et plafonds, résultat Arrow borné, preuve et erreurs typées. Définir une récupération sûre après redémarrage : une tâche dont l'état ne peut être établi devient `failed` avec cause fermée, jamais `succeeded` par supposition. Relier l'exécution à la mesure du plan 11 (X8). Tester courses annulation/fin, deux serveurs, perte du connecteur, identifiant expiré, limite de lignes et d'octets, réponse tronquée, preuve manquante, fuite entre personnes et espaces. Aucun résultat partagé ni cache de succès.
@@ -80,7 +84,7 @@ Après 12.4 et 12.5 : les miennes en cours et récentes ; pour l'administrateur,
 
 La recette traverse Board, skifer et les deux connecteurs, avec deux lecteurs dont les droits de ligne diffèrent : chacun ne reçoit que ses lignes ; retirer un filtre d'exploration ne change pas ce droit ; un administrateur Board ne le contourne pas. Le navigateur ne reçoit aucun secret ni SQL. Une connexion expirée, un délai dépassé, une annulation effective et un résultat tronqué ont des états distincts. Toute ligne et toute composante portent leur provenance et leur contexte d'autorisation. Une requête refusée ne rend aucune ligne. Les traces relient analyse, environnement, exécution et preuve sans inclure les identifiants. Le gate `pnpm run check` passe, avec essais d'échec délibérés des gardes critiques.
 
-Le lot ne sera pas déclaré achevé sur un simulateur ou sur DuckDB seul. Les points 12.4 et 12.5 restent bloqués tant que SK-01 et SK-08 ne sont pas livrés et vérifiés ; les autres points peuvent avancer sans les contourner.
+Le lot ne sera pas déclaré achevé sur un simulateur ou sur DuckDB seul. SK-01 et SK-08 sont livrés et vérifiés en 12.4 ; la recette intégrée des exécutions suivies et d'une source Databricks réelle reste à faire en 12.5.
 
 ## 5. Risques et hors périmètre
 
