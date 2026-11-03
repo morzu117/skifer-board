@@ -26,6 +26,7 @@ from identity.test_web import connecter
 from skifer_board import server
 from skifer_board.catalog import CatalogService
 from skifer_board.execution import ConnectionStore
+from skifer_board.execution.connectors import ENDPOINTS_VARIABLE
 from skifer_board.execution.vault import ACTIVE_VARIABLE, KEYS_VARIABLE
 from skifer_board.identity import OidcConfig
 from skifer_board.identity.config import ADMIN_GROUP, REQUIRED
@@ -238,8 +239,9 @@ def test_main_avec_oidc_assemble_les_espaces_en_base(
     environnement[ADMIN_GROUP] = PLATEFORME
     server.main()
     creer.assert_called_once()
-    service, identite, espaces, enregistreur, connexions, coffre = creer.call_args.args
+    service, identite, espaces, enregistreur, connexions, coffre, endpoints = creer.call_args.args
     assert coffre is None
+    assert endpoints == {}
     assert isinstance(espaces, Spaces)
     # Avec une base, les mesures y vont, par le même enregistreur que le catalogue (plan 11, T4).
     assert isinstance(enregistreur, Recorder)
@@ -312,8 +314,17 @@ def test_main_sans_oidc_avec_base_mesures_au_journal_seul(
     try:
         server.main()
         assert len(moteurs) == 1
-        service, identite, espaces, enregistreur, connexions, coffre = creer.call_args.args
+        (
+            service,
+            identite,
+            espaces,
+            enregistreur,
+            connexions,
+            coffre,
+            endpoints,
+        ) = creer.call_args.args
         assert coffre is None
+        assert endpoints == {}
         assert (identite, espaces) == (None, None)
         assert isinstance(enregistreur, Recorder)
         assert enregistreur.store is None
@@ -322,6 +333,19 @@ def test_main_sans_oidc_avec_base_mesures_au_journal_seul(
     finally:
         for moteur in moteurs:
             moteur.dispose()
+
+
+def test_main_refuse_configuration_des_points_d_acces_invalide(
+    lancement: tuple[dict[str, str], Mock, Mock],
+) -> None:
+    environnement, creer, _ = lancement
+    for variable in REQUIRED:
+        del environnement[variable]
+    environnement["SKIFER_BOARD_HOST"] = "127.0.0.1"
+    environnement[ENDPOINTS_VARIABLE] = '{"local":{"connector":"duckdb","path":"relative"}}'
+    with pytest.raises(SystemExit, match=ENDPOINTS_VARIABLE):
+        server.main()
+    creer.assert_not_called()
 
 
 def test_main_sans_oidc_espace_local(

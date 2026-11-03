@@ -34,6 +34,13 @@ from .catalog import (
     HistoryUnavailable,
 )
 from .execution import ConnectionStore, install_connections
+from .execution.connectors import (
+    Endpoint,
+    EndpointConfigError,
+    HttpTransport,
+    UrllibTransport,
+    endpoints_from_env,
+)
 from .execution.vault import CredentialVault, VaultConfigError, VaultKeys, keys_from_env
 from .identity import (
     ConfigError,
@@ -119,6 +126,8 @@ def create_app(
     recorder: Recorder | None = None,
     connections: ConnectionStore | None = None,
     vault_keys: VaultKeys | None = None,
+    endpoints: dict[str, Endpoint] | None = None,
+    connection_transport: HttpTransport | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -150,7 +159,15 @@ def create_app(
     guards = install_spaces(app, spaces)
     reader = Depends(guards.reader)
     vault = None if spaces.store is None else CredentialVault(spaces.store.engine, vault_keys)
-    install_connections(app, connections, guards.manager, spaces.clock, vault)
+    install_connections(
+        app,
+        connections,
+        guards.manager,
+        spaces.clock,
+        vault,
+        endpoints,
+        UrllibTransport() if connection_transport is None else connection_transport,
+    )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store
     install_telemetry(app, readable, spaces.platform_admin, telemetry.clock)
@@ -311,6 +328,10 @@ def main() -> None:
         vault_keys = keys_from_env(os.environ)
     except VaultConfigError as error:
         raise SystemExit(str(error)) from error
+    try:
+        endpoints = endpoints_from_env(os.environ)
+    except EndpointConfigError as error:
+        raise SystemExit(str(error)) from error
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
     # Mesures en base avec les espaces en base, toujours sur la sortie standard (plan 11, T4).
@@ -324,5 +345,6 @@ def main() -> None:
         recorder,
         None if engine is None or identity is None else ConnectionStore(engine),
         vault_keys,
+        endpoints,
     )
     uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

@@ -170,6 +170,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/connections"),
         ("POST", "/api/spaces/{space_id}/connections"),
         ("PUT", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}"),
+        ("POST", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}/test"),
         ("PUT", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}/credential"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}/credential"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}"),

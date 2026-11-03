@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.3 : points d'accès DuckDB et Databricks déclarés côté serveur, essai de connexion réservé à l'administration en mode hébergé et essai DuckDB déclaré en mode local, sans requête métier ni secret en réponse. DuckDB ouvre le fichier déclaré en lecture seule et interdit les accès externes depuis SQL ; le transport Databricks vérifie TLS, sans proxy ni redirection, avec réponses bornées. Interface interne d'exécution, de suivi, d'annulation et de résultat pour les deux connecteurs, encore inaccessible par HTTP avant la barrière skifer du point 12.4.
+
 - Plan 12, 12.2 : coffre des identifiants de service par liaison et environnement, chiffré avec AES-256-GCM et clé versionnée hors de la base. Écriture, remplacement et suppression sans valeur en réponse, état de disponibilité dans le registre, journal sans secret, migration `0008` et commande explicite de rotation. Changer ou retirer une liaison supprime son identifiant dans la même transaction ; une clé absente ou un texte chiffré illisible désactive la liaison.
 
 - Plan 12, 12.1 : registre descriptif des connexions logiques par espace et de leurs liaisons DEV/TEST/PROD, migration `0007`, routes d'administration et journal. Un point d'accès est une clé de configuration serveur, jamais une URL libre ; aucune valeur secrète ni exécution de données n'est admise à ce stade. Les liaisons non configurées sont explicites, les écritures identiques sont idempotentes et une connexion liée ne peut être retirée.

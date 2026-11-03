@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 et 12.2 réalisés ; 12.3 à 12.6 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.3 réalisés ; 12.4 à 12.6 planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -52,6 +52,10 @@ Réalisation : migration `0008`, chiffrement authentifié, état de disponibilit
 ### 12.3 — Connecteurs et test de connexion
 
 Définir une interface étroite `execute / status / cancel / result` et des erreurs fermées. Implémenter DuckDB sur source déclarée et Databricks SQL Statement Execution API avec transport HTTP injecté. Tester une liaison sans exécuter une requête métier ; l'essai annonce identité utilisée, expiration et capacité d'annulation sans révéler le secret. Refuser URL privée/non autorisée, redirection, TLS non vérifié et réponse hors contrat. Tester avec faux transport et base locale, sans réseau ni cluster. Le test de connexion ne donne aucun droit de lecture sur une donnée métier.
+
+Configuration retenue avant le code : `SKIFER_BOARD_CONNECTION_ENDPOINTS` est un objet JSON côté serveur, indexé par `endpoint_key`. Une entrée DuckDB désigne un fichier absolu préexistant, ouvert en lecture seule, sans accès aux fichiers externes depuis SQL ; une entrée Databricks désigne un hôte HTTPS Databricks et un identifiant de warehouse. L'API ne reçoit jamais ces adresses ni ces chemins. La lecture de métadonnées du warehouse sert d'essai, sans requête SQL. Le transport refuse toute redirection et tout hôte non admis ; l'identifiant `service` vient du coffre, alors que `person` demeure indisponible sans fédération vérifiée. L'expiration non connue d'un identifiant de service est annoncée comme inconnue, jamais inventée. En mode local, `POST /api/local/connections/{endpoint_key}/test` n'essaie qu'un DuckDB déclaré, depuis une origine de boucle locale. Les méthodes d'exécution des connecteurs restent internes et inaccessibles par HTTP avant la barrière skifer de 12.4.
+
+Réalisation : configuration vérifiée au démarrage, interface interne `execute/status/cancel/result`, DuckDB borné sur la base déclarée, Databricks SQL en JSON inline borné avec transport injecté et TLS vérifié. `POST …/bindings/{environment}/test` essaie une liaison administrée sans SQL ; l'essai local est séparé. La réponse donne identité, expiration inconnue, capacité d'annulation et état, sans valeur secrète. Un acquittement d'annulation Databricks ne vaut pas confirmation de l'état final. Les réponses sources non conformes et les points d'accès non déclarés sont refusés avec codes fermés. Les exemples de contrat sont vérifiés contre le serveur et un faux transport. Vérification : `pnpm run check:api` (4 592 tests, 100 % de couverture), `pnpm run check:web` (2 279 tests, 100 %), `pnpm run check:e2e` (555 passés, un saut prévu) et `pnpm run check:docs`.
 
 ### 12.4 — Adaptateur skifer et barrière d'autorisation
 

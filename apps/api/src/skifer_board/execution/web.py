@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -12,6 +13,17 @@ from fastapi.responses import JSONResponse
 from ..spaces.access import Access
 from ..spaces.model import Environment, LocalMode, PersonRef
 from ..spaces.web import Invalid, _body, _object, viewer
+from .connectors import (
+    ConnectorError,
+    DatabricksEndpoint,
+    DuckDbEndpoint,
+    Endpoint,
+    EndpointNotConfigured,
+    HttpTransport,
+    IdentityUnavailable,
+    probe_databricks,
+    probe_duckdb,
+)
 from .model import ENDPOINT_KEY, NAME, Binding, Connector, IdentityMode, LogicalConnection
 from .store import ConnectionError, ConnectionStore
 from .vault import CredentialVault, VaultError
@@ -65,6 +77,8 @@ def install_connections(
     manager: Callable[[Request, str], Access],
     clock: Callable[[], datetime],
     vault: CredentialVault | None = None,
+    endpoints: dict[str, Endpoint] | None = None,
+    transport: HttpTransport | None = None,
 ) -> None:
     @app.exception_handler(ConnectionError)
     async def connection_error(request: Request, error: ConnectionError) -> JSONResponse:
@@ -85,6 +99,18 @@ def install_connections(
         }[error.code]
         return JSONResponse({"error": {"code": error.code}}, status_code=status)
 
+    @app.exception_handler(ConnectorError)
+    async def connector_error(request: Request, error: ConnectorError) -> JSONResponse:
+        status = {
+            "connector_unavailable": 503,
+            "endpoint_not_configured": 409,
+            "identity_unavailable": 409,
+            "credential_rejected": 409,
+            "redirect_refused": 502,
+            "invalid_upstream": 502,
+        }[error.code]
+        return JSONResponse({"error": {"code": error.code}}, status_code=status)
+
     def writable(request: Request, space_id: str) -> tuple[ConnectionStore, Access, PersonRef]:
         if store is None:
             raise LocalMode(space_id)
@@ -94,6 +120,27 @@ def install_connections(
         return store, access, PersonRef.of(identity)
 
     path = "/api/spaces/{space_id}/connections"
+
+    if store is None:
+
+        @app.post("/api/local/connections/{endpoint_key}/test")
+        async def test_local_connection(request: Request, endpoint_key: str) -> JSONResponse:
+            if await request.body():
+                raise Invalid("body")
+            if ENDPOINT_KEY.fullmatch(endpoint_key) is None:
+                raise Invalid("endpoint_key")
+            endpoint = (endpoints or {}).get(endpoint_key)
+            if not isinstance(endpoint, DuckDbEndpoint):
+                raise EndpointNotConfigured()
+            probe = await asyncio.to_thread(probe_duckdb, endpoint)
+            return JSONResponse(
+                {
+                    "identity": probe.identity,
+                    "credential_expires_at": probe.credential_expires_at,
+                    "can_cancel": probe.can_cancel,
+                    "state": probe.state,
+                }
+            )
 
     @app.get(path)
     def list_connections(request: Request, space_id: str) -> JSONResponse:
@@ -147,6 +194,37 @@ def install_connections(
         return JSONResponse(_binding_json(binding, vault))
 
     credential_path = path + "/{name}/bindings/{environment}/credential"
+
+    @app.post(path + "/{name}/bindings/{environment}/test")
+    async def test_connection(
+        request: Request, space_id: str, name: str, environment: str
+    ) -> JSONResponse:
+        registry, access, _ = writable(request, space_id)
+        if await request.body():
+            raise Invalid("body")
+        binding = await asyncio.to_thread(
+            registry.get_binding, access.space.id, _name(name, "name"), _environment(environment)
+        )
+        endpoint = (endpoints or {}).get(binding.endpoint_key)
+        if endpoint is None or endpoint.connector is not binding.connector:
+            raise EndpointNotConfigured()
+        if isinstance(endpoint, DuckDbEndpoint):
+            probe = await asyncio.to_thread(probe_duckdb, endpoint)
+        else:
+            assert isinstance(endpoint, DatabricksEndpoint)
+            if binding.identity_mode is not IdentityMode.SERVICE:
+                raise IdentityUnavailable()
+            assert vault is not None and transport is not None
+            token = await asyncio.to_thread(vault.reveal_for_execution, binding)
+            probe = await asyncio.to_thread(probe_databricks, endpoint, token, transport)
+        return JSONResponse(
+            {
+                "identity": probe.identity,
+                "credential_expires_at": probe.credential_expires_at,
+                "can_cancel": probe.can_cancel,
+                "state": probe.state,
+            }
+        )
 
     @app.put(credential_path)
     async def set_credential(

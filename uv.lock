@@ -1444,6 +1444,7 @@ source = { editable = "apps/api" }
 dependencies = [
     { name = "alembic" },
     { name = "cryptography" },
+    { name = "duckdb" },
     { name = "fastapi" },
     { name = "pg8000" },
     { name = "pyarrow" },
@@ -1457,6 +1458,7 @@ dependencies = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.20.1" },
     { name = "cryptography", specifier = ">=50" },
+    { name = "duckdb", specifier = ">=2" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pg8000", specifier = ">=1.31.6" },
     { name = "pyarrow", specifier = ">=17" },

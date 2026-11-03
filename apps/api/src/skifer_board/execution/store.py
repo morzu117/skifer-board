@@ -103,6 +103,27 @@ class ConnectionStore:
             by_name[row.name].append(_binding(row))
         return [(_logical(row), by_name[row.name]) for row in logical]
 
+    def get_binding(self, space_id: str, name: str, environment: Environment) -> Binding:
+        with self._engine.connect() as connection:
+            logical = connection.execute(
+                select(logical_connections.c.name).where(
+                    logical_connections.c.space_id == space_id,
+                    logical_connections.c.name == name,
+                )
+            ).one_or_none()
+            if logical is None:
+                raise ConnectionNotFound(name)
+            binding = connection.execute(
+                select(connection_bindings).where(
+                    connection_bindings.c.space_id == space_id,
+                    connection_bindings.c.name == name,
+                    connection_bindings.c.environment == environment.value,
+                )
+            ).one_or_none()
+        if binding is None:
+            raise BindingNotFound(environment.value)
+        return _binding(binding)
+
     def create(self, space_id: str, name: str, actor: PersonRef, at: datetime) -> LogicalConnection:
         try:
             with self._engine.begin() as connection:

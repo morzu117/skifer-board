@@ -312,6 +312,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         x = s + "/connections"
         xb = x + "/{name}/bindings/{environment}"
         xc = xb + "/credential"
+        xt = xb + "/test"
         parcours("GET", f"/api/spaces/{A}/connections", x, 200)
         parcours("POST", f"/api/spaces/{A}/connections", x, 201, {"name": "connexion_sentinelle"})
         parcours(
@@ -333,6 +334,12 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
             {"secret": "identifiant-sentinelle"},
         )
         secrets.add("identifiant-sentinelle")
+        parcours(
+            "POST",
+            f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV/test",
+            xt,
+            409,
+        )
         parcours(
             "DELETE",
             f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV/credential",
@@ -449,7 +456,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         porte = "{space_id}" in e["operation"]
         assert (e["space_id"] is not None) == porte
         assert e["space_id"] in {None, A, "espace-inexistant"}
-        if e["operation"] not in (v, xb, xc):
+        if e["operation"] not in (v, xb, xc, xt):
             assert e["environment"] is None
     # Environnement seulement s'il est dans la liste fermée (`env-sentinelle` : aucun).
     assert [e["environment"] for e in table if e["operation"] == v] == [
@@ -461,6 +468,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
     ]
     assert [e["environment"] for e in table if e["operation"] == xb] == ["DEV", "DEV"]
     assert [e["environment"] for e in table if e["operation"] == xc] == ["DEV", "DEV"]
+    assert [e["environment"] for e in table if e["operation"] == xt] == ["DEV"]
 
     # Rien de T3, ni dans la table ni dans le journal.
     textes = [repr(sorted(e.items())) for e in table] + journal.textes()
