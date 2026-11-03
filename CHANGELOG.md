@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.5a : état durable des exécutions en base PostgreSQL (révision `0009`). Une ligne conserve contexte immuable, identité du lecteur, bail du travail, état, preuve expurgée et résultat Arrow borné, sans requête ni SQL. Les lectures et les octets de résultat sont isolés par espace et personne ; les transitions atomiques départ, annulation et fin gardent un seul état terminal. Un autre serveur ne déclare en échec qu'un bail expiré, et une liaison en cours ne peut être changée ou retirée. Tests de migration, d'isolation, de course et de récupération après abandon.
+
 - Plan 12, 12.4 : adaptateur sémantique unique vers skifer 4.1.0. La liaison de service exige une politique de ligne sur chaque modèle du catalogue ; l'identité OIDC vérifiée et les attributs fournis côté serveur construisent le contexte du lecteur, sans privilège de données pour l'administration Board. Les refus `DENY` et `REQUIRE_HUMAN` précèdent tout appel au connecteur. DuckDB et Databricks reçoivent le SQL exact du résolveur ; un statement Databricks est attendu jusqu'à son état final, avec délai borné. La preuve expurgée doit porter le même hash SQL, le dialecte, une trace de RLS par modèle et un succès cohérent, faute de quoi aucune ligne n'est rendue. La fédération personnelle et les routes de données attendent le point 12.5. Tests avec deux lecteurs, filtre retiré, administrateur, deux dialectes et refus fermés.
 
 - Prérequis du plan 12.4 : skifer `4.1.0` est épinglé depuis PyPI avec l'extra `analyzer`, qui fournit le dialecte DuckDB ; la source Git `v4.0.0` est retirée. Les routes de requête restent fermées jusqu'aux tests de l'adaptateur Board.

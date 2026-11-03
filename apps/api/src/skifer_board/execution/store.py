@@ -12,6 +12,7 @@ from ..spaces.model import Environment, PersonRef
 from ..state.schema import (
     connection_bindings,
     connection_credentials,
+    executions,
     logical_connections,
     space_events,
 )
@@ -85,6 +86,22 @@ class ConnectionStore:
                 detail=detail,
             )
         )
+
+    @staticmethod
+    def _active_execution(
+        connection: object, space_id: str, name: str, environment: Environment
+    ) -> bool:
+        found = connection.execute(  # type: ignore[attr-defined]
+            select(executions.c.id)
+            .where(
+                executions.c.space_id == space_id,
+                executions.c.connection_name == name,
+                executions.c.environment == environment.value,
+                executions.c.state.in_(("queued", "running")),
+            )
+            .limit(1)
+        ).one_or_none()
+        return found is not None
 
     def list(self, space_id: str) -> list[tuple[LogicalConnection, list[Binding]]]:
         with self._engine.connect() as connection:
@@ -175,6 +192,8 @@ class ConnectionStore:
                 identity_mode.value,
             ):
                 return _binding(old)
+            if self._active_execution(connection, space_id, name, environment):
+                raise ConnectionInUse(name)
             # Un identifiant est lié à la configuration exacte, pas seulement au nom logique.
             removed_credential = connection.execute(
                 delete(connection_credentials).where(
@@ -232,6 +251,8 @@ class ConnectionStore:
             ).one_or_none()
             if parent is None:
                 raise ConnectionNotFound(name)
+            if self._active_execution(connection, space_id, name, environment):
+                raise ConnectionInUse(name)
             removed_credential = connection.execute(
                 delete(connection_credentials).where(
                     connection_credentials.c.space_id == space_id,

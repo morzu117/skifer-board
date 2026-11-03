@@ -168,6 +168,34 @@ COLONNES = {
         "set_by_issuer": False,
         "set_by_subject": False,
     },
+    "executions": {
+        "id": False,
+        "space_id": False,
+        "environment": False,
+        "issuer": False,
+        "subject": False,
+        "connection_name": False,
+        "request_hash": False,
+        "connector": False,
+        "endpoint_key": False,
+        "identity_mode": False,
+        "binding_set_at": False,
+        "state": False,
+        "created_at": False,
+        "started_at": True,
+        "finished_at": True,
+        "deadline_at": False,
+        "lease_until": False,
+        "owner_id": False,
+        "connector_run_id": True,
+        "cancel_requested": False,
+        "error_code": True,
+        "evidence": True,
+        "result": True,
+        "row_count": True,
+        "byte_count": True,
+        "truncated": True,
+    },
 }
 INSTANTS = {
     "sessions": {"created_at", "last_seen", "expires_at"},
@@ -184,6 +212,14 @@ INSTANTS = {
     "logical_connections": {"created_at"},
     "connection_bindings": {"set_at"},
     "connection_credentials": {"set_at"},
+    "executions": {
+        "binding_set_at",
+        "created_at",
+        "started_at",
+        "finished_at",
+        "deadline_at",
+        "lease_until",
+    },
 }
 CLES = {
     "sessions": ["fingerprint"],
@@ -200,6 +236,7 @@ CLES = {
     "logical_connections": ["space_id", "name"],
     "connection_bindings": ["space_id", "name", "environment"],
     "connection_credentials": ["space_id", "name", "environment"],
+    "executions": ["id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 

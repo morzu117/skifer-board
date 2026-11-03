@@ -311,3 +311,40 @@ connection_credentials = Table(
         name="fk_connection_credentials_binding",
     ),
 )
+
+# Exécutions suivies (plan 12, 12.5a). Le résultat Arrow et la preuve expurgée sont
+# conservés sous plafonds ; la demande brute, le SQL et le secret ne le sont jamais.
+executions = Table(
+    "executions",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column(
+        "space_id", String(40), ForeignKey("spaces.id", name="fk_executions_space"), nullable=False
+    ),
+    Column("environment", String(10), nullable=False),
+    Column("issuer", Text, nullable=False),
+    Column("subject", Text, nullable=False),
+    Column("connection_name", String(63), nullable=False),
+    Column("request_hash", String(80), nullable=False),
+    Column("connector", String(16), nullable=False),
+    Column("endpoint_key", String(63), nullable=False),
+    Column("identity_mode", String(16), nullable=False),
+    Column("binding_set_at", DateTime(timezone=True), nullable=False),
+    Column("state", String(16), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("deadline_at", DateTime(timezone=True), nullable=False),
+    Column("lease_until", DateTime(timezone=True), nullable=False),
+    Column("owner_id", String(36), nullable=False),
+    Column("connector_run_id", String(36), nullable=True),
+    Column("cancel_requested", Boolean, nullable=False),
+    Column("error_code", String(40), nullable=True),
+    Column("evidence", JSONB(none_as_null=True), nullable=True),
+    Column("result", LargeBinary, nullable=True),
+    Column("row_count", BigInteger, nullable=True),
+    Column("byte_count", BigInteger, nullable=True),
+    Column("truncated", Boolean, nullable=True),
+    Index("ix_executions_reader", "space_id", "issuer", "subject", "created_at"),
+    Index("ix_executions_lease", "state", "lease_until"),
+)
