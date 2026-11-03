@@ -278,6 +278,61 @@ def test_databricks_failure_or_timeout_never_returns_rows(tmp_path: Path) -> Non
         assert error.value.code == expected
 
 
+def test_statement_is_reported_and_cancelled_only_after_source_confirms(tmp_path: Path) -> None:
+    class Cancellable(RecordingConnector):
+        cancelled = False
+
+        def cancel(self, statement_id: str) -> None:
+            self.cancelled = True
+
+    models = _model(tmp_path)
+    connector = Cancellable(_database(tmp_path), ("PENDING", "RUNNING", "CANCELED"))
+    seen: list[str] = []
+
+    def note(statement_id: str) -> bool:
+        seen.append(statement_id)
+        return True
+
+    with pytest.raises(SemanticRefusal, match="cancelled"):
+        _run(
+            SemanticRequest("orders", ("revenue",)),
+            _reader("alice", "A"),
+            _binding(Connector.DATABRICKS),
+            connector,
+            models,
+            clock=lambda: 0.0,
+            pause=lambda _: None,
+            on_statement=note,
+            cancel_requested=lambda: len(seen) > 0,
+        )
+    assert seen == ["statement-1"] and connector.cancelled
+
+
+def test_cancel_before_submission_and_lost_owner_do_not_return_rows(tmp_path: Path) -> None:
+    models = _model(tmp_path)
+    connector = RecordingConnector(_database(tmp_path))
+    with pytest.raises(SemanticRefusal, match="cancelled"):
+        _run(
+            SemanticRequest("orders", ("revenue",)),
+            _reader("alice", "A"),
+            _binding(),
+            connector,
+            models,
+            cancel_requested=lambda: True,
+        )
+    assert connector.sql == []
+    with pytest.raises(SemanticRefusal, match="execution_lost"):
+        _run(
+            SemanticRequest("orders", ("revenue",)),
+            _reader("alice", "A"),
+            _binding(),
+            connector,
+            models,
+            on_statement=lambda _: False,
+        )
+    assert len(connector.sql) == 1
+
+
 @pytest.mark.parametrize("slow_phase", ["execute", "result"])
 def test_deadline_applies_to_synchronous_work(tmp_path: Path, slow_phase: str) -> None:
     models = _model(tmp_path)
@@ -364,6 +419,19 @@ def test_status_identity_mismatch_is_refused(tmp_path: Path) -> None:
             models,
             clock=lambda: 0.0,
             pause=lambda _: None,
+        )
+
+
+def test_connector_failure_retains_closed_source_code(tmp_path: Path) -> None:
+    models = _model(tmp_path)
+    connector = DuckDbExecution(DuckDbEndpoint(tmp_path / "missing.duckdb"))
+    with pytest.raises(SemanticRefusal, match="connector_unavailable"):
+        _run(
+            SemanticRequest("orders", ("revenue",)),
+            _reader("alice", "A"),
+            _binding(),
+            connector,
+            models,
         )
 
 

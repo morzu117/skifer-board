@@ -232,6 +232,24 @@ class ExecutionStore:
             )
         return changed.rowcount == 1
 
+    def fail_queued(self, execution_id: str, owner_id: str, at: datetime) -> bool:
+        """Échec du lancement du fil, avant tout appel au connecteur."""
+        with self._engine.begin() as connection:
+            changed = connection.execute(
+                update(executions)
+                .where(
+                    executions.c.id == execution_id,
+                    executions.c.owner_id == owner_id,
+                    executions.c.state == ExecutionState.QUEUED.value,
+                )
+                .values(
+                    state=ExecutionState.FAILED.value,
+                    finished_at=at,
+                    error_code="worker_unavailable",
+                )
+            )
+        return changed.rowcount == 1
+
     def note_statement(self, execution_id: str, owner_id: str, statement_id: str) -> bool:
         with self._engine.begin() as connection:
             changed = connection.execute(

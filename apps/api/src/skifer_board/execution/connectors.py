@@ -367,7 +367,7 @@ class DatabricksExecution:
         manifest = data.get("manifest")
         if not isinstance(result, dict) or not isinstance(manifest, dict):
             raise InvalidUpstream()
-        if manifest.get("truncated") is not False or manifest.get("total_chunk_count") != 1:
+        if type(manifest.get("truncated")) is not bool or manifest.get("total_chunk_count") != 1:
             raise InvalidUpstream()
         if (
             result.get("next_chunk_index") is not None
@@ -391,9 +391,11 @@ class DuckDbExecution:
         self.endpoint = endpoint
         self._statement_id: str | None = None
         self._table: Any = None
+        self.truncated = False
 
     def execute(self, sql: str) -> RunStatus:
         import duckdb
+        import pyarrow as pa
 
         if self._statement_id is not None or not sql or len(sql.encode("utf-8")) > MAX_RESPONSE:
             raise ConnectorError()
@@ -403,12 +405,33 @@ class DuckDbExecution:
             with duckdb.connect(
                 str(self.endpoint.path), read_only=True, config={"enable_external_access": "false"}
             ) as connection:
-                table = connection.sql(sql).to_arrow_table()
+                reader = connection.sql(sql).to_arrow_reader(batch_size=256)
+                batches = []
+                count = 0
+                truncated = False
+                for batch in reader:
+                    remaining = 1000 - count
+                    taken = min(batch.num_rows, remaining)
+                    batches.append(batch.slice(0, taken))
+                    count += taken
+                    if taken < batch.num_rows:
+                        truncated = True
+                        break
+                table = pa.Table.from_batches(batches, schema=reader.schema)
         except duckdb.Error:
             raise ConnectorError() from None
-        if table.num_rows > 1000 or table.nbytes > MAX_RESPONSE:
-            raise ConnectorError()
+        if table.nbytes > MAX_RESPONSE:
+            truncated = True
+            low, high = 0, table.num_rows
+            while low < high:
+                middle = (low + high + 1) // 2
+                if table.slice(0, middle).nbytes <= MAX_RESPONSE:
+                    low = middle
+                else:
+                    high = middle - 1
+            table = table.slice(0, low)
         self._table = table
+        self.truncated = truncated
         self._statement_id = str(uuid4())
         return RunStatus("SUCCEEDED", self._statement_id)
 

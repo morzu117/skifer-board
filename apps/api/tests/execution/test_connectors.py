@@ -259,12 +259,15 @@ def test_cycle_duckdb_refuse_source_requete_et_resultat_non_bornes(tmp_path: Pat
     for sql in ("", "SELECT from"):
         with pytest.raises(ConnectorError):
             DuckDbExecution(DuckDbEndpoint(path)).execute(sql)
-    with pytest.raises(ConnectorError):
-        DuckDbExecution(DuckDbEndpoint(path)).execute("SELECT * FROM range(1001)")
-    with pytest.raises(ConnectorError):
-        DuckDbExecution(DuckDbEndpoint(path)).execute(
-            f"SELECT repeat('x', {MAX_RESPONSE + 1}) AS data"
-        )
+    many = DuckDbExecution(DuckDbEndpoint(path))
+    run = many.execute("SELECT * FROM range(1001)")
+    assert many.result(run.statement_id).num_rows == 1000 and many.truncated
+    large = DuckDbExecution(DuckDbEndpoint(path))
+    run = large.execute(f"SELECT repeat('x', {MAX_RESPONSE + 1}) AS data")
+    assert large.result(run.statement_id).num_rows == 0 and large.truncated
+    partial = DuckDbExecution(DuckDbEndpoint(path))
+    run = partial.execute(f"SELECT repeat('x', {MAX_RESPONSE // 2}) AS data FROM range(3)")
+    assert partial.result(run.statement_id).num_rows == 1 and partial.truncated
     external = tmp_path / "outside.txt"
     external.write_text("ne doit pas être lu")
     with pytest.raises(ConnectorError):
@@ -355,12 +358,6 @@ def test_cycle_databricks_identifiants_et_etats_invalides() -> None:
             "statement_id": STATEMENT,
             "status": {"state": "SUCCEEDED"},
             "result": {"data_array": []},
-            "manifest": {"truncated": True, "total_chunk_count": 1},
-        },
-        {
-            "statement_id": STATEMENT,
-            "status": {"state": "SUCCEEDED"},
-            "result": {"data_array": []},
             "manifest": {"truncated": False, "total_chunk_count": 2},
         },
         {
@@ -389,6 +386,19 @@ def test_cycle_databricks_resultat_incomplet(body: object) -> None:
     )
     with pytest.raises(InvalidUpstream):
         connector.result(STATEMENT)
+
+
+def test_cycle_databricks_resultat_tronque_est_signale() -> None:
+    body = {
+        "statement_id": STATEMENT,
+        "status": {"state": "SUCCEEDED"},
+        "result": {"data_array": [["1"]]},
+        "manifest": {"truncated": True, "total_chunk_count": 1},
+    }
+    connector = DatabricksExecution(
+        DatabricksEndpoint(HOST, WAREHOUSE), SECRET, FakeTransport(_response(body=body))
+    )
+    assert connector.result(STATEMENT)["manifest"]["truncated"] is True
 
 
 @pytest.mark.parametrize(

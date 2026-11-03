@@ -84,22 +84,47 @@ class _Backend:
         deadline: float,
         clock: Callable[[], float],
         pause: Callable[[float], None],
+        on_statement: Callable[[str], bool] | None,
+        cancel_requested: Callable[[], bool] | None,
+        can_cancel: bool,
     ) -> None:
         self.connector = connector
         self.deadline = deadline
         self.clock = clock
         self.pause = pause
+        self.on_statement = on_statement
+        self.cancel_requested = cancel_requested
+        self.can_cancel = can_cancel
         self.sql_hash: str | None = None
         self.refusal: str | None = None
 
     def execute_sql_with_metadata(self, sql: str) -> ExecutionResult:
+        try:
+            return self._execute(sql)
+        except ConnectorError as error:
+            self.refusal = error.code
+            raise
+
+    def _execute(self, sql: str) -> ExecutionResult:
         self.sql_hash = hash_sql(sql)
         status = self.connector.execute(sql)
         if self.clock() >= self.deadline:
             self.refusal = "execution_timed_out"
             raise SemanticRefusal("execution_timed_out")
         statement_id = status.statement_id
+        if self.on_statement is not None and not self.on_statement(statement_id):
+            self.refusal = "execution_lost"
+            raise SemanticRefusal("execution_lost")
+        cancel_sent = False
         while status.state in {"PENDING", "RUNNING"}:
+            if (
+                self.can_cancel
+                and not cancel_sent
+                and self.cancel_requested is not None
+                and self.cancel_requested()
+            ):
+                self.connector.cancel(statement_id)
+                cancel_sent = True
             if self.clock() >= self.deadline:
                 self.refusal = "execution_timed_out"
                 raise SemanticRefusal("execution_timed_out")
@@ -108,6 +133,9 @@ class _Backend:
             if status.statement_id != statement_id:
                 self.refusal = "invalid_upstream"
                 raise SemanticRefusal("invalid_upstream")
+        if status.state == "CANCELED":
+            self.refusal = "cancelled"
+            raise SemanticRefusal("cancelled")
         if status.state != "SUCCEEDED":
             self.refusal = "execution_failed"
             raise SemanticRefusal("execution_failed")
@@ -130,6 +158,8 @@ def run_semantic(
     timeout_seconds: float = 30.0,
     clock: Callable[[], float] = time.monotonic,
     pause: Callable[[float], None] = time.sleep,
+    on_statement: Callable[[str], bool] | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> SemanticOutput:
     """Autorise, compile et exécute une lecture complète, ou refuse sans résultat."""
     if (
@@ -140,7 +170,17 @@ def run_semantic(
         or not _all_models_have_row_policy(models_dir)
     ):
         raise SemanticRefusal("engine_unavailable")
-    backend = _Backend(connector, deadline=clock() + timeout_seconds, clock=clock, pause=pause)
+    backend = _Backend(
+        connector,
+        deadline=clock() + timeout_seconds,
+        clock=clock,
+        pause=pause,
+        on_statement=on_statement,
+        cancel_requested=cancel_requested,
+        can_cancel=binding.connector == Connector.DATABRICKS,
+    )
+    if cancel_requested is not None and cancel_requested():
+        raise SemanticRefusal("cancelled")
     user_id = sha256(f"{reader.identity.issuer}\0{reader.identity.subject}".encode()).hexdigest()
     context = ConsumerContext(
         consumer_id=user_id,
