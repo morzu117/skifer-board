@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.4a : contrat web strict des champs et calculs contextuels, constructeur de filtres typés et clients réutilisant les refus des exécutions, sans écran.
+
 - Plan 17, 17.3 : contrat des résultats figé à la soumission et calculs contextuels Arrow réservés à l'auteur, avec précision, périmètre, provenance et refus explicites. Le centre d'exécutions décode strictement le contrat sans modifier son affichage.
 
 - Plan 17, 17.2 : validation des champs exécutables et des filtres typés avant connecteur ; listes canoniques et plages déclaratives, avec maintien des politiques de ligne.

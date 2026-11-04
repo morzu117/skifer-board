@@ -56,7 +56,7 @@ REQUEST: dict[str, Any] = {
 
 
 def test_calcul_sur_resultat_et_autorisations(
-    monde: Monde, service: CatalogService, tmp_path: Path
+    monde: Monde, service: CatalogService, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _prepare(monde)
     reference = _database(tmp_path)
@@ -193,8 +193,31 @@ def test_calcul_sur_resultat_et_autorisations(
             "POST",
             url,
             json={**REQUEST, "selection": {"amount": [999]}},
-        ).json()
-        assert empty["reason"] == "empty_selection"
+        )
+        assert empty.json()["reason"] == "empty_selection"
+        exemple(empty, "contextuel-selection-vide.json")
+        exemple(
+            _call(
+                client,
+                monde,
+                LECTEUR_GROUPE,
+                "POST",
+                url,
+                json={
+                    **REQUEST,
+                    "operation": "share",
+                    "metric": "customers",
+                    "denominator": "loaded_result",
+                },
+            ),
+            "contextuel-part-indefinie.json",
+        )
+        with monkeypatch.context() as patch:
+            patch.setattr(ExecutionStore, "result", lambda *args: b"flux illisible")
+            exemple(
+                _call(client, monde, LECTEUR_GROUPE, "POST", url, json=REQUEST),
+                "contextuel-resultat-illisible.json",
+            )
 
         exemple(
             _call(
@@ -250,6 +273,7 @@ def test_calcul_sur_resultat_et_autorisations(
             )
         legacy = _call(client, monde, LECTEUR_GROUPE, "POST", url, json=REQUEST)
         assert legacy.json()["reason"] == "contract_unavailable"
+        exemple(legacy, "contextuel-contrat-absent.json")
         assert _call(client, monde, PLATEFORME_SEULE, "POST", url, json=REQUEST).status_code == 403
         for profile in (LECTEUR_PERSONNE, ADMIN_GROUPE):
             _contract(

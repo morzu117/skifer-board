@@ -219,6 +219,26 @@ def test_selection_types_arrow(kind: pa.DataType, items: list[Any], selection: l
     assert output["rows"] == [{"valeur": 10}]
 
 
+@pytest.mark.parametrize(
+    "kind,items,selection",
+    [
+        (pa.int8(), [1], [128]),
+        (pa.decimal128(4, 2), [Decimal("1.00")], ["1.234"]),
+    ],
+)
+def test_selection_hors_domaine_arrow(
+    kind: pa.DataType, items: list[Any], selection: list[Any]
+) -> None:
+    table = pa.table({"cle": pa.array(items, type=kind), "valeur": [10]})
+    contract = {
+        "dimensions": ["cle"],
+        "metrics": [{"name": "valeur", "aggregation": "sum", "additivity": "additive"}],
+    }
+    with pytest.raises(Invalid) as erreur:
+        calculer(flux(table), contract, False, "preuve", body(selection={"cle": selection}))
+    assert erreur.value.field == "selection"
+
+
 def test_erreur_selection_type_et_resultat_incoherent() -> None:
     table = pa.table({"cle": pa.array([b"a"], type=pa.binary()), "valeur": [10]})
     contract = {

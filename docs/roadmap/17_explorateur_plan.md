@@ -1,6 +1,6 @@
 # Plan 17 — Explorateur sur modèles sémantiques déclarés (lot 05a)
 
-Date : 4 novembre 2026 · Statut : 17.1 à 17.3 réalisées ; 17.4 à faire. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
+Date : 4 novembre 2026 · Statut : 17.1 à 17.3 et 17.4a réalisées ; 17.4b et 17.4c à faire. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.5–4.6, §8 lot 05 et §10.2 (D-1, D-6) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4 et §3 ; [maquette d'exploration](../design/mockups/01-exploration.html) ; plans [01](01_socle_et_calculs_contextuels_plan.md), [02](02_socle_web_et_prototype_graphique_plan.md), [12](12_connexions_et_executions_plan.md) et [16](16_executions_oauth_personnelles_plan.md).
 
@@ -42,6 +42,8 @@ Joindre le contrat de résultat au détail des réussites (E5) et ouvrir la rout
 ### 17.4 — Écran Explorateur
 
 Route d'espace et entrée de navigation ; décodeurs stricts des champs, du contrat et des calculs ; panneau des champs avec recherche, zone de requête avec filtres typés, exécution et annulation, résultat tableau/graphique, sélection avec total serveur, pied de provenance et tiroir Preuves. États chargement, vide, refus, erreur, tronqué, contexte changé et mode local. Tests web à 100 % de couverture, accessibilité sous les deux thèmes, parcours Playwright et captures ordinateur/téléphone sans débordement à 390, 768 et 1280 px.
+
+Comme 12.7, le point est découpé en trois commits, tous nécessaires : `feat(plan17-17.4a)` pour le contrat web (décodeurs et clients des champs et des calculs contextuels), `feat(plan17-17.4b)` pour l'écran et `feat(plan17-17.4c)` pour les parcours navigateur et les captures. Les filtres de date et d'horodatage restent présentés comme indisponibles avec leur raison (SK-12) ; le retour au moteur pour un chiffre indisponible est affiché comme tel, sans exécution automatique.
 
 ## 4. Acceptation du plan
 
@@ -92,3 +94,14 @@ Le décodeur web du centre d'exécutions accepte et valide strictement `result_c
 Le catalogue peut changer dans la fenêtre entre la capture du contrat et sa relecture par `run_semantic` ; le contrat est figé mais cette course n'est pas éliminée par cette tranche. L'écran §3.2 évoque un calcul seulement sur résultat complet ; pour ce plan, E6 et le §4.6 prévalent : le résultat chargé tronqué peut être calculé avec `partial: true` et le périmètre `loaded_result`. Dans le flux réel, `describe_catalog` marque `min` et `max` non additifs : leur réagrégation locale est refusée de manière conservatrice. Une moyenne marquée additive sans composantes renvoie `components_missing`, sans atteindre le calcul pondéré.
 
 Développée avec ses tests par Codex (gpt-6.1-terra), relue par Claude Sonnet 5.5 ; un cycle de corrections (500 évitables, décimaux positionnels, raisons fermées des résultats illisibles, références DuckDB multi-lignes, issues de télémétrie). Gates vérifiés par l'orchestrateur : API 5 136 tests à 100 %, web 2 479 tests à 100 %, e2e 597 réussis et un saut prévu.
+
+
+**17.4a — Contrat web de l'explorateur.** Le module `explorer` décode les champs et les calculs contextuels par formes fermées, garde l'ordre des champs et conserve les nombres exacts typés sous forme de chaînes. Le corps contextuel est validé avant envoi ; les clients réutilisent les refus fermés et les signaux de perte de session et d'accès du centre d'exécutions, dont les clients de soumission, détail, annulation et résultat Arrow restent communs. Aucun écran ni client de retour automatique au moteur n'est ajouté.
+
+La matrice et le constructeur de soumission appliquent les restrictions de 17.2, y compris SK-12, caractères Unicode, bornes, listes homogènes et plages ordonnées. Par prudence, les nombres saisis entiers hors de [−(2^53−1), 2^53−1] sont refusés localement, y compris les flottants entiers très grands ; les flottants finis renvoyés par le serveur restent acceptés. Le serveur conserve l'autorité. Les exemples versionnés de champs, calculs et refus sont testés. Le test API des sélections Arrow hors domaine est vérifié par retrait délibéré de la validation, puis restauration.
+
+Le gate web passe avec 2 627 tests et 100 % de couverture (2 784 instructions, 2 388 branches, 947 fonctions et 2 453 lignes). Le gate API passe avec 5 138 tests et 100 % de couverture des 5 361 lignes et 1 330 branches. Aucun parcours Playwright n'est lancé dans cette tranche.
+
+Node 24.21.0 utilisé ici emploie Unicode 17, tandis que Python 3.12 utilise Unicode 15 : certaines lettres ou certains chiffres admis par le client sont refusés par le serveur avec `invalid_request`, le serveur restant l'autorité. Pour 17.4b, une dimension entière hors de ±2^53 rendue sous la forme exacte `{type: "integer", value: "…"}` ne peut pas encore être exprimée dans `Selection` : l'écran devra rendre sa sélection indisponible avec une raison. Le client `computeContextual` n'accepte pas de `signal` ; l'écran devra ignorer les réponses périmées. Un corps invalide produit une issue locale `error` sans appel réseau.
+
+Développée avec ses tests par Codex (gpt-6.1-terra), relue par Claude Sonnet 5.5 ; un cycle de corrections (raisons fermées testées sur exemples serveur, issue fermée du client sur corps invalide, décimaux sans exposant).

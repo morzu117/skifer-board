@@ -1,0 +1,1 @@
+{"status":200,"body":{"status":"unavailable","reason":"empty_selection","engine_request":{"metric":"revenue","group_by":[],"selection":{"amount":[999]},"scope":"selection"}}}
