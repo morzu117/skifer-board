@@ -268,3 +268,74 @@ def test_cle_reservee_par_la_configuration_serveur(monde: Monde, service: Catalo
         response = client.post(ROUTE, headers=headers, json=BODY)
         assert response.status_code == 400
         assert response.json() == {"error": {"code": "invalid_request", "field": "key"}}
+
+
+@pytest.mark.parametrize("upstream,status", [(200, 200), (401, 409), (503, 503)])
+def test_essai_direct_sans_conserver_le_jeton(
+    monde: Monde, service: CatalogService, upstream: int, status: int
+) -> None:
+    calls: list[str] = []
+
+    class Transport:
+        def get(self, url: str, token: str) -> HttpResponse:
+            assert url == BODY["host"] + "/api/2.0/sql/warehouses/abc123"
+            assert token == "sentinelle"
+            calls.append(url)
+            return HttpResponse(upstream, b'{"id":"abc123","state":"RUNNING"}', "application/json")
+
+        def post(self, url: str, token: str, body: dict[str, object]) -> HttpResponse:
+            raise AssertionError("Aucun statement attendu")
+
+    app = create_app(
+        service,
+        monde.runtime,
+        espaces_en_base(monde.moteur, monde.horloge),
+        connections=ConnectionStore(monde.moteur),
+        connection_transport=Transport(),
+    )
+    headers = {"Origin": ORIGINE, "Cookie": f"__Host-sb_session={monde.session(ADMIN_GROUPE)}"}
+    route = ROUTE + "/azure-test/test"
+    with TestClient(app, base_url=ORIGINE) as client:
+        assert client.post(ROUTE, headers=headers, json=BODY).status_code == 201
+        for body in ({}, {"secret": ""}, {"secret": 1}, {"secret": "x" * 16385}):
+            assert client.post(route, headers=headers, json=body).status_code == 400
+        assert (
+            client.post(
+                ROUTE + "/Bad/test", headers=headers, json={"secret": "sentinelle"}
+            ).status_code
+            == 400
+        )
+        assert (
+            client.post(
+                ROUTE + "/absent/test", headers=headers, json={"secret": "sentinelle"}
+            ).status_code
+            == 409
+        )
+        assert (
+            client.post(
+                route, headers={"Origin": ORIGINE}, json={"secret": "sentinelle"}
+            ).status_code
+            == 401
+        )
+        reader = {**headers, "Cookie": f"__Host-sb_session={monde.session(LECTEUR_GROUPE)}"}
+        assert client.post(route, headers=reader, json={"secret": "sentinelle"}).status_code == 403
+        assert (
+            client.post(
+                route,
+                headers={**headers, "Origin": "https://evil.invalid"},
+                json={"secret": "sentinelle"},
+            ).status_code
+            == 403
+        )
+        assert client.post(
+            route.replace(f"/{A}/", f"/{B}/"), headers=headers, json={"secret": "sentinelle"}
+        ).status_code in (403, 404, 409)
+        assert calls == []
+        result = client.post(route, headers=headers, json={"secret": "sentinelle"})
+        assert result.status_code == status
+        assert len(calls) == 1
+        assert "sentinelle" not in result.text + str(result.headers)
+        assert client.get(f"/api/spaces/{A}/connections", headers=headers).json() == {
+            "connections": []
+        }
+        assert client.delete(ROUTE + "/azure-test", headers=headers).status_code == 204

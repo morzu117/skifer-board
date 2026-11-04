@@ -324,6 +324,14 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
             ep + "/{key}",
             204,
         )
+        secrets.add("jeton-essai-sentinelle")
+        parcours(
+            "POST",
+            f"/api/spaces/{A}/connection-endpoints/warehouse-ui-sentinelle/test",
+            ep + "/{key}/test",
+            409,
+            {"secret": "jeton-essai-sentinelle"},
+        )
 
         x = s + "/connections"
         xb = x + "/{name}/bindings/{environment}"

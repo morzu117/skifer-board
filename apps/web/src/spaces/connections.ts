@@ -206,3 +206,7 @@ export function removeConnectionCredential(space: string, name: string, environm
 export function testConnection(space: string, name: string, environment: Environment, fetcher: Fetch): Promise<AdminOutcome<Probe>> {
   return call({ url: `${bindingUrl(space, name, environment)}/test`, method: "POST", decode: decodeProbe }, undefined, fetcher);
 }
+
+export function testEndpoint(space: string, key: string, secret: string, fetcher: Fetch): Promise<AdminOutcome<Probe>> {
+  return call({ url: `${endpointsUrl(space)}/${encodeURIComponent(key)}/test`, method: "POST", body: { secret }, decode: decodeProbe }, undefined, fetcher);
+}

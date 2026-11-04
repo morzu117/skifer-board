@@ -37,6 +37,19 @@ def _name(value: object, field: str) -> str:
     return value
 
 
+def _secret(body: dict[str, Any]) -> str:
+    secret = body["secret"]
+    if not isinstance(secret, str) or not secret:
+        raise Invalid("secret")
+    try:
+        size = len(secret.encode("utf-8"))
+    except UnicodeError:
+        raise Invalid("secret") from None
+    if size > 16384:
+        raise Invalid("secret")
+    return secret
+
+
 def _environment(value: str) -> Environment:
     try:
         return Environment(value)
@@ -151,6 +164,27 @@ def install_connections(
             raise Invalid("endpoint") from None
         created = registry.create_endpoint(access.space.id, key, endpoint, actor, clock())
         return JSONResponse(created, status_code=201)
+
+    @app.post(endpoint_path + "/{key}/test")
+    async def test_endpoint(request: Request, space_id: str, key: str) -> JSONResponse:
+        registry, access, _ = writable(request, space_id)
+        if ENDPOINT_KEY.fullmatch(key) is None:
+            raise Invalid("key")
+        body = _object(await _body(request), "body", {"secret"})
+        secret = _secret(body)
+        endpoint = registry.get_endpoint(access.space.id, key)
+        if endpoint is None:
+            raise EndpointNotConfigured()
+        assert transport is not None
+        probe = await asyncio.to_thread(probe_databricks, endpoint, secret, transport)
+        return JSONResponse(
+            {
+                "identity": probe.identity,
+                "credential_expires_at": probe.credential_expires_at,
+                "can_cancel": probe.can_cancel,
+                "state": probe.state,
+            }
+        )
 
     @app.delete(endpoint_path + "/{key}")
     def remove_endpoint(request: Request, space_id: str, key: str) -> Response:
@@ -276,15 +310,7 @@ def install_connections(
         logical_name = _name(name, "name")
         target = _environment(environment)
         body = _object(await _body(request), "body", {"secret"})
-        secret = body["secret"]
-        if not isinstance(secret, str) or not secret:
-            raise Invalid("secret")
-        try:
-            size = len(secret.encode("utf-8"))
-        except UnicodeError:
-            raise Invalid("secret") from None
-        if size > 16384:
-            raise Invalid("secret")
+        secret = _secret(body)
         vault.put(access.space.id, logical_name, target, secret, actor, clock())
         return Response(status_code=204)
 

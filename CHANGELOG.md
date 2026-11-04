@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 14, 14.7 : bouton « Tester la connexion » sur chaque point d'accès Databricks enregistré, avec jeton à usage unique pour l'essai et message de progression, succès, refus ou panne. Le test vérifie les métadonnées du warehouse sans créer de liaison ni conserver le jeton.
+
 - Plan 14, 14.4 : connexion OIDC sur la boucle locale en HTTP utilisable dans Safari. Les cookies locaux de connexion et de session restent limités à l'hôte, HttpOnly et SameSite=Lax ; les déploiements HTTPS conservent les cookies `__Host-` avec `Secure`.
 
 - Plan 14, 14.1 : registre de points d'accès Databricks par espace, avec hôte HTTPS et ID de warehouse validés côté serveur, sans secret. Les essais et exécutions résolvent les clés enregistrées dans Board ; une clé liée ne peut pas être réutilisée vers un autre workspace ni retirée tant que la liaison existe.

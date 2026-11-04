@@ -13,7 +13,7 @@ import {
   CONNECTION_NAME, ENDPOINT_KEY, DATABRICKS_HOST, CONNECTORS, IDENTITIES,
   createConnection, fetchConnections, removeConnection, removeConnectionBinding,
   removeConnectionCredential, setConnectionBinding, setConnectionCredential, testConnection,
-  createEndpoint, fetchEndpoints, removeEndpoint,
+  createEndpoint, fetchEndpoints, removeEndpoint, testEndpoint,
   type ConnectionBinding, type Connector, type IdentityMode, type LogicalConnection, type Probe, type DatabricksEndpoint,
 } from "./connections";
 import type { Space } from "./model";
@@ -118,6 +118,7 @@ function EndpointPanel({ outcome, space, busy, fetcher, onWrite }: {
       <ul className="sb-connections__list">
         {outcome.value.map((endpoint) => <li className="sb-connection" key={endpoint.key}>
           <strong className="sb-mono">{endpoint.key}</strong> · <span className="sb-mono">{endpoint.host}</span> · warehouse <span className="sb-mono">{endpoint.warehouseId}</span>
+          <EndpointTest endpoint={endpoint} space={space} fetcher={fetcher} busy={busy} />
           <button type="button" className="sb-button" disabled={busy} onClick={() => { setPending(endpoint.key); }}>Retirer {endpoint.key}</button>
           {pending === endpoint.key ? <Confirm question={`Retirer le point d'accès ${endpoint.key} ?`} action="Confirmer le retrait" busy={busy} onConfirm={() => { void onWrite(() => removeEndpoint(space, endpoint.key, fetcher), `Point d'accès ${endpoint.key} retiré.`).then((ok) => { if (ok) setPending(null); }); }} onCancel={() => { setPending(null); }} /> : null}
         </li>)}
@@ -131,6 +132,30 @@ function EndpointPanel({ outcome, space, busy, fetcher, onWrite }: {
       {problem === null ? null : <p role="alert" className="sb-connection__problem">{problem}</p>}
     </form>
   </>;
+}
+
+function EndpointTest({ endpoint, space, fetcher, busy }: { endpoint: DatabricksEndpoint; space: string; fetcher: Fetch; busy: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [probe, setProbe] = useState<AdminOutcome<Probe> | { status: "testing" } | null>(null);
+  const testing = probe?.status === "testing";
+  const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const field = form.elements.namedItem("secret") as HTMLInputElement;
+    const secret = field.value;
+    form.reset();
+    setProbe({ status: "testing" });
+    setProbe(await testEndpoint(space, endpoint.key, secret, fetcher));
+  };
+  return <div>
+    <button type="button" className="sb-button" disabled={busy || testing} aria-expanded={open} onClick={() => { setOpen(!open); setProbe(null); }}>Tester la connexion</button>
+    {open ? <form className="sb-connection__form" aria-label={`Tester le point d'accès ${endpoint.key}`} onSubmit={(event) => { void submit(event); }}>
+      <p className="sb-connection__note">Le test vérifie l'accès au warehouse sans lire de données métier. Le jeton est utilisé pour cet essai uniquement et n'est pas conservé.</p>
+      <label className="sb-field">Jeton Databricks pour le test <input className="sb-input" name="secret" type="password" autoComplete="off" required maxLength={16384} disabled={testing} /></label>
+      <button type="submit" className="sb-button sb-button--primary" disabled={busy || testing}>{testing ? "Test en cours…" : "Lancer le test"}</button>
+    </form> : null}
+    <div aria-live="polite" aria-atomic="true">{probe === null ? null : <ProbeOutcome outcome={probe} />}</div>
+  </div>;
 }
 
 interface ListProps {

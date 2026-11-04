@@ -211,6 +211,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/connection-endpoints"),
         ("POST", "/api/spaces/{space_id}/connection-endpoints"),
         ("DELETE", "/api/spaces/{space_id}/connection-endpoints/{key}"),
+        ("POST", "/api/spaces/{space_id}/connection-endpoints/{key}/test"),
         ("GET", "/api/spaces/{space_id}/connections"),
         ("POST", "/api/spaces/{space_id}/connections"),
         ("PUT", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}"),
