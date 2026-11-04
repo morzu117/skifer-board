@@ -19,9 +19,10 @@ pnpm --filter @skifer-board/web exec vite --host 127.0.0.1 --port 5174 --strictP
 1. Ouvrir `http://localhost:5174/` puis **Se connecter** et choisir **Administrateur de test**.
 2. Ouvrir l'espace **Recette Databricks**, puis **Connexions** (`#/espaces/board-test/connexions`).
 3. Dans **Points d'accès Databricks**, saisir une clé au format `azure-test`, l'URL HTTPS du workspace Azure Databricks et l'ID du SQL warehouse de test. Enregistrer. Ces deux valeurs sont conservées dans la base Board, propres à l'espace, sans jeton.
-4. Créer une connexion logique, par exemple `source_test`. Dans sa liaison **DEV**, choisir **Databricks SQL**, saisir la clé du point d'accès et garder l'identité **Service**.
-5. Cliquer **Poser un identifiant** et saisir soi-même le jeton de service de test dans le champ à usage unique. Board le chiffre dans son coffre ; le champ s'efface et la valeur ne peut pas être relue depuis l'interface.
-6. Cliquer **Tester la connexion**. L'essai interroge les métadonnées du warehouse par le connecteur Board, sans requête métier. Il doit afficher l'identité de service, l'état du warehouse et la capacité d'annulation. En cas de refus, relever seulement le code et le message visibles, sans copier le jeton.
+4. À côté du point d'accès enregistré, cliquer **Tester la connexion**, saisir soi-même le jeton Databricks dans le champ masqué puis cliquer **Lancer le test**. Le champ s'efface dès l'envoi. Ce jeton sert uniquement à cet essai et n'est pas conservé ; le résultat apparaît sous le point d'accès. L'essai vérifie les métadonnées du warehouse, sans requête métier ni création de liaison.
+5. Pour préparer ensuite les exécutions, créer une connexion logique, par exemple `source_test`. Dans sa liaison **DEV**, choisir **Databricks SQL**, saisir la clé du point d'accès et garder l'identité **Service**.
+6. Cliquer **Poser un identifiant** et saisir soi-même le jeton de service de test dans le champ à usage unique. Board le chiffre dans son coffre ; le champ s'efface et la valeur ne peut pas être relue depuis l'interface.
+7. Le bouton **Tester la connexion** de la liaison permet aussi de vérifier l'identifiant conservé dans le coffre. Il doit afficher l'identité de service, l'état du warehouse et la capacité d'annulation. En cas de refus, relever seulement le code et le message visibles, sans copier le jeton.
 
 Aucun profil CLI Databricks n'est nécessaire. Ne placer ni jeton ni secret dans une issue, un commit ou une conversation.
 

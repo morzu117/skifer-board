@@ -50,6 +50,36 @@ async function open(fetcher: Mock<Fetch>, target: "DEV" | "TEST" | "PROD" = "DEV
 
 describe("points d'accès Databricks dans Board", () => {
   it.each([
+    [200, { identity: "service", state: "RUNNING", credential_expires_at: null, can_cancel: true }, "Essai réussi"],
+    [409, { error: { code: "credential_rejected" } }, "Essai refusé"],
+    [502, { unexpected: true }, "Essai indisponible"],
+  ])("teste directement un point enregistré et affiche le résultat HTTP %s", async (status, body, message) => {
+    const endpoint = { key: "databricks_test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+    let finish!: (value: Response) => void;
+    const fetcher = server({
+      [`GET ${ENDPOINTS}`]: { status: 200, body: { endpoints: [endpoint] } },
+      [`POST ${ENDPOINTS}/${endpoint.key}/test`]: () => new Promise<Response>((resolve) => { finish = resolve; }),
+    }, list([]));
+    await open(fetcher);
+    const toggle = screen.getByRole("button", { name: "Tester la connexion" });
+    await userEvent.click(toggle);
+    await userEvent.click(toggle);
+    expect(screen.queryByLabelText("Jeton Databricks pour le test")).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    const field = screen.getByLabelText("Jeton Databricks pour le test");
+    await userEvent.type(field, "jeton-sentinelle");
+    await userEvent.click(screen.getByRole("button", { name: "Lancer le test" }));
+    expect(field).toHaveValue("");
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText("Essai de la connexion en cours…")).toBeInTheDocument();
+    expect(JSON.parse(calls(fetcher, "POST", `${ENDPOINTS}/${endpoint.key}/test`)[0]?.[1]?.body as string)).toEqual({ secret: "jeton-sentinelle" });
+    await act(async () => { finish(reply(body, status)); await Promise.resolve(); });
+    expect(await screen.findByText(new RegExp(message))).toBeInTheDocument();
+    expect(toggle).toBeEnabled();
+    expect(document.body).not.toHaveTextContent("jeton-sentinelle");
+  });
+
+  it.each([
     ["databricks.test", "https://adb-7405606281030422.2.azuredatabricks.net", "e1b44f921ca44d61", "Clé du point d'accès :"],
     ["databricks-test", "https://example.com", "e1b44f921ca44d61", "URL du workspace :"],
     ["databricks-test", "https://adb-7405606281030422.2.azuredatabricks.net", "/sql/1.0/warehouses/e1b44f921ca44d61", "ID du SQL warehouse :"],
