@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import exemple from "../../../../contracts/executions/contextuel-detail.json";
@@ -49,7 +49,9 @@ describe.each(THEMES)("preuves accessibles sous $label", (theme) => {
     await userEvent.keyboard("{Escape}");
     expect(bouton).toHaveFocus();
     await userEvent.click(bouton);
-    await userEvent.click(within(screen.getByRole("region", { name: "Preuves" })).getByRole("button", { name: "Fermer les preuves" }));
+    expect(bouton).toHaveAttribute("aria-expanded", "true");
+    expect(bouton).toHaveAttribute("aria-controls", screen.getByRole("region", { name: "Preuves" }).id);
+    await userEvent.click(bouton);
     expect(bouton).toHaveFocus();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { Execution } from "../executions/model";
 import type { Fetch } from "../spaces/api";
 import { REFUSAL_LABELS } from "../spaces/admin";
@@ -33,15 +33,29 @@ export function pourcentageExact(rapport: string): string | null {
 }
 type Paire = { metric: string; total: Awaited<ReturnType<typeof computeContextual>>; part: Awaited<ReturnType<typeof computeContextual>> };
 const NOTES: Record<"zero_or_null_denominator", string> = { zero_or_null_denominator: "Le dénominateur est nul ou absent : la part ne peut pas être calculée." };
-function resultat(outcome: Paire["total"], champ: string) {
-  if (outcome.status !== "ok") return <span>Indisponible : {outcome.status === "refused" ? REFUSAL_LABELS[outcome.code] : outcome.message} Le chiffre doit être demandé au moteur.</span>;
+/** Arrondit une représentation décimale par chiffres, sans perdre l'exactitude de l'original. */
+export function nombreLisible(exact: string, unite = ""): string {
+  const match = /^(-?)(\d+)(?:[.,](\d+))?$/.exec(exact);
+  if (match === null) return `${exact}${unite}`;
+  const fraction = match[3] ?? "";
+  const francais = exact.replace(".", ",");
+  if (fraction.length <= 2) return `${francais}${unite}`;
+  if (/^0+$/.test(fraction.slice(2))) return `${match[1]}${match[2]},${fraction.slice(0, 2)}${unite}`;
+  const centiemes = BigInt(`${match[2]}${fraction.slice(0, 2)}`) + (Number(fraction[2]) >= 5 ? 1n : 0n);
+  const chiffres = centiemes.toString().padStart(3, "0");
+  return `≈ ${match[1]}${chiffres.slice(0, -2)},${chiffres.slice(-2)}${unite} (exact : ${francais}${unite})`;
+}
+function ligne(outcome: Paire["total"], champ: string, titre: string, metric: string) {
+  const indisponible = (raison: string) => <tr role="row"><th role="rowheader" scope="row"><span className="sb-explorer__etiquette" aria-hidden="true">Calcul</span>{titre} : {metric}</th><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Périmètre</span>—</td><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Valeur</span>Indisponible : {raison} Le chiffre doit être demandé au moteur.</td><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Preuve source</span>—</td></tr>;
+  if (outcome.status !== "ok") return indisponible(outcome.status === "refused" ? REFUSAL_LABELS[outcome.code] : outcome.message);
+  if (outcome.value.status === "unavailable") return indisponible(RAISONS[outcome.value.reason]);
   const value = outcome.value;
-  if (value.status === "unavailable") return <span>Indisponible : {RAISONS[value.reason]} Le chiffre doit être demandé au moteur.</span>;
   const brut = value.rows[0]?.[champ];
   const exact = afficher(brut);
   const pourcentage = champ === "share" && brut !== null && brut !== undefined ? pourcentageExact(exact) : null;
-  if (champ === "share" && brut !== null && brut !== undefined && pourcentage === null) return <span>Indisponible : la part n'est pas numérique. Le chiffre doit être demandé au moteur. Preuve source : {value.source_evidence_id}.</span>;
-  return <span>{champ === "share" && pourcentage !== null ? <>{pourcentage} % <small>(rapport exact : {exact})</small></> : exact} · {String(value.row_count)} lignes · périmètre : {PERIMETRES[value.scope]} · règle : {REGLES[value.rule]}{value.partial ? " · sur le résultat chargé" : null} · preuve source : {value.source_evidence_id}{value.notes.map((note) => <span key={note}> · {NOTES[note]}</span>)}</span>;
+  const invalide = champ === "share" && brut !== null && brut !== undefined && pourcentage === null;
+  const affichage = invalide ? "Indisponible : la part n'est pas numérique. Le chiffre doit être demandé au moteur." : champ === "share" && pourcentage !== null ? `${nombreLisible(pourcentage, " %").split(" (exact : ")[0]} (rapport exact : ${exact.replace(".", ",")})` : nombreLisible(exact);
+  return <tr role="row"><th role="rowheader" scope="row"><span className="sb-explorer__etiquette" aria-hidden="true">Calcul</span>{titre} : {metric}</th><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Périmètre</span>{PERIMETRES[value.scope]}{value.partial ? " · sur le résultat chargé" : null}</td><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Valeur</span>{affichage} · {String(value.row_count)} ligne{value.row_count > 1 ? "s" : ""} · règle : {REGLES[value.rule]}{value.notes.map((note) => <span key={note}> · {NOTES[note]}</span>)}</td><td role="cell"><span className="sb-explorer__etiquette" aria-hidden="true">Preuve source</span>preuve source : {value.source_evidence_id}</td></tr>;
 }
 
 export function CalculSelection({ run, selection, fetcher }: { run: Execution; selection: Selection; fetcher: Fetch }) {
@@ -66,5 +80,5 @@ export function CalculSelection({ run, selection, fetcher }: { run: Execution; s
   if (answer?.key !== key) return <p role="status">Calcul de la sélection…</p>;
   const incoherent = answer.values.flatMap(({ total, part }) => [total, part]).find((outcome) => outcome.status === "ok" && outcome.value.status === "derived" && outcome.value.source_evidence_id !== run.proof?.evidenceId);
   if (incoherent?.status === "ok" && incoherent.value.status === "derived") return <div className="sb-banner sb-banner--warning" role="status"><div>Calcul indisponible : {run.proof === null ? `la preuve de l'exécution est absente (preuve source : ${incoherent.value.source_evidence_id})` : `la preuve source ${incoherent.value.source_evidence_id} ne correspond pas à la preuve de l'exécution`}. Les chiffres sont masqués ; le chiffre doit être demandé au moteur.</div></div>;
-  return <div className="sb-banner sb-banner--neutral" aria-live="polite"><div><p>Sélection personnelle{run.truncated ? " · sur le résultat chargé" : ""}.</p>{answer.values.map(({ metric, total, part }) => <div key={metric}><p><strong>{metric}</strong> · Total : {resultat(total, metric)}</p><p>Part : {resultat(part, "share")}</p></div>)}</div></div>;
+  return <><p className="sb-explorer__defilement">Faites défiler les calculs horizontalement pour voir toutes les colonnes.</p><div className="sb-explorer__calculs" role="region" aria-label="Calculs contextuels" tabIndex={0} aria-live="polite"><table className="sb-table" role="table"><caption>Calculs contextuels</caption><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Calcul</th><th role="columnheader" scope="col">Périmètre</th><th role="columnheader" scope="col">Valeur</th><th role="columnheader" scope="col">Preuve source</th></tr></thead><tbody role="rowgroup">{answer.values.map(({ metric, total, part }) => <Fragment key={metric}>{ligne(total, metric, "Total", metric)}{ligne(part, "share", "Part", metric)}</Fragment>)}</tbody></table></div></>;
 }

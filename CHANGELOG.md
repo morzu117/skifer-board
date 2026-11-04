@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.4c : parcours navigateur hors réseau de l’Explorateur, états, accessibilité et captures de référence ordinateur et téléphone sous les deux thèmes ; corrections de lisibilité des calculs arrondis et de leur preuve exacte, cartes de sélection et provenance thématiques, filtres et libellés alignés, annulation contextuelle et panneau Preuves accessible ; assertions renforcées sur les requêtes et mutations, et tableau contextuel accessible, empilé sans débordement sur téléphone, et affichage des arrondis sans doublon.
+
 - Plan 17, 17.4b : écran Explorateur dans la coque, liste des noms de connexions sous les gardes de soumission, requêtes et filtres typés, suivi et annulation, résultat accessible, provenance et calculs contextuels exacts sur la sélection ; dates et horodatages Arrow exacts, type « Valeur » borné à une ligne et touche Entrée réservée aux champs ; protection contre les réponses périmées, notes et parts exactes, vérification de la preuve source des calculs, reprise du suivi interrompu, temporisation des calculs et libellés accessibles des sélections, annulation suspendue lorsque le suivi est interrompu et horodatages sans fuseau affichés sans suffixe UTC ; mocks de preuve et attentes de navigation des parcours navigateur alignés sur les contrats livrés.
 
 - Plan 17, 17.4a : contrat web strict des champs et calculs contextuels, constructeur de filtres typés et clients réutilisant les refus des exécutions, sans écran.

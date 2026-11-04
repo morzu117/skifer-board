@@ -14,7 +14,7 @@ import { decodeExecution } from "../executions/model";
 import type { Fetch } from "../spaces/api";
 import { expectAccessible, renderThemed } from "../test/a11y";
 import { REASONS, decodeFields } from "./model";
-import { CalculSelection, pourcentageExact } from "./CalculSelection";
+import { CalculSelection, nombreLisible, pourcentageExact } from "./CalculSelection";
 import { Resultat } from "./Resultat";
 
 const base = decodeExecution(exemple.body, "finance");
@@ -37,8 +37,12 @@ describe.each(THEMES)("sélection accessible sous $label", (theme) => {
     await userEvent.click(screen.getByRole("tab", { name: "Tableau" }));
     const ligne = screen.getByRole("checkbox", { name: /^Sélectionner la ligne 1(?: :|$)/ });
     ligne.focus(); await userEvent.keyboard(" ");
-    expect(await screen.findByText(/valeur au grain/)).toHaveTextContent("12");
-    expect(screen.getByText(/Part :/)).toHaveTextContent("0.5");
+    expect(ligne.closest("tr")).toHaveClass("sb-row--selected");
+    expect(screen.getByRole("region", { name: "Sélection personnelle" }).closest(".sb-card")).toHaveClass("sb-chart-card");
+    expect(await screen.findByRole("row", { name: /Total :/ })).toHaveTextContent("12");
+    expect(screen.getByRole("row", { name: /Part :/ })).toHaveTextContent("0,5");
+    expect(screen.getByRole("region", { name: "Calculs contextuels" })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByText(/Faites défiler les calculs/)).toBeInTheDocument();
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(JSON.parse(fetcher.mock.calls[0]?.[1]?.body as string)).toEqual({ operation: "aggregate", metric: "revenue", group_by: [], selection: { region: ["Nord"], annee: [2025] }, scope: null, denominator: null });
     expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body as string)).toEqual({ operation: "share", metric: "revenue", group_by: [], selection: { region: ["Nord"], annee: [2025] }, scope: null, denominator: "loaded_result" });
@@ -52,7 +56,7 @@ it("refuse la sélection en escalier sans appeler le calcul", async () => {
   const fetcher = serveur(); render(<Resultat table={table} input={input} model={model} theme={THEMES[0]} context={{ run, fetcher }} />);
   await userEvent.click(screen.getByRole("tab", { name: "Tableau" }));
   await userEvent.click(screen.getByRole("checkbox", { name: /^Sélectionner la ligne 1(?: :|$)/ }));
-  await screen.findByText(/valeur au grain/);
+  await screen.findByRole("row", { name: /Total :/ });
   await userEvent.click(screen.getByRole("checkbox", { name: /^Sélectionner la ligne 2(?: :|$)/ }));
   await waitFor(() => { expect(fetcher).toHaveBeenCalledTimes(4); });
   await userEvent.click(screen.getByRole("checkbox", { name: /^Sélectionner la ligne 3(?: :|$)/ }));
@@ -75,7 +79,7 @@ it("sélectionne une barre et affiche un total partiel", async () => {
   const fetcher = serveur(tronque.body, { ...reponsePart, partial: true });
   const { container } = render(<Resultat table={table} input={input} model={model} theme={THEMES[0]} context={{ run: { ...run, truncated: true }, fetcher }} />);
   clickItem(container.querySelector('[role="img"]') as HTMLElement, { name: "Nord", dataIndex: 0, seriesIndex: 0 });
-  expect(await screen.findByText(/Total :/)).toHaveTextContent("17");
+  expect(await screen.findByRole("row", { name: /Total :/ })).toHaveTextContent("17");
   const series = chartOf(container.querySelector('[role="img"]') as HTMLElement).getOption().series as { data: { itemStyle: { color: string } }[] }[];
   expect(series[0]?.data[0]?.itemStyle.color).toBe(THEMES[0].selected);
   expect(screen.getByText(/Sélection personnelle/)).toHaveTextContent("sur le résultat chargé");
@@ -101,11 +105,11 @@ it("garde le calcul frais lorsque la réponse périmée arrive ensuite", async (
   rerender(<CalculSelection run={run} selection={{ region: ["Sud"] }} fetcher={fetcher} />);
   await waitFor(() => { expect(pending).toHaveLength(4); });
   await act(async () => { pending[2]?.(Response.json(tronque.body)); pending[3]?.(Response.json(reponsePart)); await Promise.resolve(); });
-  expect(await screen.findByText(/Total :/)).toHaveTextContent("17");
+  expect(await screen.findByRole("row", { name: /Total :/ })).toHaveTextContent("17");
   const ancienTotal = Response.json(derive.body); const lectureTotal = vi.spyOn(ancienTotal, "json");
   const anciennePart = Response.json(reponsePart); const lecturePart = vi.spyOn(anciennePart, "json");
   await act(async () => { pending[0]?.(ancienTotal); pending[1]?.(anciennePart); await waitFor(() => { expect(lectureTotal).toHaveBeenCalled(); expect(lecturePart).toHaveBeenCalled(); }); });
-  expect(screen.getByText(/Total :/)).toHaveTextContent("17");
+  expect(screen.getByRole("row", { name: /Total :/ })).toHaveTextContent("17");
   expect(screen.queryByText(/Calcul de la sélection/)).not.toBeInTheDocument();
 });
 
@@ -131,11 +135,11 @@ it("signale un contrat absent sans appeler le serveur", () => {
 it("ne réaffiche pas le calcul de l'exécution précédente", async () => {
   const fetcher = serveur();
   const { rerender } = render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={fetcher} />);
-  expect(await screen.findByText(/valeur au grain/)).toBeInTheDocument();
+  expect(await screen.findByRole("row", { name: /Total :/ })).toBeInTheDocument();
   let resolve!: (response: Response) => void;
   const retard = vi.fn<Fetch>().mockImplementation(() => new Promise<Response>((done) => { resolve = done; }));
   rerender(<CalculSelection run={{ ...run, id: "22222222-2222-2222-2222-222222222222" }} selection={{ region: ["Nord"] }} fetcher={retard} />);
-  expect(screen.queryByText(/valeur au grain/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("row", { name: /Total :/ })).not.toBeInTheDocument();
   expect(screen.getByText(/Calcul de la sélection/)).toBeInTheDocument();
   await waitFor(() => { expect(resolve).toBeTypeOf("function"); });
 });
@@ -155,7 +159,7 @@ it("sélectionne la barre au clavier et efface la sélection avec Échap", async
   const graphique = screen.getByRole("group", { name: "Résultat" });
   graphique.focus();
   await userEvent.keyboard("{ArrowRight}{Enter}");
-  expect(await screen.findByText(/valeur au grain/)).toBeInTheDocument();
+  expect(await screen.findByRole("row", { name: /Total :/ })).toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   expect(screen.queryByText(/Sélection personnelle/)).not.toBeInTheDocument();
 });
@@ -216,14 +220,14 @@ it.each(["exécution", "espace"])("ignore la réponse tardive après changement 
   await act(async () => { pending[0]?.(Response.json(derive.body)); pending[1]?.(Response.json(reponsePart)); await Promise.resolve(); });
   expect(screen.queryByText(/Sélection personnelle/)).not.toBeInTheDocument();
   await act(async () => { pending[2]?.(Response.json(tronque.body)); pending[3]?.(Response.json(reponsePart)); await Promise.resolve(); });
-  expect(await screen.findByText(/Total :/)).toHaveTextContent("17");
+  expect(await screen.findByRole("row", { name: /Total :/ })).toHaveTextContent("17");
 });
 
 it("affiche les valeurs nulles ou absentes sans inventer de chiffre", async () => {
   const fetcher = serveur({ ...derive.body, rows: [{ revenue: null }] }, { ...reponsePart, rows: [] });
   render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={fetcher} />);
-  expect(await screen.findByText(/Total :/)).toHaveTextContent("—");
-  expect(screen.getByText(/Part :/)).toHaveTextContent("—");
+  expect(await screen.findByRole("row", { name: /Total :/ })).toHaveTextContent("—");
+  expect(screen.getByRole("row", { name: /Part :/ })).toHaveTextContent("—");
 });
 
 it("ignore les positions graphiques absentes et masque le calcul sans contexte", async () => {
@@ -233,7 +237,7 @@ it("ignore les positions graphiques absentes et masque le calcul sans contexte",
   clickItem(container.querySelector('[role="img"]') as HTMLElement, { name: "Nord", dataIndex: 0, seriesIndex: 0 });
   expect(await screen.findByText(/Sélection personnelle/)).toBeInTheDocument();
   rerender(<Resultat table={data} input={input} model={model} theme={THEMES[0]} />);
-  expect(screen.queryByText(/Sélection personnelle/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("table", { name: /Calculs contextuels/ })).not.toBeInTheDocument();
 });
 
 it("ignore un index de barre hors du résultat", () => {
@@ -298,16 +302,25 @@ it("explique un dénominateur nul et affiche la preuve source", async () => {
   const share = { ...reponsePart, rows: [{ share: null }], notes: ["zero_or_null_denominator"] };
   render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={serveur(derive.body, share)} />);
   expect(await screen.findByText(/dénominateur est nul ou absent/)).toBeInTheDocument();
-  expect(screen.getByText(/Part :/)).toHaveTextContent("—");
-  expect(screen.getByText(/Part :/)).toHaveTextContent(`preuve source : ${derive.body.source_evidence_id}`);
+  expect(screen.getByRole("row", { name: /Part :/ })).toHaveTextContent("—");
+  expect(screen.getByRole("row", { name: /Part :/ })).toHaveTextContent(`preuve source : ${derive.body.source_evidence_id}`);
 });
 
 it("affiche un pourcentage décimal exact et conserve le rapport accessible", async () => {
   const share = { ...reponsePart, rows: [{ share: { type: "decimal", value: "0.12345678901234567890123456789" } }] };
   render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={serveur(derive.body, share)} />);
-  const texte = await screen.findByText(/Part :/);
-  await waitFor(() => { expect(texte).toHaveTextContent("12,345678901234567890123456789 %"); });
-  expect(texte).toHaveTextContent("rapport exact : 0.12345678901234567890123456789");
+  const texte = await screen.findByRole("row", { name: /Part :/ });
+  await waitFor(() => { expect(texte).toHaveTextContent("≈ 12,35"); });
+  expect(texte).toHaveTextContent("rapport exact : 0,12345678901234567890123456789");
+  expect(texte).not.toHaveTextContent("exact : 12,345678901234567890123456789 %");
+});
+
+it("affiche une part exacte sans signe d'arrondi pour des zéros finaux", async () => {
+  const share = { ...reponsePart, rows: [{ share: { type: "decimal", value: "0.705000" } }] };
+  render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={serveur(derive.body, share)} />);
+  const row = await screen.findByRole("row", { name: /Part :/ });
+  expect(row).toHaveTextContent("70,50 % (rapport exact : 0,705000)");
+  expect(row).not.toHaveTextContent("≈");
 });
 
 it.each(["total", "part"]) ("masque tous les chiffres si la preuve du %s diffère", async (champ) => {
@@ -350,4 +363,20 @@ it("temporise les calculs et abandonne une sélection modifiée avant l'envoi", 
     await act(async () => { await vi.advanceTimersByTimeAsync(250); });
     expect(fetcher).toHaveBeenCalledTimes(2);
   } finally { vi.useRealTimers(); }
+});
+
+
+it.each([
+  ["12", "12"], ["12.5", "12,5"], ["abc", "abc"],
+  ["70.500", "70,50"], ["70.0000", "70,00"], ["-1.2300", "-1,23"],
+  ["0.004", "≈ 0,00 (exact : 0,004)"], ["-9.995", "≈ -10,00 (exact : -9,995)"],
+  ["9007199254740993.126", "≈ 9007199254740993,13 (exact : 9007199254740993,126)"],
+])("formate sans perte %s", (valeur, attendu) => { expect(nombreLisible(valeur)).toBe(attendu); });
+
+it.each([[0, "0 ligne"], [1, "1 ligne"], [2, "2 lignes"]])("accorde %i lignes et présente un total exact", async (count, attendu) => {
+  const long = { ...derive.body, row_count: count, rows: [{ revenue: { type: "decimal", value: "12345678901234567890.126" } }] };
+  render(<CalculSelection run={run} selection={{ region: ["Nord"] }} fetcher={serveur(long)} />);
+  const row = await screen.findByRole("row", { name: /Total :/ });
+  expect(row).toHaveTextContent(attendu);
+  expect(row).toHaveTextContent("≈ 12345678901234567890,13 (exact : 12345678901234567890,126)");
 });

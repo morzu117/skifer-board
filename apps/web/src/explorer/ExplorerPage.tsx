@@ -17,6 +17,7 @@ import { cancelExecution, fetchExecution, fetchExplorerConnections, fetchFields,
 import { buildExecution, OPERATORS } from "./filters";
 import type { ExplorerModel } from "./model";
 import "../executions/executions.css";
+import "../catalogue/catalogue.css";
 import "./explorer.css";
 
 interface Props { space: Space; target: Environment; fetcher: Fetch }
@@ -100,28 +101,28 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
   return <form onSubmit={(event) => { event.preventDefault(); }}>
     <Card title="Champs">
       <div className="sb-executions__form">
-        <label>Connexion<select className="sb-input" value={connection} onChange={(e) => { setConnection(e.target.value); }}>{connexions.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label>Modèle<select className="sb-input" value={modelName} onChange={(e) => { setModelName(e.target.value); reset(); }}>{models.map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
-        <label>Rechercher un champ<input className="sb-input" value={search} onChange={(e) => { setSearch(e.target.value); }} onKeyDown={toucheRecherche} /></label>
+        <label className="sb-field">Connexion<select className="sb-input" value={connection} onChange={(e) => { setConnection(e.target.value); }}>{connexions.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="sb-field">Modèle<select className="sb-input" value={modelName} onChange={(e) => { setModelName(e.target.value); reset(); }}>{models.map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
+        <label className="sb-field">Rechercher un champ<input className="sb-input" value={search} onChange={(e) => { setSearch(e.target.value); }} onKeyDown={toucheRecherche} /></label>
       </div>
       <h3>Métriques</h3>{model.metrics.filter(visible).map((item) => <p key={item.name}><label className="sb-explorer__choix"><input type="checkbox" checked={metrics.includes(item.name)} onChange={() => { toggle(item.name, metrics, setMetrics); }} /> {item.label} · {item.aggregation ?? "type inconnu"} — {item.description}</label></p>)}
       <h3>Dimensions</h3>{model.dimensions.filter(visible).map((item) => <p key={item.name}><label className="sb-explorer__choix"><input type="checkbox" checked={dimensions.includes(item.name)} onChange={() => { toggle(item.name, dimensions, setDimensions); }} /> {item.label} · {item.type} — {item.description}</label>{item.type === "date" || item.type === "timestamp" ? " · Filtre temporel indisponible : le moteur ne prend pas encore en charge ces valeurs (SK-12)." : null}</p>)}
     </Card>
     <Card title="Requête">
       <p>Environnement : {target}. Limite : 1 000 lignes et 1 048 576 octets.</p>
-      <p>Métriques retenues : {metrics.map((name) => <button type="button" className="sb-button" key={name} onClick={() => { toggle(name, metrics, setMetrics); }}>Retirer {name}</button>)}</p>
-      <p>Dimensions retenues : {dimensions.map((name) => <button type="button" className="sb-button" key={name} onClick={() => { toggle(name, dimensions, setDimensions); }}>Retirer {name}</button>)}</p>
-      <fieldset><legend>Ajouter un filtre</legend>
-        <label>Dimension du filtre<select className="sb-input" value={column} onChange={(e) => { setColumn(e.target.value); setOperator("eq"); }}><option value="">Choisir</option>{model.dimensions.filter((item) => OPERATORS[item.type].length > 0).map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
-        {dimension === undefined ? null : <><label>Opérateur<select className="sb-input" value={operator} onChange={(e) => { setOperator(e.target.value as Filtre["operator"]); }}>{OPERATORS[dimension.type].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Valeur{operator === "in" ? " (séparées par des virgules)" : ""}{dimension.type === "boolean" ? <select className="sb-input" value={value} onChange={(e) => { setValue(e.target.value); }}><option value="">Choisir</option><option value="true">Vrai</option><option value="false">Faux</option></select> : <input className="sb-input" value={value} onChange={(e) => { setValue(e.target.value); }} onKeyDown={(event) => { toucheFiltre(event, dimension); }} />}</label>
-          {operator === "between" ? <label>Borne supérieure<input className="sb-input" value={second} onChange={(e) => { setSecond(e.target.value); }} onKeyDown={(event) => { toucheFiltre(event, dimension); }} /></label> : null}
+      <p>Métriques retenues : {metrics.map((name) => <button type="button" className="sb-button" key={name} onClick={() => { toggle(name, metrics, setMetrics); }}>Retirer {model.metrics.find((item) => item.name === name)?.label || name}</button>)}</p>
+      <p>Dimensions retenues : {dimensions.map((name) => <button type="button" className="sb-button" key={name} onClick={() => { toggle(name, dimensions, setDimensions); }}>Retirer {model.dimensions.find((item) => item.name === name)?.label || name}</button>)}</p>
+      <fieldset className="sb-explorer__filtre"><legend>Ajouter un filtre</legend>
+        <label className="sb-field">Dimension du filtre<select className="sb-input" value={column} onChange={(e) => { setColumn(e.target.value); setOperator("eq"); }}><option value="">Choisir</option>{model.dimensions.filter((item) => OPERATORS[item.type].length > 0).map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
+        {dimension === undefined ? null : <><label className="sb-field">Opérateur<select className="sb-input" value={operator} onChange={(e) => { setOperator(e.target.value as Filtre["operator"]); }}>{OPERATORS[dimension.type].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label className="sb-field">Valeur{operator === "in" ? " (séparées par des virgules)" : ""}{dimension.type === "boolean" ? <select className="sb-input" value={value} onChange={(e) => { setValue(e.target.value); }}><option value="">Choisir</option><option value="true">Vrai</option><option value="false">Faux</option></select> : <input className="sb-input" value={value} onChange={(e) => { setValue(e.target.value); }} onKeyDown={(event) => { toucheFiltre(event, dimension); }} />}</label>
+          {operator === "between" ? <label className="sb-field">Borne supérieure<input className="sb-input" value={second} onChange={(e) => { setSecond(e.target.value); }} onKeyDown={(event) => { toucheFiltre(event, dimension); }} /></label> : null}
           <button type="button" className="sb-button" onClick={() => { addFilter(dimension); }}>Ajouter le filtre</button></>}
       </fieldset>
       {filters.map((filter, index) => <p key={`${filter.column}:${String(index)}`}>{filter.column} {filter.operator} {String(filter.value)} <button type="button" className="sb-button" onClick={() => { setFilters(filters.filter((_, i) => i !== index)); }}>Retirer le filtre {filter.column}</button></p>)}
       {problem === null ? null : <p role="alert">{problem}</p>}
       <button type="button" onClick={submit} className="sb-button sb-button--primary" disabled={busy || run?.state === "queued" || run?.state === "running"}>Exécuter</button>{" "}
-      <button type="button" className="sb-button" disabled={busy || suiviInterrompu !== null || !run?.canCancel} onClick={run === null ? undefined : () => { cancel(run); }}>Annuler l'exécution</button>{" "}
+      {run !== null && (run.state === "queued" || run.state === "running") && run.canCancel && suiviInterrompu === null ? <button type="button" className="sb-button" disabled={busy} onClick={() => { cancel(run); }}>Annuler l'exécution</button> : null}{" "}
       <button type="button" className="sb-button" onClick={reset}>Réinitialiser</button>
       {run !== null && (run.state === "queued" || run.state === "running") && !run.canCancel && !run.cancelRequested ? <p role="status">L’annulation n’est pas disponible pour cette exécution : la capacité du connecteur ou son état courant ne le permet pas.</p> : null}
       {suiviInterrompu === null ? null : <p role="status">L’annulation est indisponible pendant l’interruption du suivi. Reprenez le suivi pour connaître l’état de l’exécution.</p>}

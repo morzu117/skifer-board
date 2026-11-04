@@ -55,6 +55,7 @@ it("compose, valide et soumet la requête typée puis suit le résultat", async 
   await userEvent.click(screen.getByRole("button", { name: "Exécuter" }));
   await waitFor(() => { expect(fetcher).toHaveBeenCalledWith(`${root}/executions`, expect.objectContaining({ method: "POST", body: JSON.stringify({ connection: "source", environment: "DEV", model: "orders", metrics: ["revenue"], dimensions: ["jour"], filters: [{ column: "prix", operator: "between", value: [2, 4] }] }) })); });
   await userEvent.click(await screen.findByRole("tab", { name: "Tableau" }, { timeout: 3000 }));
+  expect(screen.queryByRole("button", { name: "Annuler l'exécution" })).not.toBeInTheDocument();
   expect(screen.getByRole("cell", { name: "12" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Réinitialiser" }));
   expect(screen.queryByRole("region", { name: "Résultat" })).not.toBeInTheDocument();
@@ -64,7 +65,7 @@ it("annule une exécution et retire les champs et filtres au clavier", async () 
   ouvrir(); await screen.findByLabelText(/Chiffre d'affaires/);
   await userEvent.click(screen.getByRole("checkbox", { name: /Chiffre d'affaires/ }));
   await userEvent.click(screen.getByRole("checkbox", { name: /Jour/ }));
-  await userEvent.click(screen.getByRole("button", { name: "Retirer jour" }));
+  await userEvent.click(screen.getByRole("button", { name: "Retirer Jour" }));
   await userEvent.selectOptions(screen.getByLabelText("Dimension du filtre"), "prix");
   await userEvent.selectOptions(screen.getByLabelText("Opérateur"), "in");
   await userEvent.type(screen.getByLabelText(/Valeur/), "2, 3");
@@ -72,9 +73,9 @@ it("annule une exécution et retire les champs et filtres au clavier", async () 
   await userEvent.click(screen.getByRole("button", { name: "Retirer le filtre prix" }));
   await userEvent.click(screen.getByRole("button", { name: "Exécuter" }));
   await userEvent.click(await screen.findByRole("button", { name: "Annuler l'exécution" }));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Annuler l'exécution" })).toBeDisabled());
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Annuler l'exécution" })).not.toBeInTheDocument());
   expect(screen.getByText(/Annulation demandée/)).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Retirer revenue" }));
+  await userEvent.click(screen.getByRole("button", { name: "Retirer Chiffre d'affaires" }));
 });
 
 it("affiche le vide et les refus", async () => {
@@ -88,9 +89,9 @@ it("efface la requête lorsque l'environnement change", async () => {
   const fetcher = server();
   const { rerender } = ouvrir(fetcher);
   await userEvent.click(await screen.findByRole("checkbox", { name: /Chiffre d'affaires/ }));
-  expect(screen.getByRole("button", { name: "Retirer revenue" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retirer Chiffre d'affaires" })).toBeInTheDocument();
   rerender(<ExplorerPage space={space} target="PROD" fetcher={fetcher} />);
-  expect(screen.queryByRole("button", { name: "Retirer revenue" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retirer Chiffre d'affaires" })).not.toBeInTheDocument();
   expect(screen.getByText(/Environnement : PROD/)).toBeInTheDocument();
 });
 
@@ -131,7 +132,7 @@ it("change de connexion et de modèle et réinitialise les champs", async () => 
   await userEvent.selectOptions(screen.getByLabelText("Connexion"), "autre");
   await userEvent.selectOptions(screen.getByLabelText("Modèle"), "autre");
   expect(screen.getByText(/type inconnu/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Retirer revenue" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retirer Chiffre d'affaires" })).not.toBeInTheDocument();
 });
 
 it("affiche le refus de soumission et d'annulation", async () => {
@@ -274,7 +275,7 @@ it("efface la requête lors du changement d'espace", async () => {
   const { rerender } = ouvrir(fetcher);
   await userEvent.click(await screen.findByRole("checkbox", { name: /Chiffre d'affaires/ }));
   rerender(<ExplorerPage space={{ ...space, id: "autre" }} target="DEV" fetcher={fetcher} />);
-  expect(screen.queryByRole("button", { name: "Retirer revenue" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retirer Chiffre d'affaires" })).not.toBeInTheDocument();
   expect(await screen.findByRole("alert")).toBeInTheDocument();
 });
 
@@ -326,9 +327,8 @@ it("propose de reprendre un suivi interrompu sans présumer de l'état réel", a
   expect(interruption).toHaveTextContent("Suivi interrompu");
   expect(interruption).toHaveTextContent("état réel de l’exécution est inconnu");
   expect(screen.getByRole("button", { name: "Exécuter" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Annuler l'exécution" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Annuler l'exécution" })).not.toBeInTheDocument();
   expect(screen.getByText(/annulation est indisponible pendant l’interruption/)).toHaveAttribute("role", "status");
-  await userEvent.click(screen.getByRole("button", { name: "Annuler l'exécution" }));
   expect(fetcher.mock.calls.some(([url, init]) => url === `${root}/executions/${id}/cancel` && init?.method === "POST")).toBe(false);
   expect(screen.queryByRole("tab", { name: "Tableau" })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Reprendre le suivi" }));
@@ -341,7 +341,7 @@ it("explique l'indisponibilité de l'annulation et permet de réinitialiser un s
   await userEvent.click(await screen.findByRole("checkbox", { name: /Chiffre d'affaires/ }));
   await userEvent.click(screen.getByRole("button", { name: "Exécuter" }));
   expect(await screen.findByText(/capacité du connecteur/)).toHaveAttribute("role", "status");
-  expect(screen.getByRole("button", { name: "Annuler l'exécution" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Annuler l'exécution" })).not.toBeInTheDocument();
   expect(await screen.findByText(/Suivi interrompu/, {}, { timeout: 3000 })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Réinitialiser" }));
   expect(screen.queryByText(/Suivi interrompu/)).not.toBeInTheDocument();
@@ -354,4 +354,16 @@ it("explique une panne technique du suivi", async () => {
   await userEvent.click(await screen.findByRole("checkbox", { name: /Chiffre d'affaires/ }));
   await userEvent.click(screen.getByRole("button", { name: "Exécuter" }));
   expect(await screen.findByText(/Suivi interrompu/, {}, { timeout: 3000 })).toHaveTextContent("état réel de l’exécution est inconnu");
+});
+
+
+it("utilise le nom moteur lorsque les libellés sont vides", async () => {
+  const modele = champs.body.models[0];
+  if (modele === undefined || modele.metrics[0] === undefined || modele.dimensions[0] === undefined) throw new Error("Champs attendus");
+  const sansLibelles = { models: [{ ...modele, metrics: [{ ...modele.metrics[0], label: "" }], dimensions: [{ ...modele.dimensions[0], label: "" }] }] };
+  ouvrir(server({ [`GET ${root}/explorer/fields`]: Response.json(sansLibelles) }));
+  await userEvent.click(await screen.findByRole("checkbox", { name: /sum/ }));
+  await userEvent.click(screen.getByRole("checkbox", { name: /date/ }));
+  expect(screen.getByRole("button", { name: "Retirer revenue" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retirer jour" })).toBeInTheDocument();
 });
