@@ -146,6 +146,15 @@ COLONNES = {
         "created_by_issuer": False,
         "created_by_subject": False,
     },
+    "connection_endpoints": {
+        "space_id": False,
+        "key": False,
+        "host": False,
+        "warehouse_id": False,
+        "created_at": False,
+        "created_by_issuer": False,
+        "created_by_subject": False,
+    },
     "connection_bindings": {
         "space_id": False,
         "name": False,
@@ -210,6 +219,7 @@ INSTANTS = {
     "parameter_values": {"set_at"},
     "telemetry": {"at"},
     "logical_connections": {"created_at"},
+    "connection_endpoints": {"created_at"},
     "connection_bindings": {"set_at"},
     "connection_credentials": {"set_at"},
     "executions": {
@@ -234,6 +244,7 @@ CLES = {
     "parameter_values": ["space_id", "name", "environment"],
     "telemetry": ["id"],
     "logical_connections": ["space_id", "name"],
+    "connection_endpoints": ["space_id", "key"],
     "connection_bindings": ["space_id", "name", "environment"],
     "connection_credentials": ["space_id", "name", "environment"],
     "executions": ["id"],

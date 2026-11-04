@@ -1,4 +1,4 @@
-"""Révisions 0007 à 0009 sur une base déjà peuplée en 0006."""
+"""Révisions 0007 à 0010 sur une base déjà peuplée en 0006."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from skifer_board.state import current_revision, upgrade
 from skifer_board.state.schema import (
     connection_bindings,
     connection_credentials,
+    connection_endpoints,
     executions,
     logical_connections,
     metadata,
@@ -38,12 +39,13 @@ def test_revision_0007_garde_les_espaces_et_part_vide(engine: Engine) -> None:
     jusqu_a(engine, "0007")
     assert current_revision(engine) == "0007"
     upgrade(engine)
-    assert current_revision(engine) == "0009"
+    assert current_revision(engine) == "0010"
     assert store.get_space("finance") is not None
     with engine.connect() as connection:
         assert connection.execute(select(logical_connections)).all() == []
         assert connection.execute(select(connection_bindings)).all() == []
         assert connection.execute(select(connection_credentials)).all() == []
+        assert connection.execute(select(connection_endpoints)).all() == []
         assert connection.execute(select(executions)).all() == []
         assert compare_metadata(MigrationContext.configure(connection), metadata) == []
 
@@ -79,7 +81,7 @@ def test_revision_0009_garde_une_liaison_existante(engine: Engine) -> None:
             )
         )
     upgrade(engine)
-    assert current_revision(engine) == "0009"
+    assert current_revision(engine) == "0010"
     binding = ConnectionStore(engine).get_binding("finance", "source", Environment.DEV)
     assert (binding.connector, binding.endpoint_key, binding.identity_mode) == (
         Connector.DUCKDB,

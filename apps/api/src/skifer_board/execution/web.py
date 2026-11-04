@@ -18,9 +18,11 @@ from .connectors import (
     DatabricksEndpoint,
     DuckDbEndpoint,
     Endpoint,
+    EndpointConfigError,
     EndpointNotConfigured,
     HttpTransport,
     IdentityUnavailable,
+    databricks_endpoint,
     probe_databricks,
     probe_duckdb,
 )
@@ -87,6 +89,9 @@ def install_connections(
             "connection_not_found": 404,
             "connection_binding_not_found": 404,
             "connection_in_use": 409,
+            "endpoint_exists": 409,
+            "endpoint_in_use": 409,
+            "endpoint_not_found": 404,
         }[error.code]
         return JSONResponse({"error": {"code": error.code}}, status_code=status)
 
@@ -120,6 +125,40 @@ def install_connections(
         return store, access, PersonRef.of(identity)
 
     path = "/api/spaces/{space_id}/connections"
+    endpoint_path = "/api/spaces/{space_id}/connection-endpoints"
+
+    @app.get(endpoint_path)
+    def list_endpoints(request: Request, space_id: str) -> JSONResponse:
+        registry, access, _ = writable(request, space_id)
+        return JSONResponse({"endpoints": registry.list_endpoints(access.space.id)})
+
+    @app.post(endpoint_path)
+    async def create_endpoint(request: Request, space_id: str) -> JSONResponse:
+        registry, access, actor = writable(request, space_id)
+        body = _object(await _body(request), "body", {"key", "host", "warehouse_id"})
+        key = body["key"]
+        host = body["host"]
+        warehouse_id = body["warehouse_id"]
+        if not isinstance(key, str) or ENDPOINT_KEY.fullmatch(key) is None:
+            raise Invalid("key")
+        if key in (endpoints or {}):
+            raise Invalid("key")
+        if not isinstance(host, str) or not isinstance(warehouse_id, str):
+            raise Invalid("endpoint")
+        try:
+            endpoint = databricks_endpoint(host, warehouse_id)
+        except EndpointConfigError:
+            raise Invalid("endpoint") from None
+        created = registry.create_endpoint(access.space.id, key, endpoint, actor, clock())
+        return JSONResponse(created, status_code=201)
+
+    @app.delete(endpoint_path + "/{key}")
+    def remove_endpoint(request: Request, space_id: str, key: str) -> Response:
+        registry, access, actor = writable(request, space_id)
+        if ENDPOINT_KEY.fullmatch(key) is None:
+            raise Invalid("key")
+        registry.remove_endpoint(access.space.id, key, actor, clock())
+        return Response(status_code=204)
 
     if store is None:
 
@@ -205,7 +244,9 @@ def install_connections(
         binding = await asyncio.to_thread(
             registry.get_binding, access.space.id, _name(name, "name"), _environment(environment)
         )
-        endpoint = (endpoints or {}).get(binding.endpoint_key)
+        endpoint = registry.get_endpoint(access.space.id, binding.endpoint_key) or (
+            endpoints or {}
+        ).get(binding.endpoint_key)
         if endpoint is None or endpoint.connector is not binding.connector:
             raise EndpointNotConfigured()
         if isinstance(endpoint, DuckDbEndpoint):

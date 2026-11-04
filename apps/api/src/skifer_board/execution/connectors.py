@@ -93,6 +93,12 @@ def _host(value: str) -> str:
     return f"https://{hostname}"
 
 
+def databricks_endpoint(host: str, warehouse_id: str) -> DatabricksEndpoint:
+    if WAREHOUSE_ID.fullmatch(warehouse_id) is None:
+        raise EndpointConfigError(f"{ENDPOINTS_VARIABLE} : warehouse invalide.")
+    return DatabricksEndpoint(_host(host), warehouse_id)
+
+
 def endpoints_from_env(environ: Mapping[str, str]) -> dict[str, Endpoint]:
     raw = environ.get(ENDPOINTS_VARIABLE)
     if raw is None:

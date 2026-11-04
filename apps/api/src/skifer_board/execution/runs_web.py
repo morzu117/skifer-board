@@ -179,7 +179,9 @@ def install_execution_routes(
         binding = await asyncio.to_thread(connections.get_binding, space_id, name, environment)
         if binding.identity_mode is not IdentityMode.SERVICE:
             raise IdentityUnavailable()
-        endpoint = (endpoints or {}).get(binding.endpoint_key)
+        endpoint = connections.get_endpoint(space_id, binding.endpoint_key) or (
+            endpoints or {}
+        ).get(binding.endpoint_key)
         if endpoint is None or endpoint.connector is not binding.connector:
             raise EndpointNotConfigured()
         connector: ExecutionConnector
