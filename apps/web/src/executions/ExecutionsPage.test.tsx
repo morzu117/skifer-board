@@ -44,6 +44,9 @@ it("montre la lecture, le vide et l'accès lecteur sans portée d'administration
   expect(await screen.findByText("Aucune exécution dans cette vue.")).toBeInTheDocument();
   expect(screen.queryByRole("group", { name: "Portée des exécutions" })).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Retour au catalogue" })).toHaveAttribute("href", "#/espaces/finance/catalogue");
+  await userEvent.click(screen.getByRole("button", { name: "Skifer ardoise" }));
+  expect(screen.getByRole("button", { name: "Skifer ardoise" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("heading", { level: 1, name: "Exécutions" }).closest(".sb-executions")).toHaveClass("sb-theme-skifer-ardoise");
   await userEvent.click(screen.getByRole("button", { name: "Actualiser" }));
   await waitFor(() => { expect(fetcher).toHaveBeenCalledTimes(2); });
 });

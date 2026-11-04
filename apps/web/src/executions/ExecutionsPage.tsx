@@ -1,5 +1,6 @@
 import { useState, type SyntheticEvent } from "react";
 import type { Table } from "apache-arrow";
+import { SKIFER_CLAIR, type ChartTheme } from "../charts/theme";
 import { formatInstant } from "../format/date";
 import { formatNumber } from "../format/number";
 import { routeHash } from "../shell/route";
@@ -15,6 +16,7 @@ import { Card } from "../ui/Card";
 import { useOutcome } from "../ui/useOutcome";
 import { cancelExecution, fetchExecution, fetchExecutions, fetchResult, submitExecution, type ExecutionInput } from "./client";
 import type { Execution, ExecutionState } from "./model";
+import { ThemeSwitch } from "../prototype/ThemeSwitch";
 import "./executions.css";
 
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]{0,79}$/;
@@ -41,6 +43,7 @@ function Outcome({ result, title }: { result: Exclude<AdminOutcome<unknown>, { s
 interface Props { space: Space; platformAdmin: boolean; fetcher: Fetch; target: Environment }
 
 export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props) {
+  const [theme, setTheme] = useState<ChartTheme>(SKIFER_CLAIR);
   const manager = manages(space, platformAdmin);
   const [scope, setScope] = useState<"mine" | "space">(space.role === null ? "space" : "mine");
   const [revision, setRevision] = useState(0);
@@ -59,9 +62,10 @@ export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props)
     if (outcome.status === "ok") { setSelected(outcome.value.id); changed(); }
   };
   return (
-    <>
+    <div className={`sb-executions sb-theme-${theme.id}`}>
       <div className="sb-page-head">
         <div><h1 className="sb-page-head__title">Exécutions</h1><p className="sb-page-head__lead">{space.name} · résultats évalués avec vos droits de ligne.</p></div>
+        <ThemeSwitch value={theme} onChange={setTheme} />
       </div>
       <p><a href={routeHash({ page: "catalogue", space: space.id })}>Retour au catalogue</a></p>
       {space.implicit ? <Banner tone="neutral">Les exécutions suivies ne sont pas disponibles en mode local.</Banner> : (
@@ -85,7 +89,7 @@ export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props)
           {selected === null ? null : <ExecutionDetail key={`${space.id}:${selected}`} space={space.id} id={selected} fetcher={fetcher} onChanged={changed} />}
         </>
       )}
-    </>
+    </div>
   );
 }
 

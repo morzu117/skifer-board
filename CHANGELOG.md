@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.7c : parcours Chrome du centre d'exécutions sur ordinateur et téléphone : lecture personnelle et portée d'administration, preuve expurgée, aperçu Arrow, annulation en attente de confirmation, refus, session expirée, mode local et panne. Contrôle axe sur la page entière, défilement du résultat dans sa carte et absence de débordement à 390, 768 et 1280 px. Bascule des thèmes Skifer clair et Skifer ardoise avec quatre captures de référence inspectées.
+
 - Plan 12, 12.7b : écran des exécutions dans un espace, accessible aux lecteurs depuis l'accueil. Soumission déclarative, liste personnelle, portée « espace » pour l'administration, détail avec état, durée, limites, troncature et preuve expurgée. L'annulation suit la capacité renvoyée par le serveur et sa confirmation reste explicite ; l'aperçu Arrow défile dans sa carte. Chargement, vide, refus, mode local, perte de session et panne sont nommés.
 
 - Plan 12, 12.7a : contrat web strict pour les exécutions suivies, leur liste et leur détail, avec vérification des états, dates, compteurs et preuves expurgées. Clients de soumission, lecture et annulation avec refus fermés et signalement d'une session ou d'un espace perdus. Aperçu Arrow lu séparément du JSON, sous les plafonds de taille et de lignes, avec contrôle du type, des octets et des colonnes avant présentation.

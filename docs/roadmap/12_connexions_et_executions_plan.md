@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.7b réalisés ; 12.7c planifié**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.7c réalisés ; recette Databricks réelle restante pour clore le lot 03**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -107,6 +107,8 @@ Réalisation : réponses de liste et détail décodées avant emploi, cohérence
 Réalisation : l'accueil relie chaque espace à son centre d'exécutions ; la route affiche la liste personnelle et, aux administrateurs, une portée d'espace. Le formulaire envoie modèle, métriques et dimensions déclaratifs, sans SQL ni identifiant ; l'environnement vient de la coque. Le détail montre état, durée, lignes, taille, troncature et preuve expurgée ; l'annulation garde son état jusqu'à confirmation et une actualisation relit le détail. L'aperçu Arrow reste dans sa carte défilable. Tests de route, rôle, soumission, résultats, refus, mode local et annulation ; web à 100 % de couverture.
 
 **12.7c — Recette visuelle.** Parcours Playwright des deux droits, de l'annulation, des refus et de la perte de session ; axe sur la page entière et captures de référence ordinateur/téléphone sous les deux thèmes. Vérifier le défilement du résultat dans sa carte et l'absence de débordement de la page à 390, 768 et 1280 px. Le lot garde la recette Databricks réelle comme condition de clôture.
+
+Réalisation : 14 parcours Chrome sur les deux formats couvrent le lecteur, la portée de l'administration, l'annulation demandée, les refus, l'expiration de session, le mode local et la panne. Le résultat Arrow de douze colonnes défile au clavier dans sa carte ; aucun débordement de page à 390, 768 et 1280 px. Axe contrôle la page entière et les contrastes ; quatre captures de référence clair/ardoise sur ordinateur/téléphone ont été inspectées. La source Databricks réelle reste la condition de clôture du lot.
 
 ## 4. Acceptation du lot
 
