@@ -14,7 +14,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from skifer_board.state.schema import telemetry
-from skifer_board.telemetry import OperationSummary, TelemetryStore, Window
+from skifer_board.telemetry import Kind, Measure, OperationSummary, TelemetryStore, Window
 from sqlalchemy import Engine, create_engine, delete, func, select, text
 from sqlalchemy.exc import DBAPIError
 
@@ -40,6 +40,28 @@ def seule(magasin: TelemetryStore, fenetre: Window = Window.DAY) -> OperationSum
 
 def cle(operation: OperationSummary) -> tuple[str, str, str | None]:
     return operation.kind.value, operation.operation, operation.method
+
+
+def test_execution_success_refusal_cancel_and_failure_are_counted_separately(
+    magasin: TelemetryStore,
+) -> None:
+    magasin.record(
+        [
+            Measure(
+                MAINTENANT,
+                Kind.EXECUTION,
+                "semantic.execute",
+                outcome,
+                10.0,
+                space="finance",
+                environment="DEV",
+            )
+            for outcome in ("ok", "deny", "cancelled", "invalid_upstream")
+        ]
+    )
+    operation = seule(magasin)
+    assert operation.kind is Kind.EXECUTION
+    assert (operation.count, operation.errors, operation.refusals) == (4, 1, 1)
 
 
 # --- Enregistrement --------------------------------------------------------------------------

@@ -474,6 +474,51 @@ def test_demarrage_sans_ouvrir_de_port(
     }
 
 
+@pytest.mark.parametrize(
+    "variable,value",
+    [(server.MODELS_VARIABLE, "relative"), (server.CERTIFICATIONS_VARIABLE, "relative.db")],
+)
+def test_demarrage_refuse_configuration_semantique_non_absolue(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, variable: str, value: str
+) -> None:
+    environnement = {
+        server.REPOSITORY_VARIABLE: str(tmp_path / "clone"),
+        server.STATE_VARIABLE: str(tmp_path / "state"),
+        variable: value,
+    }
+    monkeypatch.setattr(os, "environ", environnement)
+    with pytest.raises(SystemExit, match=variable):
+        server.main()
+
+
+def test_demarrage_charge_certifications_provisionnees(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    models = tmp_path / "models"
+    models.mkdir()
+    certifications = tmp_path / "certifications.db"
+    certifications.touch()
+    monkeypatch.setattr(
+        os,
+        "environ",
+        {
+            server.REPOSITORY_VARIABLE: str(tmp_path / "clone"),
+            server.STATE_VARIABLE: str(tmp_path / "state"),
+            server.MODELS_VARIABLE: str(models),
+            server.CERTIFICATIONS_VARIABLE: str(certifications),
+        },
+    )
+    creer = Mock(wraps=server.create_app)
+    monkeypatch.setattr(server, "create_app", creer)
+    monkeypatch.setattr(uvicorn, "run", Mock())
+    server.main()
+    assert creer.call_args.kwargs["execution_models_dir"] == models
+    store = creer.call_args.kwargs["execution_certification_store"]
+    assert store is not None
+    with pytest.raises(Exception, match="closed"):
+        store._conn.execute("SELECT 1")
+
+
 @pytest.mark.parametrize("ancien", [False, True], ids=["sans-index", "ancien"])
 @pytest.mark.parametrize(
     "route", ["/api/spaces/local/catalog", "/api/spaces/local/catalog/revenu-net"]

@@ -140,7 +140,7 @@ describe("decodeSummary : champs hors contrat", () => {
   it.each(["db", "HTTP", "sql", "", null, 1])("refuse un genre inconnu : %j", (genre) => {
     const corps = copie();
     premiere(corps).kind = genre;
-    refuse(corps, "24h", /kind : http \| atlas attendu/);
+    refuse(corps, "24h", /kind : http \| atlas \| execution attendu/);
   });
 
   it.each([null, 3, {}, []])("refuse une opération qui n'est pas un texte : %j", (valeur) => {
@@ -424,6 +424,6 @@ describe("libellés", () => {
     expect(WINDOWS).toEqual(["24h", "7d", "30d"]);
     expect(WINDOWS.map((fenetre) => WINDOW_LABELS[fenetre])).toEqual(["24 h", "7 j", "30 j"]);
     expect(WINDOWS.map((fenetre) => WINDOW_SPANS[fenetre])).toEqual(["les dernières 24 heures", "les 7 derniers jours", "les 30 derniers jours"]);
-    expect(KIND_LABELS).toEqual({ http: "Requête de l'API", atlas: "Lecture d'Atlas" });
+    expect(KIND_LABELS).toEqual({ http: "Requête de l'API", atlas: "Lecture d'Atlas", execution: "Exécution sémantique" });
   });
 });

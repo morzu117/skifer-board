@@ -46,10 +46,11 @@ def test_retention_de_90_jours() -> None:
 
 
 def test_genres() -> None:
-    assert [k.value for k in Kind] == ["http", "atlas"]
+    assert [k.value for k in Kind] == ["http", "atlas", "execution"]
     assert Kind("http") is Kind.HTTP and Kind("atlas") is Kind.ATLAS
+    assert Kind("execution") is Kind.EXECUTION
     with pytest.raises(ValueError):
-        Kind("execution")
+        Kind("other")
 
 
 def test_fenetres_et_leur_duree() -> None:
@@ -65,7 +66,23 @@ def test_fenetres_et_leur_duree() -> None:
 def test_methodes_et_issues() -> None:
     # `OTHER` range une méthode hors liste (plan 11, 11.2).
     assert METHODS == {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "OTHER"}
-    assert OUTCOMES == REFUSAL_CODES | {"ok", "error", "other"}
+    assert OUTCOMES == REFUSAL_CODES | {
+        "ok",
+        "error",
+        "other",
+        "deny",
+        "require_human",
+        "execution_timed_out",
+        "execution_failed",
+        "execution_lost",
+        "cancelled",
+        "succeeded",
+        "denied",
+        "failed",
+        "timed_out",
+        "running",
+        "queued",
+    }
     assert not {"ok", "error", "other"} & REFUSAL_CODES
     # Les issues tiennent dans la colonne `outcome`.
     assert max(map(len, OUTCOMES)) <= telemetry.c.outcome.type.length  # type: ignore[attr-defined]

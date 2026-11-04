@@ -14,9 +14,9 @@ export const WINDOW_LABELS: Record<Window, string> = { "24h": "24 h", "7d": "7 j
 /** Fenêtre dite en toutes lettres, pour l'état vide et la période. */
 export const WINDOW_SPANS: Record<Window, string> = { "24h": "les dernières 24 heures", "7d": "les 7 derniers jours", "30d": "les 30 derniers jours" };
 
-export type Kind = "http" | "atlas";
+export type Kind = "http" | "atlas" | "execution";
 
-export const KIND_LABELS: Record<Kind, string> = { http: "Requête de l'API", atlas: "Lecture d'Atlas" };
+export const KIND_LABELS: Record<Kind, string> = { http: "Requête de l'API", atlas: "Lecture d'Atlas", execution: "Exécution sémantique" };
 
 export interface Distribution {
   p50: number | null;
@@ -63,7 +63,7 @@ function count(value: unknown, path: string): number {
 const distribution = object<Distribution>({ p50: nullable(measure), max: nullable(count) });
 
 const operation = object<Omit<OperationSummary, "duration"> & { duration_ms: OperationSummary["duration"] }>({
-  kind: oneOf<Kind>(["http", "atlas"]),
+  kind: oneOf<Kind>(["http", "atlas", "execution"]),
   operation: text,
   method: nullable(text),
   count,

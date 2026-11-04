@@ -34,6 +34,7 @@ REFUSAL_CODES = frozenset(
         "connection_exists",
         "connection_in_use",
         "connection_not_found",
+        "binding_changed",
         "connector_unavailable",
         "credential_not_allowed",
         "credential_not_found",
@@ -42,12 +43,15 @@ REFUSAL_CODES = frozenset(
         "diff_unavailable",
         "document_not_found",
         "endpoint_not_configured",
+        "engine_unavailable",
+        "execution_not_found",
         "forbidden",
         "grant_not_found",
         "history_unavailable",
         "http_error",
         "internal_error",
         "invalid_upstream",
+        "result_unavailable",
         "invalid_parameter",
         "invalid_request",
         "identity_unavailable",
@@ -66,15 +70,39 @@ REFUSAL_CODES = frozenset(
         "unknown_person",
         "values_incompatible",
         "vault_unavailable",
+        "worker_unavailable",
         "version_not_found",
     }
 )
-OUTCOMES = REFUSAL_CODES | {"ok", "error", "other"}
+EXECUTION_OUTCOMES = {
+    "deny",
+    "require_human",
+    "execution_timed_out",
+    "execution_failed",
+    "execution_lost",
+    "cancelled",
+    "succeeded",
+    "denied",
+    "failed",
+    "timed_out",
+    "running",
+    "queued",
+}
+OUTCOMES = (
+    REFUSAL_CODES
+    | EXECUTION_OUTCOMES
+    | {
+        "ok",
+        "error",
+        "other",
+    }
+)
 
 
 class Kind(StrEnum):
     HTTP = "http"
     ATLAS = "atlas"
+    EXECUTION = "execution"
 
 
 class Window(StrEnum):

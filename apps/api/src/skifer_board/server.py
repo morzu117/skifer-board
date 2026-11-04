@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import Enum
@@ -41,7 +41,11 @@ from .execution.connectors import (
     UrllibTransport,
     endpoints_from_env,
 )
+from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
+from .execution.runs_web import install_execution_routes
+from .execution.semantic import certification_store_from_path
 from .execution.vault import CredentialVault, VaultConfigError, VaultKeys, keys_from_env
+from .execution.worker import ExecutionWorkerPool
 from .identity import (
     ConfigError,
     IdentityRuntime,
@@ -51,6 +55,7 @@ from .identity import (
     is_loopback,
 )
 from .identity import config_from_env as identity_from_env
+from .identity.model import Identity
 from .spaces import Spaces, SpaceStore, install_spaces
 from .state import (
     DATABASE_URL,
@@ -62,6 +67,9 @@ from .state import (
 )
 from .state import config_from_env as database_from_env
 from .telemetry import (
+    OUTCOMES,
+    Kind,
+    Measure,
     Recorder,
     TelemetryMiddleware,
     TelemetryStore,
@@ -71,6 +79,8 @@ from .telemetry import (
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_ATLAS_REPOSITORY"
 STATE_VARIABLE = "SKIFER_BOARD_STATE_DIR"
+MODELS_VARIABLE = "SKIFER_BOARD_SEMANTIC_MODELS_DIR"
+CERTIFICATIONS_VARIABLE = "SKIFER_BOARD_CERTIFICATION_DB"
 VERSION_PARAMETER = "Numéro de version taguée : entier strictement positif."
 
 
@@ -128,6 +138,10 @@ def create_app(
     vault_keys: VaultKeys | None = None,
     endpoints: dict[str, Endpoint] | None = None,
     connection_transport: HttpTransport | None = None,
+    execution_models_dir: Path | None = None,
+    execution_certification_store: Any = None,
+    execution_certification_mode: str = "enforce",
+    execution_reader_attributes: Callable[[Identity], Mapping[str, str]] | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -142,6 +156,49 @@ def create_app(
     if connections is None and spaces.store is not None:
         connections = ConnectionStore(spaces.store.engine)
     telemetry = Recorder(None) if recorder is None else recorder
+    execution_store = None if spaces.store is None else ExecutionStore(spaces.store.engine)
+
+    def measure_execution(
+        record: ExecutionRecord,
+        state: ExecutionState,
+        code: str | None,
+        duration: float,
+        rows: int | None,
+        size: int | None,
+    ) -> None:
+        telemetry.submit(
+            Measure(
+                at=spaces.clock(),
+                kind=Kind.EXECUTION,
+                operation="semantic.execute",
+                outcome="ok"
+                if state is ExecutionState.SUCCEEDED
+                else code
+                if code in OUTCOMES
+                else state.value,
+                duration_ms=duration * 1000,
+                space=record.space_id,
+                environment=record.environment.value,
+                rows=rows,
+                size=size,
+            )
+        )
+
+    execution_pool = (
+        ExecutionWorkerPool(
+            execution_store,
+            execution_models_dir,
+            certification_store=execution_certification_store,
+            certification_mode=execution_certification_mode,
+            clock=spaces.clock,
+            on_finish=measure_execution,
+        )
+        if execution_store is not None
+        and execution_models_dir is not None
+        and execution_models_dir.is_dir()
+        and (execution_certification_store is not None or execution_certification_mode == "off")
+        else None
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -150,6 +207,8 @@ def create_app(
         try:
             yield
         finally:
+            if execution_pool is not None:
+                execution_pool.close()
             telemetry.stop()
 
     app = FastAPI(
@@ -159,6 +218,9 @@ def create_app(
     guards = install_spaces(app, spaces)
     reader = Depends(guards.reader)
     vault = None if spaces.store is None else CredentialVault(spaces.store.engine, vault_keys)
+    execution_transport = (
+        UrllibTransport() if connection_transport is None else connection_transport
+    )
     install_connections(
         app,
         connections,
@@ -166,7 +228,20 @@ def create_app(
         spaces.clock,
         vault,
         endpoints,
-        UrllibTransport() if connection_transport is None else connection_transport,
+        execution_transport,
+    )
+    install_execution_routes(
+        app,
+        execution_store,
+        connections,
+        execution_pool,
+        guards.reader,
+        guards.manager,
+        spaces.clock,
+        vault,
+        endpoints,
+        execution_transport,
+        execution_reader_attributes,
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store
@@ -334,17 +409,36 @@ def main() -> None:
         raise SystemExit(str(error)) from error
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
+    models_raw = os.environ.get(MODELS_VARIABLE)
+    models_dir = None if models_raw is None else Path(models_raw)
+    if models_dir is not None and (not models_dir.is_absolute() or not models_dir.is_dir()):
+        raise SystemExit(f"{MODELS_VARIABLE} doit désigner un répertoire absolu existant.")
+    certifications_raw = os.environ.get(CERTIFICATIONS_VARIABLE)
+    try:
+        certification_store = certification_store_from_path(
+            None if certifications_raw is None else Path(certifications_raw)
+        )
+    except ValueError:
+        raise SystemExit(
+            f"{CERTIFICATIONS_VARIABLE} doit désigner un fichier absolu existant."
+        ) from None
     # Mesures en base avec les espaces en base, toujours sur la sortie standard (plan 11, T4).
     configure_logging()
     recorder = Recorder(None if spaces is None or engine is None else TelemetryStore(engine))
     service = CatalogService(catalog, measure=recorder.submit)
-    app = create_app(
-        service,
-        identity,
-        spaces,
-        recorder,
-        None if engine is None or identity is None else ConnectionStore(engine),
-        vault_keys,
-        endpoints,
-    )
-    uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))
+    try:
+        app = create_app(
+            service,
+            identity,
+            spaces,
+            recorder,
+            None if engine is None or identity is None else ConnectionStore(engine),
+            vault_keys,
+            endpoints,
+            execution_models_dir=models_dir,
+            execution_certification_store=certification_store,
+        )
+        uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))
+    finally:
+        if certification_store is not None:
+            certification_store.close()

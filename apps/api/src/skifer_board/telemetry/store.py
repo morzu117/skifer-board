@@ -69,12 +69,22 @@ class TelemetryStore:
         _aware(now, "now")
         start = now - window.span
         within = and_(telemetry.c.at >= start, telemetry.c.at <= now)
-        # Une erreur : un 5xx, ou une lecture d'Atlas qui n'a pas abouti. Un refus : un 4xx.
+        # Une annulation confirmée n'est pas une panne ; un refus sémantique est compté
+        # comme refus même sans statut HTTP, car la mesure vient du fil d'exécution.
         error = or_(
             telemetry.c.status >= 500,
-            and_(telemetry.c.status.is_(None), telemetry.c.outcome != "ok"),
+            and_(
+                telemetry.c.status.is_(None),
+                telemetry.c.outcome.notin_(("ok", "cancelled", "deny", "require_human")),
+            ),
         )
-        refusal = and_(telemetry.c.status >= 400, telemetry.c.status < 500)
+        refusal = or_(
+            and_(telemetry.c.status >= 400, telemetry.c.status < 500),
+            and_(
+                telemetry.c.kind == Kind.EXECUTION.value,
+                telemetry.c.outcome.in_(("deny", "require_human")),
+            ),
+        )
         grouped = (
             select(
                 telemetry.c.kind,

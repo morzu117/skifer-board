@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 from skifer.agentic.resolver import SemanticQuery, SemanticQueryError
+from skifer.observability.certification_store import SqliteCertificationStore
 from skifer.semantic.access_policy import ConsumerContext, SemanticAccessDenied
 from skifer.semantic.evidence import ExecutionResult, SemanticExecutionError, hash_sql
 from skifer.semantic.semantic import SemanticEngine
@@ -52,6 +53,15 @@ class VerifiedReader:
 class SemanticOutput:
     rows: Any
     evidence: dict[str, Any]
+
+
+def certification_store_from_path(path: Path | None) -> SqliteCertificationStore | None:
+    """Ouvre uniquement un magasin de certification déjà provisionné par l'exploitant."""
+    if path is None:
+        return None
+    if not path.is_absolute() or not path.is_file():
+        raise ValueError("Certification store must be an existing absolute file.")
+    return SqliteCertificationStore(str(path))
 
 
 def _all_models_have_row_policy(models_dir: Path) -> bool:

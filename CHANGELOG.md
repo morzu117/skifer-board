@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.5c : routes de soumission, liste, détail, résultat Arrow et annulation des exécutions sémantiques suivies. Le serveur valide un corps déclaratif sans SQL ni identifiant, relit les droits par espace et personne, réserve le résultat à l'auteur et ne donne à l'administration que les métadonnées. Configuration serveur explicite du catalogue sémantique et des certifications ; mode local et moteur absent refusés. Nouveau genre `execution` dans la télémétrie et son écran, avec opération fixe et mesures sans identité ni secret. Contrats de refus et tests intégrés sur deux lecteurs DuckDB et un transport Databricks simulé.
+
 - Plan 12, 12.5b : file de travaux bornée pour les exécutions suivies, avec états persistés, délai et annulation confirmée par la source. Résultats DuckDB lus par lots et réponses Databricks converties en flux Arrow typé sous les plafonds de 1 000 lignes et 1 Mio ; la troncature est conservée. Refus et pannes ont des codes fermés, une panne de télémétrie ne transforme pas une réussite en échec. Tests de résultat, de suivi et de concurrence.
 
 - Plan 12, 12.5a : état durable des exécutions en base PostgreSQL (révision `0009`). Une ligne conserve contexte immuable, identité du lecteur, bail du travail, état, preuve expurgée et résultat Arrow borné, sans requête ni SQL. Les lectures et les octets de résultat sont isolés par espace et personne ; les transitions atomiques départ, annulation et fin gardent un seul état terminal. Un autre serveur ne déclare en échec qu'un bail expiré, et une liaison en cours ne peut être changée ou retirée. Tests de migration, d'isolation, de course et de récupération après abandon.

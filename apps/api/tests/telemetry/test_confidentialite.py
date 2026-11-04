@@ -351,6 +351,27 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         )
         parcours("DELETE", f"/api/spaces/{A}/connections/connexion_sentinelle", x + "/{name}", 204)
 
+        ex = s + "/executions"
+        parcours(
+            "POST",
+            f"/api/spaces/{A}/executions",
+            ex,
+            503,
+            {
+                "connection": "connexion_sentinelle",
+                "environment": "DEV",
+                "model": "modele_sentinelle",
+                "metrics": ["metrique_sentinelle"],
+                "dimensions": [],
+                "filters": [],
+            },
+        )
+        parcours("GET", f"/api/spaces/{A}/executions", ex, 200)
+        execution = f"/api/spaces/{A}/executions/execution-sentinelle"
+        parcours("GET", execution, ex + "/{execution_id}", 404)
+        parcours("GET", execution + "/result", ex + "/{execution_id}/result", 404)
+        parcours("POST", execution + "/cancel", ex + "/{execution_id}/cancel", 404)
+
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text
         trouvees = parcours("GET", "/api/people", "/api/people", 200, params={"q": "sentinelle"})

@@ -19,6 +19,7 @@ from skifer_board.execution.semantic import (
     SemanticRefusal,
     SemanticRequest,
     VerifiedReader,
+    certification_store_from_path,
     run_semantic,
 )
 from skifer_board.identity.model import Identity
@@ -46,6 +47,18 @@ class RecordingConnector:
 
     def result(self, statement_id: str) -> Any:
         return self.table
+
+
+def test_certification_store_requires_existing_absolute_file(tmp_path: Path) -> None:
+    assert certification_store_from_path(None) is None
+    for path in (Path("relative.db"), tmp_path / "missing.db"):
+        with pytest.raises(ValueError):
+            certification_store_from_path(path)
+    path = tmp_path / "certifications.db"
+    path.touch()
+    store = certification_store_from_path(path)
+    assert store is not None
+    store.close()
 
 
 def _model(tmp_path: Path, *, row_policy: bool = True) -> Path:

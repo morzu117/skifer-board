@@ -175,6 +175,11 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}/credential"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}"),
+        ("POST", "/api/spaces/{space_id}/executions"),
+        ("GET", "/api/spaces/{space_id}/executions"),
+        ("GET", "/api/spaces/{space_id}/executions/{execution_id}"),
+        ("GET", "/api/spaces/{space_id}/executions/{execution_id}/result"),
+        ("POST", "/api/spaces/{space_id}/executions/{execution_id}/cancel"),
         ("GET", "/api/people"),
         ("GET", "/api/telemetry"),
         ("GET", "/api/spaces/{space_id}/catalog"),
@@ -202,6 +207,7 @@ def test_toutes_les_routes_api_exigent_une_session(
                     .replace("{grant_id}", "5b0e4c1e-0000-4000-8000-000000000000")
                     .replace("{name}", "catalogue")
                     .replace("{environment}", "PROD")
+                    .replace("{execution_id}", "11111111-1111-1111-1111-111111111111")
                 )
                 reponse = client.request(methode, chemin, headers={"Origin": ORIGINE})
                 assert reponse.status_code == 401
