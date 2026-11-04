@@ -279,7 +279,7 @@ function BindingPanel({ binding, name, space, target, busy, pending, fetcher, on
             <dt>Identité</dt><dd>{binding.identityMode === "service" ? "Service" : "Personne"}</dd>
             <dt>Identifiant</dt><dd><CredentialBadge state={binding.credentialState} identity={binding.identityMode} connector={binding.connector} /></dd>
           </dl>
-          {binding.identityMode === "person" ? <p className="sb-connection__note">La fédération de l'identité personnelle n'est pas encore disponible.</p> : null}
+          {binding.identityMode === "person" ? <p className="sb-connection__note">Chaque personne doit connecter son compte Databricks via OAuth avant de tester ou d’exécuter cette liaison.</p> : null}
         </>
       )}
       <div className="sb-connection__actions">
@@ -341,7 +341,7 @@ function BindingEditor({ binding, name, space, busy, fetcher, onWrite, onDone }:
       <label className="sb-field">Mode d'identité <select className="sb-input" value={identityMode} onChange={(event) => { setIdentityMode(event.target.value as IdentityMode); }}>
         {IDENTITIES.map((item) => <option key={item} value={item}>{item === "service" ? "Service" : "Personne"}</option>)}
       </select></label>
-      {identityMode === "person" ? <p className="sb-connection__note">La connexion personnelle ne pourra pas être testée avant la fédération des identités.</p> : null}
+      {identityMode === "person" ? <p className="sb-connection__note">Cette liaison utilisera la connexion OAuth de la personne qui lance le test ou l’exécution.</p> : null}
       <button className="sb-button sb-button--primary" disabled={busy} type="submit">Enregistrer la liaison</button>
       {problem === null ? null : <p className="sb-connection__problem" role="alert">{problem}</p>}
     </form>

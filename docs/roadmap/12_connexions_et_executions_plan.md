@@ -136,3 +136,5 @@ Le lot ne sera pas déclaré achevé sur un simulateur ou sur DuckDB seul. SK-01
 | Le SQL ou une limite est modifié après la décision skifer. | Adaptateur unique, comparaison du texte transmis et du hash de preuve, limites appliquées par les interfaces sans réécrire le SQL. |
 
 Restent aux lots 05–09 : exploration et analyses, calculs contextuels sur résultats autorisés, dashboards, partage, cache éventuel, releases et activation. Le lot 03 ne crée ni éditeur SQL ni connexion libre depuis le navigateur.
+
+Mise à jour du plan 16 : les liaisons Databricks `person` utilisent désormais l’autorisation OAuth du lecteur, avec renouvellement partagé avec le parcours d’essai, contrôle du mode d’identité effectif et tests hors réseau à deux lecteurs. Voir la [fiche de recette personnelle](../recettes/plan16-executions-personnelles.md). Cette livraison ne clôt pas 12.8b : les constats sur la source réelle restent attendus.

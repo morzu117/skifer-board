@@ -18,14 +18,18 @@ from skifer_board.state.schema import databricks_oauth, space_bindings
 from spaces.monde import (
     ADMIN_GROUPE,
     ADMIN_PERSONNE,
+    CREATEUR_GROUPE,
     LECTEUR_GROUPE,
+    NON_MEMBRE,
     ORIGINE,
+    PLATEFORME_SEULE,
     A,
     B,
     Monde,
+    Profil,
     espaces_en_base,
 )
-from sqlalchemy import update
+from sqlalchemy import delete, update
 
 from execution.test_oauth import CONFIG, HOST, KEYS, Forms, response
 from execution.test_oauth import cles as cles
@@ -99,19 +103,22 @@ def client(monde: Monde, service: CatalogService, forms: Forms, http: Http) -> I
         yield current
 
 
-def begin(client: TestClient) -> str:
-    started = client.post(ROOT + "/start", json={"host": HOST + "/"})
+def begin(client: TestClient, return_to: str = "connections") -> str:
+    started = client.post(ROOT + "/start", json={"host": HOST + "/", "return_to": return_to})
     assert started.status_code == 200
     params = parse_qs(urlsplit(str(started.json()["authorization_url"])).query)
     assert params["redirect_uri"] == [ORIGINE + CALLBACK]
     return params["state"][0]
 
 
-def connect(client: TestClient) -> None:
-    result = client.get(CALLBACK, params={"state": begin(client), "code": "code-sentinel"})
+def connect(client: TestClient, return_to: str = "connections") -> None:
+    result = client.get(
+        CALLBACK, params={"state": begin(client, return_to), "code": "code-sentinel"}
+    )
     assert result.status_code == 303
     assert "databricks_oauth=connected" in result.headers["location"]
-    assert "#/espaces/finance/connexions" in result.headers["location"]
+    target = "connexions" if return_to == "connections" else "executions"
+    assert f"#/espaces/finance/{target}" in result.headers["location"]
 
 
 def test_parcours_oauth_decouverte_selection_essai_et_deconnexion(
@@ -191,8 +198,8 @@ def test_droits_isolation_origine_et_validation(
     assert (
         client.get(
             ROOT, headers={"Cookie": f"__Host-sb_session={monde.session(LECTEUR_GROUPE)}"}
-        ).status_code
-        == 403
+        ).json()["connections"]
+        == []
     )
     other = {"Cookie": f"__Host-sb_session={monde.session(ADMIN_PERSONNE)}"}
     assert client.get(ROOT, headers=other).json()["connections"] == []
@@ -246,11 +253,9 @@ def test_callback_refuse_ferme(case: str, client: TestClient, monde: Monde, form
     elif case == "revoked":
         with monde.moteur.begin() as connection:
             connection.execute(
-                update(space_bindings)
-                .where(
+                delete(space_bindings).where(
                     space_bindings.c.space_id == A, space_bindings.c.group_name == "finance-admins"
                 )
-                .values(role="reader")
             )
     elif case == "vault":
         with monde.moteur.begin() as connection:
@@ -299,3 +304,41 @@ def test_configuration_absente_et_mode_local(
         result = client.get(CALLBACK, params={"state": "absent", "code": "code-secret"})
         assert result.status_code == 400
         assert "code-secret" not in result.text
+
+
+@pytest.mark.parametrize(
+    "profile", [LECTEUR_GROUPE, CREATEUR_GROUPE, ADMIN_GROUPE, PLATEFORME_SEULE]
+)
+def test_autorisation_personnelle_du_membre_et_selection_admin_seulement(
+    profile: Profil, client: TestClient, monde: Monde
+) -> None:
+    client.headers["Cookie"] = f"__Host-sb_session={monde.session(profile)}"
+    connect(client, "executions")
+    assert len(client.get(ROOT).json()["connections"]) == 1
+    assert client.post(ROOT + "/warehouses", json={"host": HOST}).status_code == 200
+    assert (
+        client.post(ROOT + "/test", json={"host": HOST, "warehouse_id": "wh1"}).json()["identity"]
+        == "person"
+    )
+    selected = client.post(
+        ROOT + "/select", json={"host": HOST, "warehouse_id": "wh1", "key": "reader-source"}
+    )
+    assert selected.status_code == (201 if profile in (ADMIN_GROUPE, PLATEFORME_SEULE) else 403)
+    assert client.request("DELETE", ROOT, json={"host": HOST}).status_code == 204
+    assert client.get(ROOT).json()["connections"] == []
+    client.headers["Cookie"] = f"__Host-sb_session={monde.session(NON_MEMBRE)}"
+    assert client.get(ROOT).status_code == 404
+    assert client.post(ROOT + "/start", json={"host": HOST}).status_code == 404
+
+
+def test_destination_de_retour_fermee_et_corps_malforme(client: TestClient) -> None:
+    for destination in (None, 3, "https://evil.invalid", "catalogue"):
+        assert (
+            client.post(ROOT + "/start", json={"host": HOST, "return_to": destination}).status_code
+            == 400
+        )
+    assert client.post(ROOT + "/start", json=[]).status_code == 400
+    state = client.post(ROOT + "/start", json={"host": HOST}).json()["authorization_url"]
+    params = parse_qs(urlsplit(str(state)).query)
+    result = client.get(CALLBACK, params={"state": params["state"][0], "code": "code-sentinel"})
+    assert result.headers["location"].endswith("#/espaces/finance/connexions")

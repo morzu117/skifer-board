@@ -222,7 +222,7 @@ describe("Connexions : lecture et états", () => {
     ])])));
     expect(screen.getByText("Indisponible")).toBeInTheDocument();
     expect(screen.getAllByText("Sans identifiant serveur")).toHaveLength(2);
-    expect(screen.getByText(/La fédération de l'identité personnelle/)).toBeInTheDocument();
+    expect(screen.getByText(/Chaque personne doit connecter son compte Databricks/)).toBeInTheDocument();
   });
 
   it("dit qu'un identifiant Databricks de service reste à configurer", async () => {
@@ -280,7 +280,7 @@ describe("Connexions : actions", () => {
     const form = within(panel).getByRole("form", { name: "Configurer source · TEST" });
     await userEvent.selectOptions(within(form).getByRole("combobox", { name: "Connecteur" }), "databricks");
     await userEvent.selectOptions(within(form).getByRole("combobox", { name: "Mode d'identité" }), "person");
-    expect(within(form).getByText(/La connexion personnelle ne pourra pas/)).toBeInTheDocument();
+    expect(within(form).getByText(/Cette liaison utilisera la connexion OAuth/)).toBeInTheDocument();
     const key = within(form).getByRole("textbox", { name: "Clé du point d'accès" });
     await userEvent.type(key, "bad/key");
     await userEvent.click(within(form).getByRole("button", { name: "Enregistrer la liaison" }));

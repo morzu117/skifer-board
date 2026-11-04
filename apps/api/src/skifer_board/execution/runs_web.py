@@ -31,6 +31,7 @@ from .connectors import (
     IdentityUnavailable,
 )
 from .model import NAME, Connector, IdentityMode
+from .oauth_access import PersonalAccess
 from .runs import ExecutionRecord, ExecutionState, ExecutionStore, ExecutionUnavailable
 from .semantic import SemanticRequest, VerifiedReader
 from .store import ConnectionStore
@@ -140,6 +141,7 @@ def install_execution_routes(
     vault: CredentialVault | None,
     endpoints: Mapping[str, Endpoint] | None,
     transport: HttpTransport,
+    personal_access: PersonalAccess,
     attributes: Callable[[Identity], Mapping[str, str]] | None = None,
 ) -> None:
     path = "/api/spaces/{space_id}/executions"
@@ -177,8 +179,6 @@ def install_execution_routes(
         await asyncio.to_thread(store.recover_stale, clock())
         name, environment, semantic, request_hash = _request(await _body(request))
         binding = await asyncio.to_thread(connections.get_binding, space_id, name, environment)
-        if binding.identity_mode is not IdentityMode.SERVICE:
-            raise IdentityUnavailable()
         endpoint = connections.get_endpoint(space_id, binding.endpoint_key) or (
             endpoints or {}
         ).get(binding.endpoint_key)
@@ -186,13 +186,21 @@ def install_execution_routes(
             raise EndpointNotConfigured()
         connector: ExecutionConnector
         if isinstance(endpoint, DuckDbEndpoint):
+            if binding.identity_mode is IdentityMode.PERSON:
+                raise IdentityUnavailable()
             connector = DuckDbExecution(endpoint)
         else:
             assert isinstance(endpoint, DatabricksEndpoint)
-            if vault is None:
-                raise Refused(503, "engine_unavailable")
-            token = await asyncio.to_thread(vault.reveal_for_execution, binding)
-            connector = DatabricksExecution(endpoint, token, transport)
+            if binding.identity_mode is IdentityMode.PERSON:
+                tokens = await asyncio.to_thread(personal_access, space_id, actor, endpoint.host)
+                token = tokens.access
+            else:
+                if vault is None:
+                    raise Refused(503, "engine_unavailable")
+                token = await asyncio.to_thread(vault.reveal_for_execution, binding)
+            connector = DatabricksExecution(
+                endpoint, token, transport, identity_mode=binding.identity_mode
+            )
         identity = viewer(request)
         assert identity is not None
         try:

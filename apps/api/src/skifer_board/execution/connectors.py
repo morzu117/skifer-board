@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 from uuid import uuid4
 
-from .model import ENDPOINT_KEY, Connector
+from .model import ENDPOINT_KEY, Connector, IdentityMode
 
 ENDPOINTS_VARIABLE = "SKIFER_BOARD_CONNECTION_ENDPOINTS"
 WAREHOUSE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -296,8 +296,16 @@ def _statement(response: HttpResponse) -> dict[str, Any]:
 class DatabricksExecution:
     """Cycle Statement Execution, réponse bornée et identifiants de source opaques."""
 
-    def __init__(self, endpoint: DatabricksEndpoint, token: str, transport: HttpTransport) -> None:
+    def __init__(
+        self,
+        endpoint: DatabricksEndpoint,
+        token: str,
+        transport: HttpTransport,
+        *,
+        identity_mode: IdentityMode = IdentityMode.SERVICE,
+    ) -> None:
         self.endpoint = endpoint
+        self.identity_mode = identity_mode
         self._token = token
         self.transport = transport
 

@@ -6,6 +6,10 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 16, 16.1 : autorisations OAuth personnelles accessibles aux lecteurs et créateurs, avec résolveur et renouvellement communs ; l'enregistrement des points partagés reste réservé aux administrateurs. Le retour OAuth reprend la page qui a initié la connexion, y compris Exécutions pour un lecteur.
+- Plan 16, 16.2 : soumission Databricks et essai des liaisons `person` avec le jeton du demandeur, sans repli de service ; vérification du mode d'identité effectif dans l'adaptateur sémantique. Les gardes RLS, certification, résultat et annulation sont conservées et éprouvées avec deux lecteurs.
+- Plan 16, 16.3 : connexion personnelle depuis Exécutions, choix et essai du warehouse sans commande d'administration pour le lecteur, messages des liaisons personnelles actualisés et recette documentée. La recette réelle reste en attente du porteur.
+
 - Plan 15, 15.1 : demandes OAuth Databricks PKCE à usage unique et coffre personnel chiffré, isolé par personne, espace, workspace et application OAuth. La migration `0011`, l'expiration, le renouvellement sérialisé et la rotation des clés couvrent aussi les autorisations personnelles.
 - Plan 15, 15.2 : découverte des warehouses autorisés depuis la seule URL du workspace, sélection contrôlée et essai avec le jeton personnel OAuth. Le callback retire code et state avant les journaux ; les réponses métier ne contiennent aucun jeton.
 - Plan 15, 15.3 : parcours URL → connexion OAuth → choix du warehouse dans Board, avec ID et clé proposés, essai personnel, déconnexion et états de configuration, refus, expiration, liste vide et panne. Recette et captures ordinateur/téléphone ; l'inscription OAuth de Board dans Databricks reste un préalable pour la recette réelle.

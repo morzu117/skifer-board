@@ -33,8 +33,8 @@ export function fetchOAuthStatus(space: string, signal: AbortSignal, fetcher: Fe
   return call({ url: path(space), method: "GET", decode: decodeOAuthStatus }, signal, fetcher);
 }
 
-export function startOAuth(space: string, host: string, fetcher: Fetch): Promise<AdminOutcome<string>> {
-  return call({ url: `${path(space)}/start`, method: "POST", body: { host }, decode: (value) => {
+export function startOAuth(space: string, host: string, fetcher: Fetch, returnTo: "connections" | "executions" = "connections"): Promise<AdminOutcome<string>> {
+  return call({ url: `${path(space)}/start`, method: "POST", body: returnTo === "connections" ? { host } : { host, return_to: returnTo }, decode: (value) => {
     const raw = object({ authorization_url: text })(value, "autorisation OAuth");
     const parsed = new URL(raw.authorization_url);
     if (parsed.origin !== host || parsed.pathname !== "/oidc/v1/authorize" || parsed.hash !== "" || parsed.username !== "" || parsed.password !== "") throw new ContractError("Adresse d'autorisation invalide");

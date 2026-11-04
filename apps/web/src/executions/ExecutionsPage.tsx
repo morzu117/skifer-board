@@ -5,9 +5,10 @@ import { formatInstant } from "../format/date";
 import { formatNumber } from "../format/number";
 import { routeHash } from "../shell/route";
 import type { Environment } from "../shell/sections";
-import { ReadFailure, Reading } from "../spaces/AdminParts";
+import { FeedbackRegion, ReadFailure, Reading, useAdminWrite } from "../spaces/AdminParts";
 import type { AdminOutcome } from "../spaces/admin";
 import type { Fetch } from "../spaces/api";
+import { DatabricksOAuthPanel } from "../spaces/DatabricksOAuthPanel";
 import { CONNECTION_NAME } from "../spaces/connections";
 import { manages, type Space } from "../spaces/model";
 import { Badge, type BadgeTone } from "../ui/Badge";
@@ -43,6 +44,7 @@ function Outcome({ result, title }: { result: Exclude<AdminOutcome<unknown>, { s
 interface Props { space: Space; platformAdmin: boolean; fetcher: Fetch; target: Environment }
 
 export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props) {
+  const personal = useAdminWrite(undefined);
   const [theme, setTheme] = useState<ChartTheme>(SKIFER_CLAIR);
   const manager = manages(space, platformAdmin);
   const [scope, setScope] = useState<"mine" | "space">(space.role === null ? "space" : "mine");
@@ -70,7 +72,7 @@ export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props)
       <p><a href={routeHash({ page: "catalogue", space: space.id })}>Retour au catalogue</a></p>
       {space.implicit ? <Banner tone="neutral">Les exécutions suivies ne sont pas disponibles en mode local.</Banner> : (
         <>
-          {space.role !== null ? <SubmitForm target={target} busy={busy} onSubmit={(input) => { void submit(input); }} /> : null}
+          {space.role !== null ? <><DatabricksOAuthPanel space={space.id} fetcher={fetcher} busy={busy || personal.busy} onWrite={personal.write} canRegister={false} /><FeedbackRegion feedback={personal.feedback} announced={personal.announced} /><SubmitForm target={target} busy={busy} onSubmit={(input) => { void submit(input); }} /></> : null}
           {feedback === null ? null : feedback.status === "ok" ? <Banner tone="neutral">Exécution soumise. Son état est suivi ci-dessous.</Banner> : <Outcome result={feedback} title="Soumission indisponible" />}
           <Card title="Exécutions récentes" actions={<button type="button" className="sb-button" onClick={changed}>Actualiser</button>}>
             {manager ? <div className="sb-executions__scope" role="group" aria-label="Portée des exécutions">

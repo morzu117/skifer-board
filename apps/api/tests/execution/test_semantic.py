@@ -27,6 +27,8 @@ from skifer_board.spaces.model import Environment, PersonRef
 
 
 class RecordingConnector:
+    identity_mode = IdentityMode.SERVICE
+
     def __init__(self, path: Path, states: tuple[str, ...] = ("SUCCEEDED",)) -> None:
         self.path = path
         self.states = iter(states)
@@ -146,14 +148,22 @@ def _run(
     )
 
 
-@pytest.mark.parametrize("dialect", [Connector.DUCKDB, Connector.DATABRICKS])
+@pytest.mark.parametrize(
+    "dialect,identity_mode",
+    [
+        (Connector.DUCKDB, IdentityMode.SERVICE),
+        (Connector.DATABRICKS, IdentityMode.SERVICE),
+        (Connector.DATABRICKS, IdentityMode.PERSON),
+    ],
+)
 def test_rls_two_readers_admin_filter_removed_and_evidence(
-    tmp_path: Path, dialect: Connector
+    tmp_path: Path, dialect: Connector, identity_mode: IdentityMode
 ) -> None:
     models = _model(tmp_path)
     path = _database(tmp_path)
     connector = RecordingConnector(path)
-    binding = _binding(dialect)
+    connector.identity_mode = identity_mode
+    binding = _binding(dialect, identity_mode)
     request = SemanticRequest("orders", ("revenue",), ("region",))
     alice = _run(request, _reader("alice", "A"), binding, connector, models)
     bob = _run(request, _reader("bob", "B"), binding, connector, models)
@@ -208,15 +218,22 @@ def test_real_duckdb_connector_and_identity_change(tmp_path: Path) -> None:
     assert result.evidence["statement_id"]
 
 
+@pytest.mark.parametrize(
+    "dialect,identity_mode",
+    [(Connector.DUCKDB, IdentityMode.SERVICE), (Connector.DATABRICKS, IdentityMode.PERSON)],
+)
 @pytest.mark.parametrize("mode,code", [("enforce", "deny"), ("supervised", "require_human")])
-def test_certification_refuses_before_connector(tmp_path: Path, mode: str, code: str) -> None:
+def test_certification_refuses_before_connector(
+    tmp_path: Path, mode: str, code: str, dialect: Connector, identity_mode: IdentityMode
+) -> None:
     models = _model(tmp_path)
     connector = RecordingConnector(_database(tmp_path))
+    connector.identity_mode = identity_mode
     with pytest.raises(SemanticRefusal) as error:
         run_semantic(
             SemanticRequest("orders", ("revenue",)),
             _reader("alice", "A"),
-            _binding(),
+            _binding(dialect, identity_mode),
             connector,
             models_dir=models,
             certification_mode=mode,
@@ -507,3 +524,22 @@ def test_incoherent_evidence_is_never_a_success(
             connector,
             models,
         )
+
+
+def test_identite_effective_du_connecteur_et_duckdb_personnel_refuses(tmp_path: Path) -> None:
+    models = _model(tmp_path)
+    connector = RecordingConnector(_database(tmp_path))
+    connector.identity_mode = IdentityMode.PERSON
+    for binding in (
+        _binding(Connector.DUCKDB, IdentityMode.PERSON),
+        _binding(Connector.DATABRICKS, IdentityMode.SERVICE),
+    ):
+        with pytest.raises(SemanticRefusal, match="engine_unavailable"):
+            _run(
+                SemanticRequest("orders", ("revenue",)),
+                _reader("alice", "A"),
+                binding,
+                connector,
+                models,
+            )
+    assert connector.sql == []

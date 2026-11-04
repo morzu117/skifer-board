@@ -18,38 +18,29 @@ from .connectors import EndpointConfigError, HttpTransport, databricks_endpoint,
 from .model import ENDPOINT_KEY
 from .oauth import (
     CALLBACK,
-    FormTransport,
-    OAuthConfig,
     OAuthError,
-    Tokens,
     authorization,
     exchange,
     warehouses,
     workspace_host,
 )
-from .oauth_store import OAuthStore
+from .oauth_access import PersonalOAuth
 from .store import ConnectionStore
-from .vault import VaultError, VaultKeys
+from .vault import VaultError
 
 
 def install_oauth(
     app: FastAPI,
     identity: IdentityRuntime | None,
     registry: ConnectionStore | None,
-    store: OAuthStore | None,
-    keys: VaultKeys | None,
-    client_id: str | None,
+    authorization_context: PersonalOAuth,
     manager: Callable[[Request, str], Access],
+    reader: Callable[[Request, str], Access],
     clock: Callable[[], datetime],
     http: HttpTransport,
-    forms: FormTransport,
     reserved_keys: frozenset[str] = frozenset(),
 ) -> None:
-    config = (
-        None
-        if identity is None or client_id is None
-        else OAuthConfig(client_id, identity.config.public_origin)
-    )
+    store = authorization_context.store
     callback_url = None if identity is None else identity.config.public_origin + CALLBACK
     cookie = (
         SESSION_COOKIE
@@ -66,18 +57,25 @@ def install_oauth(
     def owner(request: Request, space: str) -> PersonRef:
         if registry is None or store is None:
             raise LocalMode(space)
-        manager(request, space)
+        try:
+            reader(request, space)
+        except Refused as error:
+            if error.code != "forbidden":
+                raise
+            manager(request, space)
         person = viewer(request)
         assert person is not None
         return PersonRef.of(person)
 
-    def ready() -> tuple[OAuthConfig, OAuthStore]:
-        if config is None or store is None or keys is None:
-            raise OAuthError("oauth_not_configured")
-        return config, store
+    ready = authorization_context.ready
+    access = authorization_context.token
 
-    async def host_body(request: Request, expected: set[str]) -> tuple[str, dict[str, object]]:
-        body = _object(await _body(request), "body", expected)
+    async def host_body(
+        request: Request, expected: set[str], optional: frozenset[str] = frozenset()
+    ) -> tuple[str, dict[str, object]]:
+        raw = await _body(request)
+        fields = expected | (set(raw) & optional if isinstance(raw, dict) else set())
+        body = _object(raw, "body", fields)
         if not isinstance(body["host"], str):
             raise Invalid("host")
         try:
@@ -85,30 +83,13 @@ def install_oauth(
         except EndpointConfigError:
             raise Invalid("host") from None
 
-    def access(space: str, person: PersonRef, host: str) -> Tokens:
-        current, vault = ready()
-        return vault.access(
-            space,
-            person,
-            host,
-            clock(),
-            lambda refresh: exchange(
-                current,
-                host,
-                {"grant_type": "refresh_token", "refresh_token": refresh},
-                clock(),
-                forms,
-                refresh,
-            ),
-        )
-
     @app.get(path)
     def status(request: Request, space_id: str) -> JSONResponse:
         person = owner(request, space_id)
         assert store is not None
         return JSONResponse(
             {
-                "configured": config is not None and keys is not None,
+                "configured": authorization_context.configured,
                 "redirect_uri": callback_url,
                 "connections": store.list(space_id, person, clock()),
             }
@@ -118,10 +99,13 @@ def install_oauth(
     async def start(request: Request, space_id: str) -> JSONResponse:
         person = owner(request, space_id)
         current, vault = ready()
-        host, _ = await host_body(request, {"host"})
+        host, body = await host_body(request, {"host"}, frozenset({"return_to"}))
+        destination = body.get("return_to", "connections")
+        if not isinstance(destination, str) or destination not in {"connections", "executions"}:
+            raise Invalid("return_to")
         binding = request.cookies[cookie]
         state, verifier = await asyncio.to_thread(
-            vault.start, space_id, person, host, binding, clock()
+            vault.start, space_id, person, host, binding, clock(), destination
         )
         return JSONResponse({"authorization_url": authorization(current, host, state, verifier)})
 
@@ -138,6 +122,7 @@ def install_oauth(
     @app.post(path + "/select")
     async def select(request: Request, space_id: str) -> JSONResponse:
         person = owner(request, space_id)
+        manager(request, space_id)
         host, body = await host_body(request, {"host", "warehouse_id", "key"})
         key = body["key"]
         if not isinstance(key, str) or ENDPOINT_KEY.fullmatch(key) is None or key in reserved_keys:
@@ -197,7 +182,7 @@ def install_oauth(
                 raise OAuthError("oauth_invalid_state")
             request.state.session = session
             person = PersonRef.of(session.identity)
-            space, host, verifier = await asyncio.to_thread(
+            space, host, verifier, destination = await asyncio.to_thread(
                 vault.finish, params["state"], person, binding, clock()
             )
             owner(request, space)
@@ -216,7 +201,7 @@ def install_oauth(
                     "redirect_uri": current.callback,
                 },
                 clock(),
-                forms,
+                authorization_context.forms,
             )
             await asyncio.to_thread(vault.save, space, person, host, tokens, clock())
             result = "connected"
@@ -234,8 +219,9 @@ def install_oauth(
                 headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
             )
         query = urlencode({"databricks_oauth": result, "databricks_workspace": host})
+        destination_path = "connexions" if destination == "connections" else "executions"
         return RedirectResponse(
-            f"{current.public_origin}/?{query}#/espaces/{space}/connexions",
+            f"{current.public_origin}/?{query}#/espaces/{space}/{destination_path}",
             status_code=303,
             headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
         )

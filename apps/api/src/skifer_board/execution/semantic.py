@@ -65,7 +65,7 @@ def certification_store_from_path(path: Path | None) -> SqliteCertificationStore
 
 
 def _all_models_have_row_policy(models_dir: Path) -> bool:
-    """Une liaison de service exige la RLS sur chaque modèle du catalogue."""
+    """Chaque lecture exige la RLS sur tous les modèles du catalogue."""
     try:
         catalog = yaml.safe_load((models_dir / "semantic_catalog.yaml").read_text())
         entries = catalog["models"]
@@ -173,7 +173,11 @@ def run_semantic(
 ) -> SemanticOutput:
     """Autorise, compile et exécute une lecture complète, ou refuse sans résultat."""
     if (
-        binding.identity_mode != IdentityMode.SERVICE
+        getattr(connector, "identity_mode", IdentityMode.SERVICE) is not binding.identity_mode
+        or (
+            binding.identity_mode is IdentityMode.PERSON
+            and binding.connector is not Connector.DATABRICKS
+        )
         or binding.connector not in (Connector.DUCKDB, Connector.DATABRICKS)
         or certification_mode not in {"off", "enforce", "supervised"}
         or timeout_seconds <= 0

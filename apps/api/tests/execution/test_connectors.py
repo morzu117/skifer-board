@@ -616,8 +616,8 @@ def test_route_essai_refuse_endpoint_absent_et_identite_personne(
     with TestClient(app, base_url=ORIGINE, raise_server_exceptions=False) as client:
         response = client.post(PATH, headers=headers)
         assert (
-            response.status_code == 409
-            and response.json()["error"]["code"] == "identity_unavailable"
+            response.status_code == 503
+            and response.json()["error"]["code"] == "oauth_not_configured"
         )
     no_endpoint = create_app(
         service,

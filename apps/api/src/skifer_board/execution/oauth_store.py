@@ -66,12 +66,13 @@ class OAuthStore:
             isinstance(k, str) and isinstance(v, str) for k, v in data.items()
         ):
             raise VaultError()
-        expected = (
-            {"verifier", "binding"}
-            if row["purpose"] == "pending"
-            else {"access", "refresh", "expires_at"}
-        )
-        if set(data) != expected:
+        if row["purpose"] == "pending":
+            if set(data) not in (
+                {"verifier", "binding"},
+                {"verifier", "binding", "return_to"},
+            ) or data.get("return_to", "connections") not in {"connections", "executions"}:
+                raise VaultError()
+        elif set(data) != {"access", "refresh", "expires_at"}:
             raise VaultError()
         if row["purpose"] == "credential":
             try:
@@ -113,7 +114,13 @@ class OAuthStore:
             )
 
     def start(
-        self, space: str, person: PersonRef, host: str, binding: str, now: datetime
+        self,
+        space: str,
+        person: PersonRef,
+        host: str,
+        binding: str,
+        now: datetime,
+        return_to: str = "connections",
     ) -> tuple[str, str]:
         state, verifier = new_token(), new_token()
         self._put(
@@ -122,7 +129,7 @@ class OAuthStore:
             space,
             person,
             host,
-            {"verifier": verifier, "binding": fingerprint(binding)},
+            {"verifier": verifier, "binding": fingerprint(binding), "return_to": return_to},
             now + timedelta(minutes=10),
             now,
         )
@@ -130,7 +137,7 @@ class OAuthStore:
 
     def finish(
         self, state: str, person: PersonRef, binding: str, now: datetime
-    ) -> tuple[str, str, str]:
+    ) -> tuple[str, str, str, str]:
         with self.engine.begin() as connection:
             row = (
                 connection.execute(
@@ -154,7 +161,7 @@ class OAuthStore:
             data["binding"], fingerprint(binding)
         ):
             raise OAuthError("oauth_invalid_state")
-        return row["space_id"], row["host"], data["verifier"]
+        return row["space_id"], row["host"], data["verifier"], data.get("return_to", "connections")
 
     def save(self, space: str, person: PersonRef, host: str, tokens: Tokens, now: datetime) -> None:
         self._put(
