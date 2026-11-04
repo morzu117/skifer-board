@@ -57,6 +57,11 @@ export const REFUSALS = [
   "credential_rejected",
   "redirect_refused",
   "invalid_upstream",
+  "engine_unavailable",
+  "execution_not_found",
+  "result_unavailable",
+  "worker_unavailable",
+  "binding_changed",
 ] as const;
 
 export type RefusalCode = (typeof REFUSALS)[number];
@@ -102,9 +107,14 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   credential_rejected: "La source a refusé cet identifiant.",
   redirect_refused: "La source a tenté une redirection, refusée par Board.",
   invalid_upstream: "La source a renvoyé une réponse hors contrat.",
+  engine_unavailable: "Le moteur sémantique n'est pas configuré sur le serveur.",
+  execution_not_found: "Cette exécution est introuvable ou ne vous appartient plus.",
+  result_unavailable: "Le résultat de cette exécution n'est pas disponible.",
+  worker_unavailable: "La file d'exécution est pleine ou indisponible.",
+  binding_changed: "La liaison de cette connexion a changé : relancez la demande.",
 };
 
-function refusalOf(value: unknown): Refusal | null {
+export function refusalOf(value: unknown): Refusal | null {
   if (typeof value !== "object" || value === null || !("error" in value)) {
     return null;
   }

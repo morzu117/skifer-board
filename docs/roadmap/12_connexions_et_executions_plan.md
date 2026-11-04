@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.6 réalisés ; 12.7a, 12.7b et 12.7c planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.7a réalisés ; 12.7b et 12.7c planifiés**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -99,6 +99,8 @@ Après 12.4 et 12.5 : les miennes en cours et récentes ; pour l'administrateur,
 Le point est découpé en trois commits, tous nécessaires : `feat(plan12-12.7a)` pour le contrat web, `feat(plan12-12.7b)` pour l'écran et `feat(plan12-12.7c)` pour les parcours et captures. Ce découpage garde la lecture des octets Arrow et la navigation distinctes des vérifications visuelles.
 
 **12.7a — Contrat web.** Décodeurs stricts de la liste et du détail, cohérence entre état terminal, dates, compteurs, preuve et capacité d'annulation ; clients de liste, soumission, détail et annulation avec refus fermés. Le résultat binaire Arrow est borné et vérifié séparément du JSON avant toute présentation. Tests des réponses hors contrat, d'une session perdue et d'un accès retiré.
+
+Réalisation : réponses de liste et détail décodées avant emploi, cohérence des états et des dates vérifiée, preuve limitée aux identifiants et empreintes utiles à l'écran. Le client propage les refus fermés et signale les pertes de session ou d'espace. Le résultat Arrow est contrôlé sur son type, sa taille, son nombre de lignes et ses colonnes. Tests des flux valides et hors contrat, des refus et des abandons.
 
 **12.7b — Écran.** Route d'espace et entrée visible aux lecteurs ; liste des exécutions de la personne, vue des métadonnées de l'espace réservée aux administrateurs, détail avec preuve expurgée et aperçu du résultat. L'état, la durée, la troncature et l'annulation sont explicites. États chargement, vide, refus, mode local, expiration et panne, avec navigation clavier et composants accessibles.
 
