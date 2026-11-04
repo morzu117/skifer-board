@@ -232,6 +232,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/executions/{execution_id}"),
         ("GET", "/api/spaces/{space_id}/executions/{execution_id}/result"),
         ("POST", "/api/spaces/{space_id}/executions/{execution_id}/cancel"),
+        ("POST", "/api/spaces/{space_id}/executions/{execution_id}/contextual"),
         ("GET", "/api/people"),
         ("GET", "/api/telemetry"),
         ("GET", "/api/spaces/{space_id}/catalog"),

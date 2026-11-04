@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 from hashlib import sha256
@@ -29,6 +30,7 @@ from .connectors import (
     HttpTransport,
     IdentityUnavailable,
 )
+from .contextual import calculer, contrat, figer
 from .model import NAME, Connector, IdentityMode
 from .oauth_access import PersonalAccess
 from .query_validation import filtre, valider
@@ -113,6 +115,12 @@ def _json(record: ExecutionRecord, *, proof: bool = False) -> dict[str, Any]:
         "size": record.byte_count,
         "truncated": record.truncated,
     }
+    if proof and record.state is ExecutionState.SUCCEEDED:
+        result["result_contract"] = (
+            None
+            if record.result_contract is None
+            else contrat(record.result_contract, bool(record.truncated))
+        )
     if proof:
         result["evidence"] = record.evidence
         result["connector_run_id"] = record.connector_run_id
@@ -131,6 +139,7 @@ def install_execution_routes(
     endpoints: Mapping[str, Endpoint] | None,
     transport: HttpTransport,
     personal_access: PersonalAccess,
+    measure_contextual: Callable[[ExecutionRecord, str, float], None],
     attributes: Callable[[Identity], Mapping[str, str]] | None = None,
 ) -> None:
     path = "/api/spaces/{space_id}/executions"
@@ -224,7 +233,14 @@ def install_execution_routes(
             record = await asyncio.to_thread(
                 pool.submit,
                 lambda: store.create(
-                    binding, actor, request_hash, at, at + DEADLINE, at + LEASE, owner_id
+                    binding,
+                    actor,
+                    request_hash,
+                    at,
+                    at + DEADLINE,
+                    at + LEASE,
+                    owner_id,
+                    figer(semantic, catalog),
                 ),
                 semantic,
                 verified,
@@ -283,6 +299,44 @@ def install_execution_routes(
         if data is None:
             raise Refused(503, "result_unavailable")
         return Response(data, media_type="application/vnd.apache.arrow.stream")
+
+    @app.post(path + "/{execution_id}/contextual")
+    async def contextual(request: Request, space_id: str, execution_id: str) -> JSONResponse:
+        access, actor = active(request, space_id)
+        assert store is not None
+        await asyncio.to_thread(store.recover_stale, clock())
+        identifier = record_id(execution_id)
+        own = await asyncio.to_thread(store.get, access.space.id, identifier, actor)
+        if own is None:
+            raise Refused(404, "execution_not_found")
+        if own.state is not ExecutionState.SUCCEEDED:
+            raise Refused(409, "result_unavailable")
+        data = await asyncio.to_thread(store.result, access.space.id, identifier, actor)
+        if data is None:
+            raise Refused(503, "result_unavailable")
+        assert own.evidence is not None
+        started = time.monotonic()
+        outcome = "error"
+        try:
+            body = await _body(request)
+            result = await asyncio.to_thread(
+                calculer,
+                data,
+                own.result_contract,
+                bool(own.truncated),
+                own.evidence["evidence_id"],
+                body,
+            )
+            outcome = "ok" if result["status"] == "derived" else "unavailable"
+            return JSONResponse(result)
+        except Invalid:
+            outcome = "invalid_request"
+            raise
+        finally:
+            try:
+                measure_contextual(own, outcome, max(0.0, time.monotonic() - started))
+            except Exception:
+                pass
 
     @app.post(path + "/{execution_id}/cancel")
     async def cancel_execution(request: Request, space_id: str, execution_id: str) -> JSONResponse:

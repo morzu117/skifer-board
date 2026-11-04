@@ -1,4 +1,5 @@
 import { tableFromArrays, tableToIPC } from "apache-arrow";
+import exemple from "../../../../contracts/executions/contextuel-detail.json";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { onSessionLost } from "../identity/session";
 import type { AdminOutcome } from "../spaces/admin";
@@ -38,6 +39,8 @@ describe("client des exécutions suivies", () => {
 
   it("lit un détail en refusant un autre identifiant", async () => {
     expect(await fetchExecution("finance", ID, signal(), serving(source))).toMatchObject({ status: "ok", value: { id: ID } });
+    expect(await fetchExecution("finance", exemple.body.id, signal(), serving(exemple.body))).toMatchObject({ status: "ok", value: { resultContract: exemple.body.result_contract } });
+    errorIncludes(await fetchExecution("finance", exemple.body.id, signal(), serving({ ...exemple.body, result_contract: { ...exemple.body.result_contract, extra: true } })), "hors contrat");
     errorIncludes(await fetchExecution("finance", ID, signal(), serving({ ...source, id: OTHER })), "identifiant demandé");
   });
 

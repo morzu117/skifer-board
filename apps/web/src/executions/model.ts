@@ -19,6 +19,14 @@ export interface Proof {
   modelKeys: readonly string[];
 }
 
+export const AGGREGATIONS = ["sum", "count", "count_distinct", "avg", "min", "max"] as const;
+export const ADDITIVITIES = ["additive", "semi_additive", "non_additive"] as const;
+export interface ResultContract {
+  dimensions: readonly string[];
+  metrics: readonly { name: string; aggregation: (typeof AGGREGATIONS)[number] | null; additivity: (typeof ADDITIVITIES)[number] }[];
+  completeness: "complete" | "truncated";
+}
+
 export interface Execution {
   id: string;
   space: string;
@@ -37,6 +45,7 @@ export interface Execution {
   truncated: boolean | null;
   proof: Proof | null;
   connectorRunId: string | null;
+  resultContract: ResultContract | null;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -45,6 +54,8 @@ const BASE_KEYS = [
   "deadline_at", "can_cancel", "cancel_requested", "error_code", "rows", "size", "truncated",
 ] as const;
 const DETAIL_KEYS = [...BASE_KEYS, "evidence", "connector_run_id"] as const;
+const SUCCESS_DETAIL_KEYS = [...DETAIL_KEYS, "result_contract"] as const;
+const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]{0,79}$/;
 
 const base = object({
   id: text,
@@ -83,10 +94,30 @@ function proofOf(value: unknown, path: string): Proof {
   return { evidenceId: found.evidence_id, sqlHash: found.sql_hash, modelKeys: found.model_keys };
 }
 
+function resultContractOf(value: unknown, path: string): ResultContract {
+  exact(value, ["dimensions", "metrics", "completeness"], path);
+  const found = object({
+    dimensions: list(text),
+    metrics: list((item: unknown, metricPath: string) => {
+      exact(item, ["name", "aggregation", "additivity"], metricPath);
+      return object({ name: text, aggregation: nullable(oneOf(AGGREGATIONS)), additivity: oneOf(ADDITIVITIES) })(item, metricPath);
+    }),
+    completeness: oneOf(["complete", "truncated"] as const),
+  })(value, path);
+  const names = found.metrics.map((metric) => metric.name);
+  if (found.dimensions.length > 32 || found.metrics.length === 0 || found.metrics.length > 32
+    || found.dimensions.some((name) => !IDENTIFIER.test(name)) || names.some((name) => !IDENTIFIER.test(name))
+    || found.metrics.some((metric) => metric.aggregation !== "sum" && metric.aggregation !== "count" && metric.additivity !== "non_additive")
+    || new Set(found.dimensions).size !== found.dimensions.length || new Set(names).size !== names.length) {
+    throw new ContractError(`${path} : dimensions et métriques invalides`);
+  }
+  return found;
+}
+
 export function decodeExecution(value: unknown, space: string): Execution {
   const hasProof = typeof value === "object" && value !== null && "evidence" in value;
-  exact(value, hasProof ? DETAIL_KEYS : BASE_KEYS, "exécution");
   const raw = base(value, "exécution");
+  exact(value, hasProof ? raw.state === "succeeded" ? SUCCESS_DETAIL_KEYS : DETAIL_KEYS : BASE_KEYS, "exécution");
   if (raw.space_id !== space || !UUID.test(raw.id) || !CONNECTION_NAME.test(raw.connection)) {
     throw new ContractError("exécution : espace, identifiant ou connexion inattendu");
   }
@@ -120,6 +151,7 @@ export function decodeExecution(value: unknown, space: string): Execution {
   }
   let proof: Proof | null = null;
   let connectorRunId: string | null = null;
+  let resultContract: ResultContract | null = null;
   if (hasProof) {
     const detail = object({ evidence: nullable(proofOf), connector_run_id: nullable(text) })(value, "exécution");
     if ((succeeded && detail.evidence === null) || (!succeeded && detail.evidence !== null) || (detail.connector_run_id !== null && !UUID.test(detail.connector_run_id))) {
@@ -127,12 +159,18 @@ export function decodeExecution(value: unknown, space: string): Execution {
     }
     proof = detail.evidence;
     connectorRunId = detail.connector_run_id;
+    if (succeeded) {
+      resultContract = object({ result_contract: nullable(resultContractOf) })(value, "exécution").result_contract;
+      if (resultContract !== null && (resultContract.completeness === "truncated") !== raw.truncated) {
+        throw new ContractError("exécution : complétude incohérente");
+      }
+    }
   }
   return {
     id: raw.id, space: raw.space_id, environment: raw.environment, connection: raw.connection,
     state: raw.state, createdAt: raw.created_at, startedAt: raw.started_at, finishedAt: raw.finished_at,
     deadlineAt: raw.deadline_at, canCancel: raw.can_cancel, cancelRequested: raw.cancel_requested,
-    errorCode: raw.error_code, rows: raw.rows, size: raw.size, truncated: raw.truncated, proof, connectorRunId,
+    errorCode: raw.error_code, rows: raw.rows, size: raw.size, truncated: raw.truncated, proof, connectorRunId, resultContract,
   };
 }
 

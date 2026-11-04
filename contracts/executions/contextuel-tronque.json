@@ -1,0 +1,1 @@
+{"status":200,"body":{"status":"derived","rows":[{"revenue":{"type":"decimal","value":"17"}}],"scope":"loaded_result","rule":"sum","partial":true,"source_evidence_id":"00000000-0000-4000-8000-000000000003","denominator":null,"notes":[],"row_count":2}}

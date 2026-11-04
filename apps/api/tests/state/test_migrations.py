@@ -213,6 +213,7 @@ COLONNES = {
         "cancel_requested": False,
         "error_code": True,
         "evidence": True,
+        "result_contract": True,
         "result": True,
         "row_count": True,
         "byte_count": True,

@@ -361,6 +361,7 @@ executions = Table(
     Column("cancel_requested", Boolean, nullable=False),
     Column("error_code", String(40), nullable=True),
     Column("evidence", JSONB(none_as_null=True), nullable=True),
+    Column("result_contract", JSONB(none_as_null=True), nullable=True),
     Column("result", LargeBinary, nullable=True),
     Column("row_count", BigInteger, nullable=True),
     Column("byte_count", BigInteger, nullable=True),

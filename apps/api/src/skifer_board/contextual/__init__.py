@@ -1,6 +1,6 @@
 """Couche de calcul contextuel du Board (plan de développement, §4.6)."""
 
-from .contract import Completeness, ContextualResult, ResultContract
+from .contract import Completeness, ContextualResult, GrainError, ResultContract
 from .operations import (
     Derived,
     EngineRequest,
@@ -21,6 +21,7 @@ __all__ = [
     "ContractError",
     "Derived",
     "EngineRequest",
+    "GrainError",
     "MetricRule",
     "Reason",
     "ResultContract",

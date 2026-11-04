@@ -563,3 +563,14 @@ def test_le_resume_ne_modifie_rien(magasin: TelemetryStore, migre: Engine) -> No
     assert lignes(migre) == avant_lecture
     with migre.connect() as connexion:
         assert connexion.execute(select(func.count()).select_from(telemetry)).scalar_one() == 3
+
+
+def test_calculs_indisponibles_et_invalides_ne_sont_pas_des_pannes(magasin: TelemetryStore) -> None:
+    magasin.record(
+        [
+            Measure(MAINTENANT, Kind.EXECUTION, "contextual.compute", issue, 10.0)
+            for issue in ("ok", "unavailable", "invalid_request", "error")
+        ]
+    )
+    operation = seule(magasin)
+    assert (operation.count, operation.errors, operation.refusals) == (4, 1, 1)

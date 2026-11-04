@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.3 : contrat des résultats figé à la soumission et calculs contextuels Arrow réservés à l'auteur, avec précision, périmètre, provenance et refus explicites. Le centre d'exécutions décode strictement le contrat sans modifier son affichage.
+
 - Plan 17, 17.2 : validation des champs exécutables et des filtres typés avant connecteur ; listes canoniques et plages déclaratives, avec maintien des politiques de ligne.
 
 - Plan 17, 17.1 : description bornée des champs du catalogue sémantique et route de lecture sous les gardes des exécutions, sans lecture de source.
@@ -100,6 +102,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 - Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
 
 ### Fixed
+
+- Plan 17, 17.3 : les défauts du résultat stocké sont distingués des erreurs de sélection ; les calculs contextuels indiquent leur effectif et la télémétrie ne compte plus les refus ni les indisponibilités comme des pannes.
 
 - Plan 17, 17.2 : traduction de l'opérateur `ne` en `neq` pour skifer.
 

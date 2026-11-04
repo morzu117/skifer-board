@@ -68,6 +68,7 @@ class ExecutionRecord:
     row_count: int | None
     byte_count: int | None
     truncated: bool | None
+    result_contract: dict[str, Any] | None = None
 
 
 def _utc(value: datetime | None) -> datetime | None:
@@ -101,6 +102,7 @@ def _record(row: Any) -> ExecutionRecord:
         row_count=data["row_count"],
         byte_count=data["byte_count"],
         truncated=data["truncated"],
+        result_contract=data["result_contract"],
     )
 
 
@@ -117,6 +119,7 @@ class ExecutionStore:
         deadline_at: datetime,
         lease_until: datetime,
         owner_id: str,
+        result_contract: dict[str, Any] | None = None,
     ) -> ExecutionRecord:
         execution_id = str(uuid4())
         with self._engine.begin() as connection:
@@ -172,6 +175,7 @@ class ExecutionStore:
                     lease_until=lease_until,
                     owner_id=owner_id,
                     cancel_requested=False,
+                    result_contract=result_contract,
                 )
             )
             row = connection.execute(

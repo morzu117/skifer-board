@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import exemple from "../../../../contracts/executions/contextuel-detail.json";
 import { ContractError } from "../catalogue/decode";
 import { decodeExecution, decodeExecutions, ERRORS, STATES } from "./model";
 
@@ -15,7 +16,8 @@ const success = {
   can_cancel: false, cancel_requested: false, error_code: null, rows: 1, size: 128, truncated: false,
 };
 const evidence = { evidence_id: "evidence-1", sql_hash: "sha256:n1:abc", execution_status: "succeeded", model_keys: ["orders"] };
-const detail = { ...success, evidence, connector_run_id: SECOND };
+const contract = { dimensions: ["region"], metrics: [{ name: "revenue", aggregation: "sum", additivity: "additive" }], completeness: "complete" };
+const detail = { ...success, evidence, connector_run_id: SECOND, result_contract: contract };
 const running = { ...success, state: "running", finished_at: null, error_code: null, rows: null, size: null, truncated: null, can_cancel: true };
 const queued = { ...running, state: "queued", started_at: null };
 const denied = { ...success, state: "denied", error_code: "deny", rows: null, size: null, truncated: null };
@@ -32,6 +34,38 @@ describe("contrat des exécutions suivies", () => {
     expect(decodeExecution(success, "finance").proof).toBeNull();
     rejects({ ...success, evidence: null, connector_run_id: null });
   });
+
+  it("décode le contrat réel, un ancien résultat sans contrat et une troncature", () => {
+    expect(decodeExecution(exemple.body, "finance").resultContract).toEqual(exemple.body.result_contract);
+    expect(decodeExecution({ ...detail, result_contract: null }, "finance").resultContract).toBeNull();
+    expect(decodeExecution({ ...detail, truncated: true, result_contract: { ...contract, completeness: "truncated" } }, "finance").resultContract?.completeness).toBe("truncated");
+    expect(decodeExecution({ ...detail, result_contract: { ...contract, dimensions: [], metrics: [{ name: "ratio", aggregation: null, additivity: "non_additive" }] } }, "finance").resultContract?.metrics[0]?.aggregation).toBeNull();
+    expect(decodeExecution({ ...denied, evidence: null, connector_run_id: null }, "finance").resultContract).toBeNull();
+  });
+
+  it.each([
+    { ...success, evidence, connector_run_id: SECOND },
+    { ...success, result_contract: contract },
+    { ...denied, evidence: null, connector_run_id: null, result_contract: null },
+    { ...detail, result_contract: {} },
+    { ...detail, result_contract: { ...contract, extra: true } },
+    { ...detail, result_contract: { ...contract, dimensions: "region" } },
+    { ...detail, result_contract: { ...contract, dimensions: ["region", "region"] } },
+    { ...detail, result_contract: { ...contract, dimensions: ["mauvais nom"] } },
+    { ...detail, result_contract: { ...contract, dimensions: Array.from({ length: 33 }, (_, i) => `d${String(i)}`) } },
+    { ...detail, result_contract: { ...contract, metrics: [] } },
+    { ...detail, result_contract: { ...contract, metrics: Array.from({ length: 33 }, (_, i) => ({ ...contract.metrics[0], name: `m${String(i)}` })) } },
+    { ...detail, result_contract: { ...contract, metrics: [contract.metrics[0], contract.metrics[0]] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], name: "!" }] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], aggregation: "other" }] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], additivity: "other" }] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], aggregation: "avg", additivity: "additive" }] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], aggregation: null, additivity: "additive" }] } },
+    { ...detail, result_contract: { ...contract, metrics: [{ ...contract.metrics[0], extra: "sql" }] } },
+    { ...detail, result_contract: { ...contract, completeness: "other" } },
+    { ...detail, result_contract: { ...contract, completeness: "truncated" } },
+    { ...detail, truncated: true, result_contract: contract },
+  ])("refuse un contrat de résultat absent ou incohérent : %#", rejects);
 
   it("reconnaît les états actifs, les refus et une annulation avant départ", () => {
     expect(decodeExecution(queued, "finance")).toMatchObject({ state: "queued", startedAt: null, canCancel: true });

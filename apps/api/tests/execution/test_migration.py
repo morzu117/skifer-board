@@ -1,4 +1,4 @@
-"""Révisions 0007 à 0011 sur une base déjà peuplée en 0006."""
+"""Révisions 0007 à 0012 sur une base existante."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def test_revision_0007_garde_les_espaces_et_part_vide(engine: Engine) -> None:
     jusqu_a(engine, "0007")
     assert current_revision(engine) == "0007"
     upgrade(engine)
-    assert current_revision(engine) == "0011"
+    assert current_revision(engine) == "0012"
     assert store.get_space("finance") is not None
     with engine.connect() as connection:
         assert connection.execute(select(logical_connections)).all() == []
@@ -81,7 +81,7 @@ def test_revision_0009_garde_une_liaison_existante(engine: Engine) -> None:
             )
         )
     upgrade(engine)
-    assert current_revision(engine) == "0011"
+    assert current_revision(engine) == "0012"
     binding = ConnectionStore(engine).get_binding("finance", "source", Environment.DEV)
     assert (binding.connector, binding.endpoint_key, binding.identity_mode) == (
         Connector.DUCKDB,
@@ -90,3 +90,52 @@ def test_revision_0009_garde_une_liaison_existante(engine: Engine) -> None:
     )
     with engine.connect() as connection:
         assert connection.execute(select(executions)).all() == []
+
+
+def test_revision_0012_conserve_les_anciennes_executions(engine: Engine) -> None:
+    from datetime import timedelta
+
+    jusqu_a(engine, "0011")
+    at = datetime(2026, 11, 3, tzinfo=UTC)
+    actor = PersonRef("issuer", "subject")
+    SpaceStore(engine).create_space(
+        "finance", "Finance", "atlas", GroupPrincipal("admins"), actor, at
+    )
+    with engine.begin() as connection:
+        connection.execute(
+            insert(logical_connections).values(
+                space_id="finance",
+                name="source",
+                created_at=at,
+                created_by_issuer=actor.issuer,
+                created_by_subject=actor.subject,
+            )
+        )
+        connection.execute(
+            insert(executions).values(
+                id="ancienne",
+                space_id="finance",
+                environment="DEV",
+                issuer=actor.issuer,
+                subject=actor.subject,
+                connection_name="source",
+                request_hash="hash",
+                connector="duckdb",
+                endpoint_key="local",
+                identity_mode="service",
+                binding_set_at=at,
+                state="failed",
+                created_at=at,
+                finished_at=at,
+                deadline_at=at + timedelta(seconds=30),
+                lease_until=at + timedelta(seconds=40),
+                owner_id="owner",
+                cancel_requested=False,
+                error_code="execution_failed",
+            )
+        )
+    upgrade(engine)
+    with engine.connect() as connection:
+        row = connection.execute(select(executions).where(executions.c.id == "ancienne")).one()
+        assert row.result_contract is None and row.error_code == "execution_failed"
+        assert compare_metadata(MigrationContext.configure(connection), metadata) == []
