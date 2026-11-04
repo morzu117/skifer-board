@@ -18,12 +18,29 @@ const CONNECTION = {
   ],
 };
 const ROOT = "/api/spaces/finance/connections";
+const ENDPOINTS = "/api/spaces/finance/connection-endpoints";
 
 async function simuler(page: Page, options: { refusal?: boolean; probeRefused?: boolean } = {}) {
+  const endpoints: { key: string; host: string; warehouse_id: string }[] = [];
   await simulerIdentite(page, etabli);
   await simulerEspaces(page, { "/api/spaces": administration, "/api/spaces/finance": espace });
   await page.route((url) => url.pathname === "/api/spaces/finance/events", async (route) => {
     await route.fulfill({ status: 200, json: { events: [] } });
+  });
+  await page.route((url) => url.pathname.startsWith(ENDPOINTS), async (route) => {
+    const request = route.request();
+    if (options.refusal === true) {
+      await route.fulfill({ status: 403, json: { error: { code: "forbidden" } } });
+    } else if (request.method() === "GET") {
+      await route.fulfill({ status: 200, json: { endpoints } });
+    } else if (request.method() === "POST") {
+      const endpoint = request.postDataJSON() as { key: string; host: string; warehouse_id: string };
+      endpoints.push(endpoint);
+      await route.fulfill({ status: 201, json: endpoint });
+    } else if (request.method() === "DELETE") {
+      endpoints.splice(endpoints.findIndex((endpoint) => request.url().endsWith(`/${endpoint.key}`)), 1);
+      await route.fulfill({ status: 204 });
+    }
   });
   await page.route((url) => url.pathname.startsWith(ROOT), async (route) => {
     const request = route.request();
@@ -41,11 +58,24 @@ async function simuler(page: Page, options: { refusal?: boolean; probeRefused?: 
   });
 }
 
+test("un administrateur saisit son workspace et son warehouse dans Board", async ({ page }) => {
+  await open(page);
+  const form = page.getByRole("form", { name: "Ajouter un point d'accès Databricks" });
+  await form.getByRole("textbox", { name: "Clé du point d'accès" }).fill("azure-test");
+  await form.getByRole("textbox", { name: "URL du workspace" }).fill("https://adb-123.2.azuredatabricks.net");
+  await form.getByRole("textbox", { name: "ID du SQL warehouse" }).fill("abc123");
+  await form.getByRole("button", { name: "Enregistrer le point d'accès" }).click();
+  await expect(page.getByText("Point d'accès azure-test enregistré.")).toBeVisible();
+  await expect(page.getByText("https://adb-123.2.azuredatabricks.net")).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 async function open(page: Page, options: { refusal?: boolean; probeRefused?: boolean } = {}) {
   await simuler(page, options);
   await page.goto("/#/espaces/finance/connexions");
   await expect(page.getByRole("heading", { level: 1, name: "Connexions" })).toBeVisible();
-  if (options.refusal === true) await expect(page.getByText("Votre rôle ne permet pas cette action.")).toBeVisible();
+  if (options.refusal === true) await expect(page.getByRole("region", { name: "Connexions logiques" }).getByText("Votre rôle ne permet pas cette action.")).toBeVisible();
   else await expect(page.getByRole("region", { name: "Connexion finance" })).toBeVisible();
   await page.evaluate(async () => { await document.fonts.ready; });
 }

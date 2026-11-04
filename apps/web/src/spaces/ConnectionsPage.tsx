@@ -10,15 +10,16 @@ import { AdminTabs, Confirm, FeedbackRegion, Journal, ReadFailure, Reading, refu
 import { fetchEvents, type AdminOutcome } from "./admin";
 import type { Fetch } from "./api";
 import {
-  CONNECTION_NAME, ENDPOINT_KEY, CONNECTORS, IDENTITIES,
+  CONNECTION_NAME, ENDPOINT_KEY, DATABRICKS_HOST, CONNECTORS, IDENTITIES,
   createConnection, fetchConnections, removeConnection, removeConnectionBinding,
   removeConnectionCredential, setConnectionBinding, setConnectionCredential, testConnection,
-  type ConnectionBinding, type Connector, type IdentityMode, type LogicalConnection, type Probe,
+  createEndpoint, fetchEndpoints, removeEndpoint,
+  type ConnectionBinding, type Connector, type IdentityMode, type LogicalConnection, type Probe, type DatabricksEndpoint,
 } from "./connections";
 import type { Space } from "./model";
 import "./connections.css";
 
-export const CONNECTION_REMINDER = "Le point d'accès est une clé déclarée sur le serveur. Un essai ne lit aucune donnée métier.";
+export const CONNECTION_REMINDER = "Déclarez le workspace et le warehouse dans cet espace, puis utilisez leur clé dans la liaison. Un essai ne lit aucune donnée métier.";
 
 type Pending =
   | { kind: "connection"; name: string }
@@ -35,6 +36,7 @@ export function ConnectionsPage({ space, fetcher, target, onWritten }: Connectio
   const [pending, setPending] = useState<Pending | null>(null);
   const { version, busy, feedback, setFeedback, announced, write } = useAdminWrite(onWritten, () => { setPending(null); });
   const connections = useRefreshed(`connections:${space.id}`, version, (signal) => fetchConnections(space.id, signal, fetcher));
+  const endpoints = useRefreshed(`endpoints:${space.id}`, version, (signal) => fetchEndpoints(space.id, signal, fetcher));
   const events = useRefreshed(`events:${space.id}`, version, (signal) => fetchEvents(space.id, signal, fetcher));
   const selectPending = (next: Pending | null) => { setFeedback(null); setPending(next); };
   const confirm = (change: Pending) => {
@@ -58,6 +60,9 @@ export function ConnectionsPage({ space, fetcher, target, onWritten }: Connectio
       <AdminTabs space={space} current="connections" />
       <Banner tone="neutral"><strong>{CONNECTION_REMINDER}</strong> Aucun identifiant ni SQL n'est affiché.</Banner>
       <FeedbackRegion feedback={feedback} announced={announced} />
+      <Card title="Points d'accès Databricks">
+        <EndpointPanel outcome={endpoints} space={space.id} busy={busy} fetcher={fetcher} onWrite={write} />
+      </Card>
       <Card title="Connexions logiques">
         <ConnectionList
           outcome={connections}
@@ -75,6 +80,49 @@ export function ConnectionsPage({ space, fetcher, target, onWritten }: Connectio
       <Card title="Journal de l'espace"><Journal events={events} /></Card>
     </>
   );
+}
+
+function EndpointPanel({ outcome, space, busy, fetcher, onWrite }: {
+  outcome: { status: "loading" } | AdminOutcome<readonly DatabricksEndpoint[]>;
+  space: string; busy: boolean; fetcher: Fetch;
+  onWrite: <T>(run: () => Promise<AdminOutcome<T>>, done: string) => Promise<boolean>;
+}) {
+  const [key, setKey] = useState("");
+  const [host, setHost] = useState("");
+  const [warehouseId, setWarehouseId] = useState("");
+  const [pending, setPending] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  if (outcome.status === "loading") return <Reading>Lecture des points d'accès…</Reading>;
+  if (outcome.status !== "ok") return <ReadFailure outcome={outcome} title="Points d'accès indisponibles" />;
+  const submit = (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!ENDPOINT_KEY.test(key) || !DATABRICKS_HOST.test(host) || !/^[A-Za-z0-9_-]{1,64}$/.test(warehouseId)) {
+      setProblem("Indiquez une clé, l'URL HTTPS d'un workspace Databricks et l'ID du warehouse.");
+      return;
+    }
+    setProblem(null);
+    void onWrite(() => createEndpoint(space, { key, host, warehouseId }, fetcher), `Point d'accès ${key} enregistré.`).then((ok) => {
+      if (ok) { setKey(""); setHost(""); setWarehouseId(""); }
+    });
+  };
+  return <>
+    {outcome.value.length === 0 ? <p className="sb-connections__empty">Aucun point d'accès Databricks dans cet espace.</p> : (
+      <ul className="sb-connections__list">
+        {outcome.value.map((endpoint) => <li className="sb-connection" key={endpoint.key}>
+          <strong className="sb-mono">{endpoint.key}</strong> · <span className="sb-mono">{endpoint.host}</span> · warehouse <span className="sb-mono">{endpoint.warehouseId}</span>
+          <button type="button" className="sb-button" disabled={busy} onClick={() => { setPending(endpoint.key); }}>Retirer {endpoint.key}</button>
+          {pending === endpoint.key ? <Confirm question={`Retirer le point d'accès ${endpoint.key} ?`} action="Confirmer le retrait" busy={busy} onConfirm={() => { void onWrite(() => removeEndpoint(space, endpoint.key, fetcher), `Point d'accès ${endpoint.key} retiré.`).then((ok) => { if (ok) setPending(null); }); }} onCancel={() => { setPending(null); }} /> : null}
+        </li>)}
+      </ul>
+    )}
+    <form className="sb-connection__form" aria-label="Ajouter un point d'accès Databricks" noValidate onSubmit={submit}>
+      <label className="sb-field">Clé du point d'accès <input className="sb-input" value={key} onChange={(event) => { setKey(event.target.value); setProblem(null); }} required maxLength={63} autoComplete="off" /></label>
+      <label className="sb-field">URL du workspace <input className="sb-input" type="url" value={host} onChange={(event) => { setHost(event.target.value); setProblem(null); }} required autoComplete="url" placeholder="https://adb-….azuredatabricks.net" /></label>
+      <label className="sb-field">ID du SQL warehouse <input className="sb-input" value={warehouseId} onChange={(event) => { setWarehouseId(event.target.value); setProblem(null); }} required maxLength={64} autoComplete="off" /></label>
+      <button className="sb-button sb-button--primary" type="submit" disabled={busy}>Enregistrer le point d'accès</button>
+      {problem === null ? null : <p role="alert" className="sb-connection__problem">{problem}</p>}
+    </form>
+  </>;
 }
 
 interface ListProps {

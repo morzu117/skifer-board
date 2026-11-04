@@ -12,6 +12,26 @@ export const CREDENTIAL_STATES = ["unconfigured", "configured", "unavailable"] a
 export type CredentialState = (typeof CREDENTIAL_STATES)[number];
 export const CONNECTION_NAME = /^[a-z][a-z0-9_]{0,62}$/;
 export const ENDPOINT_KEY = /^[a-z][a-z0-9-]{0,62}$/;
+export const DATABRICKS_HOST = /^https:\/\/[a-z0-9.-]+\.(?:azuredatabricks\.net|cloud\.databricks\.com|gcp\.databricks\.com)$/;
+
+export interface DatabricksEndpoint { key: string; host: string; warehouseId: string }
+
+export function decodeEndpoint(value: unknown, path: string): DatabricksEndpoint {
+  const raw = object({ key: text, host: text, warehouse_id: text })(value, path);
+  if (!ENDPOINT_KEY.test(raw.key) || !DATABRICKS_HOST.test(raw.host) || !/^[a-zA-Z0-9_-]{1,64}$/.test(raw.warehouse_id)) {
+    throw new ContractError(`${path} : point d'accès Databricks invalide`);
+  }
+  return { key: raw.key, host: raw.host, warehouseId: raw.warehouse_id };
+}
+
+export function decodeEndpoints(value: unknown): readonly DatabricksEndpoint[] {
+  const found = object({ endpoints: list(decodeEndpoint) })(value, "réponse").endpoints;
+  const keys = found.map((endpoint) => endpoint.key);
+  if (new Set(keys).size !== keys.length || keys.join("|") !== [...keys].sort().join("|")) {
+    throw new ContractError("réponse.endpoints : clés distinctes et triées attendues");
+  }
+  return found;
+}
 
 export type ConnectionBinding =
   | { state: "unconfigured"; environment: Environment }
@@ -113,6 +133,29 @@ export function decodeProbe(value: unknown): Probe {
 }
 
 const url = (space: string) => `${spaceUrl(space)}/connections`;
+const endpointsUrl = (space: string) => `${spaceUrl(space)}/connection-endpoints`;
+
+export function fetchEndpoints(space: string, signal: AbortSignal, fetcher: Fetch): Promise<AdminOutcome<readonly DatabricksEndpoint[]>> {
+  return call({ url: endpointsUrl(space), decode: decodeEndpoints }, signal, fetcher);
+}
+
+export function createEndpoint(space: string, endpoint: DatabricksEndpoint, fetcher: Fetch): Promise<AdminOutcome<DatabricksEndpoint>> {
+  return call({
+    url: endpointsUrl(space), method: "POST",
+    body: { key: endpoint.key, host: endpoint.host, warehouse_id: endpoint.warehouseId },
+    decode: (value) => {
+      const found = decodeEndpoint(value, "point d'accès");
+      if (found.key !== endpoint.key || found.host !== endpoint.host || found.warehouseId !== endpoint.warehouseId) {
+        throw new ContractError("point d'accès : valeur demandée attendue");
+      }
+      return found;
+    },
+  }, undefined, fetcher);
+}
+
+export function removeEndpoint(space: string, key: string, fetcher: Fetch): Promise<AdminOutcome<null>> {
+  return call({ url: `${endpointsUrl(space)}/${encodeURIComponent(key)}`, method: "DELETE", decode: () => null }, undefined, fetcher);
+}
 const named = (space: string, name: string) => `${url(space)}/${encodeURIComponent(name)}`;
 const bindingUrl = (space: string, name: string, environment: Environment) => `${named(space, name)}/bindings/${environment}`;
 
