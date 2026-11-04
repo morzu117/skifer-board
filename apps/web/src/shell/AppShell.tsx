@@ -1,0 +1,39 @@
+import type { ReactNode } from "react";
+
+import type { Identity } from "./IdentityPill";
+import type { Environment, SectionId } from "./sections";
+import { Sidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
+import "./shell.css";
+
+interface AppShellProps {
+  workspace: string | null;
+  available: ReadonlySet<SectionId>;
+  active?: SectionId | undefined;
+  onNavigate: (section: SectionId) => void;
+  breadcrumb: readonly string[];
+  /** Sélecteur d'espace, toujours visible, en tête de la navigation (plan 08, 8.3). */
+  spaceSwitch: ReactNode;
+  /** Mention d'une entrée indisponible ; « à venir » par défaut. */
+  pending?: Partial<Record<SectionId, string>> | undefined;
+  environment: Environment;
+  onEnvironmentChange: (environment: Environment) => void;
+  /** Environnements où la personne peut déployer dans l'espace courant ; `null` hors d'un espace. */
+  deploy?: ReadonlySet<Environment> | null | undefined;
+  identity: Identity | null;
+  onLogout?: (() => void) | undefined;
+  children: ReactNode;
+}
+
+/** Coque des pages de gestion : navigation latérale, barre supérieure, contenu (RULES §4). */
+export function AppShell({ workspace, available, active, onNavigate, breadcrumb, spaceSwitch, pending, environment, onEnvironmentChange, deploy, identity, onLogout, children }: AppShellProps) {
+  return (
+    <div className="sb-shell">
+      <Sidebar available={available} onNavigate={onNavigate} workspace={workspace} active={active} spaceSwitch={spaceSwitch} pending={pending} />
+      <div className="sb-shell__main">
+        <TopBar breadcrumb={breadcrumb} environment={environment} onEnvironmentChange={onEnvironmentChange} deploy={deploy} identity={identity} onLogout={onLogout} />
+        <main className="sb-shell__content">{children}</main>
+      </div>
+    </div>
+  );
+}

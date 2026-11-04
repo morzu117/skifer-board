@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design system — Skifer Board</title>
+<link rel="stylesheet" href="tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: var(--sb-ground); color: var(--sb-ink); font: 14px/1.45 var(--sb-font-sans); }
+main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 32px; }
+h1 { margin: 0; font-size: 28px; }
+h2 { margin: 0 0 12px; font-size: 18px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; font-weight: 600; color: var(--sb-muted); }
+.card { background: var(--sb-surface); border: 1px solid var(--sb-line); border-radius: var(--sb-radius-lg); padding: 18px 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.sw { border: 1px solid var(--sb-line); border-radius: var(--sb-radius-md); overflow: hidden; background: #fff; }
+.sw i { display: block; height: 52px; }
+.sw div { padding: 8px 10px; font-size: 12px; }
+.sw b { display: block; font-size: 13px; }
+.sw code, code { font-family: var(--sb-font-mono); font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { min-height: 44px; padding: 10px 18px; border-radius: var(--sb-radius-md); font: inherit; border: 1px solid var(--sb-line-strong); background: #fff; color: var(--sb-ink); }
+.btn.p { background: var(--sb-copper); border-color: var(--sb-copper); color: #fff; font-weight: 500; }
+.btn.d { background: var(--sb-slate-900); border-color: var(--sb-slate-900); color: #fff; }
+.btn[disabled] { background: var(--sb-line); border-color: var(--sb-line); color: var(--sb-muted); }
+.badge { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 10px; }
+.ok { background: var(--sb-success-bg); color: var(--sb-success-fg); }
+.warn { background: var(--sb-warning-bg); color: var(--sb-warning-fg); }
+.ko { background: var(--sb-danger-bg); color: var(--sb-danger-fg); }
+.neu { background: var(--sb-neutral-bg); color: var(--sb-neutral-fg); }
+.seg { display: inline-flex; border: 1px solid var(--sb-line-strong); border-radius: var(--sb-radius-md); overflow: hidden; font: 12px var(--sb-font-mono); }
+.seg span { padding: 6px 12px; color: var(--sb-muted); }
+.seg .on { background: var(--sb-slate-900); color: #fff; font-weight: 500; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-size: 12px; color: var(--sb-muted); padding: 8px 10px; border-bottom: 1px solid var(--sb-line); }
+td { padding: 10px; border-bottom: 1px solid var(--sb-line-soft); }
+.mono { font-family: var(--sb-font-mono); }
+.alert { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--sb-radius-md); background: var(--sb-warning-bg); color: var(--sb-warning-fg); }
+.kpi { padding: 14px 16px; border: 1px solid var(--sb-line); border-radius: var(--sb-radius-md); display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+.kpi.denied { border-style: dashed; border-color: #8A96A1; background: var(--sb-subtle); }
+.sel { background: var(--sb-copper-soft); border: 1px solid var(--sb-copper-edge); border-radius: var(--sb-radius-md); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.nav { background: var(--sb-slate-900); color: var(--sb-on-slate); border-radius: var(--sb-radius-lg); padding: 14px; width: 220px; display: flex; flex-direction: column; gap: 4px; }
+.nav span { padding: 10px 12px; border-radius: var(--sb-radius-md); }
+.nav .on { background: var(--sb-slate-700); color: #fff; font-weight: 500; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">Skifer Board · v0.1 · 1er novembre 2026</div>
+<h1>Design system</h1>
+<p style="margin: 6px 0 0; color: var(--sb-ink-2)">Page de référence. Voir <code>DESIGN-SYSTEM.md</code> pour les règles et <code>RULES.md</code> pour les arbitrages.</p>
+</header>
+
+<section class="card">
+<h2>Couleurs</h2>
+<div class="grid">
+<div class="sw"><i style="background:#1B2128"></i><div><b>ink</b><code>#1B2128</code></div></div>
+<div class="sw"><i style="background:#55606B"></i><div><b>muted</b><code>#55606B</code></div></div>
+<div class="sw"><i style="background:#F5F6F4"></i><div><b>ground</b><code>#F5F6F4</code></div></div>
+<div class="sw"><i style="background:#DADFE3"></i><div><b>line</b><code>#DADFE3</code></div></div>
+<div class="sw"><i style="background:#1F262D"></i><div><b>slate900</b><code>#1F262D</code></div></div>
+<div class="sw"><i style="background:#323E49"></i><div><b>slate700</b><code>#323E49</code></div></div>
+<div class="sw"><i style="background:#A4521F"></i><div><b>copper</b><code>#A4521F</code></div></div>
+<div class="sw"><i style="background:#FBF1E9"></i><div><b>copperSoft</b><code>#FBF1E9</code></div></div>
+<div class="sw"><i style="background:#2F5D8A"></i><div><b>blue</b><code>#2F5D8A</code></div></div>
+<div class="sw"><i style="background:#7A93AB"></i><div><b>seriesMuted</b><code>#7A93AB</code></div></div>
+<div class="sw"><i style="background:#E1F0E8"></i><div><b>success</b><code>#E1F0E8 / #17553A</code></div></div>
+<div class="sw"><i style="background:#FBEFD0"></i><div><b>warning</b><code>#FBEFD0 / #4F3500</code></div></div>
+<div class="sw"><i style="background:#F8E0DB"></i><div><b>danger</b><code>#F8E0DB / #7A1F14</code></div></div>
+<div class="sw"><i style="background:#EEF2F5"></i><div><b>neutral</b><code>#EEF2F5 / #3E4954</code></div></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Typographie</h2>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:28px;font-weight:600">28 · Pilotage mensuel</div>
+<div style="font-size:24px;font-weight:600">24 · Titre de page</div>
+<div style="font-size:16px;font-weight:600">16 · Titre de carte</div>
+<div>14 · Corps de texte, boutons et champs</div>
+<div style="font-size:13px">13 · Tableaux et valeurs denses</div>
+<div class="eyebrow">12 · Surtitre de section</div>
+<div class="mono" style="font-size:15px">16,5 M€ · 52,5 % · r4 · 2026.10.4 · 31/10/2026 06:12</div>
+</div>
+</section>
+
+<section class="card">
+<h2>Boutons, badges, environnements</h2>
+<div class="row" style="margin-bottom:14px">
+<button class="btn p">Enregistrer l'analyse</button>
+<button class="btn">Ajouter à un dashboard</button>
+<button class="btn d">Explorer à partir d'ici</button>
+<button class="btn" disabled>Activer 2026.10.4 sur TEST</button>
+</div>
+<div class="row" style="margin-bottom:14px">
+<span class="badge ok">Atlas v3 · certifié</span>
+<span class="badge warn">candidate</span>
+<span class="badge warn">Tronqué</span>
+<span class="badge ko">Bloqué</span>
+<span class="badge neu">Inchangé</span>
+</div>
+<div class="seg" role="group" aria-label="Environnement"><span>DEV</span><span class="on">TEST</span><span>PROD</span></div>
+</section>
+
+<section class="card">
+<h2>Droits, sélection, états</h2>
+<div class="row" style="margin-bottom:14px">
+<span class="badge ok" style="padding:8px 14px;border-radius:20px">Données évaluées pour Claire M. · Entité FR</span>
+</div>
+<div class="sel" style="margin-bottom:14px">
+<strong>3 régions sélectionnées</strong>
+<span>CA net cumulé <b class="mono">16,5 M€</b></span>
+<span>Part du résultat chargé <b class="mono">52,5 %</b></span>
+<span style="color:var(--sb-muted);font-size:12px">Calculé dans Board · sans requête</span>
+</div>
+<div class="alert" style="margin-bottom:14px">Résultat tronqué : 6 clients affichés sur 214. Le total n'est pas celui du périmètre complet.</div>
+<div class="row">
+<div class="kpi"><span style="font-size:12px;color:var(--sb-muted)">CA net · Île-de-France</span><span class="mono" style="font-size:28px;font-weight:600">7,2 M€</span><span style="font-size:12px;color:var(--sb-success-fg)">+3,1 % contre T2</span></div>
+<div class="kpi denied"><span style="font-size:12px;color:var(--sb-muted)">Marge brute</span><b>Accès refusé</b><span style="font-size:12px;color:var(--sb-ink-2)">Cette métrique n'est pas ouverte à votre profil.</span></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Tableau</h2>
+<table>
+<thead><tr><th>Calcul</th><th>Périmètre</th><th style="text-align:right">Valeur</th><th>Exécution</th></tr></thead>
+<tbody>
+<tr><td>CA net · somme</td><td>Sélection courante</td><td class="mono" style="text-align:right">16,5 M€</td><td>Local</td></tr>
+<tr><td>Clients actifs · somme</td><td>Sélection courante</td><td class="mono" style="text-align:right">Indisponible</td><td>Nouvelle requête au moteur</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card">
+<h2>Navigation</h2>
+<div class="nav"><span class="on">Explorer</span><span>Analyses</span><span>Dashboards</span><span>Déploiements</span></div>
+</section>
+
+<section class="card">
+<h2>Graphique</h2>
+<svg viewBox="0 0 520 190" role="img" aria-label="Exemple d'histogramme : trois barres sélectionnées en cuivre, trois atténuées, seuil pointillé" style="width:100%;max-width:560px">
+<line x1="10" y1="160" x2="510" y2="160" stroke="#8A96A1"/>
+<rect x="30" y="40" width="56" height="120" fill="#A4521F"/><rect x="110" y="70" width="56" height="90" fill="#A4521F"/><rect x="190" y="95" width="56" height="65" fill="#A4521F"/>
+<rect x="270" y="100" width="56" height="60" fill="#7A93AB"/><rect x="350" y="108" width="56" height="52" fill="#7A93AB"/><rect x="430" y="115" width="56" height="45" fill="#7A93AB"/>
+<line x1="10" y1="92" x2="510" y2="92" stroke="#A4521F" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="508" y="86" text-anchor="end" font-size="11" fill="#7A3A12" font-family="IBM Plex Mono">objectif</text>
+</svg>
+</section>
+</main>
+</body>
+</html>

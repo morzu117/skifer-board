@@ -1,0 +1,69 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "d7eba96de96acf6f74250671ed402f79529036ec",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "document": {
+      "entry": {
+        "id": "invalide",
+        "kind": "kpi",
+        "label": "Invalide",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 1,
+        "status": "invalid",
+        "description": "Revenu net moyen par commande, par mois fiscal et entité.",
+        "synonyms": [
+          "average basket",
+          "AOV"
+        ],
+        "variant_count": 0,
+        "availability": {
+          "state": "unresolved",
+          "reason": "not_validated"
+        }
+      },
+      "fingerprint": null,
+      "path": "kpis/invalide.yaml",
+      "issues": [
+        {
+          "path": "/data_product/id",
+          "node_id": null,
+          "code": "id_mismatch",
+          "message": "L'identifiant « identifiant-errone » ne correspond pas au fichier : « invalide » attendu.",
+          "severity": "error"
+        }
+      ],
+      "variants": [],
+      "references": [
+        {
+          "id": "commande",
+          "kind": "concept",
+          "version": null,
+          "found": true,
+          "document_kind": "concept",
+          "label": "Commande",
+          "status": "validated",
+          "domain": "ventes"
+        },
+        {
+          "id": "revenu-absent",
+          "kind": "kpi_ref",
+          "version": 4,
+          "found": false,
+          "document_kind": null,
+          "label": null,
+          "status": null,
+          "domain": null
+        }
+      ],
+      "referenced_by": [],
+      "impact": 0
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "values_incompatible",
+      "environments": [
+        "TEST"
+      ]
+    }
+  }
+}

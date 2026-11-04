@@ -1,11 +1,7 @@
-# skifer
-.skifer_user
-
 # Python
 __pycache__/
 *.py[cod]
 .venv/
-venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
@@ -17,13 +13,10 @@ build/
 
 # Node
 node_modules/
-.next/
-out/
 coverage/
-.turbo/
-*.tsbuildinfo
 test-results/
 playwright-report/
+*.tsbuildinfo
 
 # Env & secrets
 .env
@@ -34,11 +27,4 @@ playwright-report/
 .idea/
 .vscode/
 .DS_Store
-
-# gstack / gbrain
-/.gbrain-source
-# gbrain `put` write-through mirror files (pages live in the brain, not in git)
-/skifer-board/
-
-# codegraph structural index (local to each machine, rebuilt by `codegraph init`)
-/.codegraph/
+.hypothesis/

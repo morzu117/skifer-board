@@ -1,11 +1,11 @@
 {
   "name": "skifer-board",
   "private": true,
-  "packageManager": "pnpm@9.14.4",
   "scripts": {
-    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest --cov=skifer_board.skifer_client --cov=skifer_board.identity --cov-fail-under=100 && uv run --locked skifer-board validate dashboards",
-    "check:web": "pnpm --filter @skifer-board/web lint && pnpm --filter @skifer-board/web type-check && pnpm --filter @skifer-board/web test && pnpm --filter @skifer-board/web build",
-    "check:spec": "pnpm --filter @skifer-board/dashboard-spec type-check && pnpm --filter @skifer-board/dashboard-spec test",
-    "check": "pnpm run check:api && pnpm run check:spec && pnpm run check:web"
+    "check:api": "uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy && uv run --locked pytest --cov=skifer_board --cov-fail-under=100",
+    "check:docs": "uv run --locked python -c \"import pathlib,yaml; [yaml.safe_load(p.read_text()) for p in pathlib.Path('.').rglob('*.y*ml') if not {'node_modules','.venv'} & set(p.parts)]\" && grep -q '^## \\[Unreleased\\]' CHANGELOG.md",
+    "check:web": "pnpm --filter @skifer-board/web run check",
+    "check:e2e": "pnpm --filter @skifer-board/web run e2e",
+    "check": "pnpm run check:api && pnpm run check:web && pnpm run check:e2e && pnpm run check:docs"
   }
 }

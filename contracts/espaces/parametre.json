@@ -1,0 +1,29 @@
+{
+  "status": 201,
+  "body": {
+    "name": "catalogue",
+    "type": "identifier",
+    "constraints": {},
+    "required": true,
+    "default": null,
+    "description": "Catalogue des tables publiées",
+    "created_at": "2026-11-02T10:35:00+00:00",
+    "created_by": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u9admin"
+    },
+    "created_by_person": {
+      "name": "Alix",
+      "email": "alix@ex.invalid"
+    },
+    "updated_at": "2026-11-02T10:35:00+00:00",
+    "updated_by": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u9admin"
+    },
+    "updated_by_person": {
+      "name": "Alix",
+      "email": "alix@ex.invalid"
+    }
+  }
+}

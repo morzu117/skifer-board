@@ -1,0 +1,70 @@
+{
+  "status": 200,
+  "body": {
+    "events": [
+      {
+        "id": 3,
+        "at": "2026-11-02T09:15:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "action": "binding_added",
+        "detail": {
+          "principal": {
+            "kind": "person",
+            "issuer": "https://id.example.invalid",
+            "subject": "00u5d6e7f8"
+          },
+          "after": "reader"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": {
+          "name": "Dominique Leroy",
+          "email": "dominique.leroy@example.invalid"
+        }
+      },
+      {
+        "id": 2,
+        "at": "2026-11-02T09:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "action": "binding_added",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          },
+          "after": "admin"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 1,
+        "at": "2026-11-02T09:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "action": "space_created",
+        "detail": {
+          "name": "Finance"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "principal_person": null
+      }
+    ]
+  }
+}

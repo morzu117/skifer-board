@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "body": {
+    "id": "3d8e1f2a-6b7c-4d9e-8f01-2a3b4c5d6e7f",
+    "environment": "TEST",
+    "principal": {
+      "kind": "person",
+      "issuer": "https://id.example.invalid",
+      "subject": "00u5d6e7f8"
+    },
+    "person": {
+      "name": "Dominique Leroy",
+      "email": "dominique.leroy@example.invalid"
+    },
+    "created_at": "2026-11-02T09:30:00+00:00",
+    "created_by": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u1a2b3c4"
+    },
+    "created_by_person": {
+      "name": "Camille Martin",
+      "email": "camille.martin@example.invalid"
+    }
+  }
+}

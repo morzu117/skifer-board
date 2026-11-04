@@ -1,0 +1,548 @@
+/* Accueil des espaces (plan 08, 8.3). */
+.sb-spaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sb-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-spaces__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sb-space-3);
+  padding: var(--sb-space-7);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+}
+
+.sb-spaces__name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-lg);
+  font-weight: 600;
+}
+
+.sb-spaces__meta,
+.sb-spaces__empty,
+.sb-spaces__demo {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-spaces__id {
+  font-family: var(--sb-font-mono);
+}
+
+.sb-spaces__demo a,
+.sb-space-missing a {
+  color: var(--sb-link);
+}
+
+.sb-spaces__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sb-space-6);
+}
+
+.sb-spaces__members {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  color: var(--sb-link);
+  font-size: var(--sb-text-sm);
+}
+
+/* Membres et rôles, création d'un espace (plan 08, 8.4). */
+.sb-members__state,
+.sb-principal__hint {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-members__principal {
+  font-weight: 600;
+  text-align: left;
+}
+
+.sb-members__principal > span {
+  display: block;
+}
+
+.sb-members__detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-1);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-members__role {
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-2) var(--sb-space-3);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-table);
+}
+
+.sb-members__actions {
+  text-align: right;
+}
+
+.sb-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.sb-confirm__question {
+  color: var(--sb-ink);
+  font-size: var(--sb-text-sm);
+  font-weight: 600;
+}
+
+.sb-members__add,
+.sb-create {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sb-space-5);
+  max-width: 640px;
+}
+
+.sb-members__add > button,
+.sb-members__add > .sb-confirm {
+  align-self: flex-start;
+}
+
+/* En colonne, la base de flex de `.sb-field` deviendrait une hauteur. */
+.sb-members__add .sb-field,
+.sb-create .sb-field {
+  flex: none;
+}
+
+.sb-members__add-role {
+  max-width: 240px;
+}
+
+.sb-principal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sb-principal__legend {
+  margin-bottom: var(--sb-space-3);
+  padding: 0;
+  color: var(--sb-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-principal__kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3) var(--sb-space-6);
+}
+
+.sb-principal__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-2);
+  min-height: var(--sb-target-min);
+}
+
+.sb-principal__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+}
+
+.sb-principal__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.sb-principal__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-principal__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-principal__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-3);
+  margin: 0;
+}
+
+.sb-create__problem {
+  color: var(--sb-danger-text);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-journal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-journal__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-1) var(--sb-space-5);
+  /* Un détail sans espace ne pousse pas la page au-delà de l'écran. */
+  overflow-wrap: anywhere;
+}
+
+.sb-journal__at {
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+/* Onglets des écrans d'administration d'un espace (plan 09, 9.4). */
+.sb-admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  border-bottom: 1px solid var(--sb-line);
+}
+
+.sb-admin-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-5);
+  border-bottom: 2px solid transparent;
+  color: var(--sb-link);
+  font-size: var(--sb-text-sm);
+  text-decoration: none;
+}
+
+.sb-admin-tabs__tab[aria-current="page"] {
+  border-bottom-color: var(--sb-slate-900);
+  color: var(--sb-ink);
+  font-weight: 600;
+}
+
+/* Pipeline d'environnements (DESIGN-SYSTEM §5) : trois cartes reliées par des flèches, la cible
+   sur fond cuivre clair avec une bordure cuivre de 2 px. */
+.sb-pipeline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sb-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-pipeline__stage {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  padding: var(--sb-space-7);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+}
+
+.sb-pipeline__stage + .sb-pipeline__stage::before {
+  position: absolute;
+  top: var(--sb-space-8);
+  left: calc(-1 * var(--sb-space-8));
+  width: var(--sb-space-8);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-lg);
+  content: "→" / "";
+  text-align: center;
+}
+
+.sb-pipeline__stage--target {
+  border: 2px solid var(--sb-copper);
+  background: var(--sb-copper-soft);
+}
+
+.sb-pipeline__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sb-space-3);
+  margin: 0;
+  color: var(--sb-ink);
+  font-size: var(--sb-text-lg);
+}
+
+.sb-pipeline__parameters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-3);
+  margin: 0;
+  font-size: var(--sb-text-sm);
+}
+
+/* Lien vers « Paramètres » : couleur des liens et cible de 44 px (RULES §1), comme les liens de l'accueil. */
+.sb-pipeline__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sb-target-min);
+  color: var(--sb-link);
+}
+
+.sb-pipeline__note {
+  color: var(--sb-copper-ink);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-grants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-grant {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Une adresse ou un nom de groupe sans espace se coupe plutôt que de sortir de la carte. */
+  overflow-wrap: anywhere;
+  gap: var(--sb-space-3);
+  padding-top: var(--sb-space-5);
+  border-top: 1px solid var(--sb-line-soft);
+}
+
+.sb-grant > * {
+  max-width: 100%;
+}
+
+.sb-grant:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Repère de forme, en plus de la confirmation (RULES §2) ; ardoise, pour ne pas se confondre
+   avec la carte cible, déjà cuivrée. */
+.sb-grant--pending {
+  padding-left: var(--sb-space-5);
+  box-shadow: inset 3px 0 0 var(--sb-slate-900);
+}
+
+.sb-grant__meta {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-grant .sb-confirm {
+  justify-content: flex-start;
+}
+
+/* Sous cette largeur d'écran, la zone de contenu ne tient plus trois cartes lisibles. */
+@media (max-width: 1100px) {
+  .sb-pipeline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sb-pipeline__stage + .sb-pipeline__stage::before {
+    top: calc(-1 * var(--sb-space-8));
+    left: 0;
+    width: 100%;
+    line-height: var(--sb-space-8);
+    content: "↓" / "";
+  }
+}
+
+/* Paramètres de déploiement (plan 10, 10.3) : grille paramètres × environnements. */
+.sb-field__hint {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-field textarea {
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font-size: var(--sb-text-table);
+}
+
+.sb-params th,
+.sb-params td {
+  vertical-align: top;
+}
+
+.sb-params__name {
+  min-width: 10rem;
+}
+
+/* Le nom et son en-tête restent visibles quand la grille défile vers les environnements. */
+.sb-params thead th:first-child,
+.sb-params th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--sb-surface);
+}
+
+.sb-params .sb-row--selected th[scope="row"] {
+  background: var(--sb-copper-soft);
+  box-shadow: inset 3px 0 0 var(--sb-copper);
+}
+
+/* La cible se dit aussi en mots, sous le code (RULES §2). */
+.sb-params__note {
+  display: block;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-params__actions .sb-button {
+  white-space: nowrap;
+}
+
+.sb-params__name,
+.sb-params__value {
+  overflow-wrap: anywhere;
+}
+
+.sb-params__description {
+  display: block;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+  font-weight: 400;
+}
+
+.sb-params__env {
+  min-width: 9rem;
+}
+
+.sb-params__env .sb-badge {
+  display: block;
+  width: fit-content;
+  margin-top: var(--sb-space-2);
+}
+
+/* Colonne de l'environnement affiché dans la coque : repère cuivre, comme la carte cible du pipeline. */
+.sb-params__env--target,
+.sb-params__value--target {
+  background: var(--sb-copper-soft);
+}
+
+.sb-params__resolved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-2);
+}
+
+.sb-params__none {
+  color: var(--sb-ink-2);
+}
+
+.sb-params__meta {
+  display: block;
+  margin-top: var(--sb-space-2);
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-params__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-2);
+  margin-top: var(--sb-space-3);
+}
+
+.sb-params__value .sb-confirm {
+  justify-content: flex-start;
+  margin-top: var(--sb-space-3);
+}
+
+.sb-params__declaration {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sb-space-5);
+  max-width: 640px;
+}
+
+.sb-params__declaration .sb-field {
+  flex: none;
+}
+
+.sb-params__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sb-space-3);
+  color: var(--sb-ink);
+}
+
+.sb-params__check input {
+  min-height: auto;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.sb-params__submit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3);
+}
+
+/* Actions de l'administration de la plateforme sur l'accueil (plan 11, 11.4). */
+.sb-spaces__admin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3);
+}

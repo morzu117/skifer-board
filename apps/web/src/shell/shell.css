@@ -1,0 +1,268 @@
+.sb-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sb-shell__main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sb-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-7);
+  padding: var(--sb-space-8);
+}
+
+.sb-sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--sb-space-6);
+  width: var(--sb-sidebar-w);
+  padding: var(--sb-space-7) var(--sb-space-5);
+  background: var(--sb-slate-900);
+  color: var(--sb-on-slate);
+}
+
+.sb-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-4);
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-3);
+  color: var(--sb-surface);
+  text-decoration: none;
+  font-size: var(--sb-text-lg);
+  font-weight: 600;
+}
+
+.sb-sidebar__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sb-sidebar__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-space-4);
+  width: 100%;
+  min-height: var(--sb-target-min);
+  padding: var(--sb-space-3) var(--sb-space-4);
+  border: 0;
+  border-radius: var(--sb-radius-md);
+  background: transparent;
+  color: var(--sb-on-slate);
+  font-size: var(--sb-text-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sb-sidebar__item[aria-current="page"] {
+  background: var(--sb-slate-700);
+  color: var(--sb-surface);
+  font-weight: 500;
+}
+
+.sb-sidebar__item--pending {
+  color: var(--sb-on-slate-muted);
+  cursor: default;
+}
+
+.sb-sidebar__pending {
+  font-size: var(--sb-text-xs);
+}
+
+.sb-sidebar__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-space-1);
+  margin-top: auto;
+  padding: var(--sb-space-5) var(--sb-space-3) 0;
+  border-top: 1px solid var(--sb-slate-line);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-sidebar__foot-label {
+  color: var(--sb-on-slate-muted);
+}
+
+.sb-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-5) var(--sb-space-6);
+  padding: var(--sb-space-5) var(--sb-space-8);
+  background: var(--sb-surface);
+  border-bottom: 1px solid var(--sb-line);
+}
+
+.sb-topbar__crumbs {
+  flex: 1 1 240px;
+  font-size: var(--sb-text-md);
+}
+
+.sb-topbar__crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sb-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--sb-muted);
+}
+
+.sb-topbar__crumbs li + li::before {
+  content: "/";
+  margin-right: var(--sb-space-3);
+}
+
+.sb-topbar__crumbs li[aria-current="page"] {
+  color: var(--sb-ink);
+  font-weight: 500;
+}
+
+.sb-env {
+  display: inline-flex;
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  overflow: hidden;
+}
+
+.sb-env__segment {
+  min-width: var(--sb-target-min);
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-5);
+  border: 0;
+  background: var(--sb-surface);
+  color: var(--sb-ink-2);
+  font-family: var(--sb-font-mono);
+  font-size: var(--sb-text-sm);
+  cursor: pointer;
+  position: relative;
+}
+
+.sb-env__segment[aria-pressed="true"] {
+  background: var(--sb-slate-900);
+  color: var(--sb-surface);
+}
+
+/* Marque du droit de déployer (plan 09, 9.3), dite aussi en texte sous le rôle. Dans le coin du
+   segment, hors du flux : le libellé reste centré et la bascule garde sa largeur. */
+.sb-env__deploy {
+  position: absolute;
+  top: var(--sb-space-1);
+  right: var(--sb-space-1);
+  font-size: 0.6em;
+  line-height: 1;
+}
+
+.sb-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+  padding: var(--sb-space-3) var(--sb-space-5);
+  border-radius: var(--sb-radius-pill);
+  background: var(--sb-success-bg);
+  color: var(--sb-success-fg);
+  font-size: var(--sb-text-sm);
+  font-weight: 500;
+}
+
+.sb-identity--unknown {
+  background: var(--sb-neutral-bg);
+  color: var(--sb-neutral-fg);
+}
+
+/* Téléphone : menu empilé au-dessus du contenu (DESIGN-SYSTEM §4). */
+@media (max-width: 760px) {
+  .sb-shell {
+    flex-direction: column;
+  }
+
+  .sb-sidebar {
+    width: auto;
+  }
+
+  .sb-sidebar__list {
+    flex-flow: row wrap;
+  }
+
+  .sb-sidebar__item {
+    width: auto;
+  }
+
+  .sb-shell__content,
+  .sb-topbar {
+    padding: var(--sb-space-6);
+  }
+}
+
+.sb-env__segment--text {
+  font-family: var(--sb-font-sans);
+}
+
+/* En-tête de page, commun aux pages de gestion. */
+.sb-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sb-space-5) var(--sb-space-7);
+}
+
+.sb-page-head__title {
+  flex-grow: 1;
+  margin: 0;
+  font-size: var(--sb-text-2xl);
+  font-weight: 600;
+}
+
+.sb-page-head__lead {
+  margin: var(--sb-space-1) 0 0;
+  color: var(--sb-ink-2);
+}
+
+/* Sélecteur d'espace et pastille du rôle, en tête de la navigation (plan 08, 8.3). */
+.sb-space-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sb-space-3);
+  padding: 0 var(--sb-space-3);
+}
+
+.sb-space-switch__deploy {
+  color: var(--sb-on-slate-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-space-switch__label {
+  color: var(--sb-on-slate-muted);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-space-switch__select {
+  width: 100%;
+  min-height: var(--sb-target-min);
+  padding: 0 var(--sb-space-4);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+  font: inherit;
+  font-size: var(--sb-text-md);
+}
+
+@media (max-width: 760px) {
+  .sb-space-switch {
+    padding: 0;
+  }
+}

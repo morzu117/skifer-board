@@ -1,0 +1,118 @@
+.sb-connections__list {
+  display: grid;
+  gap: var(--sb-space-7);
+}
+
+.sb-connections__empty,
+.sb-connection__meta,
+.sb-connection__note {
+  margin: 0;
+  color: var(--sb-ink-2);
+  font-size: var(--sb-text-sm);
+}
+
+.sb-connection {
+  display: grid;
+  gap: var(--sb-space-5);
+  padding-top: var(--sb-space-5);
+  border-top: 1px solid var(--sb-line);
+}
+
+.sb-connection:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.sb-connection__head,
+.sb-connection__actions,
+.sb-connection__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sb-space-3);
+}
+
+.sb-connection__head {
+  justify-content: space-between;
+}
+
+.sb-connection__name,
+.sb-connection__environment-name {
+  margin: 0;
+  color: var(--sb-ink);
+  font-size: var(--sb-text-lg);
+}
+
+.sb-connection__environments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sb-space-4);
+}
+
+.sb-connection__environment {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--sb-space-4);
+  padding: var(--sb-space-5);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  overflow-wrap: anywhere;
+}
+
+.sb-connection__environment--target {
+  border: 2px solid var(--sb-copper);
+  background: var(--sb-copper-soft);
+}
+
+.sb-connection__facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sb-space-2) var(--sb-space-3);
+  margin: 0;
+  font-size: var(--sb-text-sm);
+}
+
+.sb-connection__facts dt {
+  color: var(--sb-ink-2);
+}
+
+.sb-connection__facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sb-connection__actions .sb-button,
+.sb-connection__head .sb-button {
+  min-height: var(--sb-target-min);
+}
+
+.sb-connection__form {
+  padding: var(--sb-space-4);
+  border: 1px solid var(--sb-line);
+  border-radius: var(--sb-radius-md);
+  background: var(--sb-surface);
+}
+
+.sb-connection__form .sb-field {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.sb-connection__form .sb-input {
+  width: 100%;
+}
+
+.sb-connection__problem {
+  width: 100%;
+  margin: 0;
+  color: var(--sb-danger-text);
+  font-size: var(--sb-text-sm);
+}
+
+@media (max-width: 1100px) {
+  .sb-connection__environments {
+    grid-template-columns: 1fr;
+  }
+}

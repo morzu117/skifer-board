@@ -1,0 +1,456 @@
+{
+  "status": 200,
+  "body": {
+    "events": [
+      {
+        "id": 22,
+        "at": "2026-11-02T10:55:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "parameter_removed",
+        "detail": {
+          "name": "lignes_max",
+          "values": {
+            "TEST": 20000
+          },
+          "declaration": {
+            "type": "integer",
+            "default": 5000,
+            "required": false,
+            "constraints": {
+              "maximum": 100000,
+              "minimum": 1
+            },
+            "description": ""
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 21,
+        "at": "2026-11-02T10:52:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "value_cleared",
+        "detail": {
+          "name": "catalogue",
+          "before": "finance_dev",
+          "environment": "DEV"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 20,
+        "at": "2026-11-02T10:50:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "parameter_changed",
+        "detail": {
+          "name": "region",
+          "after": {
+            "type": "choice",
+            "default": "eu-west",
+            "required": true,
+            "constraints": {
+              "choices": [
+                "eu-west",
+                "eu-central"
+              ]
+            },
+            "description": "Région de calcul"
+          },
+          "before": {
+            "type": "choice",
+            "default": null,
+            "required": true,
+            "constraints": {
+              "choices": [
+                "eu-west",
+                "eu-central"
+              ]
+            },
+            "description": "Région de calcul"
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 19,
+        "at": "2026-11-02T10:41:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "value_set",
+        "detail": {
+          "name": "lignes_max",
+          "after": 20000,
+          "before": null,
+          "environment": "TEST"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 18,
+        "at": "2026-11-02T10:40:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "value_set",
+        "detail": {
+          "name": "catalogue",
+          "after": "finance_dev",
+          "before": null,
+          "environment": "DEV"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 17,
+        "at": "2026-11-02T10:37:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "parameter_declared",
+        "detail": {
+          "name": "region",
+          "declaration": {
+            "type": "choice",
+            "default": null,
+            "required": true,
+            "constraints": {
+              "choices": [
+                "eu-west",
+                "eu-central"
+              ]
+            },
+            "description": "Région de calcul"
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 16,
+        "at": "2026-11-02T10:36:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "parameter_declared",
+        "detail": {
+          "name": "lignes_max",
+          "declaration": {
+            "type": "integer",
+            "default": 5000,
+            "required": false,
+            "constraints": {
+              "maximum": 100000,
+              "minimum": 1
+            },
+            "description": ""
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 15,
+        "at": "2026-11-02T10:35:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "parameter_declared",
+        "detail": {
+          "name": "catalogue",
+          "declaration": {
+            "type": "identifier",
+            "default": null,
+            "required": true,
+            "constraints": {},
+            "description": "Catalogue des tables publiées"
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 14,
+        "at": "2026-11-02T10:30:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "deploy_granted",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          },
+          "environment": "TEST"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 13,
+        "at": "2026-11-02T10:30:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "deploy_granted",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          },
+          "environment": "DEV"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 12,
+        "at": "2026-11-02T10:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "binding_removed",
+        "detail": {
+          "before": "reader",
+          "principal": {
+            "kind": "person",
+            "issuer": "https://id.example.invalid",
+            "subject": "00u5d6e7f8"
+          }
+        },
+        "principal_person": {
+          "name": "Dominique Leroy",
+          "email": "dominique.leroy@example.invalid"
+        }
+      },
+      {
+        "id": 10,
+        "at": "2026-11-02T10:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "binding_added",
+        "detail": {
+          "after": "creator",
+          "principal": {
+            "kind": "group",
+            "name": "finance-createurs"
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 7,
+        "at": "2026-11-02T09:55:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "deploy_revoked",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          },
+          "environment": "PROD"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 6,
+        "at": "2026-11-02T09:50:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u9admin"
+        },
+        "actor_person": {
+          "name": "Alix",
+          "email": "alix@ex.invalid"
+        },
+        "action": "deploy_granted",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          },
+          "environment": "PROD"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 5,
+        "at": "2026-11-02T09:45:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "deploy_granted",
+        "detail": {
+          "principal": {
+            "kind": "group",
+            "name": "finance-createurs"
+          },
+          "environment": "DEV"
+        },
+        "principal_person": null
+      },
+      {
+        "id": 4,
+        "at": "2026-11-02T09:30:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "deploy_granted",
+        "detail": {
+          "principal": {
+            "kind": "person",
+            "issuer": "https://id.example.invalid",
+            "subject": "00u5d6e7f8"
+          },
+          "environment": "TEST"
+        },
+        "principal_person": {
+          "name": "Dominique Leroy",
+          "email": "dominique.leroy@example.invalid"
+        }
+      },
+      {
+        "id": 3,
+        "at": "2026-11-02T09:15:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "binding_added",
+        "detail": {
+          "after": "reader",
+          "principal": {
+            "kind": "person",
+            "issuer": "https://id.example.invalid",
+            "subject": "00u5d6e7f8"
+          }
+        },
+        "principal_person": {
+          "name": "Dominique Leroy",
+          "email": "dominique.leroy@example.invalid"
+        }
+      },
+      {
+        "id": 2,
+        "at": "2026-11-02T09:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "binding_added",
+        "detail": {
+          "after": "admin",
+          "principal": {
+            "kind": "group",
+            "name": "finance-admins"
+          }
+        },
+        "principal_person": null
+      },
+      {
+        "id": 1,
+        "at": "2026-11-02T09:00:00+00:00",
+        "actor": {
+          "issuer": "https://id.example.invalid",
+          "subject": "00u1a2b3c4"
+        },
+        "actor_person": {
+          "name": "Camille Martin",
+          "email": "camille.martin@example.invalid"
+        },
+        "action": "space_created",
+        "detail": {
+          "name": "Finance"
+        },
+        "principal_person": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,132 @@
+# Plan 09 — Environnements et droit de déployer (lot 02, quatrième tranche)
+
+Date : 2 novembre 2026 · Statut : **réalisé (9.1 à 9.4)**. Quatrième tranche du lot 02 (« socle partagé »), après les espaces et les rôles (plan 08). Choix du porteur du 2 novembre, qui suit les recommandations : **trois environnements fixes `DEV`, `TEST`, `PROD`**, **un rôle valable dans tous les environnements**, **un droit de déployer explicite par environnement, sans droit d'office pour les administrateurs**, **paramètres de déploiement dans une tranche suivante**. Claude développe ; les tests sont écrits par un agent Claude distinct (plan 03, T1).
+
+Plan parent : [plan de développement](../plan-de-developpement.md), §2 (droit de déployer par environnement), §4.1 (objet Environnement), §5 (environnements et déploiement), §8 lot 02, §10 et §10.1 (nommage des environnements). Écrans : [écrans et fonctionnalités](../ecrans-et-fonctionnalites.md), §0.1 (déployeur), §0.5 (coque), §9 (administration, « Environnements »). Design : `docs/design/RULES.md` §9, `DESIGN-SYSTEM.md` §1 et §5 (bascule `DEV | TEST | PROD`, pipeline d'environnements).
+
+## 1. Point de départ
+
+- Un espace a des membres et des rôles, recalculés à chaque requête (plan 08). Le serveur refuse ce que le rôle ne permet pas.
+- La coque affiche une bascule `DEV | TEST | PROD`, mais elle ne vient de nulle part : c'est un état local de la page, le même pour tous les espaces.
+- Aucun droit ne dépend d'un environnement. Rien ne se déploie encore : les releases arrivent avec le lot 09.
+
+## 2. Décisions
+
+| # | Décision | Écartée |
+|---|---|---|
+| V1 | **Trois environnements fixes.** Chaque espace a `DEV`, `TEST` et `PROD`, dans cet ordre de promotion, invariable (RULES §9). Ils sont créés avec l'espace, dans la même transaction ; la migration les crée pour les espaces existants. Un code d'environnement hors de ces trois ne désigne rien. La correspondance avec les environnements de skifer (`LOCAL / DEV / QA / PROD`, §10) est reportée au lot 03, qui en a besoin pour les connexions. | Nommage libre par espace (orientation du §10.1) : contraire aux règles de design et à la bascule de la coque ; il reste possible plus tard, par un libellé ajouté au code. |
+| V2 | **Un rôle vaut pour les trois environnements.** Le seul droit propre à un environnement est celui de déployer. Restreindre la lecture par environnement (écrans §0.5) se décidera avec les dashboards publiés (lot 06). | Un droit de lecture par environnement dès maintenant : rien ne se lit encore par environnement. |
+| V3 | **Droit de déployer par accord explicite.** Un accord associe, dans un espace et pour un environnement, un **groupe du fournisseur** ou une **personne** (mêmes règles que les liaisons, plan 08, E3). Une personne peut déployer dans un environnement si un accord y correspond à sa session **et** si son rôle dans l'espace est créateur ou plus (écrans §0.1 : « Déployeur = Créateur + déploiements »). Un accord à quelqu'un qui n'est que lecteur reste sans effet, et l'écran le dit. | Droit porté par la liaison de rôle : un groupe qui déploie n'est pas toujours celui qui donne le rôle, et abaisser un rôle obligerait à retirer en silence ses droits de déployer. |
+| V4 | **Pas de droit d'office.** Un administrateur de l'espace ne déploie pas sans accord ; il peut s'en accorder un, et le journal le montre. L'administration de la plateforme n'est pas un rôle dans l'espace (plan 08, E6) : elle gère les accords mais ne déploie pas. « Qui peut déployer en PROD » se lit ainsi sur une seule liste. | L'administrateur déploie partout : la liste des déployeurs ne dirait plus qui peut activer une release en PROD. |
+| V5 | **Gestion des accords** par les administrateurs de l'espace et de la plateforme, comme les liaisons. Accorder un droit déjà accordé ne change rien et n'est pas journalisé (plan 08, E12). Retirer une liaison de rôle ne retire aucun accord : ils sont indépendants. Une personne s'accorde parmi les personnes connues (plan 08, E5). | — |
+| V6 | **Journal.** Accord et retrait sont journalisés (`deploy_granted`, `deploy_revoked`) avec l'environnement, le principal, l'auteur et l'instant, dans le journal de l'espace (plan 08, E10). | — |
+| V7 | **Vérification côté serveur.** Le droit est recalculé à chaque requête, comme le rôle. Le serveur expose, pour l'espace courant, ses environnements et, pour chacun, si la personne peut y déployer. Une garde de route « déployeur de l'environnement » est livrée et testée, pour les routes de déploiement du lot 09 : elle refuse par `403 forbidden` avec `required: "deploy"` et l'environnement. | Laisser la vérification au lot 09 : le lot 02 doit livrer « les droits de déploiement vérifiés côté serveur ». |
+| V8 | **Mode local.** L'espace implicite a les trois environnements ; la personne locale peut déployer dans chacun, puisque c'est une boucle de développement. Les accords ne s'y gèrent pas (`409 local_mode`, plan 08, E11). | — |
+| V9 | **Refus à codes fermés.** `grant_not_found` (404) pour un accord inconnu, `unknown_person` (422), `invalid_request` avec le champ en cause (environnement hors des trois compris), `local_mode` (409), `forbidden` (403), `space_not_found` (404). | — |
+| V10 | **Hors de cette tranche** : règles de validation en PROD (droit simple ou approbation, arbitrage ouvert « avant lot 09 ») ; paramètres de déploiement déclarés et valeurs par environnement (§5.1, plan 10) ; release active. | — |
+
+## 3. Sous-tâches
+
+Chaque point est un commit `feat(plan09-x.y)` avec son entrée de changelog. Claude relit les tests, lance le gate complet et commite.
+
+### 9.1 — Modèle, migration et décision de déploiement
+
+Créés : révision `0004`. Modifiés : `apps/api/src/skifer_board/spaces/` (modèle, magasin, décision d'accès), `state/schema.py`.
+
+- Tables `space_environments` (espace, code, rang de promotion) et `deploy_grants` (espace, environnement, principal, auteur, date ; unique par espace, environnement et principal).
+- `can_deploy(identity, role, grants, environment) -> bool`, fonction pure (V3, V4).
+- Magasin : environnements d'un espace ; accords d'un espace ; accorder et retirer, en une transaction qui verrouille l'espace, avec le journal (V5, V6) ; création d'un espace avec ses trois environnements (V1).
+- Décision d'accès : l'accès à un espace porte, pour chaque environnement, le droit de déployer de la personne (V7, V8).
+
+Tests : décision sur toutes les combinaisons (aucun accord, accord de groupe, de personne, rôle lecteur, créateur, administrateur, administration de la plateforme seule, accord dans un autre environnement ou un autre espace, même sujet chez un autre émetteur) ; accord idempotent sans journal ; journal complet ; isolation de deux espaces ; migration d'une base vierge et d'une base en révision `0003` qui a déjà des espaces.
+
+Écarts de réalisation :
+
+- À côté de `can_deploy`, `deployable(identity, role, grants)` rend l'ensemble des environnements où la personne peut déployer ; c'est ce que porte l'accès. Les deux reçoivent les accords **d'un seul espace** et ne relisent pas leur `space_id` : le magasin les regroupe par espace (`grants_of`), et l'isolation de deux espaces est testée au niveau du magasin et de l'accès.
+- L'accès à un ou plusieurs espaces lit environnements et accords en deux requêtes au total, pas une par espace.
+- Un environnement absent de `space_environments` est refusé par la clé étrangère de `deploy_grants` ; le magasin ne traduit pas cette erreur, puisque les routes de 9.2 n'acceptent que les trois codes (V9) et que tout espace a ses trois environnements (V1).
+- L'agent de test n'a trouvé aucun défaut. Sur ses remarques, les nouveaux symboles sont exportés par `skifer_board.spaces`, et la docstring du test d'invariant P2 précise que seul `op.execute` sur du texte est interdit (la migration `0004` passe une requête construite).
+
+### 9.2 — Routes
+
+Modifiés : `spaces/web.py`. Exemples versionnés dans `contracts/espaces/`.
+
+- `GET /api/spaces` et `GET /api/spaces/{espace}` : chaque espace porte ses environnements dans l'ordre de promotion, et pour chacun `deploy`, le droit de la personne.
+- `GET` et `POST /api/spaces/{espace}/deploy-grants`, `DELETE /api/spaces/{espace}/deploy-grants/{accord}` : réservés aux administrateurs de l'espace et de la plateforme. Corps `{environment, principal}`.
+- Le journal raconte les accords et les retraits.
+- La garde « déployeur de l'environnement » (V7), rendue par `install_spaces` comme celle du lecteur.
+
+Tests : chaque route avec chaque rôle, non-membre et administration de la plateforme seule ; un lecteur ne peut pas accorder ; révocation effective à la requête suivante ; garde du déployeur sur une route de test ; mode local ; exemples produits par le serveur réel.
+
+Écarts de réalisation :
+
+- `install_spaces` rend un objet `Guards` (`reader`, `deployer`) au lieu de la seule garde du lecteur. La garde du déployeur lit l'environnement dans le chemin de la route (`{environment}`) et l'examine dans cet ordre : espace (404, identique pour un non-membre), puis code d'environnement (400 `invalid_request`, `field: "environment"`), puis droit (403 `forbidden`, `required: "deploy"`, `environment`).
+- `POST …/deploy-grants` répond `200`, comme `POST …/members` ; un accord déjà posé est rendu tel qu'il a été posé (auteur et instant d'origine).
+- Un accord à une personne connue qui n'est pas membre de l'espace est accepté et reste sans effet (V3, V5).
+- Aucun exemple versionné ne montre le refus `required: "deploy"` : aucune route réelle n'emploie la garde avant le lot 09. Il est vérifié sur une route de test.
+- L'agent de test n'a trouvé aucun défaut ; neuf régressions volontaires ont été attrapées.
+
+### 9.3 — Environnements dans la coque
+
+Modifiés : `apps/web/src/App.tsx`, `shell/*`, `spaces/*`.
+
+- Dans un espace, la bascule montre les environnements que le serveur a rendus, toujours dans l'ordre `DEV | TEST | PROD`, chacun avec la marque du droit de déployer. Hors d'un espace, elle reste celle d'aujourd'hui.
+- Sous la pastille du rôle, les droits de déployer de la personne (« Déploiement : DEV, TEST » ou « Déploiement : aucun »).
+- L'environnement choisi reste un état de la coque ; son adresse se décidera avec les dashboards publiés (lot 06).
+
+Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+
+- Les environnements étant fixes (V1), le décodeur exige exactement `DEV`, `TEST`, `PROD` dans cet ordre ; tout autre ensemble rend l'espace hors contrat, affiché comme une erreur, sans marque ni ligne.
+- La marque est un « ● » ; le segment garde le nom de son libellé (« DEV ») et le droit en est la description (`aria-describedby`, « Déploiement autorisé »). Un texte masqué ajouté au nom donnait « DEV , déploiement autorisé » dans Chrome (défaut trouvé par l'agent de test), et un nom exact garde la commande vocale « DEV ».
+- La marque est placée dans le coin du segment, hors du flux : le libellé reste centré et la bascule garde la même largeur et la même position partout, dans un espace ou non (DESIGN-SYSTEM §1.5).
+- Dans la ligne « Déploiement : … », les codes sont en mono (RULES §5) et toujours dans l'ordre `DEV, TEST, PROD`.
+- Le « ● » reste blanc sur le segment actif ; la ligne « Déploiement » en tient lieu de légende textuelle.
+
+### 9.4 — Écran « Environnements »
+
+Créés : `apps/web/src/spaces/` (écran d'administration).
+
+- Écran « Environnements » (`#/espaces/<id>/environnements`, écrans §9), réservé aux administrateurs, à côté de « Membres et rôles » ; les deux écrans sont reliés par des onglets.
+- Les trois environnements dans leur ordre de promotion (pipeline du design system), et pour chacun ses accords : groupe ou personne, auteur, date.
+- Accorder un droit à un groupe par son nom exact ou à une personne connue, retirer un accord avec confirmation.
+- Rappel permanent : un droit de déployer n'a d'effet qu'avec le rôle créateur ou plus, et ne donne aucun droit sur les données.
+- Le journal de l'espace raconte les accords et les retraits.
+
+Tests : composants, axe, parcours Playwright, captures.
+
+Écarts de réalisation :
+
+- Les pièces communes à « Membres et rôles » et « Environnements » sont regroupées dans `spaces/AdminParts.tsx` : onglets, écriture suivie d'une relecture, refus, confirmation sur place, journal. « Membres et rôles » est réécrit dessus sans changer de comportement ; ses tests ont servi de filet.
+- La cible du pipeline est l'environnement choisi dans la bascule de la coque (`aria-current="step"`, « environnement affiché ») ; le formulaire propose cet environnement ; un autre peut y être choisi, et chaque changement de la bascule l'oublie.
+- Un droit déjà accordé dans le même environnement est signalé et le bouton reste inactif : rien n'est envoyé. Le serveur, idempotent, n'en ferait rien de toute façon (V5).
+- Si la relecture qui suit une écriture échoue, le formulaire disparaît avec la liste : sans la liste à jour, un doublon ne se détecte plus (fail-closed).
+- Le refus `local_mode` a désormais un libellé neutre, partagé par les écrans d'administration et la création d'un espace.
+- L'accueil des espaces offre « Environnements » à côté de « Membres et rôles ».
+- L'agent de test a trouvé trois défauts, corrigés : le formulaire ne suivait pas la bascule après l'ouverture de l'écran, puis, une fois corrigé, ressortait un ancien choix quand la bascule revenait à sa cible ; une adresse ou un nom de groupe sans espace sortait de sa carte. Ses remarques sur le point d'interrogation orphelin, le repère d'attente confondu avec la carte cible et l'écart des liens de l'accueil ont été reprises.
+
+## 4. Rayon d'impact
+
+Paquet `skifer_board.spaces`, révision `0004`, `contracts/espaces/` (les espaces gagnent leurs environnements), coque web (bascule et droits), écrans d'administration. Les specs Playwright existantes suivent la nouvelle forme des réponses d'espace.
+
+## 5. Hors de cette tranche
+
+- **Paramètres de déploiement** déclarés et valeurs par environnement (§5.1) : plan 10.
+- **Règles de validation en PROD** : arbitrage ouvert du §10, avant le lot 09.
+- **Releases**, activation et retour arrière : lot 09.
+- **Correspondance avec les environnements de skifer** et liaisons de connexion par environnement : lot 03.
+- **Lecture restreinte par environnement** : avec les dashboards publiés (lot 06).
+
+## 6. Risques
+
+| Risque | Parade |
+|---|---|
+| Un accord de groupe donne le droit à des personnes qui ne sont que lectrices. | Sans effet sous le rôle créateur (V3), testé ; l'écran le rappelle. |
+| Un administrateur s'accorde le droit de déployer en PROD sans contrôle. | Le journal le montre (V6) ; les règles de validation en PROD restent à arbitrer avant le lot 09. |
+| Une base migrée laisse un espace sans environnement. | La migration crée les trois pour chaque espace existant, testée sur une base en `0003` peuplée. |
+| La bascule de la coque laisse croire qu'on peut déployer. | Elle ne fait que choisir l'environnement affiché ; le droit est marqué à part, et le serveur reste seul juge. |
+
+## 7. Vérification
+
+`pnpm run check` complet. Pour chaque sous-tâche, une régression volontaire, puis rétablie, confirme que le filet l'attrape.

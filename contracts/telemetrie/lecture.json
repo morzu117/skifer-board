@@ -1,0 +1,96 @@
+{
+  "status": 200,
+  "body": {
+    "window": "24h",
+    "start": "2026-11-02T12:00:00+00:00",
+    "end": "2026-11-03T12:00:00+00:00",
+    "oldest": "2026-11-03T06:56:00+00:00",
+    "newest": "2026-11-03T11:56:00+00:00",
+    "operations": [
+      {
+        "kind": "http",
+        "operation": "/api/spaces/{space_id}/members",
+        "method": "GET",
+        "count": 5,
+        "errors": 1,
+        "refusals": 1,
+        "duration_ms": {
+          "p50": 14.0,
+          "p95": 80.19999999999999,
+          "max": 95.0
+        },
+        "size": {
+          "p50": 412.0,
+          "max": 430
+        },
+        "rows": {
+          "p50": null,
+          "max": null
+        }
+      },
+      {
+        "kind": "atlas",
+        "operation": "atlas.list",
+        "method": null,
+        "count": 3,
+        "errors": 0,
+        "refusals": 0,
+        "duration_ms": {
+          "p50": 35.0,
+          "p95": 50.3,
+          "max": 52.0
+        },
+        "size": {
+          "p50": 1572864.0,
+          "max": 1572864
+        },
+        "rows": {
+          "p50": 48.0,
+          "max": 48
+        }
+      },
+      {
+        "kind": "http",
+        "operation": "/api/me",
+        "method": "GET",
+        "count": 2,
+        "errors": 0,
+        "refusals": 1,
+        "duration_ms": {
+          "p50": 2.0,
+          "p95": 2.45,
+          "max": 2.5
+        },
+        "size": {
+          "p50": 64.0,
+          "max": 64
+        },
+        "rows": {
+          "p50": null,
+          "max": null
+        }
+      },
+      {
+        "kind": "atlas",
+        "operation": "atlas.document",
+        "method": null,
+        "count": 1,
+        "errors": 1,
+        "refusals": 0,
+        "duration_ms": {
+          "p50": 2.0,
+          "p95": 2.0,
+          "max": 2.0
+        },
+        "size": {
+          "p50": null,
+          "max": null
+        },
+        "rows": {
+          "p50": null,
+          "max": null
+        }
+      }
+    ]
+  }
+}

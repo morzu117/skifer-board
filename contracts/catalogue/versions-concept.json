@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "e4f30c9448195045b2e9454d6751283bbe78ee08",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "fresh",
+      "problem": null,
+      "detail": null
+    },
+    "id": "commande",
+    "current_version": 5,
+    "versions": []
+  }
+}

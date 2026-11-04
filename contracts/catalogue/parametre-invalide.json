@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "invalid_parameter",
+      "parameter": "status",
+      "detail": "Valeurs : validated, draft, needs_curation, invalid."
+    }
+  }
+}

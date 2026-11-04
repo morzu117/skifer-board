@@ -1,0 +1,61 @@
+# Adapté de skifer-atlas, examples/espace-nordis/kpis/panier-moyen.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+kind: kpi
+status: draft
+data_product:
+  id: brouillon
+  version: 1
+  owner: marc.d
+  domain: ventes
+  description: Revenu net moyen par commande, par mois fiscal et entité.
+label: Brouillon
+synonyms: [average basket, AOV]
+semantics:
+  calendar: {key: fiscal-nordis, version: '2026.1'}
+  timezone: Europe/Paris
+  currency: EUR
+graph:
+  nodes:
+    - id: n01
+      type: kpi_ref
+      label: Revenu net
+      kpi: revenu-net
+      version: 4
+    - id: n02
+      type: source
+      label: Commandes
+      platform: databricks
+      table: gold.ventes.fact_commande
+      owner: marc.d
+      columns:
+        - {name: commande_id, type: string}
+        - {name: entite, type: string}
+        - {name: date_commande, type: date, timezone: Europe/Paris, format: yyyy-MM-dd}
+      concept: commande
+    - id: n03
+      type: temporal
+      inputs: [n02]
+      operation: period
+      column: date_commande
+      target: mois_fiscal
+      grain: month
+    - id: n04
+      type: aggregate
+      inputs: [n03]
+      group_by: [mois_fiscal, entite]
+      measures: [[commande_id, nb_commandes, count_distinct]]
+    - id: n05
+      type: join
+      inputs: {left: n01, right: n04}
+      how: inner
+      keys: [[mois_fiscal, mois_fiscal], [entite, entite]]
+      cardinality: '1:1'
+      check: required
+    - id: n06
+      type: metric_op
+      inputs: [n05]
+      metrics:
+        - {name: panier_moyen, expr: 'revenu_net / NULLIF(nb_commandes, 0)'}
+      order: aggregate_first
+  output: n06

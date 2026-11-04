@@ -1,0 +1,17 @@
+# Adapté de skifer-atlas, examples/espace-nordis/concepts/date-de-reference.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+kind: concept
+data_product:
+  id: date-de-reference
+  version: 2
+  owner: claire.m
+  domain: finance
+  description: Jour comptable de rattachement d'un événement, selon le calendrier fiscal du groupe.
+label: Date de référence
+synonyms: [date comptable, posting date]
+entity:
+  key: [date_jour]
+  attributes:
+    - {name: date_jour, type: date}
+    - {name: date_comptable, type: date}

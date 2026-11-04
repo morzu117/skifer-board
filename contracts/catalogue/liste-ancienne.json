@@ -1,0 +1,160 @@
+{
+  "status": 200,
+  "body": {
+    "provenance": {
+      "commit": "d7eba96de96acf6f74250671ed402f79529036ec",
+      "read_at": "2026-11-01T10:30:00+00:00",
+      "freshness": "stale",
+      "problem": "repository_missing",
+      "detail": "Le clone de l'espace Atlas est introuvable à l'emplacement configuré."
+    },
+    "entries": [
+      {
+        "id": "brouillon",
+        "kind": "kpi",
+        "label": "Brouillon",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 1,
+        "status": "draft",
+        "description": "Revenu net moyen par commande, par mois fiscal et entité.",
+        "synonyms": [
+          "average basket",
+          "AOV"
+        ],
+        "variant_count": 0,
+        "availability": {
+          "state": "unresolved",
+          "reason": "not_validated"
+        }
+      },
+      {
+        "id": "commande",
+        "kind": "concept",
+        "label": "Commande",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 5,
+        "status": "validated",
+        "description": "Une commande client, de sa création à sa facturation.",
+        "synonyms": [
+          "order",
+          "bon de commande"
+        ],
+        "variant_count": 0,
+        "availability": null
+      },
+      {
+        "id": "date-de-reference",
+        "kind": "concept",
+        "label": "Date de référence",
+        "domain": "finance",
+        "owner": "claire.m",
+        "version": 2,
+        "status": "validated",
+        "description": "Jour comptable de rattachement d'un événement, selon le calendrier fiscal du groupe.",
+        "synonyms": [
+          "date comptable",
+          "posting date"
+        ],
+        "variant_count": 0,
+        "availability": null
+      },
+      {
+        "id": "invalide",
+        "kind": "kpi",
+        "label": "Invalide",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 1,
+        "status": "invalid",
+        "description": "Revenu net moyen par commande, par mois fiscal et entité.",
+        "synonyms": [
+          "average basket",
+          "AOV"
+        ],
+        "variant_count": 0,
+        "availability": {
+          "state": "unresolved",
+          "reason": "not_validated"
+        }
+      },
+      {
+        "id": "marge-brute",
+        "kind": "kpi",
+        "label": "Marge brute",
+        "domain": "finance",
+        "owner": "claire.m",
+        "version": 2,
+        "status": "validated",
+        "description": "Revenu net diminué du coût des marchandises vendues, par mois fiscal et entité.",
+        "synonyms": [
+          "gross margin"
+        ],
+        "variant_count": 0,
+        "availability": {
+          "state": "unresolved",
+          "reason": "mapping_absent"
+        }
+      },
+      {
+        "id": "panier-moyen",
+        "kind": "kpi",
+        "label": "Panier moyen",
+        "domain": "ventes",
+        "owner": "marc.d",
+        "version": 1,
+        "status": "validated",
+        "description": "Revenu net moyen par commande, par mois fiscal et entité.",
+        "synonyms": [
+          "average basket",
+          "AOV"
+        ],
+        "variant_count": 0,
+        "availability": {
+          "state": "unresolved",
+          "reason": "mapping_absent"
+        }
+      },
+      {
+        "id": "revenu-net",
+        "kind": "kpi",
+        "label": "Revenu net",
+        "domain": "finance",
+        "owner": "claire.m",
+        "version": 4,
+        "status": "validated",
+        "description": "Chiffre d'affaires facturé, taxes déduites, net des avoirs, sur le calendrier fiscal de l'entité.",
+        "synonyms": [
+          "CA net",
+          "net revenue",
+          "recettes consolidées"
+        ],
+        "variant_count": 2,
+        "availability": {
+          "state": "unresolved",
+          "reason": "mapping_absent"
+        }
+      }
+    ],
+    "facets": {
+      "domain": [
+        "finance",
+        "ventes"
+      ],
+      "owner": [
+        "claire.m",
+        "marc.d"
+      ],
+      "status": [
+        "draft",
+        "invalid",
+        "validated"
+      ],
+      "kind": [
+        "concept",
+        "kpi"
+      ]
+    }
+  }
+}

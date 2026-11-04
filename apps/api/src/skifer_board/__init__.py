@@ -1,1 +1,1 @@
-"""Consumption layer for the skifer semantic layer."""
+"""Skifer Board backend."""

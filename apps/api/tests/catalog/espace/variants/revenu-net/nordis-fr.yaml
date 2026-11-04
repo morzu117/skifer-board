@@ -1,0 +1,34 @@
+# Adapté de skifer-atlas, examples/espace-nordis/variants/revenu-net/nordis-fr.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+kind: variant
+data_product:
+  id: revenu-net--nordis-fr
+  version: 2
+  owner: claire.m
+variant_of: {id: revenu-net, version: 4}
+entity: nordis-fr
+mode: override
+justification: La France applique la TVA à 20 % et clôture ses mois sur le calendrier civil.
+overrides:
+  - node: n03
+    justification: TVA française à 20 %.
+    replace:
+      id: n03
+      type: compute
+      label: déduction des taxes
+      inputs: [n02]
+      column: montant_ht
+      expr: montant_ttc / 1.2 - avoirs
+      column_type: decimal
+  - node: n04
+    justification: Mois civil plutôt que fiscal pour le reporting local.
+    replace:
+      id: n04
+      type: temporal
+      label: Mois civil
+      inputs: [n07]
+      operation: period
+      column: date_facture
+      target: mois_fiscal
+      grain: month

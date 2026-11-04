@@ -1,0 +1,8 @@
+{
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "parameter_not_found"
+    }
+  }
+}

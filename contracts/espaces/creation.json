@@ -1,0 +1,29 @@
+{
+  "status": 201,
+  "body": {
+    "id": "finance",
+    "name": "Finance",
+    "atlas": "skifer-atlas",
+    "created_at": "2026-11-02T09:00:00+00:00",
+    "created_by": {
+      "issuer": "https://id.example.invalid",
+      "subject": "00u1a2b3c4"
+    },
+    "role": null,
+    "implicit": false,
+    "environments": [
+      {
+        "code": "DEV",
+        "deploy": false
+      },
+      {
+        "code": "TEST",
+        "deploy": false
+      },
+      {
+        "code": "PROD",
+        "deploy": false
+      }
+    ]
+  }
+}

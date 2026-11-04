@@ -1,0 +1,10 @@
+{
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "version_not_found",
+      "id": "revenu-net",
+      "detail": "Version 9 de « revenu-net » introuvable."
+    }
+  }
+}

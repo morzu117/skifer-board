@@ -1,0 +1,8 @@
+# Adapté de skifer-atlas, examples/espace-nordis/atlas.yaml
+# Licence MIT ; exemple Nordis réduit pour les tests Board.
+schema_version: 1
+id: groupe-nordis
+name: Groupe Nordis
+sector: Distribution
+entities: [nordis-fr, nordis-de, nordis-es]
+main_branch: main
