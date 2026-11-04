@@ -38,6 +38,32 @@ BODY = {
 }
 
 
+@pytest.mark.parametrize("key", ["databricks_test", "databricks-test", "databricks_test-dev"])
+def test_cle_avec_separateurs_creation_liaison_et_retrait(monde: Monde, key: str) -> None:
+    body = {**BODY, "key": key}
+    created = monde.requete(ADMIN_GROUPE, "POST", ROUTE, corps=body)
+    assert created.status_code == 201
+    assert created.json() == body
+    listed = monde.requete(ADMIN_GROUPE, "GET", ROUTE)
+    assert listed.json() == {"endpoints": [body]}
+    connections = f"/api/spaces/{A}/connections"
+    assert (
+        monde.requete(ADMIN_GROUPE, "POST", connections, corps={"name": "source"}).status_code
+        == 201
+    )
+    binding = f"{connections}/source/bindings/DEV"
+    bound = monde.requete(
+        ADMIN_GROUPE,
+        "PUT",
+        binding,
+        corps={"connector": "databricks", "endpoint_key": key, "identity_mode": "service"},
+    )
+    assert bound.status_code == 200
+    assert bound.json()["endpoint_key"] == key
+    assert monde.requete(ADMIN_GROUPE, "DELETE", binding).status_code == 204
+    assert monde.requete(ADMIN_GROUPE, "DELETE", f"{ROUTE}/{key}").status_code == 204
+
+
 def test_validation_du_point_d_acces() -> None:
     assert databricks_endpoint(BODY["host"], BODY["warehouse_id"]) == DatabricksEndpoint(
         BODY["host"], BODY["warehouse_id"]

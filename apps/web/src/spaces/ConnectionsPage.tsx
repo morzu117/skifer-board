@@ -97,7 +97,7 @@ function EndpointPanel({ outcome, space, busy, fetcher, onWrite }: {
   const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!ENDPOINT_KEY.test(key)) {
-      setProblem("Clé du point d'accès : utilisez 1 à 63 caractères, en commençant par une lettre minuscule, puis des lettres minuscules, chiffres ou tirets (-). Exemple : databricks-test. Le caractère _ n'est pas accepté.");
+      setProblem("Clé du point d'accès : utilisez 1 à 63 caractères, en commençant par une lettre minuscule, puis des lettres minuscules, chiffres, underscores (_) ou tirets (-). Exemple : databricks_test.");
       return;
     }
     if (!DATABRICKS_HOST.test(host)) {
@@ -291,7 +291,7 @@ function BindingEditor({ binding, name, space, busy, fetcher, onWrite, onDone }:
   const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!ENDPOINT_KEY.test(endpointKey)) {
-      setProblem("La clé commence par une lettre minuscule et contient au plus 63 lettres, chiffres ou tirets.");
+      setProblem("La clé commence par une lettre minuscule et contient au plus 63 lettres minuscules, chiffres, underscores (_) ou tirets (-).");
       return;
     }
     setProblem(null);
@@ -302,7 +302,7 @@ function BindingEditor({ binding, name, space, busy, fetcher, onWrite, onDone }:
       <label className="sb-field">Connecteur <select className="sb-input" value={connector} onChange={(event) => { setConnector(event.target.value as Connector); }}>
         {CONNECTORS.map((item) => <option key={item} value={item}>{item === "duckdb" ? "DuckDB" : "Databricks SQL"}</option>)}
       </select></label>
-      <label className="sb-field">Clé du point d'accès <input className="sb-input" value={endpointKey} onChange={(event) => { setEndpointKey(event.target.value); setProblem(null); }} required maxLength={63} pattern="[a-z][a-z0-9-]*" autoComplete="off" /></label>
+      <label className="sb-field">Clé du point d'accès <input className="sb-input" value={endpointKey} onChange={(event) => { setEndpointKey(event.target.value); setProblem(null); }} required maxLength={63} pattern="[a-z][a-z0-9_-]*" autoComplete="off" /></label>
       <label className="sb-field">Mode d'identité <select className="sb-input" value={identityMode} onChange={(event) => { setIdentityMode(event.target.value as IdentityMode); }}>
         {IDENTITIES.map((item) => <option key={item} value={item}>{item === "service" ? "Service" : "Personne"}</option>)}
       </select></label>

@@ -83,6 +83,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Fixed
 
+- Plan 14, 14.6 : les clés de points d'accès acceptent les underscores `_` et les tirets `-`, dans le registre, la configuration serveur et les liaisons.
+
 - Plan 14, 14.5 : le formulaire de point d'accès Databricks désigne désormais le champ invalide et explique sa règle, notamment le refus des underscores dans la clé, au lieu de demander de remplir trois champs déjà renseignés.
 
 - Plan 03, 3.2 : le conteneur défilant d'un tableau devient un groupe nommé et non plus une région. Quand le titre d'une tuile et la légende de son tableau coïncidaient, la page exposait deux régions de même nom. Défaut trouvé par les tests d'accessibilité de Codex.

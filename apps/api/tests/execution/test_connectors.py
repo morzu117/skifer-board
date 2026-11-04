@@ -693,7 +693,7 @@ def test_mode_local_peut_essayer_duckdb_declare_sans_sql(
             "error": {"code": "endpoint_not_configured"}
         }
         assert (
-            client.post("/api/local/connections/invalid_key/test", headers=headers).status_code
+            client.post("/api/local/connections/invalid.key/test", headers=headers).status_code
             == 400
         )
 

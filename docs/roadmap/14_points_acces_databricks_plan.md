@@ -41,3 +41,7 @@ Réalisation : Safari ouvre désormais la session, affiche l'administrateur de t
 ### 14.5 — Validation explicite des champs du point d'accès
 
 Le message commun aux trois champs laisse croire qu'une saisie complète est vide. Afficher la règle du premier champ invalide (clé, URL ou ID), avec un exemple de clé utilisant un tiret. Tester la saisie signalée par le porteur : URL et warehouse valides, clé `databricks_test` refusée ; sa correction en `databricks-test` permet l'envoi. Exécuter le gate web avant le commit de code.
+
+### 14.6 — Clés avec underscores et tirets
+
+À la demande du porteur, accepter `_` et `-` après la lettre minuscule initiale des clés de points d'accès, dans le registre, la configuration serveur, les liaisons et les décodeurs web. Actualiser les messages et le pattern du formulaire. Tester création, lecture, liaison et retrait avec les deux séparateurs ; gates API et web avant commit. Cette décision remplace la restriction décrite en 14.5.
