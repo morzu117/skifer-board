@@ -1,6 +1,6 @@
 # Plan 17 — Explorateur sur modèles sémantiques déclarés (lot 05a)
 
-Date : 4 novembre 2026 · Statut : plan commité avant code ; aucune tranche réalisée. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
+Date : 4 novembre 2026 · Statut : 17.1 réalisée ; 17.2 à 17.4 à faire. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.5–4.6, §8 lot 05 et §10.2 (D-1, D-6) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4 et §3 ; [maquette d'exploration](../design/mockups/01-exploration.html) ; plans [01](01_socle_et_calculs_contextuels_plan.md), [02](02_socle_web_et_prototype_graphique_plan.md), [12](12_connexions_et_executions_plan.md) et [16](16_executions_oauth_personnelles_plan.md).
 
@@ -56,3 +56,13 @@ Un lecteur choisit un modèle déclaré, compose métriques, dimensions et filtr
 | Le navigateur devient un éditeur de requête libre. | Noms validés contre le catalogue, opérateurs fermés, aucun texte SQL accepté. |
 
 Hors périmètre : sauvegarde d'analyse, épinglage, export, correspondance Atlas (AT-02), cache partagé.
+
+## Réalisation
+
+**17.1 — Champs exécutables.** L'adaptateur utilise `list_models` et le chargeur de modèles de skifer : le résumé public ne contient pas les définitions détaillées, mais le planner s'en sert pour résoudre les noms, qui doivent donc concorder. La réponse est construite par liste blanche et triée ; elle refuse un catalogue sans politique de ligne, incohérent ou dépassant 100 modèles, 500 champs par catégorie et modèle, ou 1 024 caractères par texte. Les chemins hors du répertoire sont refusés. Les types skifer `integer` et `float` deviennent `number`, `datetime` devient `timestamp` ; un type inconnu devient `unknown`. Une agrégation inconnue est rendue `null` et non additive ; les sommes et comptes respectent leur additivité déclarée, les autres agrégations sont traitées comme non additives.
+
+La route utilise exactement la garde de soumission et ne contacte aucune source. Les contrats et les tests exercent les rôles, leur retrait, le mode local, les refus du catalogue, les sentinelles et un connecteur interdit. Deux modèles sont exécutés sur DuckDB en utilisant, pour chacun, le nom du modèle, la métrique `m_sum` et la dimension `d_string` tels que rendus. Les 37 tests de la tranche passent ; le gate API passe avec 4 951 tests, 5 104 lignes et 1 180 branches couvertes à 100 %. Les régressions délibérées sur la fuite de SQL, la politique de ligne et la borne de texte, puis sur chacune des bornes de modèles, de définitions et de résumé, ont été détectées et restaurées. Les bornes de modèles du catalogue et du moteur sont aussi retirées séparément : leurs tests isolent chaque refus avec un moteur simulé et des entrées valides.
+
+Un seul champ invalide (texte nul ou trop long, clé de modèle contenant un point ou commençant par `_`) rend délibérément tout le catalogue indisponible : ce refus fermé est cohérent avec la soumission. La lecture détaillée dépend de la méthode interne skifer `_get_model` ; une mise à jour de skifer doit vérifier cette dépendance.
+
+Développée avec ses tests par un agent Codex (gpt-6.1-terra), relue par un agent Claude Sonnet 5.5 distinct ; deux cycles de corrections avant commit.

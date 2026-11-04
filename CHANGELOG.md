@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.1 : description bornée des champs du catalogue sémantique et route de lecture sous les gardes des exécutions, sans lecture de source.
+
 - Plan 16, 16.1 : autorisations OAuth personnelles accessibles aux lecteurs et créateurs, avec résolveur et renouvellement communs ; l'enregistrement des points partagés reste réservé aux administrateurs. Le retour OAuth reprend la page qui a initié la connexion, y compris Exécutions pour un lecteur.
 - Plan 16, 16.2 : soumission Databricks et essai des liaisons `person` avec le jeton du demandeur, sans repli de service ; vérification du mode d'identité effectif dans l'adaptateur sémantique. Les gardes RLS, certification, résultat et annulation sont conservées et éprouvées avec deux lecteurs.
 - Plan 16, 16.3 : connexion personnelle depuis Exécutions, choix et essai du warehouse sans commande d'administration pour le lecteur, messages des liaisons personnelles actualisés et recette documentée. La recette réelle reste en attente du porteur.

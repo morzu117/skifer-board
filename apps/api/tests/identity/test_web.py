@@ -226,6 +226,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}/credential"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}/bindings/{environment}"),
         ("DELETE", "/api/spaces/{space_id}/connections/{name}"),
+        ("GET", "/api/spaces/{space_id}/explorer/fields"),
         ("POST", "/api/spaces/{space_id}/executions"),
         ("GET", "/api/spaces/{space_id}/executions"),
         ("GET", "/api/spaces/{space_id}/executions/{execution_id}"),

@@ -33,7 +33,7 @@ from .connectors import (
 from .model import NAME, Connector, IdentityMode
 from .oauth_access import PersonalAccess
 from .runs import ExecutionRecord, ExecutionState, ExecutionStore, ExecutionUnavailable
-from .semantic import SemanticRequest, VerifiedReader
+from .semantic import SemanticRefusal, SemanticRequest, VerifiedReader, describe_catalog
 from .store import ConnectionStore
 from .vault import CredentialVault
 from .worker import ExecutionBusy, ExecutionWorkerPool
@@ -169,6 +169,16 @@ def install_execution_routes(
         if EXECUTION_ID.fullmatch(value) is None:
             raise Refused(404, "execution_not_found")
         return value
+
+    @app.get("/api/spaces/{space_id}/explorer/fields")
+    def explorer_fields(request: Request, space_id: str) -> JSONResponse:
+        active(request, space_id)
+        if pool is None:
+            raise Refused(503, "engine_unavailable")
+        try:
+            return JSONResponse(describe_catalog(pool.models_dir))
+        except SemanticRefusal:
+            raise Refused(503, "engine_unavailable") from None
 
     @app.post(path)
     async def submit_execution(request: Request, space_id: str) -> JSONResponse:

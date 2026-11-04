@@ -407,6 +407,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         )
         parcours("DELETE", f"/api/spaces/{A}/connections/connexion_sentinelle", x + "/{name}", 204)
 
+        parcours("GET", f"/api/spaces/{A}/explorer/fields", s + "/explorer/fields", 503)
         ex = s + "/executions"
         parcours(
             "POST",
