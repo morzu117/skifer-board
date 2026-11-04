@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.8a réalisés ; 12.8b attend la recette Databricks réelle**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.8a réalisés ; 12.8b attend la recette Databricks réelle**. Le [plan 14](14_points_acces_databricks_plan.md) permet depuis le 4 novembre de saisir le workspace et le warehouse dans Board, suivant le choix du porteur ; il remplace le profil CLI comme prérequis de recette. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -116,7 +116,9 @@ Réalisation : 14 parcours Chrome sur les deux formats couvrent le lecteur, la p
 
 Réalisation : la [recette Databricks](../recettes/plan12-databricks.md) décrit les deux précontrôles CLI explicites, les réglages de Board, la table témoin à deux sujets OIDC, la politique `subject`, la liaison de service, les parcours d'exécution et de refus, la télémétrie et le format de constat expurgé. Les commandes ont été vérifiées contre l'aide du CLI installé, sans choisir ni appeler un profil. Aucun test réel n'est déclaré passé.
 
-**12.8b — Exécution et clôture.** Avec le profil et le warehouse explicitement choisis, exécuter la recette sur la source Databricks réelle. Deux lecteurs doivent recevoir des lignes différentes malgré le retrait d'un filtre d'exploration ; l'administrateur Board ne peut obtenir leurs octets. Vérifier la preuve RLS et le hash de la transmission, les limites de lignes et d'octets, la troncature, le délai, l'annulation effective et les refus d'identifiant. Vérifier la télémétrie agrégée sans identité ni secret, puis joindre au dépôt seulement le constat expurgé et les identifiants opaques nécessaires à la relecture. Corriger tout écart avec test hors réseau, changelog et gate complet avant de déclarer le lot 03 achevé. Le profil, l'entrepôt et les données d'essai ne sont pas déduits de la configuration du poste.
+Mise à jour du 4 novembre : le plan 14 remplace ces précontrôles CLI par la saisie et l'essai dans Board. La recette liée ci-dessus reflète cette décision ; le texte de 12.8a conserve la trace de sa préparation initiale.
+
+**12.8b — Exécution et clôture.** Avec le workspace et le warehouse saisis explicitement dans Board (plan 14), exécuter la recette sur la source Databricks réelle. Deux lecteurs doivent recevoir des lignes différentes malgré le retrait d'un filtre d'exploration ; l'administrateur Board ne peut obtenir leurs octets. Vérifier la preuve RLS et le hash de la transmission, les limites de lignes et d'octets, la troncature, le délai, l'annulation effective et les refus d'identifiant. Vérifier la télémétrie agrégée sans identité ni secret, puis joindre au dépôt seulement le constat expurgé et les identifiants opaques nécessaires à la relecture. Corriger tout écart avec test hors réseau, changelog et gate complet avant de déclarer le lot 03 achevé. Le workspace, le warehouse et les données d'essai ne sont pas déduits de la configuration du poste.
 
 ## 4. Acceptation du lot
 
