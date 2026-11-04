@@ -96,8 +96,16 @@ function EndpointPanel({ outcome, space, busy, fetcher, onWrite }: {
   if (outcome.status !== "ok") return <ReadFailure outcome={outcome} title="Points d'accès indisponibles" />;
   const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!ENDPOINT_KEY.test(key) || !DATABRICKS_HOST.test(host) || !/^[A-Za-z0-9_-]{1,64}$/.test(warehouseId)) {
-      setProblem("Indiquez une clé, l'URL HTTPS d'un workspace Databricks et l'ID du warehouse.");
+    if (!ENDPOINT_KEY.test(key)) {
+      setProblem("Clé du point d'accès : utilisez 1 à 63 caractères, en commençant par une lettre minuscule, puis des lettres minuscules, chiffres ou tirets (-). Exemple : databricks-test. Le caractère _ n'est pas accepté.");
+      return;
+    }
+    if (!DATABRICKS_HOST.test(host)) {
+      setProblem("URL du workspace : indiquez l'adresse HTTPS complète du workspace Databricks, sans chemin ni barre oblique finale. Exemple : https://adb-123.2.azuredatabricks.net");
+      return;
+    }
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(warehouseId)) {
+      setProblem("ID du SQL warehouse : indiquez les 1 à 64 lettres, chiffres, tirets ou underscores situés après /warehouses/ dans le HTTP path Databricks.");
       return;
     }
     setProblem(null);

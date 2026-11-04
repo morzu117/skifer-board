@@ -83,6 +83,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Fixed
 
+- Plan 14, 14.5 : le formulaire de point d'accès Databricks désigne désormais le champ invalide et explique sa règle, notamment le refus des underscores dans la clé, au lieu de demander de remplir trois champs déjà renseignés.
+
 - Plan 03, 3.2 : le conteneur défilant d'un tableau devient un groupe nommé et non plus une région. Quand le titre d'une tuile et la légende de son tableau coïncidaient, la page exposait deux régions de même nom. Défaut trouvé par les tests d'accessibilité de Codex.
 - Plan 03, 3.3 : en thème ardoise, les en-têtes de tableau restaient dans le gris du thème clair, à 2,4:1 de contraste sur la carte sombre. Ils passent au gris clair de l'ardoise. Défaut trouvé par l'analyse axe des parcours de bout en bout.
 - Plan 04, 4.3 : une liste ou une fiche arrivée après une requête plus récente pouvait encore s'afficher quand l'appel ignorait l'abandon ; elle est désormais écartée. Un filtre gardait mal sa valeur quand les facettes renvoyées ne la contenaient plus ; la valeur choisie reste proposée. Défauts trouvés par les tests de Codex.

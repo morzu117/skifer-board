@@ -37,3 +37,7 @@ Réalisation : la recette utilise désormais l'enregistrement et l'essai dans Bo
 La recette dans Safari a révélé que les cookies `Secure` préfixés `__Host-` ne sont pas renvoyés sur l'origine locale en HTTP : le retour OIDC est refusé avec `invalid_state`. Pour une origine publique `http` admise uniquement sur la boucle locale, employer des cookies hôte seul sans préfixe `__Host-` ni attribut `Secure`, pour la demande de connexion et la session. Sur HTTPS, conserver les noms et attributs actuels. Tester les deux configurations et refaire le parcours complet dans Safari avant de reprendre la recette Databricks.
 
 Réalisation : Safari ouvre désormais la session, affiche l'administrateur de test et atteint le formulaire des points d'accès Databricks. Le test API couvre le parcours local HTTP ; les tests HTTPS existants conservent les cookies `__Host-` avec `Secure`.
+
+### 14.5 — Validation explicite des champs du point d'accès
+
+Le message commun aux trois champs laisse croire qu'une saisie complète est vide. Afficher la règle du premier champ invalide (clé, URL ou ID), avec un exemple de clé utilisant un tiret. Tester la saisie signalée par le porteur : URL et warehouse valides, clé `databricks_test` refusée ; sa correction en `databricks-test` permet l'envoi. Exécuter le gate web avant le commit de code.
