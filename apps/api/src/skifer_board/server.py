@@ -44,10 +44,12 @@ from .execution.connectors import (
 from .execution.oauth import (
     CLIENT_VARIABLE,
     FormTransport,
+    OAuthConfig,
     OAuthConfigError,
     OAuthFormTransport,
     validate_client_id,
 )
+from .execution.oauth_access import PersonalOAuth
 from .execution.oauth_store import OAuthStore
 from .execution.oauth_web import install_oauth
 from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
@@ -232,6 +234,21 @@ def create_app(
     execution_transport = (
         UrllibTransport() if connection_transport is None else connection_transport
     )
+    oauth_client_id = validate_client_id(databricks_oauth_client_id)
+    oauth_store = (
+        None
+        if spaces.store is None
+        else OAuthStore(spaces.store.engine, vault_keys, oauth_client_id or "")
+    )
+    oauth_forms = (
+        OAuthFormTransport() if databricks_oauth_transport is None else databricks_oauth_transport
+    )
+    oauth_config = (
+        None
+        if identity is None or oauth_client_id is None
+        else OAuthConfig(oauth_client_id, identity.config.public_origin)
+    )
+    personal_oauth = PersonalOAuth(oauth_config, oauth_store, oauth_forms, spaces.clock)
     install_connections(
         app,
         connections,
@@ -241,23 +258,15 @@ def create_app(
         endpoints,
         execution_transport,
     )
-    oauth_client_id = validate_client_id(databricks_oauth_client_id)
-    oauth_store = (
-        None
-        if spaces.store is None
-        else OAuthStore(spaces.store.engine, vault_keys, oauth_client_id or "")
-    )
     install_oauth(
         app,
         identity,
         connections,
-        oauth_store,
-        vault_keys,
-        oauth_client_id,
+        personal_oauth,
         guards.manager,
+        guards.reader,
         spaces.clock,
         execution_transport,
-        OAuthFormTransport() if databricks_oauth_transport is None else databricks_oauth_transport,
         frozenset(endpoints or {}),
     )
     install_execution_routes(

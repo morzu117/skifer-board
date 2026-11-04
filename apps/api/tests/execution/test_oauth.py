@@ -280,7 +280,7 @@ def test_coffre_pkce_isolation_expiration_et_rejeu(monde: Monde) -> None:
         store.finish(state, OTHER, "binding-secret", now)
     with pytest.raises(OAuthError):
         OAuthStore(monde.moteur, KEYS, "other-client").finish(state, PERSON, "binding-secret", now)
-    assert store.finish(state, PERSON, "binding-secret", now) == (A, HOST, verifier)
+    assert store.finish(state, PERSON, "binding-secret", now) == (A, HOST, verifier, "connections")
     with pytest.raises(OAuthError):
         store.finish(state, PERSON, "binding-secret", now)
     state, _ = store.start(A, PERSON, HOST, "binding-secret", now)
@@ -367,13 +367,14 @@ def test_coffre_ferme_sans_cle_et_chiffrement_lie_au_contexte(monde: Monde) -> N
         {"binding": 3},
         {"binding": "x", "verifier": "x", "extra": "x"},
     ]
-    for payload in payloads:
-        changed = dict(row)
-        changed["ciphertext"] = AESGCM(KEYS.keys["key"]).encrypt(
-            row["nonce"], json.dumps(payload).encode(), _aad(row)
-        )
-        with pytest.raises(VaultError):
-            store._decrypt(changed)
+    for purpose in ("pending", "credential"):
+        for payload in payloads:
+            changed = {**row, "purpose": purpose}
+            changed["ciphertext"] = AESGCM(KEYS.keys["key"]).encrypt(
+                row["nonce"], json.dumps(payload).encode(), _aad(changed)
+            )
+            with pytest.raises(VaultError):
+                store._decrypt(changed)
     for expiry in ("invalid", "2026-01-01T00:00:00"):
         changed = {**row, "purpose": "credential"}
         changed["ciphertext"] = AESGCM(KEYS.keys["key"]).encrypt(
@@ -403,5 +404,42 @@ def test_rotation_inclut_les_jetons_et_demandes_personnelles(monde: Monde) -> No
     with pytest.raises(VaultError):
         store.list(A, PERSON, now)
     current = OAuthStore(monde.moteur, VaultKeys("new", {"new": b"2" * 32}), CONFIG.client_id)
-    assert current.finish(state, PERSON, "binding", now) == (A, HOST, verifier)
+    assert current.finish(state, PERSON, "binding", now) == (A, HOST, verifier, "connections")
     assert len(current.list(A, PERSON, now)) == 1
+
+
+def test_resolveur_personnel_commun_configurations_incompletes(monde: Monde) -> None:
+    from skifer_board.execution.oauth_access import PersonalOAuth
+
+    store = OAuthStore(monde.moteur, KEYS, CONFIG.client_id)
+    no_keys = OAuthStore(monde.moteur, None, CONFIG.client_id)
+    for oauth_config, vault in ((None, store), (CONFIG, None), (CONFIG, no_keys)):
+        resolver = PersonalOAuth(oauth_config, vault, Forms(), monde.horloge)
+        assert resolver.configured is False
+        with pytest.raises(OAuthError, match="oauth_not_configured"):
+            resolver.token(A, PERSON, HOST)
+    resolver = PersonalOAuth(CONFIG, store, Forms(), monde.horloge)
+    assert resolver.configured
+    now = monde.horloge()
+    store.save(A, PERSON, HOST, Tokens("access", "refresh", now + timedelta(hours=1)), now)
+    assert resolver.token(A, PERSON, HOST).access == "access"
+
+
+def test_destination_oauth_liee_a_la_demande_et_compatibilite(monde: Monde) -> None:
+    from skifer_board.identity.sessions import fingerprint
+
+    store = OAuthStore(monde.moteur, KEYS, CONFIG.client_id)
+    now = monde.horloge()
+    state, verifier = store.start(A, PERSON, HOST, "binding", now, "executions")
+    assert store.finish(state, PERSON, "binding", now) == (A, HOST, verifier, "executions")
+    state, verifier = store.start(A, PERSON, HOST, "binding", now)
+    with monde.moteur.begin() as connection:
+        row = connection.execute(select(table)).mappings().one()
+        encrypted = store._encrypted(row, {"binding": fingerprint("binding"), "verifier": verifier})
+        connection.execute(
+            table.update().values(ciphertext=encrypted["ciphertext"], nonce=encrypted["nonce"])
+        )
+    assert store.finish(state, PERSON, "binding", now) == (A, HOST, verifier, "connections")
+    state, _ = store.start(A, PERSON, HOST, "binding", now, "https://evil.invalid")
+    with pytest.raises(VaultError):
+        store.finish(state, PERSON, "binding", now)
