@@ -7,6 +7,7 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 ### Added
 
 - Plan 15, 15.1 : demandes OAuth Databricks PKCE à usage unique et coffre personnel chiffré, isolé par personne, espace, workspace et application OAuth. La migration `0011`, l'expiration, le renouvellement sérialisé et la rotation des clés couvrent aussi les autorisations personnelles.
+- Plan 15, 15.2 : découverte des warehouses autorisés depuis la seule URL du workspace, sélection contrôlée et essai avec le jeton personnel OAuth. Le callback retire code et state avant les journaux ; les réponses métier ne contiennent aucun jeton.
 
 - Plan 14, 14.7 : bouton « Tester la connexion » sur chaque point d'accès Databricks enregistré, avec jeton à usage unique pour l'essai et message de progression, succès, refus ou panne. Le test vérifie les métadonnées du warehouse sans créer de liaison ni conserver le jeton.
 

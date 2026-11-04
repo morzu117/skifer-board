@@ -41,6 +41,15 @@ from .execution.connectors import (
     UrllibTransport,
     endpoints_from_env,
 )
+from .execution.oauth import (
+    CLIENT_VARIABLE,
+    FormTransport,
+    OAuthConfigError,
+    OAuthFormTransport,
+    validate_client_id,
+)
+from .execution.oauth_store import OAuthStore
+from .execution.oauth_web import install_oauth
 from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
 from .execution.runs_web import install_execution_routes
 from .execution.semantic import certification_store_from_path
@@ -142,6 +151,8 @@ def create_app(
     execution_certification_store: Any = None,
     execution_certification_mode: str = "enforce",
     execution_reader_attributes: Callable[[Identity], Mapping[str, str]] | None = None,
+    databricks_oauth_client_id: str | None = None,
+    databricks_oauth_transport: FormTransport | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -229,6 +240,25 @@ def create_app(
         vault,
         endpoints,
         execution_transport,
+    )
+    oauth_client_id = validate_client_id(databricks_oauth_client_id)
+    oauth_store = (
+        None
+        if spaces.store is None
+        else OAuthStore(spaces.store.engine, vault_keys, oauth_client_id or "")
+    )
+    install_oauth(
+        app,
+        identity,
+        connections,
+        oauth_store,
+        vault_keys,
+        oauth_client_id,
+        guards.manager,
+        spaces.clock,
+        execution_transport,
+        OAuthFormTransport() if databricks_oauth_transport is None else databricks_oauth_transport,
+        frozenset(endpoints or {}),
     )
     install_execution_routes(
         app,
@@ -401,7 +431,8 @@ def main() -> None:
     identity = identity_runtime(os.environ, host, engine)
     try:
         vault_keys = keys_from_env(os.environ)
-    except VaultConfigError as error:
+        oauth_client_id = validate_client_id(os.environ.get(CLIENT_VARIABLE))
+    except (VaultConfigError, OAuthConfigError) as error:
         raise SystemExit(str(error)) from error
     try:
         endpoints = endpoints_from_env(os.environ)
@@ -436,6 +467,7 @@ def main() -> None:
             vault_keys,
             endpoints,
             execution_models_dir=models_dir,
+            databricks_oauth_client_id=oauth_client_id,
             execution_certification_store=certification_store,
         )
         uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))

@@ -1,6 +1,6 @@
 # Plan 15 — Connexion OAuth Databricks et découverte depuis l'URL
 
-Date : 4 novembre 2026 · Statut : 15.1 implémenté ; 15.2 et 15.3 en cours ; intégration OAuth Board à enregistrer dans Databricks pour la recette réelle.
+Date : 4 novembre 2026 · Statut : 15.1 et 15.2 implémentés ; 15.3 en cours ; intégration OAuth Board à enregistrer dans Databricks pour la recette réelle.
 
 Demande du porteur : saisir uniquement l'URL du workspace, se connecter personnellement par OAuth et laisser Board récupérer les valeurs disponibles. Ce plan complète le plan 14 et ne confond pas le SSO de Board avec l'autorisation d'accès à Databricks.
 
@@ -36,6 +36,7 @@ Réalisation 15.1 : révision `0011`, états PKCE à usage unique liés à la se
 
 Lister les warehouses avec l'autorisation personnelle et un transport borné, TLS vérifié, sans redirection ni proxy hérité. Valider les réponses, ne retourner que les champs utiles, isoler chaque personne et espace. Enregistrer seulement la sélection validée et les métadonnées du point d'accès ; ne pas partager le jeton avec les administrateurs de l'espace. Brancher le test sur cette autorisation.
 
+Réalisation 15.2 : routes d’autorisation, retour, découverte, sélection, essai et déconnexion personnelle ; absence de jetons dans les réponses métier et retrait des paramètres du callback avant journalisation. Les inventaires d’authentification et de confidentialité couvrent les nouvelles routes.
 
 ### 15.3 — Interface et recette
 

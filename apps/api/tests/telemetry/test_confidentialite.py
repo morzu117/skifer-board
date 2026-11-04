@@ -309,6 +309,38 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 204)
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 404)
 
+        oauth = s + "/databricks-oauth"
+        oauth_url = f"/api/spaces/{A}/databricks-oauth"
+        oauth_host = "https://adb-123.2.azuredatabricks.net"
+        secrets |= {oauth_host, "code-oauth-sentinelle", "state-oauth-sentinelle"}
+        parcours("GET", oauth_url, oauth, 200)
+        for suffix in ("start", "warehouses"):
+            parcours(
+                "POST", oauth_url + "/" + suffix, oauth + "/" + suffix, 503, {"host": oauth_host}
+            )
+        parcours(
+            "POST",
+            oauth_url + "/select",
+            oauth + "/select",
+            503,
+            {"host": oauth_host, "warehouse_id": "wh-sentinelle", "key": "oauth-sentinelle"},
+        )
+        parcours(
+            "POST",
+            oauth_url + "/test",
+            oauth + "/test",
+            503,
+            {"host": oauth_host, "warehouse_id": "wh-sentinelle"},
+        )
+        parcours("DELETE", oauth_url, oauth, 503, {"host": oauth_host})
+        parcours(
+            "GET",
+            "/auth/databricks/callback",
+            "/auth/databricks/callback",
+            400,
+            params={"code": "code-oauth-sentinelle", "state": "state-oauth-sentinelle"},
+        )
+
         ep = s + "/connection-endpoints"
         ep_body = {
             "key": "warehouse-ui-sentinelle",
