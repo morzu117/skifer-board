@@ -11,7 +11,7 @@ export type IdentityMode = (typeof IDENTITIES)[number];
 export const CREDENTIAL_STATES = ["unconfigured", "configured", "unavailable"] as const;
 export type CredentialState = (typeof CREDENTIAL_STATES)[number];
 export const CONNECTION_NAME = /^[a-z][a-z0-9_]{0,62}$/;
-export const ENDPOINT_KEY = /^[a-z][a-z0-9-]{0,62}$/;
+export const ENDPOINT_KEY = /^[a-z][a-z0-9_-]{0,62}$/;
 export const DATABRICKS_HOST = /^https:\/\/[a-z0-9.-]+\.(?:azuredatabricks\.net|cloud\.databricks\.com|gcp\.databricks\.com)$/;
 
 export interface DatabricksEndpoint { key: string; host: string; warehouseId: string }

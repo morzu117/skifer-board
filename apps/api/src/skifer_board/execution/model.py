@@ -13,7 +13,7 @@ from enum import StrEnum
 from ..spaces.model import Environment, PersonRef
 
 NAME = re.compile(r"[a-z][a-z0-9_]{0,62}")
-ENDPOINT_KEY = re.compile(r"[a-z][a-z0-9-]{0,62}")
+ENDPOINT_KEY = re.compile(r"[a-z][a-z0-9_-]{0,62}")
 
 
 class Connector(StrEnum):

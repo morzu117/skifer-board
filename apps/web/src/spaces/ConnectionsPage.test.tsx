@@ -50,7 +50,7 @@ async function open(fetcher: Mock<Fetch>, target: "DEV" | "TEST" | "PROD" = "DEV
 
 describe("points d'accès Databricks dans Board", () => {
   it.each([
-    ["databricks_test", "https://adb-7405606281030422.2.azuredatabricks.net", "e1b44f921ca44d61", "Le caractère _ n'est pas accepté."],
+    ["databricks.test", "https://adb-7405606281030422.2.azuredatabricks.net", "e1b44f921ca44d61", "Clé du point d'accès :"],
     ["databricks-test", "https://example.com", "e1b44f921ca44d61", "URL du workspace :"],
     ["databricks-test", "https://adb-7405606281030422.2.azuredatabricks.net", "/sql/1.0/warehouses/e1b44f921ca44d61", "ID du SQL warehouse :"],
   ])("explique le champ invalide sans envoyer la saisie : %s, %s, %s", async (key, host, warehouseId, message) => {
@@ -66,14 +66,14 @@ describe("points d'accès Databricks dans Board", () => {
     expect(within(form).getByRole("textbox", { name: "Clé du point d'accès" })).toHaveValue(key);
   });
 
-  it("valide la saisie, crée le point et efface les champs", async () => {
-    const endpoint = { key: "azure-test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+  it.each(["databricks_test", "databricks-test", "databricks_test-dev"])("crée le point %s et efface les champs", async (key) => {
+    const endpoint = { key, host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
     const fetcher = server({ [`POST ${ENDPOINTS}`]: { status: 201, body: endpoint } });
     await open(fetcher);
     const form = await screen.findByRole("form", { name: "Ajouter un point d'accès Databricks" });
     await userEvent.click(within(form).getByRole("button", { name: "Enregistrer le point d'accès" }));
     expect(within(form).getByRole("alert")).toHaveTextContent("Clé du point d'accès : utilisez");
-    await userEvent.type(within(form).getByRole("textbox", { name: "Clé du point d'accès" }), "azure-test");
+    await userEvent.type(within(form).getByRole("textbox", { name: "Clé du point d'accès" }), key);
     await userEvent.type(within(form).getByRole("textbox", { name: "URL du workspace" }), endpoint.host);
     await userEvent.type(within(form).getByRole("textbox", { name: "ID du SQL warehouse" }), "abc123");
     expect(within(form).queryByRole("alert")).not.toBeInTheDocument();
