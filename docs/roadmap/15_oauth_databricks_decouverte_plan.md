@@ -14,7 +14,7 @@ Demande du porteur : saisir uniquement l'URL du workspace, se connecter personne
 
 ## Prérequis Databricks
 
-Pour une application personnalisée telle que Board, Databricks exige une intégration OAuth enregistrée. Son Client ID et ses URI de retour autorisées sont des réglages de l'exploitant, indépendants des valeurs découvertes dans le workspace. Ne pas réutiliser le Client ID du CLI Databricks ni une authentification ambiante du poste. Pour la recette locale, fixer l'URI de retour sur l'origine publique de Board, actuellement `http://localhost:5174`, avec un chemin dédié sous `/auth/databricks/`.
+Pour une application personnalisée telle que Board, Databricks exige une intégration OAuth enregistrée. Son Client ID et ses URI de retour autorisées sont des réglages de l'exploitant, indépendants des valeurs découvertes dans le workspace. Ne pas réutiliser le Client ID du CLI Databricks ni une authentification ambiante du poste. Pour la recette locale, fixer l'URI de retour à `http://localhost:5174/auth/databricks/callback`, sur l'origine publique de Board. Le client est public avec PKCE S256 ; aucun secret client à saisir pour ce parcours.
 
 Le porteur indiquera si une intégration existe déjà. S'il n'en existe pas, fournir une fiche d'inscription avec l'URI exacte et les scopes nécessaires ; le porteur effectue l'inscription dans son compte. Aucun secret n'est demandé dans la conversation. L'absence de configuration OAuth est un état explicite dans Board, jamais un succès simulé.
 
@@ -22,6 +22,7 @@ Sources vérifiées le 4 novembre 2026 :
 
 - [OAuth utilisateur Azure Databricks](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/auth/oauth-u2m) : application personnalisée, Client ID, PKCE, endpoints authorize/token, durée et renouvellement.
 - [Liste des warehouses](https://docs.databricks.com/api/warehouses/v1/list-warehouses) : noms, IDs, états et paramètres de connexion.
+- [Enregistrement des applications OAuth](https://learn.microsoft.com/en-us/azure/databricks/integrations/enable-disable-oauth) : console de compte → Settings → App connections → Add connection ; accès SQL pour les API de warehouse, client public sans génération de secret. L'activation peut prendre jusqu'à 30 minutes.
 
 ## Invariants et découpage
 
