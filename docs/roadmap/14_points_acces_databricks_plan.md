@@ -31,3 +31,7 @@ Réalisation : la carte « Points d'accès Databricks » permet la saisie, la li
 Mettre la recette 12.8b à jour pour le parcours Board seul. Fournir les étapes concrètes de démarrage sans inscrire de secret dans le dépôt. Lancer l'application lorsque l'environnement OIDC et le coffre sont configurés ; la personne saisit ses valeurs dans Board. La clôture du lot 03 attend toujours les observations sur deux lecteurs réels et le constat expurgé.
 
 Réalisation : la recette utilise désormais l'enregistrement et l'essai dans Board. Une [instance locale de test](../recettes/plan14-essai-board.md) a été préparée avec PostgreSQL migré, fournisseur OIDC synthétique sur la boucle locale, administrateur et deux lecteurs ; la connexion OIDC et l'écran Connexions ont été vérifiés dans un vrai navigateur. Aucun warehouse réel ni modèle certifié n'est encore configuré : la recette 12.8b reste à exécuter avec les valeurs que le porteur saisira dans Board.
+
+### 14.4 — Connexion Safari sur la boucle locale
+
+La recette dans Safari a révélé que les cookies `Secure` préfixés `__Host-` ne sont pas renvoyés sur l'origine locale en HTTP : le retour OIDC est refusé avec `invalid_state`. Pour une origine publique `http` admise uniquement sur la boucle locale, employer des cookies hôte seul sans préfixe `__Host-` ni attribut `Secure`, pour la demande de connexion et la session. Sur HTTPS, conserver les noms et attributs actuels. Tester les deux configurations et refaire le parcours complet dans Safari avant de reprendre la recette Databricks.
