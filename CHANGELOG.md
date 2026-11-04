@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.7b : écran des exécutions dans un espace, accessible aux lecteurs depuis l'accueil. Soumission déclarative, liste personnelle, portée « espace » pour l'administration, détail avec état, durée, limites, troncature et preuve expurgée. L'annulation suit la capacité renvoyée par le serveur et sa confirmation reste explicite ; l'aperçu Arrow défile dans sa carte. Chargement, vide, refus, mode local, perte de session et panne sont nommés.
+
 - Plan 12, 12.7a : contrat web strict pour les exécutions suivies, leur liste et leur détail, avec vérification des états, dates, compteurs et preuves expurgées. Clients de soumission, lecture et annulation avec refus fermés et signalement d'une session ou d'un espace perdus. Aperçu Arrow lu séparément du JSON, sous les plafonds de taille et de lignes, avec contrôle du type, des octets et des colonnes avant présentation.
 
 - Plan 12, 12.5c : routes de soumission, liste, détail, résultat Arrow et annulation des exécutions sémantiques suivies. Le serveur valide un corps déclaratif sans SQL ni identifiant, relit les droits par espace et personne, réserve le résultat à l'auteur et ne donne à l'administration que les métadonnées. Configuration serveur explicite du catalogue sémantique et des certifications ; mode local et moteur absent refusés. Nouveau genre `execution` dans la télémétrie et son écran, avec opération fixe et mesures sans identité ni secret. Contrats de refus et tests intégrés sur deux lecteurs DuckDB et un transport Databricks simulé.

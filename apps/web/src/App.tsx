@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { CataloguePage } from "./catalogue/CataloguePage";
+import { ExecutionsPage } from "./executions/ExecutionsPage";
 import { logout, type Fetch } from "./identity/api";
 import { LoginScreen } from "./identity/LoginScreen";
 import { displayName, loginReasonFrom } from "./identity/model";
@@ -28,7 +29,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" ? route.space : null;
 }
 
 interface Sections {
@@ -246,6 +247,9 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "connections") {
       return [current.value.name, "Connexions"];
     }
+    if (route.page === "executions") {
+      return [current.value.name, "Exécutions"];
+    }
     return current.value.role === null ? [current.value.name] : [current.value.name, "Catalogue Atlas"];
   }
   return [current?.status === "not_found" ? "Espace introuvable" : "Espace"];
@@ -350,6 +354,9 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
       );
     }
     return <ConnectionsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
+  }
+  if (route.page === "executions") {
+    return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;
   }
   if (current.value.role === null) {
     return (

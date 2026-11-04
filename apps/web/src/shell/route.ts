@@ -16,7 +16,8 @@ export type Route =
   | { page: "members"; space: string }
   | { page: "environments"; space: string }
   | { page: "parameters"; space: string }
-  | { page: "connections"; space: string };
+  | { page: "connections"; space: string }
+  | { page: "executions"; space: string };
 
 const PROTOTYPE_HASH = "#/prototype";
 const CREATE_HASH = "#/nouvel-espace";
@@ -29,6 +30,7 @@ const SPACE_PAGES = {
   environnements: "environments",
   parametres: "parameters",
   connexions: "connections",
+  executions: "executions",
 } as const;
 
 export function routeHash(route: Route): string {
@@ -51,6 +53,8 @@ export function routeHash(route: Route): string {
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/parametres`;
     case "connections":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/connexions`;
+    case "executions":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/executions`;
   }
 }
 
@@ -75,7 +79,7 @@ export function routeFromHash(hash: string): Route {
   }
   if (hash.startsWith(SPACE_PREFIX)) {
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
-    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions))?$/.exec(hash.slice(SPACE_PREFIX.length));
     if (match?.[1] !== undefined) {
       const space = decodeSegment(match[1]);
       // Le motif n'admet que les segments de `SPACE_PAGES`.

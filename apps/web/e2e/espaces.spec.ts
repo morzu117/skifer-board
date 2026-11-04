@@ -55,9 +55,10 @@ test("l'accueil liste les espaces avec le rôle, le rattachement Atlas et le lie
   await expect(espaces).toHaveCount(2);
   await expect(espaces.nth(0)).toContainText("Créateur");
   await expect(espaces.nth(0)).toContainText("Atlas : skifer-atlas · finance");
-  await expect(espaces.nth(0).getByRole("link", { name: "Finance" })).toHaveAttribute("href", "#/espaces/finance/catalogue");
+  await expect(espaces.nth(0).getByRole("link", { name: "Finance", exact: true })).toHaveAttribute("href", "#/espaces/finance/catalogue");
+  await expect(espaces.nth(0).getByRole("link", { name: "Exécutions de Finance" })).toHaveAttribute("href", "#/espaces/finance/executions");
   await expect(espaces.nth(1)).toContainText("Lecteur");
-  await expect(espaces.nth(1).getByRole("link", { name: "Ressources humaines" })).toHaveAttribute("href", "#/espaces/rh/catalogue");
+  await expect(espaces.nth(1).getByRole("link", { name: "Ressources humaines", exact: true })).toHaveAttribute("href", "#/espaces/rh/catalogue");
   await expect(page.getByRole("button", { name: /Créer un espace/ })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Fil d'Ariane" }).getByRole("listitem")).toHaveText(["Vos espaces"]);
   await expect(selecteur(page)).toHaveValue("");
