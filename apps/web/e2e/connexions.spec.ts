@@ -149,3 +149,76 @@ for (const state of ["registre", "formulaire", "refus"] as const) {
     await expect(page).toHaveScreenshot(`connexions-${state}.png`, { fullPage: true });
   });
 }
+
+test("OAuth depuis l'URL : retour, warehouse unique prérempli et test personnel", async ({ page }) => {
+  const host = "https://adb-1234567890123456.2.azuredatabricks.net";
+  const oauth = "/api/spaces/finance/databricks-oauth";
+  const expires = "2026-11-04T12:00:00+00:00";
+  let connected = false;
+  const selected: { key: string; host: string; warehouse_id: string }[] = [];
+  await open(page);
+  await page.route((url) => url.pathname === ENDPOINTS, async (route) => {
+    await route.fulfill({ status: 200, json: { endpoints: selected } });
+  });
+  await page.route((url) => url.pathname.startsWith(oauth), async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET") {
+      await route.fulfill({ json: { configured: true, redirect_uri: "http://localhost:4174/auth/databricks/callback", connections: connected ? [{ host, expires_at: expires }] : [] } });
+    } else if (path.endsWith("/start")) {
+      expect(request.postDataJSON()).toEqual({ host });
+      await route.fulfill({ json: { authorization_url: `${host}/oidc/v1/authorize?client_id=board-test&state=state-test&code_challenge=pkce-test` } });
+    } else if (path.endsWith("/warehouses")) {
+      await route.fulfill({ json: { host, expires_at: expires, warehouses: [{ id: "wh1", name: "Warehouse de recette", state: "RUNNING" }] } });
+    } else if (path.endsWith("/select")) {
+      const body = request.postDataJSON() as { host: string; warehouse_id: string; key: string };
+      expect(body).toEqual({ host, warehouse_id: "wh1", key: "databricks_wh1" });
+      selected.push(body);
+      await route.fulfill({ status: 201, json: body });
+    } else if (path.endsWith("/test")) {
+      expect(request.postDataJSON()).toEqual({ host, warehouse_id: "wh1" });
+      await route.fulfill({ json: { identity: "person", credential_expires_at: expires, can_cancel: true, state: "RUNNING" } });
+    } else {
+      throw new Error("Appel OAuth inattendu");
+    }
+  });
+  await page.route(`${host}/oidc/v1/authorize?**`, async (route) => {
+    expect(new URL(route.request().url()).searchParams.get("state")).toBe("state-test");
+    await route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Autorisation Databricks simulée</h1>" });
+  });
+  await page.route("**/auth/databricks/callback?**", async (route) => {
+    connected = true;
+    await route.fulfill({ status: 303, headers: { Location: `http://localhost:4174/?databricks_oauth=connected&databricks_workspace=${encodeURIComponent(host)}#/espaces/finance/connexions` }, body: "" });
+  });
+  await page.getByRole("button", { name: "Se connecter à Databricks" }).click();
+  await page.getByRole("textbox", { name: "URL du workspace Databricks" }).fill(host);
+  await page.getByRole("button", { name: "Continuer vers Databricks" }).click();
+  await expect(page).toHaveURL(new RegExp("/oidc/v1/authorize"));
+  await page.goto("http://localhost:4174/auth/databricks/callback?state=state-test&code=code-test");
+  const panel = page.getByRole("region", { name: "Connexion personnelle Databricks" });
+  await expect(panel.getByRole("textbox", { name: "ID du warehouse détecté" })).toHaveValue("wh1");
+  await expect(panel.getByRole("textbox", { name: "Clé du point d'accès OAuth" })).toHaveValue("databricks_wh1");
+  await expect(panel.getByRole("combobox", { name: "Warehouse accessible" })).toHaveValue("wh1");
+  await panel.getByRole("button", { name: "Tester avec ma connexion OAuth" }).click();
+  await expect(panel.getByText(/Essai réussi pour l'identité person/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations.map((item) => item.id)).toEqual([]);
+  await panel.scrollIntoViewIfNeeded();
+  await expect(panel).toHaveScreenshot("connexion-oauth-decouverte.png");
+  await panel.getByRole("button", { name: "Enregistrer ce warehouse" }).click();
+  await expect(page.getByText("Point d'accès databricks_wh1 enregistré depuis votre connexion OAuth.")).toBeVisible();
+});
+
+test("OAuth explique le Client ID manquant et l'adresse de retour", async ({ page }) => {
+  await open(page);
+  await page.route((url) => url.pathname === "/api/spaces/finance/databricks-oauth", async (route) => {
+    await route.fulfill({ json: { configured: false, redirect_uri: "http://localhost:5174/auth/databricks/callback", connections: [] } });
+  });
+  await page.getByRole("button", { name: "Se connecter à Databricks" }).click();
+  const panel = page.getByRole("region", { name: "Connexion personnelle Databricks" });
+  await expect(panel.getByText(/Configuration OAuth requise/)).toBeVisible();
+  await expect(panel.getByText("http://localhost:5174/auth/databricks/callback", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  await expect(panel).toHaveScreenshot("connexion-oauth-configuration.png");
+});

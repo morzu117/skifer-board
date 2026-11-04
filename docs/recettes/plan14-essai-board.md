@@ -2,7 +2,7 @@
 
 ## Instance locale préparée le 4 novembre 2026
 
-Sur le poste de développement, Board est accessible à `http://localhost:5174/`. L'API écoute seulement sur `127.0.0.1:8000`, le fournisseur OIDC synthétique sur `127.0.0.1:8765`, et PostgreSQL contient la base `skifer_board_test` migrée à la révision `0010`. L'espace **Recette Databricks** (`board-test`) possède un administrateur, **Lecteur A de test** et **Lecteur B de test**. Le fournisseur OIDC local sert seulement à cette recette, sur la boucle locale. Le parcours de connexion et l'ouverture du formulaire ont aussi été vérifiés dans Safari après le correctif 14.4.
+Sur le poste de développement, Board est accessible à `http://localhost:5174/`. L'API écoute seulement sur `127.0.0.1:8000`, le fournisseur OIDC synthétique sur `127.0.0.1:8765`, et PostgreSQL contient la base `skifer_board_test` migrée à la révision `0011`. L'espace **Recette Databricks** (`board-test`) possède un administrateur, **Lecteur A de test** et **Lecteur B de test**. Le fournisseur OIDC local sert seulement à cette recette, sur la boucle locale. Le parcours de connexion et l'ouverture du formulaire ont aussi été vérifiés dans Safari après le correctif 14.4.
 
 Si les processus locaux ne tournent plus, les scripts et la configuration de test sont conservés hors du dépôt dans `~/.local/share/skifer-board/dev-test/`. Aucun jeton Databricks n'y est écrit ; la clé du coffre et le secret du fournisseur local sont dans `config.json`, accessible au seul compte du poste.
 
@@ -14,12 +14,14 @@ uv run --locked python ~/.local/share/skifer-board/dev-test/board.py
 pnpm --filter @skifer-board/web exec vite --host 127.0.0.1 --port 5174 --strictPort
 ```
 
+Le [parcours OAuth personnel du plan 15](plan15-oauth-databricks.md) permet désormais de partir de l’URL seule une fois l’application OAuth Board enregistrée dans Databricks. Le parcours manuel ci-dessous reste disponible pour l’essai ponctuel au jeton.
+
 ## Saisir les informations dans Board
 
 1. Ouvrir `http://localhost:5174/` puis **Se connecter** et choisir **Administrateur de test**.
 2. Ouvrir l'espace **Recette Databricks**, puis **Connexions** (`#/espaces/board-test/connexions`).
 3. Dans **Points d'accès Databricks**, saisir une clé au format `azure-test`, l'URL HTTPS du workspace Azure Databricks et l'ID du SQL warehouse de test. Enregistrer. Ces deux valeurs sont conservées dans la base Board, propres à l'espace, sans jeton.
-4. À côté du point d'accès enregistré, cliquer **Tester la connexion**, saisir soi-même le jeton Databricks dans le champ masqué puis cliquer **Lancer le test**. Le champ s'efface dès l'envoi. Ce jeton sert uniquement à cet essai et n'est pas conservé ; le résultat apparaît sous le point d'accès. L'essai vérifie les métadonnées du warehouse, sans requête métier ni création de liaison.
+4. À côté du point d'accès enregistré, cliquer **Tester avec un jeton saisi**, saisir soi-même le jeton Databricks dans le champ masqué puis cliquer **Lancer le test**. Le champ s'efface dès l'envoi. Ce jeton sert uniquement à cet essai et n'est pas conservé ; le résultat apparaît sous le point d'accès. L'essai vérifie les métadonnées du warehouse, sans requête métier ni création de liaison.
 5. Pour préparer ensuite les exécutions, créer une connexion logique, par exemple `source_test`. Dans sa liaison **DEV**, choisir **Databricks SQL**, saisir la clé du point d'accès et garder l'identité **Service**.
 6. Cliquer **Poser un identifiant** et saisir soi-même le jeton de service de test dans le champ à usage unique. Board le chiffre dans son coffre ; le champ s'efface et la valeur ne peut pas être relue depuis l'interface.
 7. Le bouton **Tester la connexion** de la liaison permet aussi de vérifier l'identifiant conservé dans le coffre. Il doit afficher l'identité de service, l'état du warehouse et la capacité d'annulation. En cas de refus, relever seulement le code et le message visibles, sans copier le jeton.

@@ -368,3 +368,26 @@ executions = Table(
     Index("ix_executions_reader", "space_id", "issuer", "subject", "created_at"),
     Index("ix_executions_lease", "state", "lease_until"),
 )
+
+# États PKCE et autorisations personnelles Databricks ; secrets intégralement chiffrés.
+databricks_oauth = Table(
+    "databricks_oauth",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("purpose", String(16), nullable=False),
+    Column("client_id", String(255), nullable=False),
+    Column(
+        "space_id",
+        String(40),
+        ForeignKey("spaces.id", name="fk_databricks_oauth_space"),
+        nullable=False,
+    ),
+    Column("issuer", Text, nullable=False),
+    Column("subject", Text, nullable=False),
+    Column("host", Text, nullable=False),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("key_id", String(32), nullable=False),
+    Column("nonce", LargeBinary, nullable=False),
+    Column("ciphertext", LargeBinary, nullable=False),
+    Index("ix_databricks_oauth_expires_at", "expires_at"),
+)

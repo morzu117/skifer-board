@@ -6,7 +6,7 @@ import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { useRefreshed } from "../ui/useOutcome";
-import { AdminTabs, Confirm, FeedbackRegion, Journal, ReadFailure, Reading, refusalText, useAdminWrite } from "./AdminParts";
+import { AdminTabs, Confirm, FeedbackRegion, Journal, ReadFailure, Reading, useAdminWrite } from "./AdminParts";
 import { fetchEvents, type AdminOutcome } from "./admin";
 import type { Fetch } from "./api";
 import {
@@ -17,6 +17,9 @@ import {
   type ConnectionBinding, type Connector, type IdentityMode, type LogicalConnection, type Probe, type DatabricksEndpoint,
 } from "./connections";
 import type { Space } from "./model";
+import { ProbeOutcome } from "./ProbeOutcome";
+import { DatabricksOAuthPanel } from "./DatabricksOAuthPanel";
+import { testOAuthConnection } from "./oauth";
 import "./connections.css";
 
 export const CONNECTION_REMINDER = "Déclarez le workspace et le warehouse dans cet espace, puis utilisez leur clé dans la liaison. Un essai ne lit aucune donnée métier.";
@@ -60,6 +63,7 @@ export function ConnectionsPage({ space, fetcher, target, onWritten }: Connectio
       <AdminTabs space={space} current="connections" />
       <Banner tone="neutral"><strong>{CONNECTION_REMINDER}</strong> Aucun identifiant ni SQL n'est affiché.</Banner>
       <FeedbackRegion feedback={feedback} announced={announced} />
+      <DatabricksOAuthPanel key={space.id} space={space.id} fetcher={fetcher} busy={busy} onWrite={write} />
       <Card title="Points d'accès Databricks">
         <EndpointPanel outcome={endpoints} space={space.id} busy={busy} fetcher={fetcher} onWrite={write} />
       </Card>
@@ -138,6 +142,11 @@ function EndpointTest({ endpoint, space, fetcher, busy }: { endpoint: Databricks
   const [open, setOpen] = useState(false);
   const [probe, setProbe] = useState<AdminOutcome<Probe> | { status: "testing" } | null>(null);
   const testing = probe?.status === "testing";
+  const runOAuthTest = async () => {
+    setOpen(false);
+    setProbe({ status: "testing" });
+    setProbe(await testOAuthConnection(space, endpoint.host, endpoint.warehouseId, fetcher));
+  };
   const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -148,7 +157,8 @@ function EndpointTest({ endpoint, space, fetcher, busy }: { endpoint: Databricks
     setProbe(await testEndpoint(space, endpoint.key, secret, fetcher));
   };
   return <div>
-    <button type="button" className="sb-button" disabled={busy || testing} aria-expanded={open} onClick={() => { setOpen(!open); setProbe(null); }}>Tester la connexion</button>
+    <button type="button" className="sb-button sb-button--primary" disabled={busy || testing} onClick={() => { void runOAuthTest(); }}>Tester la connexion avec OAuth</button>
+    <button type="button" className="sb-button" disabled={busy || testing} aria-expanded={open} onClick={() => { setOpen(!open); setProbe(null); }}>Tester avec un jeton saisi</button>
     {open ? <form className="sb-connection__form" aria-label={`Tester le point d'accès ${endpoint.key}`} onSubmit={(event) => { void submit(event); }}>
       <p className="sb-connection__note">Le test vérifie l'accès au warehouse sans lire de données métier. Le jeton est utilisé pour cet essai uniquement et n'est pas conservé.</p>
       <label className="sb-field">Jeton Databricks pour le test <input className="sb-input" name="secret" type="password" autoComplete="off" required maxLength={16384} disabled={testing} /></label>
@@ -354,11 +364,4 @@ function CredentialEditor({ binding, name, space, busy, fetcher, onWrite, onDone
       <button className="sb-button sb-button--primary" disabled={busy} type="submit">Enregistrer l'identifiant</button>
     </form>
   );
-}
-
-function ProbeOutcome({ outcome }: { outcome: AdminOutcome<Probe> | { status: "testing" } }) {
-  if (outcome.status === "testing") return <Reading>Essai de la connexion en cours…</Reading>;
-  if (outcome.status === "refused") return <Banner tone="danger">Essai refusé : {refusalText(outcome)}</Banner>;
-  if (outcome.status === "error") return <Banner tone="danger">Essai indisponible : {outcome.message}</Banner>;
-  return <Banner tone="neutral">Essai réussi pour l'identité {outcome.value.identity} · état {outcome.value.state} · expiration {outcome.value.credentialExpiresAt === null ? "inconnue" : formatInstant(outcome.value.credentialExpiresAt)} · annulation {outcome.value.canCancel ? "disponible" : "indisponible"}.</Banner>;
 }

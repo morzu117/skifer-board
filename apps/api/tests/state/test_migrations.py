@@ -22,6 +22,19 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 INSTANT = datetime(2026, 1, 15, 12, tzinfo=UTC)
 
 COLONNES = {
+    "databricks_oauth": {
+        "id": False,
+        "purpose": False,
+        "client_id": False,
+        "space_id": False,
+        "issuer": False,
+        "subject": False,
+        "host": False,
+        "expires_at": False,
+        "key_id": False,
+        "nonce": False,
+        "ciphertext": False,
+    },
     "sessions": {
         "fingerprint": False,
         "issuer": False,
@@ -207,6 +220,7 @@ COLONNES = {
     },
 }
 INSTANTS = {
+    "databricks_oauth": ["expires_at"],
     "sessions": {"created_at", "last_seen", "expires_at"},
     "login_requests": {"created_at"},
     "spaces": {"created_at"},
@@ -232,6 +246,7 @@ INSTANTS = {
     },
 }
 CLES = {
+    "databricks_oauth": ["id"],
     "sessions": ["fingerprint"],
     "login_requests": ["state_fingerprint"],
     "spaces": ["id"],

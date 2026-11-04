@@ -118,7 +118,18 @@ def test_codes_des_contrats_releves() -> None:
 # Codes de l'écart de versions du catalogue, longtemps oubliés de la liste.
 ECARTS = {"version_not_found", "diff_not_supported", "diff_unavailable"}
 # Codes rendus par le serveur lui-même (`server.py`), sans exemple de contrat.
-DU_SERVEUR = {"route_not_found", "method_not_allowed", "http_error", "internal_error"}
+DU_SERVEUR = {
+    "route_not_found",
+    "method_not_allowed",
+    "http_error",
+    "internal_error",
+    "oauth_unavailable",
+    "oauth_not_configured",
+    "oauth_refused",
+    "oauth_invalid_state",
+    "oauth_reconnect",
+    "oauth_invalid_response",
+}
 
 
 def test_codes_rendus_par_l_api_connus() -> None:

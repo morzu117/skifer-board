@@ -6,4 +6,5 @@ Les lots 01 et 02 sont réalisés. Le lot 03 possède les connexions, le coffre,
 
 - [Plan de développement](docs/plan-de-developpement.md) : décisions, architecture cible, lots, dépendances, critères d’acceptation et arbitrages.
 - [Écrans et fonctionnalités](docs/ecrans-et-fonctionnalites.md) : écrans, écrans intermédiaires, états standards, rôles, matrice écrans × lots.
+- [Connexion OAuth Databricks depuis l’URL du workspace](docs/recettes/plan15-oauth-databricks.md) : inscription de Board, connexion personnelle, découverte des warehouses et essai.
 - [Essai du connecteur Databricks depuis Board](docs/recettes/plan14-essai-board.md) : instance locale de test et saisie du workspace, du warehouse et de l'identifiant dans Board.
