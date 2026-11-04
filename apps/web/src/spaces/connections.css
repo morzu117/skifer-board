@@ -116,3 +116,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.sb-oauth__workspace,
+.sb-oauth__callback {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

@@ -49,6 +49,20 @@ async function open(fetcher: Mock<Fetch>, target: "DEV" | "TEST" | "PROD" = "DEV
 }
 
 describe("points d'accès Databricks dans Board", () => {
+  it("teste un point d'accès enregistré avec OAuth sans demander de jeton", async () => {
+    const endpoint = { key: "databricks_test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+    const url = "/api/spaces/finance/databricks-oauth/test";
+    const fetcher = server({
+      [`GET ${ENDPOINTS}`]: { status: 200, body: { endpoints: [endpoint] } },
+      [`POST ${url}`]: { status: 200, body: { identity: "person", state: "RUNNING", credential_expires_at: AT, can_cancel: true } },
+    }, list([]));
+    await open(fetcher);
+    await userEvent.click(screen.getByRole("button", { name: "Tester la connexion avec OAuth" }));
+    expect(await screen.findByText(/Essai réussi pour l'identité person/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Jeton Databricks pour le test")).not.toBeInTheDocument();
+    expect(JSON.parse(calls(fetcher, "POST", url)[0]?.[1]?.body as string)).toEqual({ host: endpoint.host, warehouse_id: endpoint.warehouse_id });
+  });
+
   it.each([
     [200, { identity: "service", state: "RUNNING", credential_expires_at: null, can_cancel: true }, "Essai réussi"],
     [409, { error: { code: "credential_rejected" } }, "Essai refusé"],
@@ -61,7 +75,7 @@ describe("points d'accès Databricks dans Board", () => {
       [`POST ${ENDPOINTS}/${endpoint.key}/test`]: () => new Promise<Response>((resolve) => { finish = resolve; }),
     }, list([]));
     await open(fetcher);
-    const toggle = screen.getByRole("button", { name: "Tester la connexion" });
+    const toggle = screen.getByRole("button", { name: "Tester avec un jeton saisi" });
     await userEvent.click(toggle);
     await userEvent.click(toggle);
     expect(screen.queryByLabelText("Jeton Databricks pour le test")).not.toBeInTheDocument();

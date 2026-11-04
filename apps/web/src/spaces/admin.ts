@@ -29,6 +29,12 @@ import { decodeConfiguration, decodeParameter, decodeStoredValue, type Configura
 
 /** Refus à codes fermés du serveur (plan 08, E8, E11, E12 ; plan 09, V9 ; plan 10, P8 ; contrôle d'origine du plan 06). */
 export const REFUSALS = [
+  "oauth_invalid_response",
+  "oauth_reconnect",
+  "oauth_invalid_state",
+  "oauth_refused",
+  "oauth_not_configured",
+  "oauth_unavailable",
   "invalid_request",
   "invalid_parameter",
   "space_exists",
@@ -79,6 +85,12 @@ export interface Refusal {
 export type AdminOutcome<T> = { status: "ok"; value: T } | ({ status: "refused" } & Refusal) | { status: "error"; message: string };
 
 export const REFUSAL_LABELS: Record<RefusalCode, string> = {
+  oauth_invalid_response: "Databricks a renvoyé une réponse OAuth hors contrat.",
+  oauth_reconnect: "Votre connexion personnelle Databricks a expiré ou a été déconnectée. Reconnectez-vous.",
+  oauth_invalid_state: "La demande OAuth a expiré ou provient d’une autre session. Recommencez.",
+  oauth_refused: "Databricks a refusé l’autorisation. Reconnectez-vous à Databricks.",
+  oauth_not_configured: "L’application OAuth Board n’est pas encore configurée pour Databricks.",
+  oauth_unavailable: "Databricks ne répond pas pour la connexion OAuth.",
   invalid_request: "La demande est incomplète ou mal formée.",
   invalid_parameter: "La recherche est vide ou trop longue.",
   space_exists: "Cet identifiant est déjà pris par un espace.",
