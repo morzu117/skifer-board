@@ -2,7 +2,7 @@
 
 ## Instance locale préparée le 4 novembre 2026
 
-Sur le poste de développement, Board est accessible à `http://localhost:5174/`. L'API écoute seulement sur `127.0.0.1:8000`, le fournisseur OIDC synthétique sur `127.0.0.1:8765`, et PostgreSQL contient la base `skifer_board_test` migrée à la révision `0010`. L'espace **Recette Databricks** (`board-test`) possède un administrateur, **Lecteur A de test** et **Lecteur B de test**. Le fournisseur OIDC local sert seulement à cette recette, sur la boucle locale.
+Sur le poste de développement, Board est accessible à `http://localhost:5174/`. L'API écoute seulement sur `127.0.0.1:8000`, le fournisseur OIDC synthétique sur `127.0.0.1:8765`, et PostgreSQL contient la base `skifer_board_test` migrée à la révision `0010`. L'espace **Recette Databricks** (`board-test`) possède un administrateur, **Lecteur A de test** et **Lecteur B de test**. Le fournisseur OIDC local sert seulement à cette recette, sur la boucle locale. Le parcours de connexion et l'ouverture du formulaire ont aussi été vérifiés dans Safari après le correctif 14.4.
 
 Si les processus locaux ne tournent plus, les scripts et la configuration de test sont conservés hors du dépôt dans `~/.local/share/skifer-board/dev-test/`. Aucun jeton Databricks n'y est écrit ; la clé du coffre et le secret du fournisseur local sont dans `config.json`, accessible au seul compte du poste.
 

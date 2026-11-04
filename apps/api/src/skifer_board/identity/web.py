@@ -21,6 +21,8 @@ from .sessions import MemorySessionStore, Session, SessionStore
 
 SESSION_COOKIE = "__Host-sb_session"
 LOGIN_COOKIE = "__Host-sb_login"
+LOCAL_SESSION_COOKIE = "sb_session"
+LOCAL_LOGIN_COOKIE = "sb_login"
 LOGIN_PATH = "/auth/login"
 LOGOUT_PATH = "/auth/logout"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -51,14 +53,14 @@ def _identity_json(identity: Identity) -> dict[str, Any]:
     }
 
 
-def _set_cookie(response: Response, name: str, value: str, max_age: int) -> None:
+def _set_cookie(response: Response, name: str, value: str, max_age: int, secure: bool) -> None:
     response.set_cookie(
-        name, value, max_age=max_age, path="/", secure=True, httponly=True, samesite="lax"
+        name, value, max_age=max_age, path="/", secure=secure, httponly=True, samesite="lax"
     )
 
 
-def _clear_cookie(response: Response, name: str) -> None:
-    response.delete_cookie(name, path="/", secure=True, httponly=True, samesite="lax")
+def _clear_cookie(response: Response, name: str, secure: bool) -> None:
+    response.delete_cookie(name, path="/", secure=secure, httponly=True, samesite="lax")
 
 
 def _origin_allowed(request: Request, runtime: IdentityRuntime | None) -> bool:
@@ -79,10 +81,16 @@ def _origin_allowed(request: Request, runtime: IdentityRuntime | None) -> bool:
 def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
     """Pose la garde et les routes d'identité. Sans OIDC : mode local, sans identité."""
 
+    secure_cookies = (
+        runtime is not None and urlsplit(runtime.config.public_origin).scheme == "https"
+    )
+    session_cookie = SESSION_COOKIE if secure_cookies else LOCAL_SESSION_COOKIE
+    login_cookie = LOGIN_COOKIE if secure_cookies else LOCAL_LOGIN_COOKIE
+
     def current(request: Request) -> Session | None:
         if runtime is None:
             return None
-        token = request.cookies.get(SESSION_COOKIE)
+        token = request.cookies.get(session_cookie)
         return None if token is None else runtime.sessions.get(token, runtime.clock())
 
     @app.middleware("http")
@@ -121,7 +129,7 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
     def back_to_app(refusal: LoginRefusal | None) -> RedirectResponse:
         target = "/" if refusal is None else f"/?{urlencode({'login_error': refusal.value})}"
         response = RedirectResponse(target, status_code=303)
-        _clear_cookie(response, LOGIN_COOKIE)
+        _clear_cookie(response, login_cookie, secure_cookies)
         return response
 
     @app.get(LOGIN_PATH)
@@ -131,13 +139,13 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
         except ProviderError:
             return back_to_app(LoginRefusal.PROVIDER_UNAVAILABLE)
         response = RedirectResponse(started.redirect_url, status_code=303)
-        _set_cookie(response, LOGIN_COOKIE, started.binding, max_age=600)
+        _set_cookie(response, login_cookie, started.binding, max_age=600, secure=secure_cookies)
         return response
 
     @app.get(callback_path)
     def callback(request: Request) -> Response:
         params = dict(request.query_params)
-        found = runtime.flow.finish(params, request.cookies.get(LOGIN_COOKIE))
+        found = runtime.flow.finish(params, request.cookies.get(login_cookie))
         if isinstance(found, LoginRefusal):
             return back_to_app(found)
         now = runtime.clock()
@@ -147,19 +155,20 @@ def install_identity(app: FastAPI, runtime: IdentityRuntime | None) -> None:
         response = back_to_app(None)
         _set_cookie(
             response,
-            SESSION_COOKIE,
+            session_cookie,
             token,
             max_age=int(runtime.config.session_absolute.total_seconds()),
+            secure=secure_cookies,
         )
         return response
 
     @app.post(LOGOUT_PATH)
     def logout(request: Request) -> JSONResponse:
-        token = request.cookies.get(SESSION_COOKIE)
+        token = request.cookies.get(session_cookie)
         if token is not None:
             runtime.sessions.delete(token)
         response = JSONResponse({"redirect": "/"})
-        _clear_cookie(response, SESSION_COOKIE)
+        _clear_cookie(response, session_cookie, secure_cookies)
         return response
 
 
