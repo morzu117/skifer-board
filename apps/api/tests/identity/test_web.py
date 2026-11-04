@@ -58,6 +58,47 @@ def verifier_cookie(reponse: Response, nom: str, age: int) -> str:
     return cookie.value
 
 
+def test_parcours_http_local_sans_cookie_secure(
+    config: OidcConfig,
+    fournisseur: Fournisseur,
+    horloge: Horloge,
+    service: CatalogService,
+    migre: Engine,
+    cles: Cles,
+    claims: dict[str, Any],
+) -> None:
+    origine = "http://localhost:5174"
+    local_config = replace(config, public_origin=origine, redirect_uri=f"{origine}/auth/callback")
+    runtime = build_runtime(local_config, fournisseur, horloge)
+    app = create_app(service, runtime, espaces_en_base(migre, horloge, None))
+    with TestClient(app, base_url=origine, follow_redirects=False) as navigateur:
+        debut = navigateur.get("/auth/login")
+        assert debut.status_code == 303
+        assert "sb_login" in navigateur.cookies
+        assert "__Host-sb_login" not in navigateur.cookies
+        assert "secure" not in debut.headers["set-cookie"].lower()
+        params = parametres(debut.headers["location"])
+        fournisseur.reponse = {
+            "id_token": cles.signer({**claims, "nonce": params["nonce"]}),
+            "access_token": "acces-secret",
+        }
+        retour = navigateur.get(
+            "/auth/callback", params={"state": params["state"], "code": "code-secret"}
+        )
+        assert retour.status_code == 303
+        assert retour.headers["location"] == "/"
+        assert "sb_session" in navigateur.cookies
+        assert "__Host-sb_session" not in navigateur.cookies
+        assert all(
+            "secure" not in entete.lower() for entete in retour.headers.get_list("set-cookie")
+        )
+        assert navigateur.get("/api/me").status_code == 200
+        sortie = navigateur.post("/auth/logout", headers={"Origin": origine})
+        assert sortie.status_code == 200
+        assert "secure" not in sortie.headers["set-cookie"].lower()
+        assert navigateur.get("/api/me").status_code == 401
+
+
 def connecter(
     client: TestClient,
     fournisseur: Fournisseur,
