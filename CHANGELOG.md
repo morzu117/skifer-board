@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.2 : validation des champs exécutables et des filtres typés avant connecteur ; listes canoniques et plages déclaratives, avec maintien des politiques de ligne.
+
 - Plan 17, 17.1 : description bornée des champs du catalogue sémantique et route de lecture sous les gardes des exécutions, sans lecture de source.
 
 - Plan 16, 16.1 : autorisations OAuth personnelles accessibles aux lecteurs et créateurs, avec résolveur et renouvellement communs ; l'enregistrement des points partagés reste réservé aux administrateurs. Le retour OAuth reprend la page qui a initié la connexion, y compris Exécutions pour un lecteur.
@@ -93,7 +95,13 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 - Plan 11, 11.3 : lecture de la télémétrie, `GET /api/telemetry?window=24h|7d|30d`, réservée à l'administration de la plateforme (`403 forbidden` avec `required: platform_admin` sinon, `409 local_mode` sans base, `400 invalid_request` sur `window` pour une fenêtre absente, répétée ou inconnue). Par genre, opération et méthode : nombre de mesures, d'erreurs et de refus, durée médiane, p95 et maximale, taille et documents médians et maximaux, opérations les plus lentes d'abord ; la réponse dit la fenêtre demandée et l'instant de la plus ancienne et de la plus récente mesure. Exemples de contrat dans `contracts/telemetrie/`.
 - Plan 11, 11.4 : écran « Télémétrie » (`#/telemetrie`), offert depuis l'accueil des espaces à l'administration de la plateforme seule. Fenêtre 24 h, 7 j ou 30 j ; tableau des opérations, les plus lentes d'abord (p95 décroissant), en chiffres tabulaires : mesures, durées médiane, p95 et maximale, erreurs et refus avec leur part, tailles et documents médians et maximaux, l'opération restant visible quand le tableau défile. Période couverte et âge de la dernière mesure. États de lecture, d'absence de mesure, de refus, de mode local et de panne ; une réponse d'une autre fenêtre, ou dont la période et les opérations ne vont pas ensemble, est hors contrat.
 
+### Changed
+
+- Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
+
 ### Fixed
+
+- Plan 17, 17.2 : traduction de l'opérateur `ne` en `neq` pour skifer.
 
 - Plan 14, 14.6 : les clés de points d'accès acceptent les underscores `_` et les tirets `-`, dans le registre, la configuration serveur et les liaisons.
 

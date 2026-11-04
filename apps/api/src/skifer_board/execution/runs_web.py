@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
 import re
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
@@ -32,6 +31,7 @@ from .connectors import (
 )
 from .model import NAME, Connector, IdentityMode
 from .oauth_access import PersonalAccess
+from .query_validation import filtre, valider
 from .runs import ExecutionRecord, ExecutionState, ExecutionStore, ExecutionUnavailable
 from .semantic import SemanticRefusal, SemanticRequest, VerifiedReader, describe_catalog
 from .store import ConnectionStore
@@ -40,7 +40,6 @@ from .worker import ExecutionBusy, ExecutionWorkerPool
 
 IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}")
 EXECUTION_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-OPERATORS = frozenset({"eq", "ne", "gt", "gte", "lt", "lte"})
 DEADLINE = timedelta(seconds=30)
 LEASE = timedelta(seconds=40)
 
@@ -80,22 +79,12 @@ def _request(body: Any) -> tuple[str, Environment, SemanticRequest, str]:
         if not isinstance(item, dict) or set(item) != {"column", "operator", "value"}:
             raise Invalid("filters")
         column, operator, value = item["column"], item["operator"], item["value"]
-        if (
-            not isinstance(column, str)
-            or IDENTIFIER.fullmatch(column) is None
-            or not isinstance(operator, str)
-            or operator not in OPERATORS
-            or type(value) not in (str, int, float, bool)
-            or (type(value) is float and not math.isfinite(value))
-            or (type(value) is str and (len(value) > 1024 or "\x00" in value))
-        ):
+        if not isinstance(column, str) or IDENTIFIER.fullmatch(column) is None:
             raise Invalid("filters")
-        filters.append({"column": column, "operator": operator, "value": value})
-    try:
-        canonical = json.dumps(values, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-        request_hash = sha256(canonical.encode()).hexdigest()
-    except UnicodeError:
-        raise Invalid("filters") from None
+        filters.append(filtre(column, operator, value))
+    values["filters"] = filters
+    canonical = json.dumps(values, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    request_hash = sha256(canonical.encode()).hexdigest()
     return (
         name,
         environment,
@@ -188,6 +177,11 @@ def install_execution_routes(
         assert store is not None
         await asyncio.to_thread(store.recover_stale, clock())
         name, environment, semantic, request_hash = _request(await _body(request))
+        try:
+            catalog = await asyncio.to_thread(describe_catalog, pool.models_dir)
+        except SemanticRefusal:
+            raise Refused(503, "engine_unavailable") from None
+        semantic = valider(semantic, catalog)
         binding = await asyncio.to_thread(connections.get_binding, space_id, name, environment)
         endpoint = connections.get_endpoint(space_id, binding.endpoint_key) or (
             endpoints or {}

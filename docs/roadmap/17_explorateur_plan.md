@@ -1,6 +1,6 @@
 # Plan 17 — Explorateur sur modèles sémantiques déclarés (lot 05a)
 
-Date : 4 novembre 2026 · Statut : 17.1 réalisée ; 17.2 à 17.4 à faire. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
+Date : 4 novembre 2026 · Statut : 17.1 et 17.2 réalisées ; 17.3 et 17.4 à faire. Premier plan du lot 05, ouvert alors que la recette Databricks réelle du lot 03 (12.8b) attend le porteur. Le développement de chaque tranche est confié à un agent distinct de l'orchestrateur, puis relu par un second agent avant commit.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.5–4.6, §8 lot 05 et §10.2 (D-1, D-6) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4 et §3 ; [maquette d'exploration](../design/mockups/01-exploration.html) ; plans [01](01_socle_et_calculs_contextuels_plan.md), [02](02_socle_web_et_prototype_graphique_plan.md), [12](12_connexions_et_executions_plan.md) et [16](16_executions_oauth_personnelles_plan.md).
 
@@ -45,7 +45,7 @@ Route d'espace et entrée de navigation ; décodeurs stricts des champs, du cont
 
 ## 4. Acceptation du plan
 
-Un lecteur choisit un modèle déclaré, compose métriques, dimensions et filtres sans écrire de SQL, exécute, annule, lit le résultat en tableau et en graphique avec sa provenance, et obtient un total de sélection exact ou une indisponibilité motivée. Deux lecteurs ne voient que leurs lignes ; retirer un filtre ne change pas ce droit. Le lot 05 n'est pas déclaré livré : la source réelle (12.8b), la comparaison à une requête de référence sur source réelle, les périodes de calendrier, le tri et top-N (SK-03) et le retour au moteur pour un total complet restent à planifier.
+Un lecteur choisit un modèle déclaré, compose métriques, dimensions et filtres sans écrire de SQL, exécute, annule, lit le résultat en tableau et en graphique avec sa provenance, et obtient un total de sélection exact ou une indisponibilité motivée. Deux lecteurs ne voient que leurs lignes ; retirer un filtre ne change pas ce droit. Le lot 05 n'est pas déclaré livré : la source réelle (12.8b), la comparaison à une requête de référence sur source réelle, les périodes de calendrier et la réouverture des filtres temporels ([SK-12](../attendus/skifer.md#sk-12--littéraux-de-filtres-textuels-et-temporels)), le tri et top-N (SK-03) et le retour au moteur pour un total complet restent à planifier.
 
 ## 5. Risques et hors périmètre
 
@@ -66,3 +66,13 @@ La route utilise exactement la garde de soumission et ne contacte aucune source.
 Un seul champ invalide (texte nul ou trop long, clé de modèle contenant un point ou commençant par `_`) rend délibérément tout le catalogue indisponible : ce refus fermé est cohérent avec la soumission. La lecture détaillée dépend de la méthode interne skifer `_get_model` ; une mise à jour de skifer doit vérifier cette dépendance.
 
 Développée avec ses tests par un agent Codex (gpt-6.1-terra), relue par un agent Claude Sonnet 5.5 distinct ; deux cycles de corrections avant commit.
+
+**17.2 — Validation et filtres typés.** Le serveur valide modèle, métriques, dimensions et filtres contre le catalogue avant la création d'une exécution et le connecteur. Les refus réutilisent `invalid_request` (400) avec le champ générique `model`, `metrics`, `dimensions` ou `filters` ; le catalogue indisponible reste `engine_unavailable` (503). Les noms et valeurs refusés ne sont pas rendus.
+
+La matrice des opérateurs est : `string` : `eq`, `ne`, `in` ; `number` : `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `between` ; `date` et `timestamp` : aucun filtre tant que [SK-12](../attendus/skifer.md#sk-12--littéraux-de-filtres-textuels-et-temporels) n'est pas résolu ; `boolean` et `unknown` : `eq`, `ne`. Les valeurs texte acceptent uniquement lettres et chiffres Unicode (catégories L et N), espaces ASCII et ponctuations `_ . , : / @ & + ( )` ; les espaces en début ou fin et la chaîne vide sont admis. Les marques combinantes (catégorie M), notamment `e` suivi de U+0301 en NFD et certaines écritures devanagari ou hébreu pointé, sont refusées, comme les mots avec tiret tels que `Île-de-France` ; Board ne normalise pas les entrées. Toute autre valeur texte hors liste est refusée avant création, comme les entiers hors de [-2^63, 2^63-1] et les flottants non finis. Un booléen n'est pas un nombre. `in` exige 1 à 100 scalaires distincts de même type, triés avant empreinte et transmission : les entiers et flottants ne se mélangent pas dans une liste. `between` exige deux bornes numériques ordonnées et devient deux filtres `gte` et `lte`. Les bornes de taille des filtres restent appliquées.
+
+La validation relit tout le catalogue à chaque soumission : un champ invalide dans un autre modèle rend lui aussi toutes les soumissions indisponibles (`503 engine_unavailable`), conformément au refus fermé de 17.1 ; auparavant, un autre modèle pouvait s'exécuter.
+
+Le test DuckDB a confirmé que `ne` échouait avec `engine_unavailable` ; l'adaptateur le traduit en `neq` pour skifer. Les tests vérifient la matrice, les refus avant connecteur, l'empreinte et la RLS à deux lecteurs avec ou sans filtres, ainsi que la transmission Databricks simulée. Les trois mutations de validation des dimensions, de type numérique et de tri des listes ont été détectées puis restaurées. Les tests vérifient également les filtres sur la colonne de politique à deux lecteurs et la restriction actuelle de skifer. Les mutations des gardes de caractères et de types temporels ont été détectées puis restaurées. Les régressions sur la réadmission de l'antislash et des catégories Unicode S et M sont détectées et restaurées. Les 116 tests de filtres typés passent ; le gate API passe avec 5 068 tests et 100 % de couverture des 5 163 lignes et 1 218 branches.
+
+Développée avec ses tests par Codex (gpt-6.1-terra), relue par Claude Sonnet 5.5 ; trois cycles de corrections, dont le blocage des filtres temporels par skifer (SK-12) et la liste blanche des valeurs texte.

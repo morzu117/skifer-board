@@ -360,7 +360,10 @@ def run_semantic(
                 model_name=request.model,
                 metrics=list(request.metrics),
                 group_by=list(request.dimensions),
-                filters=[dict(item) for item in request.filters],
+                filters=[
+                    {**item, "operator": "neq" if item["operator"] == "ne" else item["operator"]}
+                    for item in request.filters
+                ],
             ),
             consumer_context=context,
         )

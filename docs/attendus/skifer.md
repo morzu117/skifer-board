@@ -27,6 +27,8 @@ Constat qui pèse sur l'arbitrage sans le trancher :
 
 ## 3. Synthèse
 
+La ligne SK-12 est vérifiée sur la version installée 4.1.0, après la base `bccd7aa` utilisée pour les autres constats.
+
 | Réf. | Attendu | État au `bccd7aa` | Sous A′ | Sous B | Lots Board |
 |---|---|---|---|---|---|
 | SK-01 | Exécution sans Spark | **Absent** : seul `SparkBackend` existe | point d'extension public pour le backend de Board | backend Databricks SQL et DuckDB dans skifer | 03, 05 |
@@ -40,6 +42,7 @@ Constat qui pèse sur l'arbitrage sans le trancher :
 | SK-09 | Hashs de définition sans exécution | **Absent** sur `get_model` | lecture directe du modèle par la bibliothèque, à confirmer | route avec `ETag` | 05 |
 | SK-10 | Candidate d'origine externe | **Absent** : Plan 44 sans code | même attendu | même attendu | 10 |
 | SK-11 | Contrat de réagrégation | **Partiel** : `additivity` et `grain` sur le modèle, pas de composantes ni de ratios | même attendu | même attendu | 05, 06 |
+| SK-12 | Littéraux de filtres textuels et temporels | **Défaut constaté sur 4.1.0** : rendu non échappé et caractères ordinaires refusés | correction du résolveur | correction du résolveur | 05 |
 
 ## 4. Détail
 
@@ -215,6 +218,14 @@ Non relus cette fois. Les attendus de `main` restent la référence.
 
 **Board en attendant.** Le calcul contextuel du plan 01 ne réagrège que les métriques additives sur des dimensions compatibles. Tout le reste est renvoyé au moteur. Les composantes de moyenne sont prévues dans le contrat de Board (`AvgComponents`) mais jamais remplies.
 
+### SK-12 — Littéraux de filtres textuels et temporels
+
+**Constat.** Dans skifer 4.1.0, `agentic/resolver.py:768-770`, fonction `QueryResolver._assert_safe_scalar`, le motif `[;'"\-\-]` refuse chaque tiret ainsi que les guillemets et le point-virgule. Un filtre sur une date ISO ou une chaîne telle que `North-1` est ainsi refusé avant exécution. Un test Board fige ce comportement avec DuckDB et `run_semantic`. La fonction `QueryResolver._render_literal` (`agentic/resolver.py:759-760`) entoure le texte d'apostrophes sans l'échapper : un antislash peut échapper l'apostrophe suivante en dialecte Databricks et rendre le SQL défectueux. Aucun contournement n'est démontré. Sur DuckDB, ce scénario déclenche aussi dans skifer un `AttributeError` lié à `sqlglot.SqlglotError`, que le worker Board transforme en `connector_unavailable`.
+
+**Attendu.** Rendre sans injection les littéraux texte et temporels, notamment les dates et horodatages ISO et les tirets ordinaires, sur les dialectes DuckDB et Databricks ; vérifier les valeurs et l'isolation de la politique de ligne dans les tests de skifer.
+
+**Board en attendant.** Avant création, seules les valeurs texte composées de lettres et chiffres Unicode, d'espaces ASCII et des ponctuations `_ . , : / @ & + ( )` sont admises ; tout filtre sur une dimension `date` ou `timestamp` est refusé avec `invalid_request`. Limite connue : les marques combinantes Unicode (catégorie M) sont refusées, notamment `e` suivi de U+0301 en forme NFD et certaines écritures devanagari ou hébreu pointé ; les mots avec tiret tels que `Île-de-France` sont aussi refusés. Board ne normalise pas les entrées. La réouverture des filtres temporels dépend de cet attendu. Lot concerné : **05**.
+
 ## 5. Défauts constatés à signaler
 
 Indépendants de l'arbitrage, ils touchent l'invariant fail-closed ou l'absence d'approximation silencieuse :
@@ -224,6 +235,7 @@ Indépendants de l'arbitrage, ils touchent l'invariant fail-closed ou l'absence 
 3. `SemanticQuery.from_dict` ignore les clés inconnues : une demande de tri envoyée aujourd'hui serait exécutée sans tri.
 4. `POST /agents/ask` ne transmet pas le contexte de la requête : la porte de certification voit `consumer_id="legacy"`.
 5. La limite de service tronque sans `ORDER BY` : les lignes gardées ne sont pas déterministes.
+6. SK-12 : les littéraux texte sont rendus sans échappement et le contrôle refuse notamment les tirets et dates ISO ; le scénario d'antislash produit aussi un `AttributeError` sur DuckDB.
 
 ## 6. Ordre suggéré
 
