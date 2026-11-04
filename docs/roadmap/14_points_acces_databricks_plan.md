@@ -45,3 +45,7 @@ Le message commun aux trois champs laisse croire qu'une saisie complète est vid
 ### 14.6 — Clés avec underscores et tirets
 
 À la demande du porteur, accepter `_` et `-` après la lettre minuscule initiale des clés de points d'accès, dans le registre, la configuration serveur, les liaisons et les décodeurs web. Actualiser les messages et le pattern du formulaire. Tester création, lecture, liaison et retrait avec les deux séparateurs ; gates API et web avant commit. Cette décision remplace la restriction décrite en 14.5.
+
+### 14.7 — Essai directement depuis un point d'accès
+
+Ajouter « Tester la connexion » à chaque point d'accès enregistré. Un formulaire demande un jeton à usage unique pour l'essai, effacé dès l'envoi, sans stockage ni création de liaison. Une route POST réservée à l'administrateur de l'espace résout la clé dans son registre et réutilise la sonde Databricks existante (métadonnées du warehouse uniquement, sans SQL). Limiter et valider le secret ; conserver les contrôles d'origine et d'isolation. Afficher progression, succès, refus et panne, annoncés au lecteur d'écran. Tests API de droits, isolation, validation, transport simulé et confidentialité ; tests web de saisie et résultats ; gates API et web avant commit.
