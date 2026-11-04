@@ -130,7 +130,7 @@ test("axe, largeurs et défilement du résultat restent dans la carte", async ({
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => region.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   const report = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();
-  expect(report.violations.map((violation) => violation.id)).toEqual([]);
+  expect(report.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })) }))).toEqual([]);
 });
 
 for (const theme of ["Skifer clair", "Skifer ardoise"] as const) {
@@ -142,7 +142,76 @@ for (const theme of ["Skifer clair", "Skifer ardoise"] as const) {
     await choisirTheme(page, theme);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     const report = await new AxeBuilder({ page }).options({ rules: { "color-contrast": { enabled: true } } }).analyze();
-    expect(report.violations.map((violation) => violation.id)).toEqual([]);
+    expect(report.violations.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })) }))).toEqual([]);
     await expect(page).toHaveScreenshot(`executions-${theme === "Skifer clair" ? "clair" : "ardoise"}.png`, { fullPage: true });
   });
 }
+
+test("le lecteur connecte OAuth, revient à Exécutions et lance sa lecture sans configurer les points partagés", async ({ page }) => {
+  const host = "https://adb-1234567890123456.2.azuredatabricks.net";
+  const oauth = "/api/spaces/finance/databricks-oauth";
+  const expires = "2026-11-04T12:00:00Z";
+  let connected = false;
+  const sharedWrites: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && request.url().includes("connection-endpoints")) sharedWrites.push(request.url());
+  });
+  await open(page, "reader");
+  await page.route((url) => url.pathname.startsWith(oauth), async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "GET") {
+      await route.fulfill({ json: { configured: true, redirect_uri: "http://localhost:4174/auth/databricks/callback", connections: connected ? [{ host, expires_at: expires }] : [] } });
+    } else if (path.endsWith("/start")) {
+      expect(request.postDataJSON()).toEqual({ host, return_to: "executions" });
+      await route.fulfill({ json: { authorization_url: `${host}/oidc/v1/authorize?client_id=board-test&state=reader-state` } });
+    } else if (path.endsWith("/warehouses")) {
+      await route.fulfill({ json: { host, expires_at: expires, warehouses: [{ id: "warehouse", name: "Warehouse du lecteur", state: "RUNNING" }] } });
+    } else if (path.endsWith("/test")) {
+      await route.fulfill({ json: { identity: "person", credential_expires_at: expires, can_cancel: true, state: "RUNNING" } });
+    } else {
+      throw new Error("Un lecteur ne doit pas enregistrer de point partagé");
+    }
+  });
+  await page.route((url) => url.pathname === ROOT, async (route) => {
+    if (route.request().method() !== "POST") { await route.fallback(); return; }
+    expect(route.request().postDataJSON()).toEqual({ connection: "source", environment: "DEV", model: "orders", metrics: ["revenue"], dimensions: [], filters: [] });
+    await route.fulfill({ status: 202, json: RUNNING });
+  });
+  await page.route(`${host}/oidc/v1/authorize?**`, async (route) => {
+    await route.fulfill({ contentType: "text/html", body: "<h1>Consentement Databricks simulé</h1>" });
+  });
+  await page.route("**/auth/databricks/callback?**", async (route) => {
+    connected = true;
+    await route.fulfill({ status: 303, headers: { Location: `http://localhost:4174/?databricks_oauth=connected&databricks_workspace=${encodeURIComponent(host)}#/espaces/finance/executions` }, body: "" });
+  });
+  await page.getByRole("button", { name: "Se connecter à Databricks" }).click();
+  await page.getByRole("textbox", { name: "URL du workspace Databricks" }).fill(host);
+  await page.getByRole("button", { name: "Continuer vers Databricks" }).click();
+  await expect(page).toHaveURL(/\/oidc\/v1\/authorize/);
+  await page.goto("http://localhost:4174/auth/databricks/callback?state=reader-state&code=reader-code");
+  await expect(page).toHaveURL(/#\/espaces\/finance\/executions$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Exécutions" })).toBeVisible();
+  const personal = page.getByRole("region", { name: "Connexion personnelle Databricks" });
+  await expect(personal.getByRole("group", { name: "Warehouse personnel" })).toBeVisible();
+  await expect(personal.getByRole("button", { name: "Enregistrer ce warehouse" })).toHaveCount(0);
+  await expect(personal.getByRole("textbox", { name: "Clé du point d'accès OAuth" })).toHaveCount(0);
+  await personal.getByRole("button", { name: "Tester avec ma connexion OAuth" }).click();
+  await expect(personal.getByText(/Essai réussi pour l'identité person/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  await personal.scrollIntoViewIfNeeded();
+  await expect(personal).toHaveScreenshot("oauth-personnel-lecteur.png");
+  await choisirTheme(page, "Skifer ardoise");
+  expect((await new AxeBuilder({ page }).analyze()).violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.failureSummary) }))).toEqual([]);
+  await choisirTheme(page, "Skifer clair");
+  const submit = page.getByRole("region", { name: "Lancer une exécution" });
+  await submit.getByRole("textbox", { name: "Connexion", exact: true }).fill("source");
+  await submit.getByRole("textbox", { name: "Modèle sémantique" }).fill("orders");
+  await submit.getByRole("textbox", { name: /Métriques/ }).fill("revenue");
+  await submit.getByRole("button", { name: "Lancer", exact: true }).click();
+  await expect(page.getByText("Exécution soumise. Son état est suivi ci-dessous.")).toBeVisible();
+  await page.getByRole("button", { name: "Aperçu du résultat" }).click();
+  await expect(page.getByRole("region", { name: "Aperçu du résultat" }).getByRole("row")).toHaveCount(3);
+  expect(sharedWrites).toEqual([]);
+  expect((await new AxeBuilder({ page }).analyze()).violations.map((item) => item.id)).toEqual([]);
+});

@@ -122,3 +122,7 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+
+.sb-theme-skifer-ardoise .sb-connection__note {
+  color: var(--sb-on-slate-muted);
+}

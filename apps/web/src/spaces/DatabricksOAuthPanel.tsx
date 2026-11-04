@@ -14,13 +14,13 @@ import { ProbeOutcome } from "./ProbeOutcome";
 export function leaveForDatabricks(url: string): void { window.location.assign(url); }
 
 type Write = <T>(run: () => Promise<AdminOutcome<T>>, done: string) => Promise<boolean>;
-interface Props { space: string; fetcher: Fetch; busy: boolean; onWrite: Write; leave?: (url: string) => void }
+interface Props { space: string; fetcher: Fetch; busy: boolean; onWrite: Write; leave?: (url: string) => void; canRegister?: boolean }
 const resultCodes: ReadonlySet<string> = new Set<RefusalCode>(["oauth_refused", "oauth_invalid_state", "oauth_unavailable", "oauth_reconnect", "oauth_invalid_response"]);
 
 export function DatabricksOAuthPanel(props: Props) {
   const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).has("databricks_oauth"));
   return <Card title="Connexion personnelle Databricks">
-    <p className="sb-connection__note">Indiquez l'URL du workspace, connectez-vous avec votre compte Databricks, puis choisissez un warehouse accessible. Board remplit ses paramètres de connexion.</p>
+    <p className="sb-connection__note">{props.canRegister === false ? "Connectez votre compte Databricks pour exécuter les liaisons personnelles avec vos droits. Les points d’accès partagés sont configurés par l’administrateur." : "Indiquez l'URL du workspace, connectez-vous avec votre compte Databricks, puis choisissez un warehouse accessible. Board remplit ses paramètres de connexion."}</p>
     <button type="button" className="sb-button sb-button--primary" aria-expanded={open} onClick={() => { setOpen(!open); }}>Se connecter à Databricks</button>
     {open ? <OAuthSetup {...props} /> : null}
   </Card>;
@@ -40,7 +40,7 @@ function OAuthSetup(props: Props) {
   </>;
 }
 
-function OAuthWorkspace({ space, fetcher, busy, onWrite, leave = leaveForDatabricks, status, reload }: Props & { status: OAuthStatus; reload: () => void }) {
+function OAuthWorkspace({ space, fetcher, busy, onWrite, leave = leaveForDatabricks, status, reload, canRegister = true }: Props & { status: OAuthStatus; reload: () => void }) {
   const params = new URLSearchParams(window.location.search);
   const preferred = params.get("databricks_workspace") ?? "";
   const initialHost = DATABRICKS_HOST.test(preferred) ? preferred : status.connections.length === 1 ? status.connections.map((item) => item.host).join("") : "";
@@ -63,7 +63,7 @@ function OAuthWorkspace({ space, fetcher, busy, onWrite, leave = leaveForDatabri
     const normalized = host.trim().replace(/\/$/, "");
     if (!DATABRICKS_HOST.test(normalized)) { setProblem("Indiquez l'URL HTTPS complète du workspace Databricks."); return; }
     setHost(normalized); setProblem(null); setFailure(null); setOperation("authorizing");
-    const found = await startOAuth(space, normalized, fetcher);
+    const found = await startOAuth(space, normalized, fetcher, canRegister ? "connections" : "executions");
     setOperation(null);
     if (found.status === "ok") leave(found.value); else setFailure(found);
   };
@@ -81,13 +81,13 @@ function OAuthWorkspace({ space, fetcher, busy, onWrite, leave = leaveForDatabri
     {status.connections.map((item) => <button key={item.host} className="sb-button sb-oauth__workspace" type="button" disabled={locked} onClick={() => { discover(item.host); }}>Utiliser {item.host}</button>)}
     {failure === null ? null : <ReadFailure outcome={failure} title="Connexion OAuth impossible" />}
     {problem === null ? null : <p className="sb-connection__problem" role="alert">{problem}</p>}
-    {discovery === null ? null : discovery.status === "loading" ? <Reading>Découverte des warehouses…</Reading> : discovery.status !== "ok" ? <ReadFailure outcome={discovery} title="Warehouses indisponibles" /> : discovery.value.warehouses.length === 0 ? <Banner tone="neutral">Aucun warehouse accessible avec votre compte dans ce workspace.</Banner> : <WarehouseSelection key={`${request.host}:${String(request.version)}`} space={space} fetcher={fetcher} host={host} discovery={discovery.value} locked={locked} onWrite={onWrite} onTest={(id) => { void runTest(id); }} onClearTest={() => { setProbe(null); }} />}
+    {discovery === null ? null : discovery.status === "loading" ? <Reading>Découverte des warehouses…</Reading> : discovery.status !== "ok" ? <ReadFailure outcome={discovery} title="Warehouses indisponibles" /> : discovery.value.warehouses.length === 0 ? <Banner tone="neutral">Aucun warehouse accessible avec votre compte dans ce workspace.</Banner> : <WarehouseSelection key={`${request.host}:${String(request.version)}`} space={space} fetcher={fetcher} host={host} discovery={discovery.value} canRegister={canRegister} locked={locked} onWrite={onWrite} onTest={(id) => { void runTest(id); }} onClearTest={() => { setProbe(null); }} />}
     <div aria-live="polite" aria-atomic="true">{probe === null ? null : <ProbeOutcome outcome={probe} />}</div>
     {connectedHost ? <button className="sb-button" type="button" disabled={locked} onClick={() => { void onWrite(() => disconnectOAuth(space, host, fetcher), "Votre connexion personnelle Databricks a été retirée de Board.").then((ok) => { if (ok) reload(); }); }}>Déconnecter mon compte Databricks de ce workspace</button> : null}
   </div>;
 }
 
-function WarehouseSelection({ space, fetcher, host, discovery, locked, onWrite, onTest, onClearTest }: { space: string; fetcher: Fetch; host: string; discovery: Discovery; locked: boolean; onWrite: Write; onTest: (id: string) => void; onClearTest: () => void }) {
+function WarehouseSelection({ space, fetcher, host, discovery, canRegister, locked, onWrite, onTest, onClearTest }: { space: string; fetcher: Fetch; host: string; discovery: Discovery; canRegister: boolean; locked: boolean; onWrite: Write; onTest: (id: string) => void; onClearTest: () => void }) {
   const initial = discovery.warehouses.length === 1 ? discovery.warehouses.map((item) => item.id).join("") : "";
   const [selected, setSelected] = useState(initial);
   const [key, setKey] = useState(initial === "" ? "" : `databricks_${initial.toLowerCase()}`.slice(0, 63));
@@ -99,15 +99,20 @@ function WarehouseSelection({ space, fetcher, host, discovery, locked, onWrite, 
     setProblem(null);
     void onWrite(() => selectWarehouse(space, host, selected, key, fetcher), `Point d'accès ${key} enregistré depuis votre connexion OAuth.`);
   };
-  return <>
-    <p className="sb-connection__note">Autorisation personnelle · expiration de l'accès : {formatInstant(discovery.expiresAt)}. Le renouvellement est automatique tant que votre autorisation reste valide.</p>
-    <form className="sb-connection__form" aria-label="Enregistrer le warehouse découvert" noValidate onSubmit={save}>
+  const fields = <>
       <label className="sb-field">Warehouse accessible <select className="sb-input" required value={selected} disabled={locked} onChange={(event) => { choose(event.target.value); }}><option value="">Choisir un warehouse</option>{discovery.warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name} · {warehouse.id} · {warehouse.state}</option>)}</select></label>
       <label className="sb-field">ID du warehouse détecté <input className="sb-input" readOnly value={selected} /></label>
-      <label className="sb-field">Clé du point d'accès OAuth <input className="sb-input" required value={key} maxLength={63} disabled={locked} onChange={(event) => { setKey(event.target.value); setProblem(null); }} /></label>
-      <button className="sb-button sb-button--primary" type="submit" disabled={locked}>Enregistrer ce warehouse</button>
+      {canRegister ? <>
+        <label className="sb-field">Clé du point d'accès OAuth <input className="sb-input" required value={key} maxLength={63} disabled={locked} onChange={(event) => { setKey(event.target.value); setProblem(null); }} /></label>
+        <button className="sb-button sb-button--primary" type="submit" disabled={locked}>Enregistrer ce warehouse</button>
+      </> : null}
       <button className="sb-button" type="button" disabled={locked || selected === ""} onClick={() => { onTest(selected); }}>Tester avec ma connexion OAuth</button>
-    </form>
+  </>;
+  return <>
+    <p className="sb-connection__note">Autorisation personnelle · expiration de l'accès : {formatInstant(discovery.expiresAt)}. Le renouvellement est automatique tant que votre autorisation reste valide.</p>
+    {canRegister ? <form className="sb-connection__form" aria-label="Enregistrer le warehouse découvert" noValidate onSubmit={save}>{fields}</form> : <div className="sb-connection__form" role="group" aria-label="Warehouse personnel">{fields}</div>}
     {problem === null ? null : <p className="sb-connection__problem" role="alert">{problem}</p>}
   </>;
 }
+
+import "./connections.css";

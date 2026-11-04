@@ -42,4 +42,8 @@ L'access token est renouvelé automatiquement à l'approche de son expiration av
 
 Les parcours automatiques utilisent un fournisseur et des réponses Databricks simulés. La recette OAuth réelle n'est pas déclarée réussie tant que l'application n'est pas enregistrée et que le retour de Databricks suivi de la découverte n'a pas été observé. Le test au jeton manuel du plan 14 reste un constat distinct.
 
-Cette tranche livre la connexion, la découverte et l'essai personnels. Les exécutions de liaisons `person` restent refusées tant que leur propagation d'identité n'est pas livrée ; aucune autorisation personnelle n'est transformée en identifiant de service. La recette RLS du lot 03 reste à terminer selon le plan 12.
+Cette tranche livre la connexion, la découverte et l'essai personnels. Le plan 16 ajoute les exécutions de liaisons `person` ; aucune autorisation personnelle n'est transformée en identifiant de service. La recette RLS réelle du lot 03 reste à terminer selon le plan 12.
+
+## Suite : exécutions personnelles
+
+Le [plan 16](plan16-executions-personnelles.md) rend cette autorisation accessible aux lecteurs depuis Exécutions et l’utilise pour les liaisons Databricks `person`. L’enregistrement partagé reste réservé aux administrateurs. La recette réelle à deux lecteurs reste à effectuer.

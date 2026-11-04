@@ -22,8 +22,8 @@ const source = (answers: Answers): Mock<Fetch> => vi.fn<Fetch>().mockImplementat
   return typeof found === "function" ? (found as () => Promise<Response>)() : Promise.resolve(reply(found));
 });
 const write = async <T,>(run: () => Promise<AdminOutcome<T>>): Promise<boolean> => (await run()).status === "ok";
-const open = async (fetcher: Fetch, options: { busy?: boolean; onWrite?: typeof write; leave?: (url: string) => void } = {}) => {
-  render(<DatabricksOAuthPanel space="finance" fetcher={fetcher} busy={options.busy ?? false} onWrite={options.onWrite ?? write} leave={options.leave ?? vi.fn()} />);
+const open = async (fetcher: Fetch, options: { busy?: boolean; onWrite?: typeof write; leave?: (url: string) => void; canRegister?: boolean } = {}) => {
+  render(<DatabricksOAuthPanel space="finance" fetcher={fetcher} busy={options.busy ?? false} onWrite={options.onWrite ?? write} leave={options.leave ?? vi.fn()} canRegister={options.canRegister ?? true} />);
   const button = screen.getByRole("button", { name: "Se connecter à Databricks" });
   if (button.getAttribute("aria-expanded") === "false") await userEvent.click(button);
 };
@@ -144,6 +144,19 @@ describe("connexion personnelle Databricks", () => {
     await waitFor(() => { expect(fetcher).toHaveBeenCalledWith(ROOT, expect.objectContaining({ method: "DELETE" })); });
     if (ok) await waitFor(() => { expect(screen.queryByRole("button", { name: "Déconnecter mon compte Databricks de ce workspace" })).not.toBeInTheDocument(); });
     else expect(screen.getByRole("button", { name: "Déconnecter mon compte Databricks de ce workspace" })).toBeEnabled();
+  });
+
+  it("ouvre OAuth pour un lecteur avec un retour vers Exécutions et sans enregistrement partagé", async () => {
+    const fetcher = source({ [`GET ${ROOT}`]: CONNECTED, [`POST ${ROOT}/warehouses`]: DISCOVERY, [`POST ${ROOT}/start`]: { authorization_url: `${HOST}/oidc/v1/authorize?state=reader` } });
+    const leave = vi.fn();
+    await open(fetcher, { canRegister: false, leave });
+    expect(await screen.findByRole("group", { name: "Warehouse personnel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enregistrer ce warehouse" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Clé du point d'accès OAuth")).not.toBeInTheDocument();
+    expect(screen.getByText(/Les points d’accès partagés sont configurés par l’administrateur/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Continuer vers Databricks" }));
+    await waitFor(() => { expect(leave).toHaveBeenCalled(); });
+    expect(fetcher).toHaveBeenCalledWith(`${ROOT}/start`, expect.objectContaining({ body: JSON.stringify({ host: HOST, return_to: "executions" }) }));
   });
 
   it("laisse choisir un workspace déjà connecté et ignore un résultat de callback inconnu", async () => {

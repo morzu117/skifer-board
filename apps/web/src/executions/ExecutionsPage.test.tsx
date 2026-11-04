@@ -214,3 +214,25 @@ it("rend les durées et cellules sans chaîne d'objet implicite", () => {
   expect(cellText(12n)).toBe("12");
   expect(cellText({ private: true })).toBe("Valeur complexe");
 });
+
+
+it("permet au lecteur de tester et retirer son autorisation sans administrer les points d’accès", async () => {
+  const oauth = "/api/spaces/finance/databricks-oauth";
+  const host = "https://adb-123.2.azuredatabricks.net";
+  const expires = "2026-11-04T12:00:00Z";
+  const fetcher = open(reader, {
+    [`GET ${ROOT}?scope=mine`]: listed([]),
+    [`GET ${oauth}`]: { status: 200, body: { configured: true, redirect_uri: "https://board.example.invalid/auth/databricks/callback", connections: [{ host, expires_at: expires }] } },
+    [`POST ${oauth}/warehouses`]: { status: 200, body: { host, expires_at: expires, warehouses: [{ id: "wh1", name: "Warehouse lecteur", state: "RUNNING" }] } },
+    [`POST ${oauth}/test`]: { status: 200, body: { identity: "person", credential_expires_at: expires, can_cancel: true, state: "RUNNING" } },
+    [`DELETE ${oauth}`]: new Response(null, { status: 204 }),
+  });
+  await userEvent.click(screen.getByRole("button", { name: "Se connecter à Databricks" }));
+  expect(await screen.findByRole("group", { name: "Warehouse personnel" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Enregistrer ce warehouse" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Tester avec ma connexion OAuth" }));
+  expect(await screen.findByText(/Essai réussi pour l'identité person/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Déconnecter mon compte Databricks de ce workspace" }));
+  expect(await screen.findByText("Votre connexion personnelle Databricks a été retirée de Board.")).toBeInTheDocument();
+  expect(fetcher).toHaveBeenCalledWith(oauth, expect.objectContaining({ method: "DELETE" }));
+});
