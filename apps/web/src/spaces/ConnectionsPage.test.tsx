@@ -11,6 +11,7 @@ const FINANCE = decodeSpace(espace.body, "espace");
 const REF = { issuer: "https://id.example.invalid", subject: "admin" };
 const AT = "2026-11-03T10:00:00+00:00";
 const ROOT = "/api/spaces/finance/connections";
+const ENDPOINTS = "/api/spaces/finance/connection-endpoints";
 const JOURNAL = "/api/spaces/finance/events";
 const BINDING = `${ROOT}/source/bindings/DEV`;
 const EMPTY = (environment: string) => ({ environment, state: "unconfigured" });
@@ -27,6 +28,7 @@ type Reply = { status: number; body: unknown } | (() => Promise<Response>);
 function server(extra: Record<string, Reply> = {}, body: unknown = list()): Mock<Fetch> {
   const responses: Record<string, Reply> = {
     [`GET ${ROOT}`]: { status: 200, body },
+    [`GET ${ENDPOINTS}`]: { status: 200, body: { endpoints: [] } },
     [`GET ${JOURNAL}`]: { status: 200, body: { events: [] } },
     ...extra,
   };
@@ -45,6 +47,72 @@ async function open(fetcher: Mock<Fetch>, target: "DEV" | "TEST" | "PROD" = "DEV
   await waitFor(() => { expect(screen.queryByText("Lecture des connexions…")).not.toBeInTheDocument(); });
   return view;
 }
+
+describe("points d'accès Databricks dans Board", () => {
+  it("valide la saisie, crée le point et efface les champs", async () => {
+    const endpoint = { key: "azure-test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+    const fetcher = server({ [`POST ${ENDPOINTS}`]: { status: 201, body: endpoint } });
+    await open(fetcher);
+    const form = await screen.findByRole("form", { name: "Ajouter un point d'accès Databricks" });
+    await userEvent.click(within(form).getByRole("button", { name: "Enregistrer le point d'accès" }));
+    expect(within(form).getByRole("alert")).toHaveTextContent("Indiquez une clé");
+    await userEvent.type(within(form).getByRole("textbox", { name: "Clé du point d'accès" }), "azure-test");
+    await userEvent.type(within(form).getByRole("textbox", { name: "URL du workspace" }), endpoint.host);
+    await userEvent.type(within(form).getByRole("textbox", { name: "ID du SQL warehouse" }), "abc123");
+    expect(within(form).queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(within(form).getByRole("button", { name: "Enregistrer le point d'accès" }));
+    await waitFor(() => { expect(calls(fetcher, "POST", ENDPOINTS)).toHaveLength(1); });
+    expect(JSON.parse(calls(fetcher, "POST", ENDPOINTS)[0]?.[1]?.body as string)).toEqual(endpoint);
+    await waitFor(() => { expect(within(form).getByRole("textbox", { name: "Clé du point d'accès" })).toHaveValue(""); });
+  });
+
+  it("affiche la liste, annule puis confirme le retrait", async () => {
+    const endpoint = { key: "azure-test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+    const fetcher = server({
+      [`GET ${ENDPOINTS}`]: { status: 200, body: { endpoints: [endpoint] } },
+      [`DELETE ${ENDPOINTS}/azure-test`]: { status: 204, body: null },
+    });
+    await open(fetcher);
+    expect(await screen.findByText(endpoint.host)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retirer azure-test" }));
+    await userEvent.click(screen.getByRole("button", { name: "Annuler" }));
+    expect(calls(fetcher, "DELETE", `${ENDPOINTS}/azure-test`)).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Retirer azure-test" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    await waitFor(() => { expect(calls(fetcher, "DELETE", `${ENDPOINTS}/azure-test`)).toHaveLength(1); });
+  });
+
+  it("conserve la saisie et la confirmation quand le serveur refuse", async () => {
+    const endpoint = { key: "azure-test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
+    const fetcher = server({
+      [`GET ${ENDPOINTS}`]: { status: 200, body: { endpoints: [endpoint] } },
+      [`POST ${ENDPOINTS}`]: { status: 409, body: { error: { code: "endpoint_exists" } } },
+      [`DELETE ${ENDPOINTS}/azure-test`]: { status: 409, body: { error: { code: "endpoint_in_use" } } },
+    });
+    await open(fetcher);
+    const form = await screen.findByRole("form", { name: "Ajouter un point d'accès Databricks" });
+    await userEvent.type(within(form).getByRole("textbox", { name: "Clé du point d'accès" }), "azure-test");
+    await userEvent.type(within(form).getByRole("textbox", { name: "URL du workspace" }), endpoint.host);
+    await userEvent.type(within(form).getByRole("textbox", { name: "ID du SQL warehouse" }), "abc123");
+    await userEvent.click(within(form).getByRole("button", { name: "Enregistrer le point d'accès" }));
+    await waitFor(() => { expect(calls(fetcher, "POST", ENDPOINTS)).toHaveLength(1); });
+    expect(within(form).getByRole("textbox", { name: "Clé du point d'accès" })).toHaveValue("azure-test");
+    await userEvent.click(screen.getByRole("button", { name: "Retirer azure-test" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    await waitFor(() => { expect(calls(fetcher, "DELETE", `${ENDPOINTS}/azure-test`)).toHaveLength(1); });
+    expect(screen.getByRole("button", { name: "Confirmer le retrait" })).toBeInTheDocument();
+  });
+
+  it("annonce les états de lecture et de refus", async () => {
+    let resolve!: (response: Response) => void;
+    const pending = new Promise<Response>((done) => { resolve = done; });
+    const fetcher = server({ [`GET ${ENDPOINTS}`]: () => pending });
+    render(<ConnectionsPage space={FINANCE} fetcher={fetcher} target="DEV" />);
+    expect(screen.getByText("Lecture des points d'accès…")).toBeInTheDocument();
+    await act(async () => { resolve(reply({ error: { code: "forbidden" } }, 403)); await pending; });
+    expect(await screen.findByText("Votre rôle ne permet pas cette action.")).toBeInTheDocument();
+  });
+});
 
 describe("Connexions : lecture et états", () => {
   it("annonce la lecture, puis montre trois environnements, l'état du coffre et aucune valeur secrète", async () => {

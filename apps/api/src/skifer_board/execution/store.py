@@ -12,10 +12,12 @@ from ..spaces.model import Environment, PersonRef
 from ..state.schema import (
     connection_bindings,
     connection_credentials,
+    connection_endpoints,
     executions,
     logical_connections,
     space_events,
 )
+from .connectors import DatabricksEndpoint
 from .model import Binding, Connector, IdentityMode, LogicalConnection
 
 
@@ -37,6 +39,18 @@ class BindingNotFound(ConnectionError):
 
 class ConnectionInUse(ConnectionError):
     code = "connection_in_use"
+
+
+class EndpointExists(ConnectionError):
+    code = "endpoint_exists"
+
+
+class EndpointInUse(ConnectionError):
+    code = "endpoint_in_use"
+
+
+class EndpointMissing(ConnectionError):
+    code = "endpoint_not_found"
 
 
 def _logical(row: object) -> LogicalConnection:
@@ -66,6 +80,86 @@ def _binding(row: object) -> Binding:
 class ConnectionStore:
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
+
+    def list_endpoints(self, space_id: str) -> list[dict[str, str]]:
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                select(connection_endpoints)
+                .where(connection_endpoints.c.space_id == space_id)
+                .order_by(connection_endpoints.c.key)
+            ).all()
+        return [
+            {"key": row.key, "host": row.host, "warehouse_id": row.warehouse_id} for row in rows
+        ]
+
+    def get_endpoint(self, space_id: str, key: str) -> DatabricksEndpoint | None:
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                select(connection_endpoints.c.host, connection_endpoints.c.warehouse_id).where(
+                    connection_endpoints.c.space_id == space_id,
+                    connection_endpoints.c.key == key,
+                )
+            ).one_or_none()
+        return None if row is None else DatabricksEndpoint(row.host, row.warehouse_id)
+
+    def create_endpoint(
+        self, space_id: str, key: str, endpoint: DatabricksEndpoint, actor: PersonRef, at: datetime
+    ) -> dict[str, str]:
+        try:
+            with self._engine.begin() as connection:
+                bound = connection.execute(
+                    select(connection_bindings.c.name)
+                    .where(
+                        connection_bindings.c.space_id == space_id,
+                        connection_bindings.c.endpoint_key == key,
+                    )
+                    .limit(1)
+                ).one_or_none()
+                if bound is not None:
+                    raise EndpointInUse(key)
+                connection.execute(
+                    insert(connection_endpoints).values(
+                        space_id=space_id,
+                        key=key,
+                        host=endpoint.host,
+                        warehouse_id=endpoint.warehouse_id,
+                        created_at=at,
+                        created_by_issuer=actor.issuer,
+                        created_by_subject=actor.subject,
+                    )
+                )
+                self._event(connection, space_id, actor, at, "endpoint_created", {"key": key})
+        except IntegrityError:
+            raise EndpointExists(key) from None
+        return {"key": key, "host": endpoint.host, "warehouse_id": endpoint.warehouse_id}
+
+    def remove_endpoint(self, space_id: str, key: str, actor: PersonRef, at: datetime) -> None:
+        with self._engine.begin() as connection:
+            row = connection.execute(
+                select(connection_endpoints.c.key)
+                .where(
+                    connection_endpoints.c.space_id == space_id, connection_endpoints.c.key == key
+                )
+                .with_for_update()
+            ).one_or_none()
+            if row is None:
+                raise EndpointMissing(key)
+            bound = connection.execute(
+                select(connection_bindings.c.name)
+                .where(
+                    connection_bindings.c.space_id == space_id,
+                    connection_bindings.c.endpoint_key == key,
+                )
+                .limit(1)
+            ).one_or_none()
+            if bound is not None:
+                raise EndpointInUse(key)
+            connection.execute(
+                delete(connection_endpoints).where(
+                    connection_endpoints.c.space_id == space_id, connection_endpoints.c.key == key
+                )
+            )
+            self._event(connection, space_id, actor, at, "endpoint_removed", {"key": key})
 
     @staticmethod
     def _event(

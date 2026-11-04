@@ -5,7 +5,10 @@ import {
   CONNECTION_NAME, ENDPOINT_KEY, createConnection, decodeConnection,
   decodeConnections, decodeProbe, fetchConnections, removeConnection, removeConnectionBinding,
   removeConnectionCredential, setConnectionBinding, setConnectionCredential, testConnection,
+  createEndpoint, decodeEndpoint, decodeEndpoints, fetchEndpoints, removeEndpoint,
 } from "./connections";
+
+const ENDPOINT = { key: "azure-test", host: "https://adb-123.2.azuredatabricks.net", warehouse_id: "abc123" };
 
 const REF = { issuer: "https://id.example.invalid", subject: "admin" };
 const AT = "2026-11-03T10:00:00+00:00";
@@ -19,6 +22,37 @@ const CONNECTION = (name = "finance", bindings: unknown[] = [BOUND("DEV"), EMPTY
 });
 const response = (body: unknown, status = 200) => status === 204 ? new Response(null, { status }) : Response.json(body, { status });
 const fetcher = (body: unknown, status = 200): Mock<Fetch> => vi.fn<Fetch>().mockImplementation(() => Promise.resolve(response(body, status)));
+
+describe("points d'accès Databricks saisis dans Board", () => {
+  it("décode la liste triée et refuse les valeurs hors contrat", () => {
+    expect(decodeEndpoint(ENDPOINT, "point")).toEqual({ key: "azure-test", host: ENDPOINT.host, warehouseId: "abc123" });
+    expect(decodeEndpoints({ endpoints: [ENDPOINT] })).toHaveLength(1);
+    for (const bad of [
+      { ...ENDPOINT, key: "Bad" }, { ...ENDPOINT, host: "https://evil.invalid" },
+      { ...ENDPOINT, warehouse_id: "a/b" },
+    ]) expect(() => decodeEndpoint(bad, "point")).toThrow();
+    expect(() => decodeEndpoints({ endpoints: [ENDPOINT, ENDPOINT] })).toThrow();
+    expect(() => decodeEndpoints({ endpoints: [{ ...ENDPOINT, key: "z" }, ENDPOINT] })).toThrow();
+  });
+
+  it("lit, crée et retire un point d'accès, avec décodage de la réponse", async () => {
+    const signal = new AbortController().signal;
+    const listSource = fetcher({ endpoints: [ENDPOINT] });
+    expect((await fetchEndpoints("finance", signal, listSource)).status).toBe("ok");
+    expect(listSource).toHaveBeenCalledWith("/api/spaces/finance/connection-endpoints", expect.objectContaining({ method: "GET", signal }));
+    const source = fetcher(ENDPOINT);
+    const item = { key: ENDPOINT.key, host: ENDPOINT.host, warehouseId: ENDPOINT.warehouse_id };
+    expect((await createEndpoint("finance", item, source)).status).toBe("ok");
+    expect(JSON.parse(source.mock.calls[0]?.[1]?.body as string)).toEqual(ENDPOINT);
+    for (const wrong of [
+      { ...item, key: "other" }, { ...item, host: "https://adb-999.2.azuredatabricks.net" },
+      { ...item, warehouseId: "other" },
+    ]) expect((await createEndpoint("finance", wrong, source)).status).toBe("error");
+    const deleted = fetcher(null, 204);
+    expect((await removeEndpoint("finance", "azure-test", deleted)).status).toBe("ok");
+    expect(deleted).toHaveBeenCalledWith("/api/spaces/finance/connection-endpoints/azure-test", expect.objectContaining({ method: "DELETE" }));
+  });
+});
 
 describe("contrat des connexions du serveur", () => {
   it("lit les trois environnements ordonnés et ne conserve aucun champ secret inattendu", () => {

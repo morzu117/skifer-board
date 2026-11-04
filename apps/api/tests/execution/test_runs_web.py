@@ -481,6 +481,37 @@ def test_databricks_submission_uses_vault_and_execution_is_measured(
     assert "secret-sentinel" not in str(measures[0])
 
 
+def test_databricks_submission_resolves_endpoint_entered_in_board(
+    monde: Monde, service: CatalogService, tmp_path: Path
+) -> None:
+    endpoint = DatabricksEndpoint("https://adb-123.2.azuredatabricks.net", "warehouse")
+    ConnectionStore(monde.moteur).create_endpoint(
+        A, "orders", endpoint, ADMIN_GROUPE.ref, monde.horloge()
+    )
+    _prepare(monde, Connector.DATABRICKS)
+    keys = VaultKeys("test", {"test": b"1" * 32})
+    CredentialVault(monde.moteur, keys).put(
+        A, "source", Environment.DEV, "secret-sentinel", ADMIN_GROUPE.ref, monde.horloge()
+    )
+
+    class Transport:
+        def post(self, url: str, token: str, body: dict[str, object]) -> HttpResponse:
+            assert url == endpoint.host + "/api/2.0/sql/statements"
+            assert token == "secret-sentinel"
+            return HttpResponse(503, b"", "application/json")
+
+        def get(self, url: str, token: str) -> HttpResponse:
+            raise AssertionError("Aucun GET attendu après un refus de soumission")
+
+    with _client(
+        monde, service, tmp_path, endpoints={}, vault_keys=keys, connection_transport=Transport()
+    ) as client:
+        submitted = _call(client, monde, LECTEUR_GROUPE, "POST", PATH, json=BODY)
+        assert submitted.status_code == 202
+        done = _done(client, monde, LECTEUR_GROUPE, submitted.json()["id"])
+        assert done["state"] == "failed"
+
+
 def test_databricks_without_vault_fails_closed(
     monde: Monde, service: CatalogService, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

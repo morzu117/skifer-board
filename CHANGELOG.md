@@ -6,6 +6,12 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 14, 14.1 : registre de points d'accès Databricks par espace, avec hôte HTTPS et ID de warehouse validés côté serveur, sans secret. Les essais et exécutions résolvent les clés enregistrées dans Board ; une clé liée ne peut pas être réutilisée vers un autre workspace ni retirée tant que la liaison existe.
+
+- Plan 14, 14.2 : carte d'administration des points d'accès dans Board, avec formulaire de workspace et de warehouse, liste et retrait confirmé. L'identifiant reste saisi séparément dans le coffre. Décodage strict, états de lecture et de refus, parcours navigateur et captures ordinateur/téléphone.
+
+- Plan 14, 14.3 : recette mise à jour pour saisir et essayer le connecteur depuis Board, sans profil CLI. Instance locale de test préparée avec PostgreSQL et trois identités OIDC synthétiques ; la source Databricks réelle et le modèle certifié restent à renseigner par le porteur pour la recette 12.8b.
+
 - Plan 12, 12.8a : recette d'exploitation pour vérifier les exécutions sur un warehouse Databricks réel, avec profil CLI choisi explicitement, deux lecteurs OIDC séparés par une politique de ligne, contrôle des preuves, limites, annulation, refus et télémétrie. Le modèle de constat exclut secrets, sujets, SQL et lignes métier. L'exécution réelle reste à faire en 12.8b.
 
 - Plan 12, 12.7c : parcours Chrome du centre d'exécutions sur ordinateur et téléphone : lecture personnelle et portée d'administration, preuve expurgée, aperçu Arrow, annulation en attente de confirmation, refus, session expirée, mode local et panne. Contrôle axe sur la page entière, défilement du résultat dans sa carte et absence de débordement à 390, 768 et 1280 px. Bascule des thèmes Skifer clair et Skifer ardoise avec quatre captures de référence inspectées.

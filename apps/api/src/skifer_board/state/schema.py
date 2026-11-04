@@ -262,6 +262,26 @@ logical_connections = Table(
     PrimaryKeyConstraint("space_id", "name", name="pk_logical_connections"),
 )
 
+# Points d'accès Databricks saisis dans Board, propres à un espace (plan 14).
+# L'hôte et le warehouse sont descriptifs ; aucun identifiant n'est stocké ici.
+connection_endpoints = Table(
+    "connection_endpoints",
+    metadata,
+    Column(
+        "space_id",
+        String(40),
+        ForeignKey("spaces.id", name="fk_connection_endpoints_space"),
+        nullable=False,
+    ),
+    Column("key", String(63), nullable=False),
+    Column("host", Text, nullable=False),
+    Column("warehouse_id", String(64), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("created_by_issuer", Text, nullable=False),
+    Column("created_by_subject", Text, nullable=False),
+    PrimaryKeyConstraint("space_id", "key", name="pk_connection_endpoints"),
+)
+
 connection_bindings = Table(
     "connection_bindings",
     metadata,

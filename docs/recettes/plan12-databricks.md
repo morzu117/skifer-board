@@ -4,14 +4,7 @@ Statut : **préparation 12.8a**. Ce document ne vaut pas constat de réussite su
 
 ## Préparer l'environnement
 
-Choisir explicitement un profil Databricks, un workspace et un SQL warehouse de test. Les commandes du poste ont été vérifiées avec le CLI installé ; remplacer les marqueurs entre chevrons avant de les lancer. Ne pas utiliser le profil par défaut ni `--sensitive`.
-
-```bash
-databricks auth describe --profile <profil choisi>
-databricks warehouses get <warehouse id> --profile <profil choisi> --output json
-```
-
-Le warehouse doit être en état `RUNNING` ou pouvoir démarrer, et le profil doit viser le même hôte HTTPS que le point d'accès de Board. Un jeton de service distinct, limité à cette recette, est saisi uniquement dans le coffre de Board ; il ne figure ni dans la configuration d'endpoint, ni dans un argument CLI, ni dans le constat. Un échec de ces deux précontrôles suspend la recette.
+L'administrateur de l'espace choisit un workspace et un SQL warehouse de test, puis les saisit dans l'écran **Connexions → Points d'accès Databricks** de Board, sous une clé propre à l'espace. Aucun profil CLI n'est requis pour la recette : l'essai de connexion de Board vérifie directement l'état du warehouse via le connecteur. Un jeton de service distinct, limité à cette recette, est saisi uniquement dans le coffre de Board ; il ne figure ni dans le point d'accès, ni dans le constat. Le warehouse doit être en état `RUNNING` ou pouvoir démarrer. Un essai refusé suspend la recette.
 
 Préparer hors du dépôt une table témoin du warehouse avec au moins deux partitions de lignes synthétiques, chacune liée au `subject` OIDC exact d'un lecteur de test différent. Garder une marque métier sans sensibilité pour reconnaître les lignes A et B. Le même modèle sémantique skifer certifié doit porter une `row_policy` sur cette colonne avec `attribute: subject` ; Board fournit `issuer` et `subject` vérifiés côté serveur. Chaque modèle que la requête peut lire doit porter une politique de ligne. Ne pas recopier les sujets OIDC, le nom physique de table ou les lignes dans le dépôt. La certification doit être en mode `enforce`, avec une base SQLite de certification déjà provisionnée.
 
@@ -19,13 +12,13 @@ Board doit être lancé en mode OIDC hébergé avec PostgreSQL migré, un espace
 
 | Réglage | Attendu |
 |---|---|
-| `SKIFER_BOARD_CONNECTION_ENDPOINTS` | Objet JSON dont une clé stable décrit `{"connector":"databricks","host":"https://<workspace Databricks>","warehouse_id":"<id>"}`. L'hôte doit appartenir à un domaine Databricks admis par Board. |
+| Point d'accès dans Board | L'administrateur saisit une clé stable, `https://<workspace Databricks>` et l'ID du warehouse dans l'écran Connexions. Les points d'accès historiques dans `SKIFER_BOARD_CONNECTION_ENDPOINTS` restent lisibles. |
 | `SKIFER_BOARD_SEMANTIC_MODELS_DIR` | Répertoire absolu existant contenant `semantic_catalog.yaml` et les modèles certifiés. |
 | `SKIFER_BOARD_CERTIFICATION_DB` | Fichier SQLite absolu existant du magasin de certification skifer. |
 | `SKIFER_BOARD_VAULT_KEYS`, `SKIFER_BOARD_VAULT_ACTIVE_KEY` | Clés de coffre stables, fournies hors du dépôt et de la base. |
 | `SKIFER_BOARD_DATABASE_URL` et variables OIDC | Base hébergée et identité vérifiée configurées selon les plans 06 et 07. |
 
-Dans l'administration de l'espace (`#/espaces/<espace>/connexions`), créer une connexion logique, configurer sa liaison DEV vers la clé d'endpoint déclarée, avec connecteur Databricks et identité `service`. Poser le jeton de service dans le champ à usage unique, puis lancer « Tester la connexion ». Le résultat doit annoncer l'identité de service, l'état du warehouse et la capacité d'annulation, sans renvoyer le jeton. Un jeton OIDC de connexion à Board n'est pas un jeton Databricks.
+Dans l'administration de l'espace (`#/espaces/<espace>/connexions`), enregistrer le point d'accès Databricks, créer une connexion logique, configurer sa liaison DEV vers la clé enregistrée, avec connecteur Databricks et identité `service`. Poser le jeton de service dans le champ à usage unique, puis lancer « Tester la connexion ». Le résultat doit annoncer l'identité de service, l'état du warehouse et la capacité d'annulation, sans renvoyer le jeton. Un jeton OIDC de connexion à Board n'est pas un jeton Databricks.
 
 ## Parcours à réaliser
 

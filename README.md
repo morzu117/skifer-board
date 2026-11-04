@@ -2,7 +2,8 @@
 
 Application web partagée de self-service BI et d’analytics de l’écosystème Skifer : exploration adhoc, analyses sauvegardées et dashboards personnalisables, appuyés sur Atlas et le moteur Skifer.
 
-Le projet est en phase de conception. Aucun lot applicatif n’est encore implémenté sur cette branche ; la fondation du plan 01 (spec « Dashboard as YAML », client skifer, suite de contrat) reste disponible dans l’historique de `main` au commit `63697c9` et son sort est consigné au §3.4 du plan.
+Les lots 01 et 02 sont réalisés. Le lot 03 possède les connexions, le coffre, les exécutions suivies et leurs écrans ; sa recette sur un warehouse Databricks réel reste à faire. Le catalogue Atlas est lisible, mais la correspondance vérifiable entre KPI Atlas et modèle skifer manque encore pour rendre ses KPI exécutables.
 
 - [Plan de développement](docs/plan-de-developpement.md) : décisions, architecture cible, lots, dépendances, critères d’acceptation et arbitrages.
 - [Écrans et fonctionnalités](docs/ecrans-et-fonctionnalites.md) : écrans, écrans intermédiaires, états standards, rôles, matrice écrans × lots.
+- [Essai du connecteur Databricks depuis Board](docs/recettes/plan14-essai-board.md) : instance locale de test et saisie du workspace, du warehouse et de l'identifiant dans Board.

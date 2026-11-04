@@ -309,6 +309,22 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 204)
         parcours("DELETE", f"/api/spaces/{A}/parameters/param_sentinelle", p + "/{name}", 404)
 
+        ep = s + "/connection-endpoints"
+        ep_body = {
+            "key": "warehouse-ui-sentinelle",
+            "host": "https://adb-123.2.azuredatabricks.net",
+            "warehouse_id": "whsentinelle",
+        }
+        secrets |= {ep_body["key"], ep_body["host"], ep_body["warehouse_id"]}
+        parcours("GET", f"/api/spaces/{A}/connection-endpoints", ep, 200)
+        parcours("POST", f"/api/spaces/{A}/connection-endpoints", ep, 201, ep_body)
+        parcours(
+            "DELETE",
+            f"/api/spaces/{A}/connection-endpoints/warehouse-ui-sentinelle",
+            ep + "/{key}",
+            204,
+        )
+
         x = s + "/connections"
         xb = x + "/{name}/bindings/{environment}"
         xc = xb + "/credential"
