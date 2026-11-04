@@ -1,6 +1,6 @@
 # Plan 15 — Connexion OAuth Databricks et découverte depuis l'URL
 
-Date : 4 novembre 2026 · Statut : plan avant code ; intégration OAuth Board à enregistrer dans Databricks.
+Date : 4 novembre 2026 · Statut : 15.1 implémenté ; 15.2 et 15.3 en cours ; intégration OAuth Board à enregistrer dans Databricks pour la recette réelle.
 
 Demande du porteur : saisir uniquement l'URL du workspace, se connecter personnellement par OAuth et laisser Board récupérer les valeurs disponibles. Ce plan complète le plan 14 et ne confond pas le SSO de Board avec l'autorisation d'accès à Databricks.
 
@@ -30,12 +30,16 @@ Sources vérifiées le 4 novembre 2026 :
 
 Configurer explicitement Client ID, origine et callback ; définir les scopes selon les API réellement utilisées. Persister les demandes en attente pour plusieurs processus, consommer chaque state une seule fois, lier la demande à la session Board et à l'espace, limiter sa durée et vérifier à nouveau les droits au retour. Chiffrer les jetons avec les clés du coffre existant et lier le chiffrement à la personne, l'espace et le workspace. Ne jamais placer code, verifier, access token ou refresh token dans les journaux, la télémétrie ou les réponses métier. Révoquer/déconnecter sans toucher aux autorisations d'une autre personne ; gérer expiration et renouvellement sans promotion vers une identité de service.
 
+Réalisation 15.1 : révision `0011`, états PKCE à usage unique liés à la session, coffre personnel AES-GCM avec contexte personne/espace/workspace/application/échéance, renouvellement sous verrou PostgreSQL et rotation des clés intégrée.
+
 ### 15.2 — Découverte et enregistrement
 
 Lister les warehouses avec l'autorisation personnelle et un transport borné, TLS vérifié, sans redirection ni proxy hérité. Valider les réponses, ne retourner que les champs utiles, isoler chaque personne et espace. Enregistrer seulement la sélection validée et les métadonnées du point d'accès ; ne pas partager le jeton avec les administrateurs de l'espace. Brancher le test sur cette autorisation.
+
 
 ### 15.3 — Interface et recette
 
 Faire du parcours URL → OAuth → choix du warehouse → confirmation le parcours principal. Conserver les états configuration requise, consentement refusé, demande expirée, aucun warehouse, échec réseau et réussite. Reprendre les paramètres après retour OAuth et éviter les pertes de saisie. Tests API sans réseau ni secret réel : PKCE, state, rejeu, droits, isolation, chiffrement, renouvellement et confidentialité. Tests web des états et sélections ; parcours navigateur avec OAuth simulé, puis recette réelle par le porteur avec l'intégration enregistrée. Gates et changelog avant chaque commit de code ; ne déclarer l'OAuth réel validé qu'après le retour de Databricks et la découverte effective.
 
 Les exécutions `person` restent refusées tant que leur propagation d'identité n'est pas effectivement câblée et testée ; une découverte réussie ne valide pas à elle seule les exécutions ni la recette RLS du lot 03.
+

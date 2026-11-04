@@ -326,9 +326,12 @@ class CredentialVault:
         counts: dict[str, int] = {}
         for key_id in remaining:
             counts[key_id] = counts.get(key_id, 0) + 1
+        # Import local : le coffre OAuth réutilise les types et clés de ce module.
+        from .oauth_store import OAuthStore
+
+        personal = OAuthStore(self._engine, self._keys, "").rotate()
         return {
-            "rotated": rotated,
-            "remaining_non_active": sum(
-                count for key_id, count in counts.items() if key_id != self._keys.active
-            ),
+            "rotated": rotated + personal["rotated"],
+            "remaining_non_active": personal["remaining_non_active"]
+            + sum(count for key_id, count in counts.items() if key_id != self._keys.active),
         }
