@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 12, 12.8a : recette d'exploitation pour vérifier les exécutions sur un warehouse Databricks réel, avec profil CLI choisi explicitement, deux lecteurs OIDC séparés par une politique de ligne, contrôle des preuves, limites, annulation, refus et télémétrie. Le modèle de constat exclut secrets, sujets, SQL et lignes métier. L'exécution réelle reste à faire en 12.8b.
+
 - Plan 12, 12.7c : parcours Chrome du centre d'exécutions sur ordinateur et téléphone : lecture personnelle et portée d'administration, preuve expurgée, aperçu Arrow, annulation en attente de confirmation, refus, session expirée, mode local et panne. Contrôle axe sur la page entière, défilement du résultat dans sa carte et absence de débordement à 390, 768 et 1280 px. Bascule des thèmes Skifer clair et Skifer ardoise avec quatre captures de référence inspectées.
 
 - Plan 12, 12.7b : écran des exécutions dans un espace, accessible aux lecteurs depuis l'accueil. Soumission déclarative, liste personnelle, portée « espace » pour l'administration, détail avec état, durée, limites, troncature et preuve expurgée. L'annulation suit la capacité renvoyée par le serveur et sa confirmation reste explicite ; l'aperçu Arrow défile dans sa carte. Chargement, vide, refus, mode local, perte de session et panne sont nommés.

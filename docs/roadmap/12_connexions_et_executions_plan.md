@@ -1,6 +1,6 @@
 # Plan 12 — Connexions et exécutions (lot 03)
 
-Date : 3 novembre 2026 · Statut : **12.1 à 12.7c réalisés ; recette Databricks réelle restante pour clore le lot 03**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
+Date : 3 novembre 2026 · Statut : **12.1 à 12.8a réalisés ; 12.8b attend la recette Databricks réelle**. Premier plan du lot 03, après la clôture du lot 02 par le [plan 11](11_telemetrie_plan.md). Le plan a été commité avant tout code du lot, conformément à `CLAUDE.md`.
 
 Sources : [plan de développement](../plan-de-developpement.md), §3.3, §7, §8 lot 03 et §10.2 (D-1 à D-3) ; [attendus skifer](../attendus/skifer.md), SK-01, SK-02 et SK-08 ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.4, §9 et §10 ; plans [06](06_identite_oidc_plan.md), [09](09_environnements_et_deploiement_plan.md), [10](10_parametres_de_deploiement_plan.md) et [11](11_telemetrie_plan.md).
 
@@ -109,6 +109,14 @@ Réalisation : l'accueil relie chaque espace à son centre d'exécutions ; la ro
 **12.7c — Recette visuelle.** Parcours Playwright des deux droits, de l'annulation, des refus et de la perte de session ; axe sur la page entière et captures de référence ordinateur/téléphone sous les deux thèmes. Vérifier le défilement du résultat dans sa carte et l'absence de débordement de la page à 390, 768 et 1280 px. Le lot garde la recette Databricks réelle comme condition de clôture.
 
 Réalisation : 14 parcours Chrome sur les deux formats couvrent le lecteur, la portée de l'administration, l'annulation demandée, les refus, l'expiration de session, le mode local et la panne. Le résultat Arrow de douze colonnes défile au clavier dans sa carte ; aucun débordement de page à 390, 768 et 1280 px. Axe contrôle la page entière et les contrastes ; quatre captures de référence clair/ardoise sur ordinateur/téléphone ont été inspectées. La source Databricks réelle reste la condition de clôture du lot.
+
+### 12.8 — Recette Databricks réelle
+
+**12.8a — Préparation vérifiable.** Écrire une recette d'exploitation reproductible à partir des routes et réglages réellement livrés. Elle exige un profil Databricks nommé explicitement par l'exploitant, un warehouse de test, un modèle sémantique certifié dont la politique sépare deux lecteurs OIDC, une base PostgreSQL et le coffre Board. Elle décrit les précontrôles en lecture seule, la création de la liaison de service dans l'interface, les données témoins attendues, les parcours de réussite et de refus, et une fiche de constat sans secret, SQL, jeton, cookie ni ligne métier. Le document indique les commandes avec `--profile <profil choisi>` ; aucun profil du poste n'est sélectionné par défaut. La recette ne déclare aucune réussite réelle.
+
+Réalisation : la [recette Databricks](../recettes/plan12-databricks.md) décrit les deux précontrôles CLI explicites, les réglages de Board, la table témoin à deux sujets OIDC, la politique `subject`, la liaison de service, les parcours d'exécution et de refus, la télémétrie et le format de constat expurgé. Les commandes ont été vérifiées contre l'aide du CLI installé, sans choisir ni appeler un profil. Aucun test réel n'est déclaré passé.
+
+**12.8b — Exécution et clôture.** Avec le profil et le warehouse explicitement choisis, exécuter la recette sur la source Databricks réelle. Deux lecteurs doivent recevoir des lignes différentes malgré le retrait d'un filtre d'exploration ; l'administrateur Board ne peut obtenir leurs octets. Vérifier la preuve RLS et le hash de la transmission, les limites de lignes et d'octets, la troncature, le délai, l'annulation effective et les refus d'identifiant. Vérifier la télémétrie agrégée sans identité ni secret, puis joindre au dépôt seulement le constat expurgé et les identifiants opaques nécessaires à la relecture. Corriger tout écart avec test hors réseau, changelog et gate complet avant de déclarer le lot 03 achevé. Le profil, l'entrepôt et les données d'essai ne sont pas déduits de la configuration du poste.
 
 ## 4. Acceptation du lot
 
