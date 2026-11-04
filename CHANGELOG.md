@@ -6,6 +6,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.4b : écran Explorateur dans la coque, liste des noms de connexions sous les gardes de soumission, requêtes et filtres typés, suivi et annulation, résultat accessible, provenance et calculs contextuels exacts sur la sélection ; dates et horodatages Arrow exacts, type « Valeur » borné à une ligne et touche Entrée réservée aux champs ; protection contre les réponses périmées, notes et parts exactes, vérification de la preuve source des calculs, reprise du suivi interrompu, temporisation des calculs et libellés accessibles des sélections, annulation suspendue lorsque le suivi est interrompu et horodatages sans fuseau affichés sans suffixe UTC ; mocks de preuve et attentes de navigation des parcours navigateur alignés sur les contrats livrés.
+
 - Plan 17, 17.4a : contrat web strict des champs et calculs contextuels, constructeur de filtres typés et clients réutilisant les refus des exécutions, sans écran.
 
 - Plan 17, 17.3 : contrat des résultats figé à la soumission et calculs contextuels Arrow réservés à l'auteur, avec précision, périmètre, provenance et refus explicites. Le centre d'exécutions décode strictement le contrat sans modifier son affichage.

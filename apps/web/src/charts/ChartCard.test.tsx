@@ -39,8 +39,10 @@ describe("ChartCard", () => {
     screen.getByRole("tab", { name: "Tableau" }).focus();
     await userEvent.keyboard("{ArrowLeft}");
     expect(chartTab).toHaveAttribute("aria-selected", "true");
+    expect(chartTab).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Tableau" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Tableau" })).toHaveFocus();
     await userEvent.keyboard("{Tab}");
     expect(screen.getByRole("tab", { name: "Tableau" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(chartTab);

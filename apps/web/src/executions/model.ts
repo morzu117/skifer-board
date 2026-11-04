@@ -17,6 +17,14 @@ export interface Proof {
   evidenceId: string;
   sqlHash: string;
   modelKeys: readonly string[];
+  metrics: readonly { name: string; model_key: string; definition_hash: string; source_columns: readonly string[]; lineage_status: string; certification: "CERTIFIED" | "CANDIDATE"; candidate_id: string | null }[];
+  dimensions: readonly string[];
+  filters: readonly { column: string; operator: string; origin: "policy" | "exploration"; modelKey: string | null; value: string | null; definitionHash: string | null }[];
+  sources: readonly { dataset: string; certification_status: string; data_age_seconds: number | null; load_age_seconds: number | null }[];
+  policy: { decision: "ALLOW" | "WARN"; reasons: readonly string[]; evaluated_at: Date };
+  statementId: string | null;
+  sqlDialect: string;
+  duration: number | null;
 }
 
 export const AGGREGATIONS = ["sum", "count", "count_distinct", "avg", "min", "max"] as const;
@@ -81,17 +89,40 @@ function exact(value: unknown, keys: readonly string[], path: string): void {
   }
 }
 
+const nonnegative = (value: unknown, path: string): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new ContractError(`${path} : nombre positif attendu`);
+  return value;
+};
+const nonempty = (value: unknown, path: string): string => {
+  const found = text(value, path);
+  if (!found) throw new ContractError(`${path} : texte non vide attendu`);
+  return found;
+};
 function proofOf(value: unknown, path: string): Proof {
-  const found = object({
-    evidence_id: text,
-    sql_hash: text,
-    execution_status: oneOf(["succeeded"] as const),
-    model_keys: list(text),
-  })(value, path);
-  if (!found.evidence_id || !found.sql_hash || found.model_keys.length === 0 || (typeof value === "object" && value !== null && "sql_text" in value)) {
-    throw new ContractError(`${path} : preuve expurgée attendue`);
-  }
-  return { evidenceId: found.evidence_id, sqlHash: found.sql_hash, modelKeys: found.model_keys };
+  exact(value, ["schema_version", "evidence_id", "trace_id", "model_keys", "metrics", "dimensions", "normalized_filters", "sources", "policy", "sql_hash", "sql_dialect", "statement_id", "compiled_at", "executed_at", "execution_status", "execution_duration_seconds", "execution_error_type"], path);
+  const metric = (item: unknown, p: string) => {
+    exact(item, ["name", "model_key", "definition_hash", "source_columns", "lineage_status", "certification", "candidate_id"], p);
+    return object({ name: nonempty, model_key: nonempty, definition_hash: nonempty, source_columns: list(text), lineage_status: nonempty, certification: oneOf(["CERTIFIED", "CANDIDATE"] as const), candidate_id: nullable(text) })(item, p);
+  };
+  const source = (item: unknown, p: string) => {
+    exact(item, ["dataset", "contract_id", "contract_version", "definition_hash", "certification_status", "certified_at", "load_age_seconds", "data_age_seconds", "certification_run_id"], p);
+    return object({ dataset: nonempty, contract_id: nullable(text), contract_version: nullable(text), definition_hash: nullable(text), certification_status: nonempty, certified_at: nullable(instant), load_age_seconds: nullable(nonnegative), data_age_seconds: nullable(nonnegative), certification_run_id: nullable(text) })(item, p);
+  };
+  const filter = (item: unknown, p: string) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) throw new ContractError(`${p} : filtre invalide`);
+    const raw = item as Record<string, unknown>;
+    if (Object.keys(raw).some((key) => !["column", "operator", "origin", "model_key", "definition_hash", "value"].includes(key))) throw new ContractError(`${p} : filtre invalide`);
+    const column = nonempty(raw.column, p); const operator = nonempty(raw.operator, p);
+    const origin = raw.origin === undefined ? "exploration" : oneOf(["policy", "exploration"] as const)(raw.origin, p);
+    const modelKey = raw.model_key === undefined ? null : nonempty(raw.model_key, p);
+    const definitionHash = raw.definition_hash === undefined ? null : nonempty(raw.definition_hash, p);
+    const filterValue = raw.value === undefined ? null : oneOf(["<redacted>"] as const)(raw.value, p);
+    return { column, operator, origin, modelKey, definitionHash, value: filterValue };
+  };
+  const policy = (item: unknown, p: string) => { exact(item, ["decision", "reasons", "evaluated_at"], p); return object({ decision: oneOf(["ALLOW", "WARN"] as const), reasons: list(text), evaluated_at: instant })(item, p); };
+  const found = object({ schema_version: oneOf(["2"] as const), evidence_id: nonempty, trace_id: nullable(text), model_keys: list(nonempty), metrics: list(metric), dimensions: list(nonempty), normalized_filters: list(filter), sources: list(source), policy, sql_hash: nonempty, sql_dialect: nonempty, statement_id: nullable(text), compiled_at: instant, executed_at: nullable(instant), execution_status: oneOf(["succeeded"] as const), execution_duration_seconds: nullable(nonnegative), execution_error_type: nullable(text) })(value, path);
+  if (!found.model_keys.length || !found.sources.length) throw new ContractError(`${path} : preuve incomplète`);
+  return { evidenceId: found.evidence_id, sqlHash: found.sql_hash, modelKeys: found.model_keys, metrics: found.metrics, dimensions: found.dimensions, filters: found.normalized_filters, sources: found.sources, policy: found.policy, statementId: found.statement_id, sqlDialect: found.sql_dialect, duration: found.execution_duration_seconds };
 }
 
 function resultContractOf(value: unknown, path: string): ResultContract {

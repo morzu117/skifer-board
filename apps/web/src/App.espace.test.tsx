@@ -66,27 +66,27 @@ describe("Entrées de la navigation selon l'espace (plan 08, 8.4)", () => {
 
   it("hors d'un espace confirmé, le catalogue et les membres se lisent « dans un espace »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", espace: "dans un espace" } });
+      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", espace: "dans un espace" } });
     }
   });
 
   it.each([
-    ["admin", false, ["catalogue", "espace"], {}],
-    ["admin", true, ["catalogue", "espace"], {}],
-    ["creator", false, ["catalogue"], { espace: "administrateurs" }],
-    ["reader", false, ["catalogue"], { espace: "administrateurs" }],
-    ["reader", true, ["catalogue", "espace"], {}],
-    [null, true, ["espace"], { catalogue: "sans rôle" }],
+    ["admin", false, ["catalogue", "espace", "explorer"], {}],
+    ["admin", true, ["catalogue", "espace", "explorer"], {}],
+    ["creator", false, ["catalogue", "explorer"], { espace: "administrateurs" }],
+    ["reader", false, ["catalogue", "explorer"], { espace: "administrateurs" }],
+    ["reader", true, ["catalogue", "espace", "explorer"], {}],
+    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle" }],
     // Un espace confirmé sans rôle ne l'est qu'à l'administration de la plateforme (E6) : l'entrée est
     // offerte même avant que la liste l'ait confirmé, et le serveur reste seul juge.
-    [null, false, ["espace"], { catalogue: "sans rôle" }],
+    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle" }],
   ] as [Space["role"], boolean, string[], object][])("rôle %s, plateforme %s", (role, plateforme, available, pending) => {
     expect(resume(de(role), plateforme)).toEqual({ available, pending });
   });
 
   it("l'espace implicite du mode local : catalogue livré, membres « mode local »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local" } });
+      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local" } });
     }
   });
 });
@@ -129,6 +129,7 @@ describe("Membres et rôles dans la coque (plan 08, 8.4)", () => {
   it("l'administration de la plateforme sans rôle gère les membres, catalogue fermé « sans rôle »", async () => {
     ouvrir("#/espaces/finance", { ...FINANCE, "GET /api/spaces": administration, "GET /api/spaces/finance": { status: 200, body: { ...espace.body, role: null } } });
     const lien = await screen.findByRole("link", { name: "Gérer les membres" });
+    expect(entree("Explorer")).toHaveTextContent("Explorersans rôle");
     expect(entree("Catalogue Atlas")).toHaveTextContent("Catalogue Atlassans rôle");
     await userEvent.click(lien);
     expect(await screen.findByRole("heading", { level: 1, name: "Membres et rôles" })).toBeInTheDocument();
@@ -153,6 +154,7 @@ describe("Membres et rôles dans la coque (plan 08, 8.4)", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Membres et rôles" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("En mode local, sans fournisseur d'identité, l'espace est implicite et vous en êtes l'administrateur : ses membres ne se gèrent pas.");
     expect(entree("Espace & connexions")).toHaveTextContent("Espace & connexionsmode local");
+    expect(entree("Explorer")).toHaveTextContent("Explorermode local");
     expect(within(nav()).getByRole("button", { name: "Catalogue Atlas" })).toBeInTheDocument();
     expect(lus(fetcher).filter((cle) => cle.includes("/members") || cle.includes("/events"))).toEqual([]);
   });
@@ -304,4 +306,13 @@ describe("Création d'un espace dans la coque (plan 08, 8.4)", () => {
     await act(async () => { liberer(reponse(administration)); await Promise.resolve(); });
     expect(await screen.findByRole("form", { name: "Créer un espace" })).toBeInTheDocument();
   });
+});
+
+it("ouvre Explorer depuis la navigation de l'espace", async () => {
+  ouvrir("#/espaces/finance/catalogue", FINANCE);
+  await screen.findByRole("heading", { name: "Catalogue Atlas" });
+  await userEvent.click(within(nav()).getByRole("button", { name: "Explorer" }));
+  expect(await screen.findByRole("heading", { name: "Explorer", level: 1 })).toBeInTheDocument();
+  expect(filAriane()).toEqual(["Finance", "Explorer"]);
+  expect(window.location.hash).toBe("#/espaces/finance/explorer");
 });

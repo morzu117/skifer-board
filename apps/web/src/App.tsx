@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { CataloguePage } from "./catalogue/CataloguePage";
+import { ExplorerPage } from "./explorer/ExplorerPage";
 import { ExecutionsPage } from "./executions/ExecutionsPage";
 import { logout, type Fetch } from "./identity/api";
 import { LoginScreen } from "./identity/LoginScreen";
@@ -29,7 +30,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" ? route.space : null;
 }
 
 interface Sections {
@@ -44,14 +45,17 @@ interface Sections {
  */
 export function sectionsFor(space: Space | null, platformAdmin: boolean): Sections {
   if (space === null) {
-    return { available: new Set(), pending: { catalogue: "dans un espace", espace: "dans un espace" } };
+    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", espace: "dans un espace" } };
   }
   const available = new Set<SectionId>();
   const pending: Partial<Record<SectionId, string>> = {};
   if (space.role === null) {
     pending.catalogue = "sans rôle";
+    pending.explorer = "sans rôle";
   } else {
     available.add("catalogue");
+    if (!space.implicit) available.add("explorer");
+    else pending.explorer = "mode local";
   }
   if (manages(space, platformAdmin)) {
     available.add("espace");
@@ -175,7 +179,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
+  const active = route.page === "explorer" ? "explorer" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -185,7 +189,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
       // Les entrées ne sont offertes que dans un espace confirmé : elles mènent à ses pages.
       onNavigate={(section) => {
         if (space !== null) {
-          navigate(section === "espace" ? { page: "members", space: space.id } : { page: "catalogue", space: space.id });
+          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : { page: "catalogue", space: space.id });
         }
       }}
       breadcrumb={breadcrumb(route, current)}
@@ -247,6 +251,7 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "connections") {
       return [current.value.name, "Connexions"];
     }
+    if (route.page === "explorer") return [current.value.name, "Explorer"];
     if (route.page === "executions") {
       return [current.value.name, "Exécutions"];
     }
@@ -354,6 +359,9 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
       );
     }
     return <ConnectionsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
+  }
+  if (route.page === "explorer") {
+    return <ExplorerPage key={`${current.value.id}:${environment}`} space={current.value} fetcher={fetcher} target={environment} />;
   }
   if (route.page === "executions") {
     return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;

@@ -75,6 +75,8 @@ describe("EChart", () => {
     const dispatch = vi.spyOn(chartOf(screen.getByRole("img")), "dispatchAction");
     handle.current?.focusItem(1);
     expect(dispatch).toHaveBeenCalledWith({ type: "showTip", seriesIndex: 0, dataIndex: 1 });
+    handle.current?.focusItem(1, 2);
+    expect(dispatch).toHaveBeenCalledWith({ type: "showTip", seriesIndex: 2, dataIndex: 1 });
     handle.current?.focusItem(null);
     expect(dispatch).toHaveBeenLastCalledWith({ type: "hideTip" });
   });

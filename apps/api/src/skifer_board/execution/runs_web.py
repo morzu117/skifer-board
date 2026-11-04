@@ -178,6 +178,12 @@ def install_execution_routes(
         except SemanticRefusal:
             raise Refused(503, "engine_unavailable") from None
 
+    @app.get("/api/spaces/{space_id}/explorer/connections")
+    def explorer_connections(request: Request, space_id: str) -> JSONResponse:
+        active(request, space_id)
+        assert connections is not None
+        return JSONResponse({"connections": [item.name for item, _ in connections.list(space_id)]})
+
     @app.post(path)
     async def submit_execution(request: Request, space_id: str) -> JSONResponse:
         access, actor = active(request, space_id)

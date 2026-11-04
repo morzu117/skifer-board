@@ -38,12 +38,34 @@ from spaces.monde import config_plateforme as config_plateforme
 from spaces.monde import monde as monde
 from state.conftest import migre as migre
 
-from execution.test_runs_web import PATH, _call, _client, _contract, _models
+from execution.test_runs_web import PATH, _call, _client, _contract, _models, _prepare
 
 
 class ListeSousLaBorne(list[Any]):
     def __len__(self) -> int:
         return 500
+
+
+def test_connexions_pour_explorer(monde: Monde, service: CatalogService, tmp_path: Path) -> None:
+    _prepare(monde)
+    path = f"/api/spaces/{A}/explorer/connections"
+    with _client(monde, service, tmp_path) as client:
+        for profil in (LECTEUR_GROUPE, CREATEUR_GROUPE, ADMIN_GROUPE):
+            reponse = _call(client, monde, profil, "GET", path)
+            _contract(reponse, "explorer-connexions.json")
+        assert _call(client, monde, NON_MEMBRE, "GET", path).status_code == 404
+        assert _call(client, monde, PLATEFORME_SEULE, "GET", path).status_code == 403
+        assert (
+            _call(
+                client, monde, LECTEUR_GROUPE, "GET", f"/api/spaces/{B}/explorer/connections"
+            ).status_code
+            == 404
+        )
+    with TestClient(create_app(service), base_url="http://127.0.0.1") as client:
+        assert (
+            client.get("/api/spaces/local/explorer/connections").json()["error"]["code"]
+            == "local_mode"
+        )
 
 
 def test_description_et_confidentialite(tmp_path: Path) -> None:

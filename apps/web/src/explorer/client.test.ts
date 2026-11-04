@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import fields from "../../../../contracts/executions/champs.json";
+import explorerConnexions from "../../../../contracts/executions/explorer-connexions.json";
 import interdit from "../../../../contracts/executions/champs-interdits.json";
 import local from "../../../../contracts/executions/champs-mode-local.json";
 import nonMembre from "../../../../contracts/executions/champs-non-membre.json";
@@ -14,12 +15,21 @@ import calculated from "../../../../contracts/executions/contextuel-selection.js
 import { onSessionLost } from "../identity/session";
 import { onSpaceLost } from "../spaces/lost";
 import type { Fetch } from "../spaces/api";
-import { computeContextual, fetchFields, submitExecution } from "./client";
+import { computeContextual, fetchExplorerConnections, fetchFields, submitExecution } from "./client";
 import type { ContextualBody } from "./model";
 
 const signal = new AbortController().signal;
 const body: ContextualBody = { operation: "aggregate", metric: "revenue", group_by: [], selection: null, scope: null, denominator: null };
 const serving = (value: unknown, status = 200) => vi.fn<Fetch>().mockResolvedValue(Response.json(value, { status }));
+
+it("lit les noms de connexions pour l'exploration", async () => {
+  const fetcher = serving(explorerConnexions.body);
+  expect(await fetchExplorerConnections("finance", signal, fetcher)).toEqual({ status: "ok", value: ["source"] });
+  expect(fetcher).toHaveBeenCalledWith("/api/spaces/finance/explorer/connections", { method: "GET", headers: { Accept: "application/json" }, signal });
+});
+it.each([null, [], {}, { connections: 1 }, { connections: [], secret: true }, { connections: [null] }, { connections: ["BAD"] }, { connections: ["source", "source"] }])("refuse les noms de connexion hors contrat %#", async (value) => {
+  expect(await fetchExplorerConnections("finance", signal, serving(value))).toMatchObject({ status: "error" });
+});
 
 it("appelle les routes et décode les contrats réels", async () => {
   const fetcher = serving(fields.body);

@@ -1,0 +1,36 @@
+.sb-explorer {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  container-type: inline-size;
+}
+
+.sb-explorer form,
+.sb-explorer fieldset,
+.sb-explorer .sb-chart-card,
+.sb-explorer [role="tabpanel"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@container (min-width: 760px) {
+  .sb-explorer form {
+    display: grid;
+    grid-template-columns: minmax(0, var(--sb-sidebar-w)) minmax(0, 1fr);
+    gap: var(--sb-space-6);
+    align-items: start;
+  }
+  .sb-explorer form > section:first-child { grid-column: 1; grid-row: 1 / span 2; }
+  .sb-explorer form > section:nth-child(2),
+  .sb-explorer form > [aria-live] { grid-column: 2; }
+}
+
+.sb-explorer input,
+.sb-explorer select { max-width: 100%; }
+
+.sb-explorer__choix {
+  display: flex;
+  align-items: center;
+  gap: var(--sb-space-3);
+  min-height: var(--sb-target-min);
+}

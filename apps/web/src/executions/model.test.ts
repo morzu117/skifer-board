@@ -15,7 +15,7 @@ const success = {
   created_at: CREATED, started_at: STARTED, finished_at: FINISHED, deadline_at: DEADLINE,
   can_cancel: false, cancel_requested: false, error_code: null, rows: 1, size: 128, truncated: false,
 };
-const evidence = { evidence_id: "evidence-1", sql_hash: "sha256:n1:abc", execution_status: "succeeded", model_keys: ["orders"] };
+const evidence = { ...exemple.body.evidence, evidence_id: "evidence-1", sql_hash: "sha256:n1:abc", execution_status: "succeeded", model_keys: ["orders"] };
 const contract = { dimensions: ["region"], metrics: [{ name: "revenue", aggregation: "sum", additivity: "additive" }], completeness: "complete" };
 const detail = { ...success, evidence, connector_run_id: SECOND, result_contract: contract };
 const running = { ...success, state: "running", finished_at: null, error_code: null, rows: null, size: null, truncated: null, can_cancel: true };
@@ -119,5 +119,35 @@ describe("contrat des exécutions suivies", () => {
     expect(() => decodeExecutions({ executions: [older, success] }, "finance")).toThrow(ContractError);
     expect(() => decodeExecutions({ executions: Array.from({ length: 51 }, (_, index) => ({ ...success, id: `${String(index).padStart(8, "0")}-1111-1111-1111-111111111111` })) }, "finance")).toThrow(ContractError);
     expect(() => decodeExecutions({ executions: [], token: "secret" }, "finance")).toThrow(ContractError);
+  });
+});
+
+describe("preuve expurgée détaillée", () => {
+  const raw = exemple.body.evidence;
+  it("conserve les champs de provenance et distingue les filtres d'exploration", () => {
+    const e = { ...raw, normalized_filters: [...raw.normalized_filters, { column: "region", operator: "eq", value: "<redacted>" }] };
+    const proof = decodeExecution({ ...exemple.body, evidence: e }, "finance").proof;
+    expect(proof?.metrics[0]?.definition_hash).toBe(raw.metrics[0]?.definition_hash);
+    expect(proof?.filters.map((item) => item.origin)).toEqual(["policy", "exploration"]);
+    expect(proof?.policy.evaluated_at).toBeInstanceOf(Date);
+    expect(proof?.sources[0]?.data_age_seconds).toBeNull();
+  });
+  it.each([
+    { ...raw, autre: "secret" }, { ...raw, schema_version: "3" }, { ...raw, sources: [] },
+    { ...raw, metrics: [{ ...raw.metrics[0], certification: "INVALIDE" }] },
+    { ...raw, metrics: [{ ...raw.metrics[0], sql_text: "secret" }] },
+    { ...raw, sources: [{ ...raw.sources[0], data_age_seconds: -1 }] },
+    { ...raw, sources: [{ ...raw.sources[0], autre: "secret" }] },
+    { ...raw, policy: { ...raw.policy, decision: "DENY" } },
+    { ...raw, policy: { ...raw.policy, autre: "secret" } },
+    { ...raw, normalized_filters: [null] },
+    { ...raw, normalized_filters: [{ column: "region", operator: "eq", value: "secret" }] },
+    { ...raw, normalized_filters: [{ column: "region", operator: "eq", origin: "inconnu" }] },
+    { ...raw, normalized_filters: [{ column: "region", operator: "eq", autre: "secret" }] },
+    { ...raw, execution_duration_seconds: -1 }, { ...raw, sql_dialect: "" },
+  ])("refuse une preuve hors contrat %#", (e) => { rejects({ ...exemple.body, evidence: e }); });
+  it("lit les champs optionnels permis d'un filtre de politique", () => {
+    const e = { ...raw, normalized_filters: [{ column: "base_filter", operator: "sql", origin: "policy", model_key: "orders", definition_hash: "empreinte" }] };
+    expect(decodeExecution({ ...exemple.body, evidence: e }, "finance").proof?.filters[0]).toEqual({ column: "base_filter", operator: "sql", origin: "policy", modelKey: "orders", definitionHash: "empreinte", value: null });
   });
 });

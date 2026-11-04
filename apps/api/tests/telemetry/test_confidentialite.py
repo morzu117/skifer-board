@@ -371,6 +371,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         xt = xb + "/test"
         parcours("GET", f"/api/spaces/{A}/connections", x, 200)
         parcours("POST", f"/api/spaces/{A}/connections", x, 201, {"name": "connexion_sentinelle"})
+        parcours("GET", f"/api/spaces/{A}/explorer/connections", s + "/explorer/connections", 200)
         parcours(
             "PUT",
             f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV",

@@ -102,3 +102,9 @@ Poids du build de production : le bloc partagé, qui contient ECharts, Arrow et 
 1. Valider ECharts et le rendu SVG par défaut, ou demander un second essai sur une autre bibliothèque.
 2. Accepter la forme étroite des graphiques, qui retire des montants posés sur les marques sous 480 px.
 3. Fixer les objectifs chiffrés de performance au lot 00, à partir de ces ordres de grandeur, et décider si la latence d'interaction doit être mesurée avant.
+
+## Application à l'explorateur (plan 17, 17.4b)
+
+- Écart à la maquette d'exploration : le panneau Preuves est ouvert dans le flux de la page plutôt que fixé à droite, afin de rester accessible au clavier et de s'empiler en largeur étroite.
+- Écart à la maquette d'exploration : la sélection en escalier, les dimensions décimales et les grands entiers non représentables ne produisent pas de total ; le contrat de calcul ne peut pas les exprimer exactement. L'écran indique la raison et invite à demander le chiffre au moteur, sans le lancer automatiquement.
+- Sous 480 px de largeur de graphique, les catégories sont inclinées et les valeurs posées sur les barres masquées pour éviter leur chevauchement ; le tableau conserve les valeurs exactes.

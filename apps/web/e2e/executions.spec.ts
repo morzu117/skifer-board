@@ -18,7 +18,7 @@ const RUN = {
   deadline_at: "2026-11-04T00:00:30Z", can_cancel: false, cancel_requested: false,
   error_code: null, rows: 2, size: ARROW.byteLength, truncated: true,
 };
-const DETAIL = { ...RUN, evidence: { evidence_id: "preuve-123", sql_hash: "empreinte-456", execution_status: "succeeded", model_keys: ["orders"] }, connector_run_id: null, result_contract: { ...exemple.body.result_contract, completeness: "truncated" } };
+const DETAIL = { ...RUN, evidence: { ...exemple.body.evidence, evidence_id: "preuve-123", sql_hash: "empreinte-456" }, connector_run_id: null, result_contract: { ...exemple.body.result_contract, completeness: "truncated" } };
 const RUNNING = { ...RUN, state: "running", finished_at: null, rows: null, size: null, truncated: null, can_cancel: true };
 
 type Mode = "reader" | "admin" | "refused" | "session" | "failure" | "local" | "running";

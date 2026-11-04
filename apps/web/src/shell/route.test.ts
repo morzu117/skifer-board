@@ -44,6 +44,7 @@ it.each([
   ["#/espaces/a%2Fb/environnements", { page: "environments", space: "a/b" }],
   ["#/espaces/caf%C3%A9/environnements", { page: "environments", space: "café" }],
   ["#/espaces/finance/connexions", { page: "connections", space: "finance" }],
+  ["#/espaces/finance/explorer", { page: "explorer", space: "finance" }],
   ["#/espaces/finance/executions", { page: "executions", space: "finance" }],
   ["#/espaces/%/environnements", { page: "environments", space: "%" }],
   ["#/nouvel-espace", { page: "create" }],
@@ -77,6 +78,7 @@ it.each([
   [{ page: "environments", space: "environnements" }, "#/espaces/environnements/environnements"],
   [{ page: "environments", space: "café" }, "#/espaces/caf%C3%A9/environnements"],
   [{ page: "connections", space: "finance" }, "#/espaces/finance/connexions"],
+  [{ page: "explorer", space: "finance" }, "#/espaces/finance/explorer"],
   [{ page: "executions", space: "finance" }, "#/espaces/finance/executions"],
   [{ page: "connections", space: "a/b?c#d%e f" }, "#/espaces/a%2Fb%3Fc%23d%25e%20f/connexions"],
 ] as [Route, string][])("construit l'ancre de %j et la relit à l'identique", (route, hash) => {
