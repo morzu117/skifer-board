@@ -27,6 +27,7 @@ from .connectors import (
     probe_duckdb,
 )
 from .model import ENDPOINT_KEY, NAME, Binding, Connector, IdentityMode, LogicalConnection
+from .oauth_access import PersonalAccess
 from .store import ConnectionError, ConnectionStore
 from .vault import CredentialVault, VaultError
 
@@ -91,6 +92,7 @@ def install_connections(
     store: ConnectionStore | None,
     manager: Callable[[Request, str], Access],
     clock: Callable[[], datetime],
+    personal_access: PersonalAccess,
     vault: CredentialVault | None = None,
     endpoints: dict[str, Endpoint] | None = None,
     transport: HttpTransport | None = None,
@@ -272,7 +274,7 @@ def install_connections(
     async def test_connection(
         request: Request, space_id: str, name: str, environment: str
     ) -> JSONResponse:
-        registry, access, _ = writable(request, space_id)
+        registry, access, actor = writable(request, space_id)
         if await request.body():
             raise Invalid("body")
         binding = await asyncio.to_thread(
@@ -283,19 +285,30 @@ def install_connections(
         ).get(binding.endpoint_key)
         if endpoint is None or endpoint.connector is not binding.connector:
             raise EndpointNotConfigured()
+        expires_at: str | None = None
         if isinstance(endpoint, DuckDbEndpoint):
+            if binding.identity_mode is IdentityMode.PERSON:
+                raise IdentityUnavailable()
             probe = await asyncio.to_thread(probe_duckdb, endpoint)
         else:
             assert isinstance(endpoint, DatabricksEndpoint)
-            if binding.identity_mode is not IdentityMode.SERVICE:
-                raise IdentityUnavailable()
-            assert vault is not None and transport is not None
-            token = await asyncio.to_thread(vault.reveal_for_execution, binding)
+            assert transport is not None
+            if binding.identity_mode is IdentityMode.PERSON:
+                tokens = await asyncio.to_thread(
+                    personal_access, access.space.id, actor, endpoint.host
+                )
+                token = tokens.access
+                expires_at = tokens.expires_at.isoformat()
+            else:
+                assert vault is not None
+                token = await asyncio.to_thread(vault.reveal_for_execution, binding)
             probe = await asyncio.to_thread(probe_databricks, endpoint, token, transport)
         return JSONResponse(
             {
-                "identity": probe.identity,
-                "credential_expires_at": probe.credential_expires_at,
+                "identity": "person"
+                if binding.identity_mode is IdentityMode.PERSON
+                else probe.identity,
+                "credential_expires_at": expires_at,
                 "can_cancel": probe.can_cancel,
                 "state": probe.state,
             }

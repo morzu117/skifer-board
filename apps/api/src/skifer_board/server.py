@@ -254,6 +254,7 @@ def create_app(
         connections,
         guards.manager,
         spaces.clock,
+        personal_oauth.token,
         vault,
         endpoints,
         execution_transport,
@@ -280,6 +281,7 @@ def create_app(
         vault,
         endpoints,
         execution_transport,
+        personal_oauth.token,
         execution_reader_attributes,
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
