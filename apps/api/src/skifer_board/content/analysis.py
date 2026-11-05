@@ -268,6 +268,47 @@ def loads(raw: bytes) -> Document:
     return validate(data)
 
 
+# Plus grand en-tête canonique que le schéma admet : `api_version` et `id`, un nom de 120
+# caractères, une description de 2 000 et deux textes de personne de 512. Un caractère s'écrit en
+# 4 octets au plus en UTF-8 brut, ou en échappement `\uXXXX` de 6 octets s'il n'est pas imprimable
+# (U+FFFE) : environ 19 Kio mesurés ; même à 10 octets par caractère, 31,6 Kio. Un en-tête réel
+# fait moins d'un Kio.
+HEADER_MAX = 32 * 1024
+_HEADER_KEYS = {"api_version", "id", "name", "description", "visibility", "owner"}
+_QUERY_LINE = re.compile(rb"^query:", re.MULTILINE)
+
+
+def brief(raw: bytes) -> tuple[str, str, str, str]:
+    """Émetteur, sujet, visibilité et identifiant d'un texte YAML canonique, sans en lire la suite.
+
+    C'est tout ce qu'il faut pour savoir qui peut voir une analyse, et seul l'en-tête est analysé :
+    l'ordre canonique (`_ORDER`) place `api_version`, `id`, `name`, `description`, `visibility` et
+    `owner` avant `query`, donc les octets jusqu'à la première ligne qui commence en colonne 0 par
+    `query:`. Un texte multiligne de `description` est écrit en bloc indenté ou entre guillemets
+    avec ses retours à la ligne échappés : aucune de ses lignes ne commence en colonne 0. Le
+    travail ne dépend donc pas de la requête privée, ni de la taille du document. En-tête plus long
+    que `HEADER_MAX`, absence de ligne `query:`, clés autres que celles de l'en-tête ou formes
+    inattendues : document abîmé (`unreadable_document`), y compris un document valide mais non
+    canonique, écrit hors de Board. Ni schéma, ni règles, ni références.
+    """
+    found = _QUERY_LINE.search(raw[: HEADER_MAX + len(b"query:")])
+    if found is None:
+        raise _refuse(Violation("", "unreadable_document"))
+    try:
+        data = yaml.load(raw[: found.start()].decode("utf-8"), Loader=_Loader)
+    except (UnicodeDecodeError, yaml.YAMLError, RecursionError):
+        raise _refuse(Violation("", "unreadable_document")) from None
+    if not isinstance(data, dict) or set(data) != _HEADER_KEYS:
+        raise _refuse(Violation("", "unreadable_document"))
+    owner = data["owner"]
+    if not isinstance(owner, dict) or set(owner) != {"issuer", "subject"}:
+        raise _refuse(Violation("", "unreadable_document"))
+    values = (owner["issuer"], owner["subject"], data["visibility"], data["id"])
+    if not all(isinstance(item, str) for item in values) or values[2] not in {"personal", "shared"}:
+        raise _refuse(Violation("", "unreadable_document"))
+    return values
+
+
 def _ordered(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _ordered(value[key]) for key in sorted(value, key=_RANK.__getitem__)}

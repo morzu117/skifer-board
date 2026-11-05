@@ -29,6 +29,7 @@ METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
 REFUSAL_CODES = frozenset(
     {
         "analysis_in_use",
+        "analysis_model_mismatch",
         "analysis_not_found",
         "binding_not_found",
         "catalog_unavailable",

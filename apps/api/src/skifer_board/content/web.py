@@ -31,7 +31,7 @@ from ..execution.semantic import SemanticRefusal
 from ..execution.store import ConnectionStore
 from ..spaces.access import Access
 from ..spaces.model import LocalMode, PersonRef, Role
-from ..spaces.web import Invalid, Refused, _body, viewer
+from ..spaces.web import Invalid, Refused, _body, _object, viewer
 from .analysis import API_VERSION, Document, diff, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
@@ -41,13 +41,15 @@ from .errors import (
     ContentError,
     Violation,
 )
+from .events import Kind, UsageEvents, saved_id
 from .index import INDEXED, AnalysisIndex, IndexRow
 from .references import contextual_violations, reference_violations, refusal
-from .repository import ContentRepository, Entry, Revision, StoredRevision
+from .repository import ContentRepository, Entry, Glance, Revision, StoredRevision
 
 LOGGER = "skifer_board.content"
 ANALYSIS_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 ANALYSIS_IN_USE = "analysis_in_use"
+ANALYSIS_MODEL_MISMATCH = "analysis_model_mismatch"
 STALE = "index_stale"
 UNRESOLVED = "unresolved_reference"
 UNVERIFIED = "unverified"
@@ -108,11 +110,17 @@ def owner_of(document: Document) -> PersonRef:
     return PersonRef(owner["issuer"], owner["subject"])
 
 
-def visible(document: Document, actor: PersonRef, *, deleted: bool = False) -> bool:
+def visible_to(
+    owner: PersonRef, visibility: str, actor: PersonRef, *, deleted: bool = False
+) -> bool:
     """Personnelle (ou supprimée) : son propriétaire seulement ; partagée : tout lecteur."""
-    if owner_of(document) == actor:
+    if owner == actor:
         return True
-    return not deleted and document["visibility"] == "shared"
+    return not deleted and visibility == "shared"
+
+
+def visible(document: Document, actor: PersonRef, *, deleted: bool = False) -> bool:
+    return visible_to(owner_of(document), document["visibility"], actor, deleted=deleted)
 
 
 def rights(
@@ -208,6 +216,109 @@ def _digits(value: str | None) -> int | None:
     return int(value)
 
 
+def establish(
+    repository: ContentRepository,
+    space_id: str,
+    analysis_id: str,
+    actor: PersonRef,
+    at: str | None = None,
+) -> tuple[str, Glance]:
+    """Refuse, comme une analyse inconnue, ce que la session n'a pas le droit de voir, avant de
+    lire l'histoire ou le moindre autre contenu : le coût d'un refus ne dépend ni du nombre de
+    révisions ni de leur contenu.
+
+    La tête du dépôt est résolue ici, une seule fois (sauf si l'appelant la fournit avec `at`), et
+    rendue : toutes les lectures qui suivent portent sur ce commit, jamais sur une tête relue plus
+    tard. La visibilité se juge sur le contenu de cette tête (ou, pour une analyse supprimée, sur
+    celui d'avant la suppression). Quand ce contenu est illisible, rien n'établit qu'une personne
+    peut voir l'analyse : seule celle qui l'a créée passe, et la lecture complète lui dit alors ce
+    qui ne va pas (`content_unavailable`). Pour toute autre, l'analyse abîmée répond comme
+    inconnue. Une panne générale du dépôt (absent, git indisponible, tête illisible) se lève telle
+    quelle.
+    """
+    tip = repository.head() if at is None else at
+    if tip is None:
+        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+    seen = repository.glance(space_id, analysis_id, at=tip)
+    if seen.owner is None or seen.visibility is None:
+        # Inconnue, ou contenu illisible : seule la personne qui l'a créée passe.
+        if seen.owner is None or seen.owner != actor:
+            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+    elif not visible_to(seen.owner, seen.visibility, actor, deleted=seen.deleted):
+        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+    return tip, seen
+
+
+def find(
+    repository: ContentRepository | None, space_id: str, analysis_id: str, actor: PersonRef
+) -> Located:
+    """Historique d'une analyse que la session a le droit de voir ; sinon, comme inconnue.
+
+    L'analyse se juge sur sa dernière révision enregistrée, chaque révision sur son propre
+    contenu : rendue personnelle après avoir été partagée, l'analyse disparaît pour tout
+    autre que son propriétaire ; partagée après avoir été personnelle, elle laisse ses
+    premières révisions à son propriétaire.
+    """
+    if repository is None:
+        raise ContentError(CONTENT_UNAVAILABLE, "not_configured")
+    if ANALYSIS_ID.fullmatch(analysis_id) is None:
+        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+    tip, seen = establish(repository, space_id, analysis_id, actor)
+
+    def allow(owner: PersonRef | None, visibility: str | None, deleted: bool) -> bool:
+        """Révision lisible par la session, jugée sur son seul en-tête. Un en-tête illisible ne
+        passe que pour la personne qui a créé l'analyse : le chargement complet lui dit ce qui
+        ne va pas ; pour toute autre, la révision est masquée."""
+        if owner is None or visibility is None:
+            return seen.owner == actor
+        return visible_to(owner, visibility, actor, deleted=deleted)
+
+    entries = repository.entries(space_id, analysis_id, at=tip, allow=allow)
+    deleted = entries[-1].revision.action == "delete"
+    last = [entry for entry in entries if entry.revision.action == "save"][-1]
+    if last.document is None or not visible(last.document, actor, deleted=deleted):
+        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+    # Une suppression n'a pas de contenu : elle se montre à qui voit l'analyse supprimée,
+    # c'est-à-dire à son propriétaire. Une révision masquée n'a pas été chargée.
+    shown = tuple(
+        not entry.hidden
+        and (entry.document is None or visible(entry.document, actor, deleted=deleted))
+        for entry in entries
+    )
+    return Located(entries, shown, deleted)
+
+
+class AnalysisUse:
+    """Ce que l'exécution demande aux analyses (A8) : vérifier une référence, puis consigner
+    qu'une exécution l'a portée. La référence ne change rien à l'exécution elle-même."""
+
+    def __init__(self, repository: ContentRepository | None, events: UsageEvents | None) -> None:
+        self._repository = repository
+        self._events = events
+        self._log = logging.getLogger(LOGGER)
+
+    def check(
+        self, space_id: str, analysis_id: str, revision: int, actor: PersonRef, model: str
+    ) -> None:
+        """Accepte une référence si l'analyse est de cet espace, si la révision existe, si la
+        session a le droit de la voir (règle par révision) et si le modèle est celui de la
+        révision. Tout ce que la session ne peut pas voir répond comme une analyse inexistante."""
+        found = find(self._repository, space_id, analysis_id, actor)
+        if found.deleted:
+            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+        stored = found.saved(revision)
+        if stored.document["query"]["model"] != model:
+            raise Refused(422, ANALYSIS_MODEL_MISMATCH)
+
+    def executed(self, space_id: str, analysis_id: str, revision: int, execution_id: str) -> None:
+        """Événement `executed`, identifié par l'exécution acceptée ; ne lève jamais."""
+        assert self._events is not None
+        try:
+            self._events.record(execution_id, "executed", space_id, analysis_id, revision)
+        except SQLAlchemyError:
+            self._log.warning("analysis event not recorded")
+
+
 def install_analysis_routes(
     app: FastAPI,
     repository: ContentRepository | None,
@@ -216,6 +327,7 @@ def install_analysis_routes(
     catalog: Catalog | None,
     reader: Callable[[Request, str], Access],
     consumers: Consumers = no_consumers,
+    events: UsageEvents | None = None,
 ) -> None:
     """Pose les routes des analyses. Sans dépôt configuré, elles répondent `content_unavailable` ;
     en mode local (ni base ni index), elles répondent `local_mode`, comme les exécutions."""
@@ -298,6 +410,28 @@ def install_analysis_routes(
         except SQLAlchemyError:
             log.warning("analysis index not updated")
 
+    def note(kind: Kind, event_id: str, space_id: str, analysis_id: str, revision: int) -> bool:
+        """Événement d'usage : une panne de la base ne défait ni ne refuse rien, elle est
+        consignée sans détail. Rend `False` quand l'événement n'a pas pu être enregistré."""
+        assert events is not None
+        try:
+            events.record(event_id, kind, space_id, analysis_id, revision)
+        except SQLAlchemyError:
+            log.warning("analysis event not recorded")
+            return False
+        return True
+
+    def published(space_id: str, stored: StoredRevision) -> None:
+        """Index et événement `saved` d'une révision qui vient d'être publiée."""
+        stamp(space_id, stored)
+        note(
+            "saved",
+            saved_id(stored.revision.commit, stored.revision.action),
+            space_id,
+            stored.document["id"],
+            stored.revision.number,
+        )
+
     def state_of(
         space_id: str, stored: StoredRevision, *, current: bool
     ) -> tuple[str, list[Violation]]:
@@ -354,30 +488,13 @@ def install_analysis_routes(
         }
 
     def locate(space_id: str, analysis_id: str, actor: PersonRef) -> Located:
-        """Historique d'une analyse que la session a le droit de voir ; sinon, comme inconnue.
-
-        L'analyse se juge sur sa dernière révision enregistrée, chaque révision sur son propre
-        contenu : rendue personnelle après avoir été partagée, l'analyse disparaît pour tout
-        autre que son propriétaire ; partagée après avoir été personnelle, elle laisse ses
-        premières révisions à son propriétaire.
-        """
-        entries = depot().entries(space_id, identifier(analysis_id))
-        deleted = entries[-1].revision.action == "delete"
-        last = [entry for entry in entries if entry.document is not None][-1]
-        assert last.document is not None
-        if not visible(last.document, actor, deleted=deleted):
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
-        # Une suppression n'a pas de contenu : elle se montre à qui voit l'analyse supprimée,
-        # c'est-à-dire à son propriétaire.
-        shown = tuple(
-            entry.document is None or visible(entry.document, actor, deleted=deleted)
-            for entry in entries
-        )
-        return Located(entries, shown, deleted)
+        return find(repository, space_id, analysis_id, actor)
 
     def current(space_id: str, analysis_id: str, actor: PersonRef) -> StoredRevision:
         """Révision courante d'une analyse visible de la session."""
-        stored = depot().read(space_id, identifier(analysis_id))
+        identifier(analysis_id)
+        tip, _ = establish(depot(), space_id, analysis_id, actor)
+        stored = depot().read(space_id, analysis_id, at=tip)
         if not visible(stored.document, actor):
             raise ContentError(ANALYSIS_NOT_FOUND, "missing")
         return stored
@@ -398,7 +515,7 @@ def install_analysis_routes(
             stored = depot().write(
                 space_id, analysis_id, document, expected_revision=None, actor=actor
             )
-            stamp(space_id, stored)
+            published(space_id, stored)
             number = stored.revision.number
             return JSONResponse(
                 present(space_id, stored, access, actor, current_revision=number), status_code=201
@@ -410,7 +527,12 @@ def install_analysis_routes(
     def list_analyses(request: Request, space_id: str) -> JSONResponse:
         _, actor = active(request, space_id)
         depot_ = depot()
-        newest = depot_.latest(space_id)
+        # La tête une seule fois : l'index est comparé à elle, et chaque ligne périmée est jugée
+        # puis lue sur ce même commit.
+        tip = depot_.head()
+        if tip is None:
+            return JSONResponse({"analyses": [], "unreadable": 0})
+        newest = depot_.latest(space_id, at=tip)
         items: list[dict[str, Any]] = []
         unreadable = 0
         assert index is not None
@@ -421,11 +543,14 @@ def install_analysis_routes(
                 # L'index ne dit plus ce que git dit : c'est git qui fait foi, ou rien.
                 state = STALE
                 try:
-                    shown = IndexRow.of(space_id, depot_.read(space_id, row.analysis_id))
+                    # La visibilité d'abord, sur la même tête : le contenu complet n'est lu et
+                    # validé que pour une session qui a le droit de voir l'analyse.
+                    establish(depot_, space_id, row.analysis_id, actor, at=tip)
+                    shown = IndexRow.of(space_id, depot_.read(space_id, row.analysis_id, at=tip))
                 except ContentError as error:
-                    if error.code != ANALYSIS_NOT_FOUND and (
-                        row.owner == actor or row.visibility == "shared"
-                    ):
+                    # Compté pour le seul propriétaire de l'index : le propriétaire ne change
+                    # jamais, alors que la visibilité d'une ligne périmée peut avoir changé.
+                    if error.code != ANALYSIS_NOT_FOUND and row.owner == actor:
                         unreadable += 1
                     continue
             if shown.owner != actor and shown.visibility != "shared":
@@ -524,6 +649,61 @@ def install_analysis_routes(
             }
         )
 
+    @app.post(path + "/{analysis_id}/opened")
+    async def opened_analysis(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
+        """Consigne l'ouverture d'une révision (A8). Une lecture n'écrit jamais : l'ouverture est
+        un appel explicite du client, avec l'identifiant qu'il a tiré, donc rejouable."""
+        _, actor = active(request, space_id)
+        depot()
+        assert events is not None
+        if not events.keyed:
+            # Sans la clé du serveur, une ouverture ne peut pas être consignée sans personne.
+            log.warning("analysis opened not recorded: usage key missing")
+            raise ContentError(CONTENT_UNAVAILABLE, "usage_key_missing")
+        values = _object(await _body(request), "body", {"event_id", "revision"})
+        client = values["event_id"]
+        if not isinstance(client, str) or ANALYSIS_ID.fullmatch(client) is None:
+            raise Invalid("event_id")
+        number = values["revision"]
+        if type(number) is not int or not 1 <= number <= MAX_REVISION:
+            raise Invalid("revision")
+
+        def work() -> JSONResponse:
+            found = locate(space_id, analysis_id, actor)
+            if found.deleted:
+                raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+            found.saved(number)
+            recorded = note(
+                "opened",
+                events.opened_id(space_id, analysis_id, actor, client),
+                space_id,
+                analysis_id,
+                number,
+            )
+            return JSONResponse({"recorded": recorded}, status_code=202)
+
+        return await asyncio.to_thread(work)
+
+    @app.get(path + "/{analysis_id}/usage")
+    def get_usage(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
+        """Compte des événements d'une analyse, par sorte, sans aucune personne."""
+        _, actor = active(request, space_id)
+        current(space_id, analysis_id, actor)
+        assert events is not None
+        return JSONResponse(
+            {
+                "id": analysis_id,
+                "usage": {
+                    kind: {
+                        "total": found.total,
+                        "last_30_days": found.last_30_days,
+                        "last_at": None if found.last_at is None else found.last_at.isoformat(),
+                    }
+                    for kind, found in events.usage(space_id, analysis_id).items()
+                },
+            }
+        )
+
     @app.post(path + "/{analysis_id}/revisions")
     async def revise_analysis(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
         access, actor = active(request, space_id)
@@ -553,7 +733,7 @@ def install_analysis_routes(
                 space_id, analysis_id, document, expected_revision=expected, actor=actor
             )
             if not saved.unchanged:
-                stamp(space_id, saved)
+                published(space_id, saved)
             # Un contenu identique à la courante n'est pas publié (le dépôt le reconnaît sous son
             # verrou) : la courante est rendue, 200 au lieu de 201.
             return JSONResponse(
@@ -590,7 +770,7 @@ def install_analysis_routes(
             )
             check_references(space_id, document)
             stored = depot().write(space_id, new_id, document, expected_revision=None, actor=actor)
-            stamp(space_id, stored)
+            published(space_id, stored)
             return JSONResponse(
                 present(space_id, stored, access, actor, current_revision=1), status_code=201
             )

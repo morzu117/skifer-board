@@ -54,7 +54,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..spaces.model import SPACE_ID, PersonRef
-from .analysis import Change, Document, diff, dumps, loads, validate
+from .analysis import Change, Document, brief, diff, dumps, loads, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
     CONTENT_UNAVAILABLE,
@@ -70,7 +70,9 @@ AUTHOR_EMAIL_VARIABLE = "SKIFER_BOARD_CONTENT_AUTHOR_EMAIL"
 DEFAULT_AUTHOR_NAME = "Skifer Board"
 # `.invalid` est réservé (RFC 2606) : l'adresse de service ne désigne aucune boîte réelle.
 DEFAULT_AUTHOR_EMAIL = "board@skifer.invalid"
-MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
+# Une analyse réelle pèse quelques Kio. La même borne vaut à l'écriture (octets canoniques) et à la
+# lecture (taille donnée par git) ; au-delà, l'analyse n'est ni écrite ni analysée.
+MAX_DOCUMENT_BYTES = 1024 * 1024
 LOCK_NAME = "board-content.lock"
 
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -208,6 +210,32 @@ class Entry:
 
     revision: Revision
     document: Document | None
+    # Révision que l'appelant a refusé de lire (voir `entries`) : son contenu n'a pas été chargé.
+    hidden: bool = False
+
+
+@dataclass(frozen=True)
+class Glance:
+    """Coup d'oeil borné sur une analyse : de quoi juger qui peut la voir, sans lire son histoire
+    ni valider son document.
+
+    `owner` et `visibility` viennent du dernier contenu enregistré ; quand ce contenu est illisible
+    (`visibility` vaut `None`), c'est l'auteur du commit de création, relu de son message. `None`
+    partout : l'analyse n'existe pas, ou rien ne permet d'en établir le propriétaire. `deleted`
+    vaut `True` quand le fichier n'est plus dans la tête et que le contenu est celui d'avant la
+    suppression.
+    """
+
+    owner: PersonRef | None
+    visibility: Literal["personal", "shared"] | None
+    deleted: bool
+
+
+# Raisons propres au document d'une analyse (contenu ou objet) : le dépôt, lui, fonctionne. Les
+# autres raisons (dépôt absent, git indisponible, tête illisible) sont des pannes générales.
+ANALYSIS_REASONS = frozenset(
+    {"document_too_large", "stored_invalid", "stored_mismatch", "blob_unreadable"}
+)
 
 
 def _unavailable(reason: str) -> ContentError:
@@ -382,13 +410,21 @@ class ContentRepository:
     # -- lecture -----------------------------------------------------------------------------
 
     @_guarded
-    def read(self, space_id: str, analysis_id: str, revision: int | None = None) -> StoredRevision:
-        """Révision courante, ou la révision donnée (même d'une analyse supprimée depuis)."""
+    def read(
+        self,
+        space_id: str,
+        analysis_id: str,
+        revision: int | None = None,
+        *,
+        at: str | None = None,
+    ) -> StoredRevision:
+        """Révision courante, ou la révision donnée (même d'une analyse supprimée depuis), lue
+        depuis la tête du dépôt ou depuis le commit `at` (voir `head`)."""
         _relative(space_id, analysis_id)
         if revision is not None:
             _check_revision(revision)
         place = self._locate()
-        history = self._history(place, self._commit(place, "HEAD"), space_id, analysis_id)
+        history = self._history(place, self._tip(place, at), space_id, analysis_id)
         saves = [item for item in history if item.action == "save"]
         if revision is None:
             if not history or history[-1].action == "delete":
@@ -401,34 +437,125 @@ class ContentRepository:
         return StoredRevision(target, self._load(place, target, space_id, analysis_id))
 
     @_guarded
-    def history(self, space_id: str, analysis_id: str) -> tuple[Revision, ...]:
+    def history(
+        self, space_id: str, analysis_id: str, *, at: str | None = None
+    ) -> tuple[Revision, ...]:
         """Révisions de la plus ancienne à la plus récente, suppression comprise."""
         _relative(space_id, analysis_id)
         place = self._locate()
-        found = self._history(place, self._commit(place, "HEAD"), space_id, analysis_id)
+        found = self._history(place, self._tip(place, at), space_id, analysis_id)
         if not found:
             raise ContentError(ANALYSIS_NOT_FOUND, "missing")
         return found
 
     @_guarded
-    def entries(self, space_id: str, analysis_id: str) -> tuple[Entry, ...]:
+    def entries(
+        self,
+        space_id: str,
+        analysis_id: str,
+        *,
+        at: str | None = None,
+        allow: Callable[[PersonRef | None, str | None, bool], bool] | None = None,
+    ) -> tuple[Entry, ...]:
         """Historique et contenu de chaque révision, relus à partir d'une même tête.
 
         Un appelant qui juge la visibilité d'une révision la juge sur le contenu même qu'il va
         servir : aucune relecture ultérieure ne peut lui en substituer un autre.
+
+        Avec `allow`, la visibilité de chaque révision enregistrée est établie d'abord depuis son
+        en-tête, sur son commit (taille mesurée, puis `analysis.brief` : ni schéma, ni règles, ni
+        références). `allow(propriétaire, visibilité, supprimée)` rend `False` pour une révision
+        que l'appelant ne lira pas : elle est rendue sans contenu (`hidden`), et son corps n'est
+        ni chargé ni validé. Quand l'en-tête est illisible, `allow(None, None, supprimée)` décide :
+        `True` charge alors le contenu complet, qui lève l'erreur de la révision. Sans `allow`,
+        tout est chargé.
         """
-        _relative(space_id, analysis_id)
+        relative = _relative(space_id, analysis_id)
         place = self._locate()
-        history = self._history(place, self._commit(place, "HEAD"), space_id, analysis_id)
+        history = self._history(place, self._tip(place, at), space_id, analysis_id)
         if not history:
             raise ContentError(ANALYSIS_NOT_FOUND, "missing")
-        return tuple(
-            Entry(
-                item,
-                None if item.action == "delete" else self._load(place, item, space_id, analysis_id),
+        deleted = history[-1].action == "delete"
+        found: list[Entry] = []
+        for item in history:
+            if item.action == "delete":
+                found.append(Entry(item, None))
+                continue
+            if allow is not None and not self._allowed(
+                place, f"{item.commit}:{relative}", analysis_id, allow, deleted
+            ):
+                found.append(Entry(item, None, hidden=True))
+                continue
+            found.append(Entry(item, self._load(place, item, space_id, analysis_id)))
+        return tuple(found)
+
+    @classmethod
+    def _allowed(
+        cls,
+        place: _Place,
+        spec: str,
+        analysis_id: str,
+        allow: Callable[[PersonRef | None, str | None, bool], bool],
+        deleted: bool,
+    ) -> bool:
+        try:
+            issuer, subject, visibility, _ = cls._brief(place, spec, analysis_id)
+        except ContentError as error:
+            if error.reason not in ANALYSIS_REASONS:
+                raise
+            return allow(None, None, deleted)
+        return allow(PersonRef(issuer, subject), visibility, deleted)
+
+    @_guarded
+    def glance(self, space_id: str, analysis_id: str, *, at: str | None = None) -> Glance:
+        """Qui possède cette analyse ? Au plus quelques lectures, quelle que soit la longueur de
+        l'histoire : le contenu de la tête (un seul blob), et pour une analyse supprimée le
+        dernier commit qui touche le fichier et son contenu d'avant.
+
+        Une erreur propre à l'analyse (document illisible ou invalide) ne se lève pas : elle est
+        rendue par `document` à `None`, pour que l'appelant la traite comme une analyse dont il
+        n'a pas pu établir la visibilité. Une panne du dépôt, elle, se lève comme ailleurs.
+        """
+        relative = _relative(space_id, analysis_id)
+        place = self._locate()
+        tip = self._tip(place, at)
+        if tip is None:
+            return Glance(None, None, False)
+        # Le dernier commit qui touche le chemin est toujours lu, que l'analyse soit présente,
+        # supprimée ou absente : les états ne se distinguent pas par les commandes lancées d'abord.
+        last = place.git.text(
+            [
+                "log",
+                "--no-color",
+                "--no-show-signature",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--format=%H",
+                "-n",
+                "1",
+                tip,
+                "--",
+                relative,
+            ]
+        ).strip()
+        deleted = False
+        source = tip
+        if not self._present(place, tip, relative):
+            if _OBJECT.fullmatch(last) is None:
+                return Glance(None, None, False)
+            # Le dernier commit qui touche un fichier absent de la tête l'a retiré : son parent a
+            # le fichier. Une histoire qui ne le permet pas est une panne du dépôt (`git_failed`).
+            deleted = True
+            source = place.git.object_id(["rev-parse", "--verify", f"{last}^"])
+        try:
+            issuer, subject, visibility, found = self._brief(
+                place, f"{source}:{relative}", analysis_id
             )
-            for item in history
-        )
+        except ContentError as error:
+            if error.reason not in ANALYSIS_REASONS:
+                raise
+            return Glance(self._creator(place, tip, space_id, analysis_id), None, deleted)
+        return Glance(PersonRef(issuer, subject), visibility, deleted)
 
     @_guarded
     def head(self) -> str | None:
@@ -451,7 +578,7 @@ class ContentRepository:
         return tuple(sorted((match[1], match[2]) for match in found if match is not None))
 
     @_guarded
-    def latest(self, space_id: str) -> dict[str, str]:
+    def latest(self, space_id: str, *, at: str | None = None) -> dict[str, str]:
         """Dernier commit qui a touché le fichier de chaque analyse de l'espace (une lecture).
 
         Une analyse supprimée y figure avec le commit de sa suppression. Cette seule lecture suffit
@@ -460,7 +587,7 @@ class ContentRepository:
         """
         _check_space(space_id)
         place = self._locate()
-        tip = self._commit(place, "HEAD")
+        tip = self._tip(place, at)
         if tip is None:
             return {}
         output = place.git.text(
@@ -489,13 +616,15 @@ class ContentRepository:
         return newest
 
     @_guarded
-    def diff(self, space_id: str, analysis_id: str, before: int, after: int) -> tuple[Change, ...]:
+    def diff(
+        self, space_id: str, analysis_id: str, before: int, after: int, *, at: str | None = None
+    ) -> tuple[Change, ...]:
         """Écarts structurels entre deux révisions enregistrées, calculés sur le contenu validé."""
         _check_revision(before)
         _check_revision(after)
         return diff(
-            self.read(space_id, analysis_id, before).document,
-            self.read(space_id, analysis_id, after).document,
+            self.read(space_id, analysis_id, before, at=at).document,
+            self.read(space_id, analysis_id, after, at=at).document,
         )
 
     # -- écriture ----------------------------------------------------------------------------
@@ -512,6 +641,9 @@ class ContentRepository:
     ) -> StoredRevision:
         """Crée la révision 1 (`expected_revision=None`) ou la suivante de la révision attendue.
 
+        Un document dont les octets canoniques dépassent `MAX_DOCUMENT_BYTES` est refusé
+        (`invalid_analysis`, règle `out_of_bounds` à la racine).
+
         Un contenu identique à celui de la révision attendue n'est pas publié : `git log` par
         fichier ne montrerait pas ce commit, son numéro serait inconnu de l'historique. La
         révision courante est rendue avec `unchanged=True`, sous le verrou et après le contrôle
@@ -527,6 +659,10 @@ class ContentRepository:
         if expected_revision is not None:
             _check_revision(expected_revision)
         payload = dumps(valid)
+        if len(payload) > MAX_DOCUMENT_BYTES:
+            # Le schéma seul admet bien plus (voir la Réalisation 18.3) : la borne est celle de la
+            # lecture, pour qu'on ne puisse pas écrire ce que Board refuserait de relire.
+            raise _invalid("", "out_of_bounds")
         place = self._locate()
         scratch = _scratch_parent(place.root)
         with self._locked(place):
@@ -623,6 +759,16 @@ class ContentRepository:
             if entry and _ALLOWED.fullmatch(entry.partition("\n")[0]) is None:
                 raise _unavailable("unsafe_config")
 
+    def _tip(self, place: _Place, at: str | None) -> str | None:
+        """La tête du dépôt, ou le commit donné : un appelant qui juge et lit en plusieurs étapes
+        résout la tête une fois (`head`) et la transmet, pour que toutes les lectures portent sur
+        le même commit."""
+        if at is None:
+            return self._commit(place, "HEAD")
+        if _OBJECT.fullmatch(at) is None:
+            raise _invalid("/commit", "bad_identifier")
+        return at
+
     def _commit(self, place: _Place, ref: str) -> str | None:
         """Commit de la référence ; `None` si elle est absente, erreur si elle est illisible.
 
@@ -708,10 +854,98 @@ class ContentRepository:
         kind: Literal["save", "delete"] = "save" if action == "save" else "delete"
         return Revision(number, commit, datetime.fromisoformat(stamp), actor, kind)
 
+    @staticmethod
+    def _present(place: _Place, revision: str, relative: str) -> bool:
+        """La révision a-t-elle ce fichier dans son arbre ? Une lecture d'arbre, non d'histoire."""
+        listing = place.git.text(["ls-tree", "-z", "--name-only", revision, "--", relative])
+        return listing.rstrip("\0") == relative
+
+    def _creator(
+        self, place: _Place, tip: str, space_id: str, analysis_id: str
+    ) -> PersonRef | None:
+        """Auteur du commit qui a créé le fichier, lu de son message ; `None` s'il est illisible.
+
+        Ne sert qu'à une analyse dont le contenu est abîmé : la personne qui l'a créée reste
+        celle qui peut en constater l'état, personne d'autre.
+        """
+        output = place.git.text(
+            [
+                "log",
+                "--no-color",
+                "--no-show-signature",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--encoding=UTF-8",
+                "--diff-filter=A",
+                "-n",
+                "1",
+                "--format=%H%x1f%cI%x1f%B%x1e",
+                tip,
+                "--",
+                _relative(space_id, analysis_id),
+            ]
+        )
+        try:
+            created = self._parse(output.split("\x1e")[0].lstrip("\n"), space_id, analysis_id)
+        except (ValueError, KeyError, TypeError):
+            return None
+        return created.actor
+
     def _load(self, place: _Place, revision: Revision, space_id: str, analysis_id: str) -> Document:
-        relative = _relative(space_id, analysis_id)
-        raw = place.git.run(["cat-file", "blob", f"{revision.commit}:{relative}"]).stdout
+        return self._blob(
+            place, f"{revision.commit}:{_relative(space_id, analysis_id)}", analysis_id
+        )
+
+    @staticmethod
+    def _status(done: subprocess.CompletedProcess[bytes]) -> None:
+        """Issue d'un `cat-file` : l'objet absent ou illisible (code 128 de git) est propre à
+        l'analyse ; tout autre échec (signal, code inattendu) est une défaillance de git. La
+        sortie d'erreur n'est jamais lue ni reprise."""
+        if done.returncode == 128:
+            raise _unavailable("blob_unreadable")
+        if done.returncode != 0:
+            raise _unavailable("git_failed")
+
+    @classmethod
+    def _measured(cls, place: _Place, spec: str) -> None:
+        """Refuse un blob plus gros que la borne sur la taille que donne git (`cat-file -s`),
+        avant d'en récupérer un seul octet : sur tous les chemins qui lisent un blob."""
+        measured = place.git.run(["cat-file", "-s", spec], ok=None)
+        cls._status(measured)
+        try:
+            size = int(measured.stdout.decode("ascii").strip())
+        except ValueError:
+            raise _unavailable("git_output") from None
+        if size > MAX_DOCUMENT_BYTES:
+            raise _unavailable("document_too_large")
+
+    @classmethod
+    def _brief(
+        cls, place: _Place, spec: str, analysis_id: str
+    ) -> tuple[str, str, Literal["personal", "shared"], str]:
+        """Propriétaire et visibilité du blob, avant toute validation de son contenu : seul
+        l'en-tête canonique est analysé (voir `analysis.brief`)."""
+        cls._measured(place, spec)
+        done = place.git.run(["cat-file", "blob", spec], ok=None)
+        cls._status(done)
+        try:
+            issuer, subject, visibility, found = brief(done.stdout)
+        except ContentError:
+            raise _unavailable("stored_invalid") from None
+        if not _person_ok(issuer, subject):
+            raise _unavailable("stored_invalid")
+        if found != analysis_id:
+            raise _unavailable("stored_mismatch")
+        return issuer, subject, "shared" if visibility == "shared" else "personal", found
+
+    @classmethod
+    def _blob(cls, place: _Place, spec: str, analysis_id: str) -> Document:
+        cls._measured(place, spec)
+        done = place.git.run(["cat-file", "blob", spec], ok=None)
+        cls._status(done)
+        raw = done.stdout
         if len(raw) > MAX_DOCUMENT_BYTES:
+            # Garde supplémentaire : le blob a changé entre la mesure et la lecture.
             raise _unavailable("document_too_large")
         try:
             document = loads(raw)

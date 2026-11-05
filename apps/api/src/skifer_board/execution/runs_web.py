@@ -9,7 +9,7 @@ import time
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
@@ -44,6 +44,29 @@ IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}")
 EXECUTION_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 DEADLINE = timedelta(seconds=30)
 LEASE = timedelta(seconds=40)
+
+
+class AnalysisReferences(Protocol):
+    """Ce que la soumission demande aux analyses versionnées (plan 18.3, A8)."""
+
+    def check(
+        self, space_id: str, analysis_id: str, revision: int, actor: PersonRef, model: str
+    ) -> None:
+        """Lève si la référence n'est pas acceptable pour cette personne et ce modèle."""
+
+    def executed(self, space_id: str, analysis_id: str, revision: int, execution_id: str) -> None:
+        """Consigne qu'une exécution acceptée portait cette référence ; ne lève jamais."""
+
+
+def _reference(value: Any) -> tuple[str, int]:
+    """Référence d'analyse `{id, revision}` : forme seule, la vérification est au serveur."""
+    found = _object(value, "analysis", {"id", "revision"})
+    identifier, revision = found["id"], found["revision"]
+    if not isinstance(identifier, str) or EXECUTION_ID.fullmatch(identifier) is None:
+        raise Invalid("analysis.id")
+    if type(revision) is not int or not 1 <= revision <= 999_999_999:
+        raise Invalid("analysis.revision")
+    return identifier, revision
 
 
 def _names(value: Any, field: str, *, required: bool) -> tuple[str, ...]:
@@ -140,7 +163,8 @@ def install_execution_routes(
     transport: HttpTransport,
     personal_access: PersonalAccess,
     measure_contextual: Callable[[ExecutionRecord, str, float], None],
-    attributes: Callable[[Identity], Mapping[str, str]] | None = None,
+    attributes: Callable[[Identity], Mapping[str, str]] | None,
+    analyses: AnalysisReferences,
 ) -> None:
     path = "/api/spaces/{space_id}/executions"
 
@@ -191,7 +215,18 @@ def install_execution_routes(
             raise Refused(503, "engine_unavailable")
         assert store is not None
         await asyncio.to_thread(store.recover_stale, clock())
-        name, environment, semantic, request_hash = _request(await _body(request))
+        body = await _body(request)
+        reference: tuple[str, int] | None = None
+        if isinstance(body, dict) and "analysis" in body:
+            # La référence n'est pas la requête : elle n'entre ni dans l'empreinte ni dans
+            # l'exécution, seulement dans la vérification et dans l'événement d'usage.
+            body = dict(body)
+            reference = _reference(body.pop("analysis"))
+        name, environment, semantic, request_hash = _request(body)
+        if reference is not None:
+            await asyncio.to_thread(
+                analyses.check, space_id, reference[0], reference[1], actor, semantic.model
+            )
         try:
             catalog = await asyncio.to_thread(describe_catalog, pool.models_dir)
         except SemanticRefusal:
@@ -257,6 +292,10 @@ def install_execution_routes(
             raise Refused(503, "worker_unavailable") from None
         except ExecutionUnavailable:
             raise Refused(409, "binding_changed") from None
+        if reference is not None:
+            await asyncio.to_thread(
+                analyses.executed, space_id, reference[0], reference[1], record.id
+            )
         return JSONResponse(_json(record), status_code=202)
 
     @app.get(path)

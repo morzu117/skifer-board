@@ -20,7 +20,8 @@ from sqlalchemy.engine import URL
 from sqlalchemy.exc import OperationalError
 from state.conftest import MOT_DE_PASSE, environnement, injoignable
 
-from .monde import ACTOR, OTHER, commit, document, init, new_id, relative, repository
+from .monde import ACTOR, OTHER, commit, document, git, init, new_id, relative, repository
+from .test_etat import message_board
 from .test_index import INSTANT, ligne
 
 REPERTOIRE = "SKIFER_BOARD_CONTENT_REPOSITORY"
@@ -110,6 +111,51 @@ def test_une_analyse_abimee_est_nommee_et_les_autres_sont_indexees(
     rapport = reindex(depot, index)
     assert rapport == Report(1, (("finance", abimee, "history_inconsistent"),))
     assert [item.analysis_id for item in index.rows("finance")] == [saine]
+
+
+def supprimer_le_blob(racine: Path, ident: str) -> None:
+    """Fait disparaître l'objet du fichier alors que la tête et l'arbre se lisent."""
+    objet = git(racine, "rev-parse", f"HEAD:{relative('finance', ident)}").strip()
+    chemin = racine / "objects" / objet[:2] / objet[2:]
+    chemin.chmod(0o600)
+    chemin.unlink()
+
+
+def test_une_analyse_dont_le_blob_manque_est_nommee_et_les_autres_sont_indexees(
+    depot: ContentRepository, index: AnalysisIndex, racine: Path
+) -> None:
+    saine, abimee = ecrire(depot), ecrire(depot)
+    supprimer_le_blob(racine, abimee)
+    rapport = reindex(depot, index)
+    assert rapport == Report(1, (("finance", abimee, "blob_unreadable"),))
+    assert [item.analysis_id for item in index.rows("finance")] == [saine]
+
+
+def test_une_analyse_au_dela_de_la_borne_est_nommee_sans_que_son_blob_soit_recupere(
+    depot: ContentRepository,
+    index: AnalysisIndex,
+    racine: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from skifer_board.content import dumps, validate
+    from skifer_board.content import repository as depot_module
+
+    saine = ecrire(depot)
+    ident = new_id()
+    texte = dumps(validate(document(ident))) + b"#" + b"x" * (1024 * 1024) + b"\n"
+    gros = commit(racine, {relative("finance", ident): texte}, message_board("finance", ident, 1))
+    commandes: list[list[str]] = []
+    original = depot_module._Git.run
+
+    def espion(self: object, args: object, **options: object) -> object:
+        commandes.append(list(args))  # type: ignore[call-overload]
+        return original(self, args, **options)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(depot_module._Git, "run", espion)
+    assert reindex(depot, index) == Report(1, (("finance", ident, "document_too_large"),))
+    assert [item.analysis_id for item in index.rows("finance")] == [saine]
+    spec = f"{gros}:{relative('finance', ident)}"
+    assert [c[:2] for c in commandes if c[0] == "cat-file" and c[2] == spec] == [["cat-file", "-s"]]
 
 
 def test_un_echec_du_depot_arrete_la_reconstruction_sans_toucher_l_index(
@@ -292,6 +338,22 @@ def test_commande_avec_une_analyse_illisible(
     assert code == 1
     assert sortie == "1 analyse(s) indexée(s).\n"
     assert erreur == f"Illisible : finance/{abimee} (history_inconsistent).\n"
+    assert [item.analysis_id for item in AnalysisIndex(migre).rows("finance")] == [saine]
+
+
+def test_commande_avec_un_blob_manquant(
+    database_url: URL,
+    migre: Engine,
+    depot: ContentRepository,
+    racine: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    saine, abimee = ecrire(depot), ecrire(depot)
+    supprimer_le_blob(racine, abimee)
+    code, sortie, erreur = lancer(environ(database_url, racine), capsys)
+    assert code == 1
+    assert sortie == "1 analyse(s) indexée(s).\n"
+    assert erreur == f"Illisible : finance/{abimee} (blob_unreadable).\n"
     assert [item.analysis_id for item in AnalysisIndex(migre).rows("finance")] == [saine]
 
 

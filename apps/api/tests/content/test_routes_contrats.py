@@ -1,4 +1,4 @@
-"""Exemples de contrat des routes des analyses, produits par le serveur réel (plan 18.2).
+"""Exemples de contrat des routes des analyses, produits par le serveur réel (plan 18.2 et 18.3).
 
 Chaque route et chaque refus a son exemple sous `contracts/analyses/routes/`. Les identifiants
 d'analyse et les empreintes de commit, différents à chaque exécution, y sont remplacés par
@@ -14,9 +14,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 from httpx2 import Response
 from skifer_board.catalog import CatalogService
+from skifer_board.content.events import UsageEvents
 from skifer_board.content.web import Consumer
 from skifer_board.server import create_app
 from spaces.monde import (
@@ -27,6 +29,7 @@ from spaces.monde import (
     PLATEFORME_SEULE,
     A,
 )
+from sqlalchemy.exc import OperationalError
 
 from .monde import init, new_id, repository
 from .serveur import CHEMIN, Banc, corps
@@ -214,3 +217,95 @@ def test_contrats_des_revisions_masquees(banc: Banc) -> None:
         "historique-proprietaire",
         200,
     )
+
+
+def masquer_execution(reponse: Response, nom: str, statut: int) -> None:
+    """L'état d'une exécution acceptée dépend de la course avec son worker : il n'est pas figé."""
+    corps_ = reponse.json()
+    assert reponse.status_code == statut
+    for champ in ("state", "started_at"):
+        corps_[champ] = f"<{champ}>"
+    obtenu = {"status": reponse.status_code, "body": normaliser(corps_)}
+    chemin = CONTRATS / f"{nom}.json"
+    if os.environ.get("BOARD_REGENERER_CONTRATS"):
+        chemin.write_text(json.dumps(obtenu, separators=(",", ":"), ensure_ascii=False))
+    assert obtenu == json.loads(chemin.read_text(encoding="utf-8")), nom
+
+
+def test_contrats_de_la_reference_et_des_evenements(banc: Banc) -> None:
+    ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+    executions = f"/api/spaces/{A}/executions"
+    requete = {
+        "connection": "finance",
+        "environment": "DEV",
+        "model": "sales",
+        "metrics": ["revenue"],
+        "dimensions": [],
+        "filters": [],
+    }
+
+    def soumettre(**changes: Any) -> Response:
+        return banc.appel(LECTEUR_GROUPE, "POST", executions, json={**requete, **changes})
+
+    masquer_execution(
+        soumettre(analysis={"id": ident, "revision": 1}), "executer-avec-reference", 202
+    )
+    contrat(soumettre(analysis={"id": new_id(), "revision": 1}), "refus-reference-introuvable", 404)
+    contrat(
+        soumettre(analysis={"id": ident, "revision": 1}, model="autre"),
+        "refus-reference-modele",
+        422,
+    )
+    contrat(soumettre(analysis={"id": ident, "revision": 0}), "refus-reference-invalide", 400)
+    ouverture = {"event_id": "9d1c6f1e-5e0b-4c58-8b43-0d3f6a1c7e55", "revision": 1}
+    chemin = f"{CHEMIN}/{ident}/opened"
+    contrat(banc.appel(LECTEUR_GROUPE, "POST", chemin, json=ouverture), "ouvrir", 202)
+    contrat(banc.appel(LECTEUR_GROUPE, "POST", chemin, json={}), "refus-ouverture-invalide", 400)
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "POST", chemin, json={**ouverture, "revision": 9}),
+        "refus-ouverture-introuvable",
+        404,
+    )
+    contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{ident}/usage"), "usage", 200)
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{new_id()}/usage"),
+        "refus-usage-introuvable",
+        404,
+    )
+
+
+def test_contrat_d_un_evenement_non_enregistre(banc: Banc, monkeypatch: pytest.MonkeyPatch) -> None:
+    ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+
+    def panne(*_: Any, **__: Any) -> None:
+        raise OperationalError("INSERT", {}, Exception("hors ligne"))
+
+    monkeypatch.setattr(UsageEvents, "record", panne)
+    contrat(
+        banc.appel(
+            LECTEUR_GROUPE,
+            "POST",
+            f"{CHEMIN}/{ident}/opened",
+            json={"event_id": "9d1c6f1e-5e0b-4c58-8b43-0d3f6a1c7e55", "revision": 1},
+        ),
+        "ouvrir-non-enregistree",
+        202,
+    )
+
+
+def test_contrat_d_une_reference_sans_depot(banc_sans_depot: Banc) -> None:
+    reponse = banc_sans_depot.appel(
+        LECTEUR_GROUPE,
+        "POST",
+        f"/api/spaces/{A}/executions",
+        json={
+            "connection": "finance",
+            "environment": "DEV",
+            "model": "sales",
+            "metrics": ["revenue"],
+            "dimensions": [],
+            "filters": [],
+            "analysis": {"id": new_id(), "revision": 1},
+        },
+    )
+    contrat(reponse, "refus-reference-depot-indisponible", 503)

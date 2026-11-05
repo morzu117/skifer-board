@@ -144,7 +144,7 @@ def test_une_ligne_dont_l_analyse_a_disparu_de_git_est_ignoree(banc: Banc) -> No
     assert lister(banc) == {"analyses": [], "unreadable": 0}
 
 
-def test_une_analyse_illisible_est_comptee_pour_ceux_qui_devraient_la_voir(banc: Banc) -> None:
+def test_une_analyse_illisible_n_est_comptee_que_pour_son_proprietaire(banc: Banc) -> None:
     partagee = banc.creer_ok(CREATEUR_GROUPE, visibility="shared", name="Partagée")
     personnelle = banc.creer_ok(CREATEUR_GROUPE, visibility="personal", name="Perso")
     banc.creer_ok(CREATEUR_GROUPE, visibility="shared", name="Intacte")
@@ -153,8 +153,9 @@ def test_une_analyse_illisible_est_comptee_pour_ceux_qui_devraient_la_voir(banc:
     vue = lister(banc)
     assert [item["name"] for item in vue["analyses"]] == ["Intacte"]
     assert vue["unreadable"] == 2
-    # Un lecteur ne voit pas qu'une analyse personnelle d'un autre est abîmée.
-    assert lister(banc, LECTEUR_GROUPE)["unreadable"] == 1
+    # Un lecteur ne voit pas qu'une analyse d'un autre est abîmée, partagée ou non : la ligne
+    # d'index peut être périmée, seul son propriétaire (qui ne change jamais) fait foi.
+    assert lister(banc, LECTEUR_GROUPE)["unreadable"] == 0
     reponse = banc.appel(CREATEUR_GROUPE, "GET", f"{CHEMIN}/{partagee}")
     assert reponse.status_code == 503
     assert reponse.json() == {"error": {"code": "content_unavailable"}}

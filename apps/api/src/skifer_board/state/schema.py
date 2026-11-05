@@ -419,3 +419,21 @@ analysis_index = Table(
     PrimaryKeyConstraint("space_id", "analysis_id", name="pk_analysis_index"),
     Index("ix_analysis_index_visibility", "space_id", "visibility"),
 )
+
+# Événements d'usage des analyses (plan 18, A8) : sauvegarde, ouverture et exécution depuis une
+# analyse. Une ligne ne porte que de quoi compter et dater : ni personne, ni nom, ni valeur de
+# filtre, ni contenu, ni donnée. `event_id` est l'identifiant unique de l'événement : l'insérer
+# deux fois ne crée rien. Aucune clé étrangère : un événement survit à l'analyse et à l'espace.
+# Ces lignes restent dans la base ; rien n'est transmis (le lot 10 les lira).
+analysis_events = Table(
+    "analysis_events",
+    metadata,
+    Column("event_id", String(36), nullable=False),
+    Column("kind", String(8), nullable=False),
+    Column("space_id", String(40), nullable=False),
+    Column("analysis_id", String(36), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("occurred_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("event_id", name="pk_analysis_events"),
+    Index("ix_analysis_events_analysis", "space_id", "analysis_id", "kind"),
+)

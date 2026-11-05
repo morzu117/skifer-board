@@ -50,7 +50,7 @@ def test_migration_0013_depuis_une_base_existante(engine: Engine) -> None:
     )
     assert "analysis_index" not in inspect(engine).get_table_names()
     upgrade(engine)
-    assert current_revision(engine) == "0013"
+    assert current_revision(engine) == "0014"
     assert SpaceStore(engine).get_space("finance") is not None
     with engine.connect() as connection:
         assert connection.execute(select(analysis_index)).all() == []

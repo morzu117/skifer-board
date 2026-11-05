@@ -37,7 +37,13 @@ USAGE = "Usage : skifer-board-reindex"
 ATTEMPTS = 3
 # Raisons qui disent qu'une analyse est abîmée, pas que le dépôt est indisponible.
 DAMAGED = frozenset(
-    {"history_inconsistent", "stored_invalid", "stored_mismatch", "document_too_large"}
+    {
+        "history_inconsistent",
+        "stored_invalid",
+        "stored_mismatch",
+        "document_too_large",
+        "blob_unreadable",
+    }
 )
 
 

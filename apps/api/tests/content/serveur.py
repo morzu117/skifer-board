@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import pytest
 import yaml
 from catalog.conftest import service as service
@@ -16,12 +17,15 @@ from httpx2 import Response
 from identity.conftest import horloge as horloge
 from skifer_board.catalog import CatalogService
 from skifer_board.content import ContentRepository
+from skifer_board.content.events import UsageKey
 from skifer_board.content.index import AnalysisIndex
 from skifer_board.content.web import Consumer
 from skifer_board.execution import ConnectionStore
+from skifer_board.execution.connectors import DuckDbEndpoint
+from skifer_board.execution.model import Connector, IdentityMode
 from skifer_board.execution.vault import VaultKeys
 from skifer_board.server import create_app
-from skifer_board.spaces.model import PersonRef
+from skifer_board.spaces.model import Environment, PersonRef
 from spaces.monde import (
     ADMIN_GROUPE,
     COOKIE,
@@ -35,6 +39,7 @@ from spaces.monde import (
 from .monde import document, init, new_id, repository
 
 CHEMIN = f"/api/spaces/{A}/analyses"
+CLE_D_USAGE = UsageKey(b"u" * 32)
 
 
 def modeles(racine: Path) -> Path:
@@ -139,9 +144,29 @@ class Banc:
         )
 
 
+def base_de_ventes(racine: Path) -> Path:
+    """Base DuckDB où `main.sales` existe : les exécutions acceptées y aboutissent."""
+    chemin = racine / "ventes.duckdb"
+    with duckdb.connect(str(chemin)) as connexion:
+        connexion.execute("CREATE TABLE sales (tenant VARCHAR, amount INTEGER, region VARCHAR)")
+        connexion.execute("INSERT INTO sales VALUES ('A', 12, 'Sud'), ('B', 100, 'Nord')")
+    return chemin
+
+
 def connecter_finance(monde: Monde) -> None:
-    ConnectionStore(monde.moteur).create(
-        A, "finance", PersonRef.of(ADMIN_GROUPE.identite), monde.horloge()
+    """Connexion logique `finance`, liée en DEV à la base de ventes (identité de service)."""
+    acteur = PersonRef.of(ADMIN_GROUPE.identite)
+    registre = ConnectionStore(monde.moteur)
+    registre.create(A, "finance", acteur, monde.horloge())
+    registre.bind(
+        A,
+        "finance",
+        Environment.DEV,
+        Connector.DUCKDB,
+        "ventes",
+        IdentityMode.SERVICE,
+        acteur,
+        monde.horloge(),
     )
 
 
@@ -163,8 +188,11 @@ def ouvrir(
         vault_keys=VaultKeys("test", {"test": b"1" * 32}),
         execution_models_dir=dossier,
         execution_certification_mode="off",
+        endpoints={"ventes": DuckDbEndpoint(base_de_ventes(racine))},
+        execution_reader_attributes=lambda identite: {"tenant": "A"},
         content_repository=options.get("content_repository", depot),
         analysis_consumers=lambda espace, analyse: tuple(consommateurs),
+        usage_key=options.get("usage_key", CLE_D_USAGE),
     )
     with TestClient(
         app, base_url=ORIGINE, follow_redirects=False, raise_server_exceptions=False

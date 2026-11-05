@@ -178,9 +178,9 @@ def test_la_revision_jugee_est_celle_qui_est_servie(
     def interdite(*_: Any, **__: Any) -> Any:
         raise AssertionError("relecture après le contrôle de visibilité")
 
-    def instantane(space_id: str, analysis_id: str) -> Any:
+    def instantane(space_id: str, analysis_id: str, **options: Any) -> Any:
         lectures["entries"] += 1
-        lu = entries(space_id, analysis_id)
+        lu = entries(space_id, analysis_id, **options)
         # L'analyse est retirée du partage juste après la lecture de l'instantané, par un autre
         # accès au dépôt (les méthodes de celui du serveur sont interdites ici).
         if lectures["entries"] == 1:
@@ -196,6 +196,6 @@ def test_la_revision_jugee_est_celle_qui_est_servie(
     monkeypatch.setattr(banc.depot, "entries", instantane)
     # La requête en cours est servie de l'instantané qu'elle a jugé, pas d'une relecture.
     assert lire(banc, LECTEUR_GROUPE, ident, "/revisions/2").json()["analysis"]["name"] == PUBLIC
-    # La suivante voit le retrait du partage.
+    # La suivante voit le retrait du partage, et le refuse avant de lire l'historique (18.3).
     assert ecart(banc, LECTEUR_GROUPE, ident, 2, 3).status_code == 404
-    assert lectures["entries"] == 2
+    assert lectures["entries"] == 1

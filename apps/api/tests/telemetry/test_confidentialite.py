@@ -33,6 +33,7 @@ from identity.conftest import horloge as horloge
 from identity.test_web import connecter
 from skifer_board.catalog import CatalogService
 from skifer_board.content import ContentRepository
+from skifer_board.content.events import UsageKey
 from skifer_board.content.index import AnalysisIndex, IndexRow
 from skifer_board.execution import ConnectionStore
 from skifer_board.execution.vault import VaultKeys
@@ -131,6 +132,7 @@ def serveur(
         ConnectionStore(moteur),
         VaultKeys("test", {"test": b"1" * 32}),
         content_repository=depot,
+        usage_key=UsageKey(b"u" * 32),
     )
     peupler(magasin, horloge)
     magasin.grant(
@@ -521,6 +523,38 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
             params={"expected_revision": "2"},
         )
         parcours("GET", f"{racine}/{modele}", an + "/{analysis_id}", 404)
+
+        # Événements d'usage (plan 18.3) : l'identifiant tiré par le client, la référence et les
+        # valeurs qui l'accompagnent ne laissent aucune trace dans les mesures.
+        vivante = new_id()
+        serveur.depot.write(
+            A, vivante, premiere | {"id": vivante}, expected_revision=None, actor=ACTOR
+        )
+        evenement = "9d1c6f1e-5e0b-4c58-8b43-0d3f6a1c7e55"
+        secrets.add(evenement)
+        parcours(
+            "POST",
+            f"{racine}/{vivante}/opened",
+            an + "/{analysis_id}/opened",
+            202,
+            {"event_id": evenement, "revision": 1},
+        )
+        parcours(
+            "POST",
+            f"{racine}/{vivante}/opened",
+            an + "/{analysis_id}/opened",
+            400,
+            {"event_id": "evenement-sentinelle", "revision": 1},
+        )
+        parcours("GET", f"{racine}/{vivante}/usage", an + "/{analysis_id}/usage", 200)
+        parcours("GET", f"{racine}/{new_id()}/usage", an + "/{analysis_id}/usage", 404)
+        parcours(
+            "POST",
+            f"/api/spaces/{A}/executions",
+            ex,
+            503,
+            {"analysis": {"id": "analyse-sentinelle", "revision": 1}},
+        )
 
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text

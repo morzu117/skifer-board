@@ -219,6 +219,15 @@ COLONNES = {
         "byte_count": True,
         "truncated": True,
     },
+    # Événements d'usage des analyses (plan 18.3, révision 0014).
+    "analysis_events": {
+        "event_id": False,
+        "kind": False,
+        "space_id": False,
+        "analysis_id": False,
+        "revision": False,
+        "occurred_at": False,
+    },
     # Index des analyses versionnées (plan 18.2, révision 0013).
     "analysis_index": {
         "space_id": False,
@@ -254,6 +263,7 @@ INSTANTS = {
     "connection_bindings": {"set_at"},
     "connection_credentials": {"set_at"},
     "analysis_index": {"committed_at", "indexed_at"},
+    "analysis_events": {"occurred_at"},
     "executions": {
         "binding_set_at",
         "created_at",
@@ -282,6 +292,7 @@ CLES = {
     "connection_credentials": ["space_id", "name", "environment"],
     "executions": ["id"],
     "analysis_index": ["space_id", "analysis_id"],
+    "analysis_events": ["event_id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 
