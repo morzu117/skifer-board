@@ -1,0 +1,1 @@
+{"status":200,"body":{"id":"<uuid>","current_revision":2,"deleted":false,"revisions":[{"revision":1,"available":false},{"revision":2,"available":true,"commit":"<commit>","committed_at":"2026-01-15T12:00:00+00:00","actor":{"issuer":"https://id.example.invalid","subject":"cora"},"action":"save"}]}}

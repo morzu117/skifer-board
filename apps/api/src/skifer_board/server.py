@@ -33,6 +33,10 @@ from .catalog import (
     DocumentKind,
     HistoryUnavailable,
 )
+from .content import ContentConfigError, ContentRepository
+from .content import config_from_env as content_from_env
+from .content.index import AnalysisIndex
+from .content.web import Consumers, install_analysis_routes, no_consumers
 from .execution import ConnectionStore, install_connections
 from .execution.connectors import (
     Endpoint,
@@ -54,7 +58,7 @@ from .execution.oauth_store import OAuthStore
 from .execution.oauth_web import install_oauth
 from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
 from .execution.runs_web import install_execution_routes
-from .execution.semantic import certification_store_from_path
+from .execution.semantic import certification_store_from_path, describe_catalog
 from .execution.vault import CredentialVault, VaultConfigError, VaultKeys, keys_from_env
 from .execution.worker import ExecutionWorkerPool
 from .identity import (
@@ -155,6 +159,8 @@ def create_app(
     execution_reader_attributes: Callable[[Identity], Mapping[str, str]] | None = None,
     databricks_oauth_client_id: str | None = None,
     databricks_oauth_transport: FormTransport | None = None,
+    content_repository: ContentRepository | None = None,
+    analysis_consumers: Consumers = no_consumers,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -297,6 +303,17 @@ def create_app(
         personal_oauth.token,
         measure_contextual,
         execution_reader_attributes,
+    )
+    # Analyses versionnées (plan 18.2) : sans dépôt de contenus, les routes répondent
+    # `content_unavailable` ; sans base (mode local), `local_mode`.
+    install_analysis_routes(
+        app,
+        content_repository,
+        None if spaces.store is None else AnalysisIndex(spaces.store.engine, spaces.clock),
+        connections,
+        None if execution_models_dir is None else lambda: describe_catalog(execution_models_dir),
+        guards.reader,
+        analysis_consumers,
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store
@@ -463,6 +480,10 @@ def main() -> None:
         endpoints = endpoints_from_env(os.environ)
     except EndpointConfigError as error:
         raise SystemExit(str(error)) from error
+    try:
+        content_config = content_from_env(os.environ)
+    except ContentConfigError as error:
+        raise SystemExit(str(error)) from error
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
     models_raw = os.environ.get(MODELS_VARIABLE)
@@ -494,6 +515,9 @@ def main() -> None:
             execution_models_dir=models_dir,
             databricks_oauth_client_id=oauth_client_id,
             execution_certification_store=certification_store,
+            content_repository=None
+            if content_config is None
+            else ContentRepository(content_config),
         )
         uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))
     finally:

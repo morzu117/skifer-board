@@ -34,6 +34,7 @@ from .monde import (
     repository,
 )
 
+FILTRE = {"column": "active", "operator": "eq"}
 INSTANT = datetime(2026, 11, 5, 12, 30, 15, 999_999, tzinfo=UTC)
 
 
@@ -252,6 +253,144 @@ def test_lire_une_revision_qui_n_existe_pas(depot: ContentRepository) -> None:
     with pytest.raises(ContentError) as erreur:
         depot.read(espace, ident, 2)
     assert code(erreur) == ("analysis_not_found", "missing_revision")
+
+
+# -- contenu identique et lecture d'un instantané ------------------------------------------
+
+
+def test_un_contenu_identique_n_est_pas_publie(racine: Path, depot: ContentRepository) -> None:
+    """`git log` par fichier taît un commit au contenu identique : le dépôt n'en fabrique pas."""
+    espace, ident = new_id(), new_id()
+    premiere = depot.write(espace, ident, document(ident), expected_revision=None, actor=ACTOR)
+    assert premiere.unchanged is False
+    avant = tete(racine)
+    octets = fichier(racine, espace, ident)
+    identique = depot.write(espace, ident, document(ident), expected_revision=1, actor=OTHER)
+    assert identique.unchanged is True
+    assert identique.revision == premiere.revision and identique.document == premiere.document
+    assert tete(racine) == avant and fichier(racine, espace, ident) == octets
+    assert len(depot.history(espace, ident)) == 1
+    propre(racine)
+    # La révision attendue reste la 1 et la suivante est bien la 2, sans numéro fantôme.
+    suivante = depot.write(
+        espace, ident, document(ident, name="b"), expected_revision=1, actor=ACTOR
+    )
+    assert suivante.unchanged is False and suivante.revision.number == 2
+    assert tuple(item.number for item in depot.history(espace, ident)) == (1, 2)
+
+
+def test_un_contenu_identique_a_une_revision_perimee_reste_un_conflit(
+    racine: Path, depot: ContentRepository
+) -> None:
+    """Le contrôle de la révision attendue précède la reconnaissance d'un contenu identique."""
+    espace, ident = new_id(), new_id()
+    depot.write(espace, ident, document(ident), expected_revision=None, actor=ACTOR)
+    depot.write(espace, ident, document(ident, name="b"), expected_revision=1, actor=ACTOR)
+    avant = tete(racine)
+    with pytest.raises(ContentError) as erreur:
+        # Identique à la révision 1, obsolète : ce n'est pas la courante.
+        depot.write(espace, ident, document(ident), expected_revision=1, actor=ACTOR)
+    assert code(erreur) == ("revision_conflict", "stale")
+    assert tete(racine) == avant
+
+
+def test_deux_ecritures_identiques_une_seule_publie(racine: Path, depot: ContentRepository) -> None:
+    """Le second écrivain avait lu la 1 : conflit. Celui qui attend la 2 reçoit la 2."""
+    espace, ident = new_id(), new_id()
+    depot.write(espace, ident, document(ident), expected_revision=None, actor=ACTOR)
+    nouveau = document(ident, name="b")
+    premiere = depot.write(espace, ident, nouveau, expected_revision=1, actor=ACTOR)
+    with pytest.raises(ContentError) as erreur:
+        depot.write(espace, ident, nouveau, expected_revision=1, actor=ACTOR)
+    assert code(erreur) == ("revision_conflict", "stale")
+    # Celui qui attend la 2 avec le même contenu reçoit la 2, sans nouvelle publication.
+    avant = tete(racine)
+    rejoue = depot.write(espace, ident, nouveau, expected_revision=2, actor=ACTOR)
+    assert rejoue.unchanged is True and rejoue.revision == premiere.revision
+    assert tete(racine) == avant
+
+
+@pytest.mark.parametrize(
+    ("avant", "apres"),
+    [(True, 1), (1, 1.0), (0, False), (False, 0), (1.0, True), (1, True), (0.0, 0), (0, False)],
+)
+def test_un_type_different_est_un_contenu_different(
+    racine: Path, depot: ContentRepository, avant: Any, apres: Any
+) -> None:
+    """`True == 1 == 1.0` en Python, mais pas dans les octets que git garde : changer de type est
+    une révision, jamais un « contenu identique »."""
+
+    def filtre(valeur: Any) -> dict[str, Any]:
+        return document(
+            ident, query={**document(ident)["query"], "filters": [{**FILTRE, "value": valeur}]}
+        )
+
+    espace, ident = new_id(), new_id()
+    depot.write(espace, ident, filtre(avant), expected_revision=None, actor=ACTOR)
+    octets = fichier(racine, espace, ident)
+    suivante = depot.write(espace, ident, filtre(apres), expected_revision=1, actor=ACTOR)
+    assert suivante.unchanged is False and suivante.revision.number == 2
+    assert fichier(racine, espace, ident) != octets
+    relu = depot.read(espace, ident).document["query"]["filters"][0]["value"]
+    assert relu == apres and type(relu) is type(apres)
+    # Le même contenu, de même type, reste reconnu.
+    encore = depot.write(espace, ident, filtre(apres), expected_revision=2, actor=ACTOR)
+    assert encore.unchanged is True
+    propre(racine)
+
+
+def test_la_serialisation_distingue_booleen_entier_et_flottant(
+    racine: Path, depot: ContentRepository
+) -> None:
+    """Ce que la sérialisation canonique écrit : `true`, `1` et `1.0` sont trois textes."""
+    textes = {}
+    for nom, valeur in (("bool", True), ("int", 1), ("float", 1.0)):
+        ident = new_id()
+        depot.write(
+            "finance",
+            ident,
+            document(
+                ident,
+                query={**document(ident)["query"], "filters": [{**FILTRE, "value": valeur}]},
+            ),
+            expected_revision=None,
+            actor=ACTOR,
+        )
+        brut = fichier(racine, "finance", ident)
+        assert brut is not None
+        textes[nom] = [ligne for ligne in brut.decode().splitlines() if "value:" in ligne][0]
+    assert {nom: texte.strip() for nom, texte in textes.items()} == {
+        "bool": "value: true",
+        "int": "value: 1",
+        "float": "value: 1.0",
+    }
+
+
+def test_les_entrees_donnent_l_historique_et_le_contenu_d_une_meme_tete(
+    depot: ContentRepository,
+) -> None:
+    espace, ident = new_id(), new_id()
+    un = depot.write(espace, ident, document(ident), expected_revision=None, actor=ACTOR)
+    deux = depot.write(
+        espace, ident, document(ident, visibility="shared"), expected_revision=1, actor=OTHER
+    )
+    trois = depot.delete(espace, ident, expected_revision=2, actor=ACTOR)
+    entrees = depot.entries(espace, ident)
+    assert [item.revision for item in entrees] == [un.revision, deux.revision, trois]
+    assert [item.document for item in entrees] == [un.document, deux.document, None]
+    assert depot.head() == trois.commit
+
+
+def test_les_entrees_d_une_analyse_inconnue(racine: Path, depot: ContentRepository) -> None:
+    espace, ident = new_id(), new_id()
+    with pytest.raises(ContentError) as erreur:
+        depot.entries(espace, ident)
+    assert code(erreur) == ("analysis_not_found", "missing")
+    assert depot.head() is None
+    commit(racine, {}, "vide")
+    with pytest.raises(ContentError):
+        depot.entries(espace, ident)
+    assert depot.head() == tete(racine)
 
 
 # -- suppression ---------------------------------------------------------------------------

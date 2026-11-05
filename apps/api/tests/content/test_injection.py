@@ -79,7 +79,14 @@ def test_analysis_id_hostile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ho
     assert sorted(p.name for p in tmp_path.rglob("pwn")) == []
 
 
-@pytest.mark.parametrize("hostile", HOSTILES, ids=lambda v: repr(v)[:40])
+# Un espace porte l'identifiant du plan 08 (`finance`) : 32 chiffres hexadécimaux en font un
+# valide, les autres formes hostiles restent refusées, avec celles que l'UUID excluait déjà.
+SPACE_HOSTILES = [
+    hostile for hostile in HOSTILES if hostile != "5f1d7c523b0e4d369a540c7a3e1b9d20"
+] + ["-finance", "finance-", "fin.ance", "Finance", "fin_ance", "a", "é" * 4, "x" * 41, "a\nb"]
+
+
+@pytest.mark.parametrize("hostile", SPACE_HOSTILES, ids=lambda v: repr(v)[:40])
 def test_space_id_hostile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, hostile: str) -> None:
     racine = init(tmp_path / "contenus", commit=True)
     depot = repository(racine)
@@ -133,3 +140,17 @@ def test_un_nom_hostile_dans_le_document_ne_devient_jamais_un_argument(
         assert not any("touch pwn" in a or "rm -rf" in a for a in argv)
     assert depot.read(espace, ident).document["name"] == "--exec=touch pwn"
     assert not list(tmp_path.rglob("pwn"))
+
+
+@pytest.mark.parametrize(
+    "espace", ["finance", "rh", "local", "a1", "5f1d7c523b0e4d369a540c7a3e1b9d20"]
+)
+def test_un_espace_lisible_est_un_chemin_valide(tmp_path: Path, espace: str) -> None:
+    racine = init(tmp_path / "contenus")
+    depot = repository(racine)
+    ident = new_id()
+    depot.write(espace, ident, document(ident), expected_revision=None, actor=ACTOR)
+    assert git(racine, "ls-tree", "-r", "--name-only", "HEAD").split() == [
+        f"analyses/{espace}/{ident}.yaml"
+    ]
+    assert depot.read(espace, ident).document["id"] == ident

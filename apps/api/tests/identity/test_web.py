@@ -240,6 +240,16 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}"),
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}/versions"),
         ("GET", "/api/spaces/{space_id}/catalog/{document_id}/diff"),
+        # Analyses versionnées (plan 18.2).
+        ("POST", "/api/spaces/{space_id}/analyses"),
+        ("GET", "/api/spaces/{space_id}/analyses"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}"),
+        ("DELETE", "/api/spaces/{space_id}/analyses/{analysis_id}"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/revisions"),
+        ("POST", "/api/spaces/{space_id}/analyses/{analysis_id}/revisions"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/revisions/{revision}"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/diff"),
+        ("POST", "/api/spaces/{space_id}/analyses/{analysis_id}/duplicate"),
     }
     with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if expiration is not None:
@@ -262,6 +272,8 @@ def test_toutes_les_routes_api_exigent_une_session(
                     .replace("{name}", "catalogue")
                     .replace("{environment}", "PROD")
                     .replace("{execution_id}", "11111111-1111-1111-1111-111111111111")
+                    .replace("{analysis_id}", "11111111-1111-4111-8111-111111111111")
+                    .replace("{revision}", "1")
                 )
                 reponse = client.request(methode, chemin, headers={"Origin": ORIGINE})
                 assert reponse.status_code == 401

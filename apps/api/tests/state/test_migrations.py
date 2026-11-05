@@ -219,6 +219,22 @@ COLONNES = {
         "byte_count": True,
         "truncated": True,
     },
+    # Index des analyses versionnées (plan 18.2, révision 0013).
+    "analysis_index": {
+        "space_id": False,
+        "analysis_id": False,
+        "name": False,
+        "owner_issuer": False,
+        "owner_subject": False,
+        "visibility": False,
+        "revision": False,
+        "commit": False,
+        "committed_at": False,
+        "model": False,
+        "metrics": False,
+        "state": False,
+        "indexed_at": False,
+    },
 }
 INSTANTS = {
     "databricks_oauth": ["expires_at"],
@@ -237,6 +253,7 @@ INSTANTS = {
     "connection_endpoints": {"created_at"},
     "connection_bindings": {"set_at"},
     "connection_credentials": {"set_at"},
+    "analysis_index": {"committed_at", "indexed_at"},
     "executions": {
         "binding_set_at",
         "created_at",
@@ -264,6 +281,7 @@ CLES = {
     "connection_bindings": ["space_id", "name", "environment"],
     "connection_credentials": ["space_id", "name", "environment"],
     "executions": ["id"],
+    "analysis_index": ["space_id", "analysis_id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 

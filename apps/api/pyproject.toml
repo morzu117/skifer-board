@@ -21,6 +21,7 @@ dependencies = [
 [project.scripts]
 skifer-board-api = "skifer_board.server:main"
 skifer-board-migrate = "skifer_board.state.migrate:main"
+skifer-board-reindex = "skifer_board.content.reindex:main"
 skifer-board-telemetry = "skifer_board.telemetry.cli:main"
 skifer-board-vault-rotate = "skifer_board.execution.rotate:main"
 

@@ -466,6 +466,8 @@ def test_demarrage_sans_ouvrir_de_port(
     assert creer.call_args.args[1:3] == (None, None)
     # Sans base, l'enregistreur n'écrit qu'au journal.
     assert enregistreur._store is None
+    # Sans dépôt de contenus configuré, les routes des analyses répondent `content_unavailable`.
+    assert creer.call_args.kwargs["content_repository"] is None
     lancer.assert_called_once()
     assert isinstance(lancer.call_args.args[0], FastAPI)
     assert lancer.call_args.kwargs == {
@@ -565,3 +567,61 @@ def test_reference_git_cassee_sans_chemin_prive(
     probleme = corps["provenance"] if ancien else corps["error"]
     assert probleme["problem"] == "repository_unreadable"
     assert probleme["detail"]
+
+
+def test_demarrage_configure_le_depot_de_contenus(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Le dépôt et l'identité de service viennent de l'environnement (plan 18.2, A4)."""
+    depot = tmp_path / "contenus"
+    monkeypatch.setattr(
+        os,
+        "environ",
+        {
+            server.REPOSITORY_VARIABLE: str(tmp_path / "clone"),
+            server.STATE_VARIABLE: str(tmp_path / "state"),
+            "SKIFER_BOARD_CONTENT_REPOSITORY": str(depot),
+            "SKIFER_BOARD_CONTENT_AUTHOR_NAME": "Service Contenus",
+            "SKIFER_BOARD_CONTENT_AUTHOR_EMAIL": "contenus@exemple.test",
+        },
+    )
+    creer = Mock(wraps=server.create_app)
+    monkeypatch.setattr(server, "create_app", creer)
+    monkeypatch.setattr(uvicorn, "run", Mock())
+    server.main()
+    configuration = creer.call_args.kwargs["content_repository"]._config
+    assert configuration.path == depot
+    assert (configuration.author_name, configuration.author_email) == (
+        "Service Contenus",
+        "contenus@exemple.test",
+    )
+
+
+@pytest.mark.parametrize(
+    "environnement",
+    [
+        {"SKIFER_BOARD_CONTENT_REPOSITORY": "relatif/depot"},
+        {"SKIFER_BOARD_CONTENT_REPOSITORY": "/abs", "SKIFER_BOARD_CONTENT_AUTHOR_NAME": "a\nb"},
+        {
+            "SKIFER_BOARD_CONTENT_REPOSITORY": "/abs",
+            "SKIFER_BOARD_CONTENT_AUTHOR_EMAIL": "pas une adresse",
+        },
+    ],
+)
+def test_demarrage_refuse_un_depot_de_contenus_mal_configure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, environnement: dict[str, str]
+) -> None:
+    monkeypatch.setattr(
+        os,
+        "environ",
+        {
+            server.REPOSITORY_VARIABLE: str(tmp_path / "clone"),
+            server.STATE_VARIABLE: str(tmp_path / "state"),
+            **environnement,
+        },
+    )
+    lancer = Mock()
+    monkeypatch.setattr(uvicorn, "run", lancer)
+    with pytest.raises(SystemExit, match="SKIFER_BOARD_CONTENT"):
+        server.main()
+    lancer.assert_not_called()

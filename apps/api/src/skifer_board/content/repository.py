@@ -53,7 +53,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from ..spaces.model import PersonRef
+from ..spaces.model import SPACE_ID, PersonRef
 from .analysis import Change, Document, diff, dumps, loads, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
@@ -75,6 +75,10 @@ LOCK_NAME = "board-content.lock"
 
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _OBJECT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+_PATH = re.compile(
+    r"analyses/([a-z0-9][a-z0-9-]{0,38}[a-z0-9])/"
+    r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.yaml"
+)
 _BRANCH = re.compile(r"refs/heads/[A-Za-z0-9._+@/-]{1,200}")
 _NAME = re.compile(r"[^\x00-\x1f\x7f<>]{1,100}")
 _EMAIL = re.compile(r"[^\s<>@\x00-\x1f\x7f]{1,64}@[^\s<>@\x00-\x1f\x7f]{1,255}")
@@ -190,8 +194,20 @@ class Revision:
 
 @dataclass(frozen=True)
 class StoredRevision:
+    """Une révision et son contenu. `unchanged` vaut `True` quand `write` a reconnu un contenu
+    identique à la révision courante : rien n'a été publié et c'est la courante qui est rendue."""
+
     revision: Revision
     document: Document
+    unchanged: bool = False
+
+
+@dataclass(frozen=True)
+class Entry:
+    """Une entrée de l'historique et le contenu de cette révision (`None` pour une suppression)."""
+
+    revision: Revision
+    document: Document | None
 
 
 def _unavailable(reason: str) -> ContentError:
@@ -202,11 +218,20 @@ def _invalid(path: str, rule: str) -> ContentError:
     return ContentError(INVALID_ANALYSIS, rule, (Violation(path, rule),))
 
 
+def _check_space(space_id: object) -> None:
+    if not isinstance(space_id, str) or SPACE_ID.fullmatch(space_id) is None:
+        raise _invalid("/space_id", "bad_identifier")
+
+
 def _relative(space_id: str, analysis_id: str) -> str:
-    """Seul chemin que Board écrit ; les deux identifiants sont vérifiés avant tout appel git."""
-    for path, part in (("/space_id", space_id), ("/id", analysis_id)):
-        if not isinstance(part, str) or _UUID.fullmatch(part) is None:
-            raise _invalid(path, "bad_identifier")
+    """Seul chemin que Board écrit ; les deux identifiants sont vérifiés avant tout appel git.
+
+    L'espace a la forme des identifiants du plan 08 (`finance`, minuscules, chiffres et tirets,
+    jamais de point, de barre ni de tiret initial) ; l'analyse est un UUID en minuscules.
+    """
+    _check_space(space_id)
+    if not isinstance(analysis_id, str) or _UUID.fullmatch(analysis_id) is None:
+        raise _invalid("/id", "bad_identifier")
     return f"analyses/{space_id}/{analysis_id}.yaml"
 
 
@@ -386,6 +411,84 @@ class ContentRepository:
         return found
 
     @_guarded
+    def entries(self, space_id: str, analysis_id: str) -> tuple[Entry, ...]:
+        """Historique et contenu de chaque révision, relus à partir d'une même tête.
+
+        Un appelant qui juge la visibilité d'une révision la juge sur le contenu même qu'il va
+        servir : aucune relecture ultérieure ne peut lui en substituer un autre.
+        """
+        _relative(space_id, analysis_id)
+        place = self._locate()
+        history = self._history(place, self._commit(place, "HEAD"), space_id, analysis_id)
+        if not history:
+            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+        return tuple(
+            Entry(
+                item,
+                None if item.action == "delete" else self._load(place, item, space_id, analysis_id),
+            )
+            for item in history
+        )
+
+    @_guarded
+    def head(self) -> str | None:
+        """Commit de la tête du dépôt, ou `None` s'il est vide."""
+        return self._commit(self._locate(), "HEAD")
+
+    @_guarded
+    def analyses(self) -> tuple[tuple[str, str], ...]:
+        """Couples (espace, analyse) dont le fichier existe dans la tête, triés.
+
+        Un chemin qui n'a pas la forme `analyses/<espace>/<uuid>.yaml` est ignoré : Board ne
+        l'a pas écrit. Les analyses supprimées n'y figurent pas ; leur historique reste lisible.
+        """
+        place = self._locate()
+        tip = self._commit(place, "HEAD")
+        if tip is None:
+            return ()
+        listing = place.git.text(["ls-tree", "-r", "-z", "--name-only", tip, "--", "analyses"])
+        found = (_PATH.fullmatch(name) for name in listing.split("\0") if name)
+        return tuple(sorted((match[1], match[2]) for match in found if match is not None))
+
+    @_guarded
+    def latest(self, space_id: str) -> dict[str, str]:
+        """Dernier commit qui a touché le fichier de chaque analyse de l'espace (une lecture).
+
+        Une analyse supprimée y figure avec le commit de sa suppression. Cette seule lecture suffit
+        à constater qu'une ligne de l'index ne correspond plus à git : tout commit qui touche le
+        fichier, de Board ou d'un autre outil, change l'empreinte.
+        """
+        _check_space(space_id)
+        place = self._locate()
+        tip = self._commit(place, "HEAD")
+        if tip is None:
+            return {}
+        output = place.git.text(
+            [
+                "log",
+                "--no-color",
+                "--no-show-signature",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--format=%x1e%H",
+                "--name-only",
+                tip,
+                "--",
+                f"analyses/{space_id}",
+            ]
+        )
+        newest: dict[str, str] = {}
+        for record in output.split("\x1e"):
+            lines = [line for line in record.split("\n") if line]
+            if not lines or _OBJECT.fullmatch(lines[0]) is None:
+                continue
+            for name in lines[1:]:
+                found = _PATH.fullmatch(name)
+                if found is not None:
+                    newest.setdefault(found[2], lines[0])
+        return newest
+
+    @_guarded
     def diff(self, space_id: str, analysis_id: str, before: int, after: int) -> tuple[Change, ...]:
         """Écarts structurels entre deux révisions enregistrées, calculés sur le contenu validé."""
         _check_revision(before)
@@ -407,7 +510,14 @@ class ContentRepository:
         expected_revision: int | None,
         actor: PersonRef,
     ) -> StoredRevision:
-        """Crée la révision 1 (`expected_revision=None`) ou la suivante de la révision attendue."""
+        """Crée la révision 1 (`expected_revision=None`) ou la suivante de la révision attendue.
+
+        Un contenu identique à celui de la révision attendue n'est pas publié : `git log` par
+        fichier ne montrerait pas ce commit, son numéro serait inconnu de l'historique. La
+        révision courante est rendue avec `unchanged=True`, sous le verrou et après le contrôle
+        de la révision attendue (une révision obsolète reste un conflit). « Identique » veut dire
+        mêmes octets canoniques.
+        """
         relative = _relative(space_id, analysis_id)
         valid = validate(document)
         if valid["id"] != analysis_id:
@@ -427,7 +537,13 @@ class ContentRepository:
                     raise ContentError(REVISION_CONFLICT, "exists")
                 number = 1
             else:
-                number = self._current(history, expected_revision).number + 1
+                current = self._current(history, expected_revision)
+                stored = self._load(place, current, space_id, analysis_id)
+                # Les octets canoniques, pas l'égalité Python : `True == 1 == 1.0` y confondrait
+                # un booléen, un entier et un flottant, et perdrait une modification.
+                if dumps(stored) == payload:
+                    return StoredRevision(current, stored, unchanged=True)
+                number = current.number + 1
             saved = self._publish(
                 place,
                 head,

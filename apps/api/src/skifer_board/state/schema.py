@@ -15,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     LargeBinary,
     MetaData,
     PrimaryKeyConstraint,
@@ -391,4 +392,30 @@ databricks_oauth = Table(
     Column("nonce", LargeBinary, nullable=False),
     Column("ciphertext", LargeBinary, nullable=False),
     Index("ix_databricks_oauth_expires_at", "expires_at"),
+)
+
+# Index des analyses versionnées (plan 18, A4) : une ligne par analyse existante, reconstruite
+# depuis git par `skifer-board-reindex`. Il ne contient ni requête, ni filtre, ni calcul, ni
+# description : le contenu servi vient toujours de git, l'index ne sert qu'à lister et à
+# repérer un écart (`commit` n'est plus le dernier commit du fichier : `index_stale`). Aucune
+# clé étrangère : git peut porter un espace que la base ne connaît pas, et l'ordre de
+# reconstruction ne doit rien changer.
+analysis_index = Table(
+    "analysis_index",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("analysis_id", String(36), nullable=False),
+    Column("name", String(120), nullable=False),
+    Column("owner_issuer", Text, nullable=False),
+    Column("owner_subject", Text, nullable=False),
+    Column("visibility", String(8), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("commit", String(64), nullable=False),
+    Column("committed_at", DateTime(timezone=True), nullable=False),
+    Column("model", String(80), nullable=False),
+    Column("metrics", JSONB(none_as_null=True), nullable=False),
+    Column("state", String(24), nullable=False),
+    Column("indexed_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("space_id", "analysis_id", name="pk_analysis_index"),
+    Index("ix_analysis_index_visibility", "space_id", "visibility"),
 )

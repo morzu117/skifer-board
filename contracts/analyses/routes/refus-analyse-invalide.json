@@ -1,0 +1,1 @@
+{"status":422,"body":{"error":{"code":"invalid_analysis","reason":"unknown_model","violations":[{"path":"/query/model","rule":"unknown_model"}]}}}

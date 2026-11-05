@@ -1,4 +1,4 @@
-"""Révisions 0007 à 0012 sur une base existante."""
+"""Révisions 0007 à 0013 sur une base existante."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def test_revision_0007_garde_les_espaces_et_part_vide(engine: Engine) -> None:
     jusqu_a(engine, "0007")
     assert current_revision(engine) == "0007"
     upgrade(engine)
-    assert current_revision(engine) == "0012"
+    assert current_revision(engine) == "0013"
     assert store.get_space("finance") is not None
     with engine.connect() as connection:
         assert connection.execute(select(logical_connections)).all() == []
@@ -81,7 +81,7 @@ def test_revision_0009_garde_une_liaison_existante(engine: Engine) -> None:
             )
         )
     upgrade(engine)
-    assert current_revision(engine) == "0012"
+    assert current_revision(engine) == "0013"
     binding = ConnectionStore(engine).get_binding("finance", "source", Environment.DEV)
     assert (binding.connector, binding.endpoint_key, binding.identity_mode) == (
         Connector.DUCKDB,
