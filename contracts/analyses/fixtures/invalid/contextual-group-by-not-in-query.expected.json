@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "semantic",
+  "violations": [
+    {
+      "path": "/contextual/0/group_by/0",
+      "rule": "group_by_not_in_query"
+    }
+  ]
+}

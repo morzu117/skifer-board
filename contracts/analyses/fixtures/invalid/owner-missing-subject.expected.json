@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/owner/subject",
+      "rule": "missing_field"
+    }
+  ]
+}

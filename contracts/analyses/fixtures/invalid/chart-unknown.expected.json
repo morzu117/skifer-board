@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/presentation/chart",
+      "rule": "value_not_allowed"
+    }
+  ]
+}

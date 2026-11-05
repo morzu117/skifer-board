@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "semantic",
+  "violations": [
+    {
+      "path": "/query/filters/0",
+      "rule": "invalid_filter"
+    }
+  ]
+}

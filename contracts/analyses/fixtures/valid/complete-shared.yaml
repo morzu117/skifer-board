@@ -1,0 +1,61 @@
+api_version: board.analysis/v1
+id: a3c1e8d0-62b4-4f7a-8c19-5d2e7f0b4a61
+name: Ventes par région et par canal
+description: |-
+  Ventes nettes.
+  Le détail est dans le catalogue.
+visibility: shared
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+query:
+  connection: finance
+  model: sales_orders
+  metrics:
+    - revenue
+    - orders
+  dimensions:
+    - region
+    - channel
+  filters:
+    - column: region
+      operator: in
+      value:
+        - Nord
+        - Sud
+    - column: revenue_band
+      operator: between
+      value:
+        - 10
+        - 500.5
+    - column: orders
+      operator: gte
+      value: 10
+    - column: channel
+      operator: ne
+      value: web
+    - column: is_active
+      operator: eq
+      value: true
+contextual:
+  - operation: aggregate
+    metric: revenue
+    group_by:
+      - region
+    scope: null
+  - operation: aggregate
+    metric: orders
+    group_by: []
+    scope: filtered_perimeter
+  - operation: share
+    metric: revenue
+    group_by:
+      - region
+      - channel
+    denominator: loaded_result
+  - operation: share
+    metric: revenue
+    group_by: []
+    denominator: filtered_perimeter
+presentation:
+  chart: grouped_bars

@@ -1,0 +1,15 @@
+# Même contenu que valid/minimal.yaml : ordre des clés et style différents.
+presentation: {chart: value}
+visibility: personal
+query:
+  filters: []
+  dimensions: []
+  metrics: [revenue]
+  model: sales
+  connection: finance
+owner: {subject: user-0001, issuer: "https://idp.example.test"}
+contextual: []
+description: ""
+name: "Minimal"
+id: 5f1d7c52-3b0e-4d36-9a54-0c7a3e1b9d20
+api_version: board.analysis/v1

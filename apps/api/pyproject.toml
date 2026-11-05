@@ -14,6 +14,8 @@ dependencies = [
     "sqlalchemy>=2.1.6",
     "alembic>=1.20.1",
     "pg8000>=1.31.6",
+    "jsonschema>=4.26,<5",
+    "pyyaml>=6.0.3,<7",
 ]
 
 [project.scripts]

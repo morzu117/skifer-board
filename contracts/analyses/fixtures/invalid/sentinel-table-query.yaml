@@ -1,0 +1,20 @@
+api_version: board.analysis/v1
+id: 5f1d7c52-3b0e-4d36-9a54-0c7a3e1b9d20
+name: Chiffre d'affaires par région
+description: Suivi mensuel du chiffre d'affaires.
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+query:
+  connection: finance
+  model: sales
+  metrics:
+    - revenue
+  dimensions:
+    - region
+  filters: []
+  table: analytics.sales
+contextual: []
+presentation:
+  chart: bars

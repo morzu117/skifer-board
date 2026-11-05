@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/contextual/0/scope",
+      "rule": "missing_field"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/api_version",
+      "rule": "value_not_allowed"
+    }
+  ]
+}
