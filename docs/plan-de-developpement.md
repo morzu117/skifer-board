@@ -481,7 +481,7 @@ Prises sur la base des attendus relus dans le code ([skifer](attendus/skifer.md)
 | D-5 | Forme étroite des graphiques | **Acceptée** ; les seuils de 760 px (coque) et 480 px (graphiques) entrent dans les tokens du design system. | Un point de plan à venir : tokens, concordance et usages. |
 | D-6 | Calcul du total de sélection | **Backend Board**, une seule implémentation des règles (plan 01). | Lot 05 ; la latence de l’aller-retour y est mesurée. |
 
-Restent ouverts : le portage des attendus vers `../skifer` et `../skifer-atlas` (propriétaires, forme), les objectifs chiffrés de performance (ADR 0001, point 3), les règles de validation en PROD et la profondeur de personnalisation V1.
+Restent ouverts : le portage des attendus vers `../skifer` et `../skifer-atlas` (propriétaires, forme), les objectifs chiffrés de performance (ADR 0001, point 3), les règles de validation en PROD. La profondeur de personnalisation V1 est fermée le 6 novembre 2026 : personnalisation graphique sémantique resserrée ([plan 19](roadmap/19_composition_dashboards_plan.md), B9).
 
 ## 11. Hors périmètre initial
 
