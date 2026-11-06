@@ -1,4 +1,5 @@
 import { tableFromIPC, type Table } from "apache-arrow";
+import { decodeReference, type AnalysisReference } from "../analyses/reference";
 import { ContractError } from "../catalogue/decode";
 import { reportSessionLost } from "../identity/session";
 import { call, refusalOf, type AdminOutcome } from "../spaces/admin";
@@ -17,6 +18,8 @@ export interface ExecutionInput {
   metrics: readonly string[];
   dimensions: readonly string[];
   filters: readonly { column: string; operator: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "between"; value: string | number | boolean | readonly (string | number | boolean)[] }[];
+  /** Analyse d'où la demande est partie (plan 18, A8) : vérifiée par le serveur, absente du corps quand il n'y en a pas. */
+  analysis?: AnalysisReference;
 }
 
 export function fetchExecutions(space: string, scope: "mine" | "space", signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<readonly Execution[]>> {
@@ -32,7 +35,16 @@ export function fetchExecution(space: string, id: string, signal: AbortSignal, f
 }
 
 export function submitExecution(space: string, input: ExecutionInput, fetcher: Fetch = fetch): Promise<AdminOutcome<Execution>> {
-  return call({ url: url(space), method: "POST", body: input, decode: (value) => decodeExecution(value, space) }, undefined, fetcher);
+  let body: ExecutionInput = input;
+  if (input.analysis !== undefined) {
+    // Sans référence, le corps est celui du plan 17, octet pour octet ; avec, elle est vérifiée avant l'envoi.
+    try {
+      body = { ...input, analysis: decodeReference(input.analysis) };
+    } catch {
+      return Promise.resolve({ status: "error", message: "La référence d'analyse est invalide." });
+    }
+  }
+  return call({ url: url(space), method: "POST", body, decode: (value) => decodeExecution(value, space) }, undefined, fetcher);
 }
 
 export function cancelExecution(space: string, id: string, fetcher: Fetch = fetch): Promise<AdminOutcome<Execution>> {

@@ -64,6 +64,23 @@ const BASE_KEYS = [
 const DETAIL_KEYS = [...BASE_KEYS, "evidence", "connector_run_id"] as const;
 const SUCCESS_DETAIL_KEYS = [...DETAIL_KEYS, "result_contract"] as const;
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]{0,79}$/;
+/**
+ * Empreinte d'une requête ou d'une définition : `skifer.semantic.evidence.hash_sql` et `hash_definition` rendent
+ * `<algorithme>:<version de normalisation>:<sha256 en hexadécimal minuscule>`, soit `sha256:v1:` et 64 caractères.
+ * Le serveur de Board exige en outre `evidence.sql_hash == backend.sql_hash` (`execution/semantic.py`).
+ */
+const HASH = /^sha256:v1:[0-9a-f]{64}$/;
+/**
+ * Un refus du moteur, une annulation et un délai ont chacun leur état : `execution/worker.py` range `deny` et
+ * `require_human` en `denied`, `cancelled` en `cancelled`, `execution_timed_out` en `timed_out`, et tout autre code
+ * en `failed` (ou `server_restarted` par la reprise des exécutions périmées, également `failed`).
+ */
+const hashed = (value: unknown, path: string): string => {
+  const found = nonempty(value, path);
+  if (!HASH.test(found)) throw new ContractError(`${path} : empreinte sha256:v1 attendue`);
+  return found;
+};
+const RESERVED_CODES: Readonly<Record<string, ExecutionState>> = { deny: "denied", require_human: "denied", cancelled: "cancelled", execution_timed_out: "timed_out" };
 
 const base = object({
   id: text,
@@ -102,7 +119,12 @@ function proofOf(value: unknown, path: string): Proof {
   exact(value, ["schema_version", "evidence_id", "trace_id", "model_keys", "metrics", "dimensions", "normalized_filters", "sources", "policy", "sql_hash", "sql_dialect", "statement_id", "compiled_at", "executed_at", "execution_status", "execution_duration_seconds", "execution_error_type"], path);
   const metric = (item: unknown, p: string) => {
     exact(item, ["name", "model_key", "definition_hash", "source_columns", "lineage_status", "certification", "candidate_id"], p);
-    return object({ name: nonempty, model_key: nonempty, definition_hash: nonempty, source_columns: list(text), lineage_status: nonempty, certification: oneOf(["CERTIFIED", "CANDIDATE"] as const), candidate_id: nullable(text) })(item, p);
+    const found = object({ name: nonempty, model_key: nonempty, definition_hash: nonempty, source_columns: list(text), lineage_status: nonempty, certification: oneOf(["CERTIFIED", "CANDIDATE"] as const), candidate_id: nullable(text) })(item, p);
+    // `MetricEvidence.__post_init__` (skifer) : un candidat porte son identifiant, une métrique certifiée n'en porte aucun.
+    if (!HASH.test(found.definition_hash) || (found.certification === "CANDIDATE" ? !found.candidate_id : found.candidate_id !== null)) {
+      throw new ContractError(`${p} : métrique incohérente`);
+    }
+    return found;
   };
   const source = (item: unknown, p: string) => {
     exact(item, ["dataset", "contract_id", "contract_version", "definition_hash", "certification_status", "certified_at", "load_age_seconds", "data_age_seconds", "certification_run_id"], p);
@@ -115,13 +137,19 @@ function proofOf(value: unknown, path: string): Proof {
     const column = nonempty(raw.column, p); const operator = nonempty(raw.operator, p);
     const origin = raw.origin === undefined ? "exploration" : oneOf(["policy", "exploration"] as const)(raw.origin, p);
     const modelKey = raw.model_key === undefined ? null : nonempty(raw.model_key, p);
-    const definitionHash = raw.definition_hash === undefined ? null : nonempty(raw.definition_hash, p);
+    // Absente sauf sur un filtre de base (`semantic.py`, `_normalized_filters` : `hash_definition(sql)`), jamais nulle ; présente, elle a la forme d'une empreinte.
+    const definitionHash = raw.definition_hash === undefined ? null : hashed(raw.definition_hash, p);
     const filterValue = raw.value === undefined ? null : oneOf(["<redacted>"] as const)(raw.value, p);
     return { column, operator, origin, modelKey, definitionHash, value: filterValue };
   };
   const policy = (item: unknown, p: string) => { exact(item, ["decision", "reasons", "evaluated_at"], p); return object({ decision: oneOf(["ALLOW", "WARN"] as const), reasons: list(text), evaluated_at: instant })(item, p); };
   const found = object({ schema_version: oneOf(["2"] as const), evidence_id: nonempty, trace_id: nullable(text), model_keys: list(nonempty), metrics: list(metric), dimensions: list(nonempty), normalized_filters: list(filter), sources: list(source), policy, sql_hash: nonempty, sql_dialect: nonempty, statement_id: nullable(text), compiled_at: instant, executed_at: nullable(instant), execution_status: oneOf(["succeeded"] as const), execution_duration_seconds: nullable(nonnegative), execution_error_type: nullable(text) })(value, path);
   if (!found.model_keys.length || !found.sources.length) throw new ContractError(`${path} : preuve incomplète`);
+  // Le serveur n'enregistre qu'une preuve `succeeded` (`execution/semantic.py`) ; skifer ne pose `execution_error_type`
+  // que sur une preuve `failed` et date toujours l'exécution et sa durée quand elle réussit (`semantic.py`).
+  if (!HASH.test(found.sql_hash) || found.execution_error_type !== null || found.executed_at === null || found.execution_duration_seconds === null) {
+    throw new ContractError(`${path} : preuve incohérente`);
+  }
   return { evidenceId: found.evidence_id, sqlHash: found.sql_hash, modelKeys: found.model_keys, metrics: found.metrics, dimensions: found.dimensions, filters: found.normalized_filters, sources: found.sources, policy: found.policy, statementId: found.statement_id, sqlDialect: found.sql_dialect, duration: found.execution_duration_seconds };
 }
 
@@ -177,6 +205,8 @@ export function decodeExecution(value: unknown, space: string): Execution {
     || (raw.state === "denied" && raw.error_code !== "deny" && raw.error_code !== "require_human")
     || (raw.state === "cancelled" && raw.error_code !== "cancelled")
     || (raw.state === "timed_out" && raw.error_code !== "execution_timed_out")
+    // Et réciproquement : un code réservé n'appartient qu'à son état, un refus ne se présente pas comme un échec.
+    || (raw.error_code !== null && Object.hasOwn(RESERVED_CODES, raw.error_code) && RESERVED_CODES[raw.error_code] !== raw.state)
   ) {
     throw new ContractError("exécution : résultat ou refus incohérent");
   }

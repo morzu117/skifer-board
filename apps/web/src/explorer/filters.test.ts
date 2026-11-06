@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fields from "../../../../contracts/executions/champs.json";
 import { decodeFields } from "./model";
-import { buildExecution, OPERATORS, TEMPORAL_FILTER_REASON } from "./filters";
+import { buildExecution, compareValues, OPERATORS, TEMPORAL_FILTER_REASON } from "./filters";
 import type { ExecutionInput } from "../executions/client";
 
 const original = decodeFields(fields.body).models[0] as ReturnType<typeof decodeFields>["models"][number];
@@ -55,4 +55,38 @@ it("applique toute la matrice opérateurs et types", () => {
       else expect(() => buildExecution(request, model)).toThrow();
     }
   }
+});
+
+describe("ordre des valeurs de `in`", () => {
+  // Ordre de `sorted()` de Python (`query_validation.py`) : les textes par point de code, les nombres par valeur.
+  const parPointDeCode = (valeurs: readonly string[]) => [...valeurs].sort((a, b) => {
+    const [x, y] = [Array.from(a, (c) => c.codePointAt(0) as number), Array.from(b, (c) => c.codePointAt(0) as number)];
+    for (let i = 0; i < Math.min(x.length, y.length); i += 1) if (x[i] !== y[i]) return (x[i] as number) - (y[i] as number);
+    return x.length - y.length;
+  });
+  it("range un caractère hors du plan multilingue de base après un caractère de plein pied, comme Python", () => {
+    // U+FF21 (Ａ) et U+10400 (𐐀) : par unités UTF-16 `𐐀` (D801 DC00) précède `Ａ` (FF21), par points de code il le suit.
+    expect(["𐐀", "Ａ"].sort()).toEqual(["𐐀", "Ａ"]);
+    for (const saisie of [["𐐀", "Ａ"], ["Ａ", "𐐀"]]) {
+      expect(buildExecution(withFilter("string", "in", saisie), model).filters[0]?.value).toEqual(["Ａ", "𐐀"]);
+    }
+  });
+  it("trie les textes par point de code, un préfixe avant ses prolongements, comme Python", () => {
+    const saisie = ["b", "𐐀a", "ab", "Ａ", "a", "Z", "école", "𐐀", "٣"];
+    expect(buildExecution(withFilter("string", "in", saisie), model).filters[0]?.value).toEqual(parPointDeCode(saisie));
+    expect(parPointDeCode(saisie)).toEqual(["Z", "a", "ab", "b", "école", "٣", "Ａ", "𐐀", "𐐀a"]);
+  });
+  it("trie les nombres par valeur, entiers ou décimaux, sans passer par le texte", () => {
+    expect(buildExecution(withFilter("number", "in", [10, 9, 100, -1]), model).filters[0]?.value).toEqual([-1, 9, 10, 100]);
+    expect(buildExecution(withFilter("number", "in", [1.5, 0.25, 10.5]), model).filters[0]?.value).toEqual([0.25, 1.5, 10.5]);
+  });
+  it("compare deux valeurs : texte par point de code, autre type par valeur", () => {
+    expect(compareValues("Ａ", "𐐀")).toBe(-1);
+    expect(compareValues("𐐀", "Ａ")).toBe(1);
+    expect(compareValues("a", "ab")).toBeLessThan(0);
+    expect(compareValues("ab", "a")).toBeGreaterThan(0);
+    expect(compareValues(1, 2)).toBe(-1);
+    expect(compareValues(2, 1)).toBe(1);
+    expect(compareValues(false, true)).toBe(-1);
+  });
 });

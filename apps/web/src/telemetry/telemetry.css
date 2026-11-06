@@ -17,13 +17,15 @@
   font-family: inherit;
 }
 
-.sb-telemetry th,
-.sb-telemetry td {
+/* Avec `.sb-table` : `.sb-table th` (charts.css) a la même spécificité que `.sb-telemetry th` et pose aussi `padding`. */
+.sb-table.sb-telemetry th,
+.sb-table.sb-telemetry td {
   padding-inline: var(--sb-space-3);
   vertical-align: top;
 }
 
-.sb-telemetry thead th {
+/* Une classe de plus que la règle des cellules ci-dessus, comme elle : l'en-tête reste aligné en bas. */
+.sb-table.sb-telemetry thead th {
   vertical-align: bottom;
 }
 

@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "semantic",
+  "violations": [
+    {
+      "path": "/contextual/0/metric",
+      "rule": "metric_not_in_query"
+    }
+  ]
+}

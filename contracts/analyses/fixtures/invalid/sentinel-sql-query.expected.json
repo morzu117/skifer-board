@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/query/sql",
+      "rule": "unknown_field"
+    }
+  ]
+}

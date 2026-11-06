@@ -521,14 +521,16 @@
   flex: none;
 }
 
-.sb-params__check {
+/* Deux classes : `.sb-field` (catalogue.css) a la même spécificité qu'une seule et, arrivant plus tard dans le paquet, reprenait la direction,
+   l'écart et la couleur de la case. */
+.sb-field.sb-params__check {
   flex-direction: row;
   align-items: center;
   gap: var(--sb-space-3);
   color: var(--sb-ink);
 }
 
-.sb-params__check input {
+.sb-field.sb-params__check input {
   min-height: auto;
   width: 1.125rem;
   height: 1.125rem;

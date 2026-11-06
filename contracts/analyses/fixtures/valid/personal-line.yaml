@@ -1,0 +1,19 @@
+api_version: board.analysis/v1
+id: 0b9e4a77-1c3d-4e58-b2f6-7a8d9c0e1f23
+name: Évolution mensuelle — été 2026
+description: Suivi mensuel du chiffre d'affaires.
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+query:
+  connection: finance
+  model: sales
+  metrics:
+    - revenue
+  dimensions:
+    - order_month
+  filters: []
+contextual: []
+presentation:
+  chart: line

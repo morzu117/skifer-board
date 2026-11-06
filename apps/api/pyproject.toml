@@ -14,11 +14,14 @@ dependencies = [
     "sqlalchemy>=2.1.6",
     "alembic>=1.20.1",
     "pg8000>=1.31.6",
+    "jsonschema>=4.26,<5",
+    "pyyaml>=6.0.3,<7",
 ]
 
 [project.scripts]
 skifer-board-api = "skifer_board.server:main"
 skifer-board-migrate = "skifer_board.state.migrate:main"
+skifer-board-reindex = "skifer_board.content.reindex:main"
 skifer-board-telemetry = "skifer_board.telemetry.cli:main"
 skifer-board-vault-rotate = "skifer_board.execution.rotate:main"
 

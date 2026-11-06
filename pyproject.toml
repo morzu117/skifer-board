@@ -30,7 +30,7 @@ python_version = "3.12"
 
 # Atlas ne publie pas d'annotations : seul `skifer_board.catalog.atlas` le lit (plan 04, C2).
 [[tool.mypy.overrides]]
-module = ["skifer_atlas", "skifer_atlas.*", "skifer", "skifer.*", "yaml"]
+module = ["skifer_atlas", "skifer_atlas.*", "skifer", "skifer.*", "yaml", "jsonschema", "jsonschema.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

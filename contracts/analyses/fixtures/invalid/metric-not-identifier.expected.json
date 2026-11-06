@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/query/metrics/0",
+      "rule": "bad_format"
+    }
+  ]
+}

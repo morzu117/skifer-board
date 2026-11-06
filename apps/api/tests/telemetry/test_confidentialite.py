@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -19,6 +20,7 @@ from catalog.conftest import INSTANT
 from catalog.conftest import espace as espace
 from catalog.conftest import espace_versionne as espace_versionne
 from catalog.conftest import service as service
+from content.monde import ACTOR, document, init, new_id, repository
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx2 import Response
@@ -30,6 +32,9 @@ from identity.conftest import fournisseur as fournisseur
 from identity.conftest import horloge as horloge
 from identity.test_web import connecter
 from skifer_board.catalog import CatalogService
+from skifer_board.content import ContentRepository
+from skifer_board.content.events import UsageKey
+from skifer_board.content.index import AnalysisIndex, IndexRow
 from skifer_board.execution import ConnectionStore
 from skifer_board.execution.vault import VaultKeys
 from skifer_board.identity import OidcConfig
@@ -90,6 +95,7 @@ class Serveur:
     moteur: Engine
     magasin: SpaceStore
     horloge: Horloge
+    depot: ContentRepository
 
 
 @pytest.fixture
@@ -101,6 +107,7 @@ def serveur(
     horloge: Horloge,
     migre: Engine,
     journal: Journal,
+    tmp_path: Path,
 ) -> Iterator[Serveur]:
     """Assemblage de `main()` en OIDC : sessions, demandes de connexion, espaces et mesures en
     base ; lectures d'Atlas branchées sur le même enregistreur."""
@@ -116,6 +123,7 @@ def serveur(
     )
     enregistreur = Recorder(TelemetryStore(moteur), horloge, wait=0.01)
     catalogue = CatalogService(service.config, lambda: INSTANT, measure=enregistreur.submit)
+    depot = repository(init(tmp_path / "contenus"), clock=horloge)
     app = create_app(
         catalogue,
         runtime,
@@ -123,13 +131,15 @@ def serveur(
         enregistreur,
         ConnectionStore(moteur),
         VaultKeys("test", {"test": b"1" * 32}),
+        content_repository=depot,
+        usage_key=UsageKey(b"u" * 32),
     )
     peupler(magasin, horloge)
     magasin.grant(
         A, Environment.DEV, GroupPrincipal("finance-admins"), PLATEFORME_SEULE.ref, horloge()
     )
     try:
-        yield Serveur(app, moteur, magasin, horloge)
+        yield Serveur(app, moteur, magasin, horloge, depot)
     finally:
         moteur.dispose()
 
@@ -430,6 +440,124 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         parcours("GET", execution + "/result", ex + "/{execution_id}/result", 404)
         parcours("POST", execution + "/contextual", ex + "/{execution_id}/contextual", 404)
         parcours("POST", execution + "/cancel", ex + "/{execution_id}/cancel", 404)
+
+        # Analyses versionnées (plan 18.2) : le nom, les valeurs de filtre et les personnes
+        # traversent le serveur sans laisser de trace dans les mesures.
+        an = s + "/analyses"
+        modele = new_id()
+        secrets |= {"Analyse sentinelle", "valeur_filtre_sentinelle", "Analyse sentinelle bis"}
+        premiere = document(
+            modele,
+            name="Analyse sentinelle",
+            visibility="shared",
+            query={
+                "connection": "connexion_sentinelle",
+                "model": "modele_sentinelle",
+                "metrics": ["metrique_sentinelle"],
+                "dimensions": ["dimension_sentinelle"],
+                "filters": [
+                    {
+                        "column": "dimension_sentinelle",
+                        "operator": "eq",
+                        "value": "valeur_filtre_sentinelle",
+                    }
+                ],
+            },
+            contextual=[],
+        )
+        serveur.depot.write(A, modele, premiere, expected_revision=None, actor=ACTOR)
+        serveur.depot.write(
+            A,
+            modele,
+            {**premiere, "name": "Analyse sentinelle bis"},
+            expected_revision=1,
+            actor=ACTOR,
+        )
+        courante = serveur.depot.read(A, modele)
+        AnalysisIndex(serveur.moteur).upsert(IndexRow.of(A, courante))
+        racine = f"/api/spaces/{A}/analyses"
+        parcours("GET", racine, an, 200)
+        parcours("GET", f"{racine}/{modele}", an + "/{analysis_id}", 200)
+        parcours("GET", f"{racine}/{new_id()}", an + "/{analysis_id}", 404)
+        parcours("GET", f"{racine}/{modele}/revisions", an + "/{analysis_id}/revisions", 200)
+        parcours(
+            "GET", f"{racine}/{modele}/revisions/1", an + "/{analysis_id}/revisions/{revision}", 200
+        )
+        parcours(
+            "GET",
+            f"{racine}/{modele}/revisions/revision-sentinelle",
+            an + "/{analysis_id}/revisions/{revision}",
+            400,
+        )
+        parcours(
+            "GET",
+            f"{racine}/{modele}/diff",
+            an + "/{analysis_id}/diff",
+            200,
+            params={"base": "1", "other": "2"},
+        )
+        parcours("GET", f"{racine}/{modele}/diff", an + "/{analysis_id}/diff", 400)
+        corps = {k: v for k, v in premiere.items() if k not in {"api_version", "id", "owner"}}
+        parcours("POST", racine, an, 503, corps)
+        parcours("POST", racine, an, 422, {"name": ["analyse-sentinelle"]})
+        parcours(
+            "POST",
+            f"{racine}/{modele}/revisions",
+            an + "/{analysis_id}/revisions",
+            503,
+            {**corps, "expected_revision": 2},
+        )
+        parcours("POST", f"{racine}/{modele}/duplicate", an + "/{analysis_id}/duplicate", 503)
+        parcours(
+            "DELETE",
+            f"{racine}/{modele}",
+            an + "/{analysis_id}",
+            409,
+            params={"expected_revision": "1"},
+        )
+        parcours(
+            "DELETE",
+            f"{racine}/{modele}",
+            an + "/{analysis_id}",
+            204,
+            params={"expected_revision": "2"},
+        )
+        parcours("GET", f"{racine}/{modele}", an + "/{analysis_id}", 404)
+
+        # Événements d'usage (plan 18.3) : l'identifiant tiré par le client, la référence et les
+        # valeurs qui l'accompagnent ne laissent aucune trace dans les mesures.
+        vivante = new_id()
+        serveur.depot.write(
+            A, vivante, premiere | {"id": vivante}, expected_revision=None, actor=ACTOR
+        )
+        evenement = "9d1c6f1e-5e0b-4c58-8b43-0d3f6a1c7e55"
+        secrets.add(evenement)
+        parcours(
+            "POST",
+            f"{racine}/{vivante}/opened",
+            an + "/{analysis_id}/opened",
+            202,
+            {"event_id": evenement, "revision": 1},
+        )
+        parcours(
+            "POST",
+            f"{racine}/{vivante}/opened",
+            an + "/{analysis_id}/opened",
+            400,
+            {"event_id": "evenement-sentinelle", "revision": 1},
+        )
+        parcours("GET", f"{racine}/{vivante}/usage", an + "/{analysis_id}/usage", 200)
+        parcours("GET", f"{racine}/{new_id()}/usage", an + "/{analysis_id}/usage", 404)
+        derniere = an + "/{analysis_id}/last-execution"
+        parcours("GET", f"{racine}/{vivante}/last-execution", derniere, 200)
+        parcours("GET", f"{racine}/{new_id()}/last-execution", derniere, 404)
+        parcours(
+            "POST",
+            f"/api/spaces/{A}/executions",
+            ex,
+            503,
+            {"analysis": {"id": "analyse-sentinelle", "revision": 1}},
+        )
 
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text

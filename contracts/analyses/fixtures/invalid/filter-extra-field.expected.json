@@ -1,0 +1,10 @@
+{
+  "code": "invalid_analysis",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/query/filters/0/raw",
+      "rule": "unknown_field"
+    }
+  ]
+}

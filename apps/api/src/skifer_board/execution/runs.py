@@ -69,6 +69,8 @@ class ExecutionRecord:
     byte_count: int | None
     truncated: bool | None
     result_contract: dict[str, Any] | None = None
+    analysis_id: str | None = None
+    analysis_revision: int | None = None
 
 
 def _utc(value: datetime | None) -> datetime | None:
@@ -103,6 +105,8 @@ def _record(row: Any) -> ExecutionRecord:
         byte_count=data["byte_count"],
         truncated=data["truncated"],
         result_contract=data["result_contract"],
+        analysis_id=data["analysis_id"],
+        analysis_revision=data["analysis_revision"],
     )
 
 
@@ -120,7 +124,10 @@ class ExecutionStore:
         lease_until: datetime,
         owner_id: str,
         result_contract: dict[str, Any] | None = None,
+        analysis: tuple[str, int] | None = None,
     ) -> ExecutionRecord:
+        """Crée l'exécution en file. `analysis` est la référence `(id, révision)` déjà vérifiée :
+        deux identifiants, rien d'autre (plan 18.3b)."""
         execution_id = str(uuid4())
         with self._engine.begin() as connection:
             # Même verrou que ConnectionStore.bind/unbind : la liaison est figée dans la ligne.
@@ -176,6 +183,8 @@ class ExecutionStore:
                     owner_id=owner_id,
                     cancel_requested=False,
                     result_contract=result_contract,
+                    analysis_id=None if analysis is None else analysis[0],
+                    analysis_revision=None if analysis is None else analysis[1],
                 )
             )
             row = connection.execute(
@@ -209,6 +218,26 @@ class ExecutionStore:
         with self._engine.connect() as connection:
             rows = connection.execute(query).all()
         return [_record(row) for row in rows]
+
+    def last_for_analysis(
+        self, space_id: str, analysis_id: str, reader: PersonRef
+    ) -> ExecutionRecord | None:
+        """Dernière exécution DE CETTE PERSONNE qui référençait l'analyse, toutes révisions
+        confondues (plan 18.3b). Celles des autres ne sont jamais lues."""
+        query = (
+            select(executions)
+            .where(
+                executions.c.space_id == space_id,
+                executions.c.analysis_id == analysis_id,
+                executions.c.issuer == reader.issuer,
+                executions.c.subject == reader.subject,
+            )
+            .order_by(executions.c.created_at.desc(), executions.c.id.desc())
+            .limit(1)
+        )
+        with self._engine.connect() as connection:
+            row = connection.execute(query).one_or_none()
+        return None if row is None else _record(row)
 
     def result(self, space_id: str, execution_id: str, reader: PersonRef) -> bytes | None:
         with self._engine.connect() as connection:

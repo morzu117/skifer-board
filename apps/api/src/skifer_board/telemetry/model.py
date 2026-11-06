@@ -28,6 +28,9 @@ METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
 # Codes de refus et d'erreur que l'API rend ; tout autre code est rangé sous `other` (T3).
 REFUSAL_CODES = frozenset(
     {
+        "analysis_in_use",
+        "analysis_model_mismatch",
+        "analysis_not_found",
         "binding_not_found",
         "catalog_unavailable",
         "connection_binding_not_found",
@@ -36,6 +39,7 @@ REFUSAL_CODES = frozenset(
         "connection_not_found",
         "binding_changed",
         "connector_unavailable",
+        "content_unavailable",
         "credential_not_allowed",
         "credential_not_found",
         "credential_rejected",
@@ -50,6 +54,7 @@ REFUSAL_CODES = frozenset(
         "history_unavailable",
         "http_error",
         "internal_error",
+        "invalid_analysis",
         "invalid_upstream",
         "result_unavailable",
         "invalid_parameter",
@@ -70,6 +75,7 @@ REFUSAL_CODES = frozenset(
         "parameter_not_found",
         "route_not_found",
         "redirect_refused",
+        "revision_conflict",
         "space_exists",
         "space_not_found",
         "unauthenticated",

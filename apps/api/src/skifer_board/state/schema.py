@@ -9,12 +9,14 @@ from __future__ import annotations
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Double,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     LargeBinary,
     MetaData,
     PrimaryKeyConstraint,
@@ -366,8 +368,16 @@ executions = Table(
     Column("row_count", BigInteger, nullable=True),
     Column("byte_count", BigInteger, nullable=True),
     Column("truncated", Boolean, nullable=True),
+    # Référence d'analyse portée par l'exécution (plan 18.3b) : deux identifiants, jamais le nom
+    # ni le contenu. Les deux ou aucun ; hors de l'empreinte de la requête. Sans clé étrangère.
+    Column("analysis_id", String(36), nullable=True),
+    Column("analysis_revision", Integer, nullable=True),
+    CheckConstraint(
+        "(analysis_id IS NULL) = (analysis_revision IS NULL)", name="ck_executions_analysis"
+    ),
     Index("ix_executions_reader", "space_id", "issuer", "subject", "created_at"),
     Index("ix_executions_lease", "state", "lease_until"),
+    Index("ix_executions_analysis", "space_id", "analysis_id", "issuer", "subject", "created_at"),
 )
 
 # États PKCE et autorisations personnelles Databricks ; secrets intégralement chiffrés.
@@ -391,4 +401,48 @@ databricks_oauth = Table(
     Column("nonce", LargeBinary, nullable=False),
     Column("ciphertext", LargeBinary, nullable=False),
     Index("ix_databricks_oauth_expires_at", "expires_at"),
+)
+
+# Index des analyses versionnées (plan 18, A4) : une ligne par analyse existante, reconstruite
+# depuis git par `skifer-board-reindex`. Il ne contient ni requête, ni filtre, ni calcul, ni
+# description : le contenu servi vient toujours de git, l'index ne sert qu'à lister et à
+# repérer un écart (`commit` n'est plus le dernier commit du fichier : `index_stale`). Aucune
+# clé étrangère : git peut porter un espace que la base ne connaît pas, et l'ordre de
+# reconstruction ne doit rien changer.
+analysis_index = Table(
+    "analysis_index",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("analysis_id", String(36), nullable=False),
+    Column("name", String(120), nullable=False),
+    Column("owner_issuer", Text, nullable=False),
+    Column("owner_subject", Text, nullable=False),
+    Column("visibility", String(8), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("commit", String(64), nullable=False),
+    Column("committed_at", DateTime(timezone=True), nullable=False),
+    Column("model", String(80), nullable=False),
+    Column("metrics", JSONB(none_as_null=True), nullable=False),
+    Column("state", String(24), nullable=False),
+    Column("indexed_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("space_id", "analysis_id", name="pk_analysis_index"),
+    Index("ix_analysis_index_visibility", "space_id", "visibility"),
+)
+
+# Événements d'usage des analyses (plan 18, A8) : sauvegarde, ouverture et exécution depuis une
+# analyse. Une ligne ne porte que de quoi compter et dater : ni personne, ni nom, ni valeur de
+# filtre, ni contenu, ni donnée. `event_id` est l'identifiant unique de l'événement : l'insérer
+# deux fois ne crée rien. Aucune clé étrangère : un événement survit à l'analyse et à l'espace.
+# Ces lignes restent dans la base ; rien n'est transmis (le lot 10 les lira).
+analysis_events = Table(
+    "analysis_events",
+    metadata,
+    Column("event_id", String(36), nullable=False),
+    Column("kind", String(8), nullable=False),
+    Column("space_id", String(40), nullable=False),
+    Column("analysis_id", String(36), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("occurred_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("event_id", name="pk_analysis_events"),
+    Index("ix_analysis_events_analysis", "space_id", "analysis_id", "kind"),
 )

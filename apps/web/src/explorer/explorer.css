@@ -17,12 +17,16 @@
   .sb-explorer form {
     display: grid;
     grid-template-columns: minmax(0, var(--sb-sidebar-w)) minmax(0, 1fr);
+    /* Champs couvre les trois lignes de la colonne de droite (Requête, Analyse, Résultat) : quand elle est plus haute, la hauteur
+       en trop revient à la dernière ligne et ne s'ajoute pas à l'écart entre les cartes. */
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: var(--sb-space-6);
     align-items: start;
   }
-  .sb-explorer form > section:first-child { grid-column: 1; grid-row: 1 / span 2; }
+  .sb-explorer form > section:first-child { grid-column: 1; grid-row: 1 / span 3; }
   .sb-explorer form > section:nth-child(2),
   .sb-explorer form > [aria-live] { grid-column: 2; }
+  .sb-explorer form > section.sb-explorer__analyse { grid-column: 2; }
 }
 
 .sb-explorer input,
@@ -58,6 +62,8 @@
 .sb-explorer__provenance h3 { margin-bottom: var(--sb-space-3); }
 .sb-theme-skifer-ardoise .sb-explorer .sb-field,
 .sb-theme-skifer-ardoise.sb-explorer .sb-field { color: var(--sb-on-slate); }
+/* Textes d'aide du panneau de sauvegarde et de la carte Analyse, posés sur une carte ardoise. */
+.sb-theme-skifer-ardoise.sb-explorer .sb-card .sb-members__state { color: var(--sb-on-slate-muted); }
 
 @container (max-width: 479px) {
   .sb-explorer__defilement { display: none; }

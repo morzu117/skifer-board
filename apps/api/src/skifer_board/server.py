@@ -33,6 +33,11 @@ from .catalog import (
     DocumentKind,
     HistoryUnavailable,
 )
+from .content import ContentConfigError, ContentRepository
+from .content import config_from_env as content_from_env
+from .content.events import UsageConfigError, UsageEvents, UsageKey, key_from_env
+from .content.index import AnalysisIndex
+from .content.web import AnalysisUse, Consumers, install_analysis_routes, no_consumers
 from .execution import ConnectionStore, install_connections
 from .execution.connectors import (
     Endpoint,
@@ -53,8 +58,8 @@ from .execution.oauth_access import PersonalOAuth
 from .execution.oauth_store import OAuthStore
 from .execution.oauth_web import install_oauth
 from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
-from .execution.runs_web import install_execution_routes
-from .execution.semantic import certification_store_from_path
+from .execution.runs_web import install_execution_routes, last_execution_of
+from .execution.semantic import certification_store_from_path, describe_catalog
 from .execution.vault import CredentialVault, VaultConfigError, VaultKeys, keys_from_env
 from .execution.worker import ExecutionWorkerPool
 from .identity import (
@@ -155,6 +160,9 @@ def create_app(
     execution_reader_attributes: Callable[[Identity], Mapping[str, str]] | None = None,
     databricks_oauth_client_id: str | None = None,
     databricks_oauth_transport: FormTransport | None = None,
+    content_repository: ContentRepository | None = None,
+    analysis_consumers: Consumers = no_consumers,
+    usage_key: UsageKey | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
     les espaces en base sont obligatoires. Sans enregistreur fourni, les mesures ne vont qu'au
@@ -283,6 +291,11 @@ def create_app(
         execution_transport,
         frozenset(endpoints or {}),
     )
+    # Événements d'usage (plan 18.3) : en base seulement, rien n'est transmis. Sans base
+    # (mode local), il n'y en a pas, et aucune route d'analyse ne répond autrement que `local_mode`.
+    usage_events = (
+        None if spaces.store is None else UsageEvents(spaces.store.engine, spaces.clock, usage_key)
+    )
     install_execution_routes(
         app,
         execution_store,
@@ -297,6 +310,20 @@ def create_app(
         personal_oauth.token,
         measure_contextual,
         execution_reader_attributes,
+        AnalysisUse(content_repository, usage_events),
+    )
+    # Analyses versionnées (plan 18.2) : sans dépôt de contenus, les routes répondent
+    # `content_unavailable` ; sans base (mode local), `local_mode`.
+    install_analysis_routes(
+        app,
+        content_repository,
+        None if spaces.store is None else AnalysisIndex(spaces.store.engine, spaces.clock),
+        connections,
+        None if execution_models_dir is None else lambda: describe_catalog(execution_models_dir),
+        guards.reader,
+        analysis_consumers,
+        usage_events,
+        None if execution_store is None else last_execution_of(execution_store, spaces.clock),
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store
@@ -418,6 +445,24 @@ def spaces_for(
     return Spaces.database(SpaceStore(engine), atlas, identity.config.admin_group, identity.clock)
 
 
+def usage_key_runtime(
+    environ: Mapping[str, str], content: bool, engine: Engine | None
+) -> UsageKey | None:
+    """Clé des identifiants d'ouverture (plan 18.3). Avec le dépôt de contenus et la base d'état,
+    les ouvertures se consignent : sans la clé, le serveur ne démarre pas plutôt que de les perdre
+    en silence. Une clé présente mais invalide est refusée dans tous les cas."""
+    try:
+        key = key_from_env(environ)
+    except UsageConfigError as error:
+        raise SystemExit(str(error)) from error
+    if content and engine is not None and key is None:
+        raise SystemExit(
+            "Avec le dépôt de contenus et la base d'état, la clé des événements d'usage est "
+            "obligatoire : SKIFER_BOARD_USAGE_KEY est absente."
+        )
+    return key
+
+
 def identity_runtime(
     environ: Mapping[str, str], host: str, engine: Engine | None
 ) -> IdentityRuntime | None:
@@ -463,6 +508,11 @@ def main() -> None:
         endpoints = endpoints_from_env(os.environ)
     except EndpointConfigError as error:
         raise SystemExit(str(error)) from error
+    try:
+        content_config = content_from_env(os.environ)
+    except ContentConfigError as error:
+        raise SystemExit(str(error)) from error
+    usage_key = usage_key_runtime(os.environ, content_config is not None, engine)
     catalog = config_from_env(os.environ)
     spaces = spaces_for(identity, engine, catalog.repository.name)
     models_raw = os.environ.get(MODELS_VARIABLE)
@@ -494,6 +544,10 @@ def main() -> None:
             execution_models_dir=models_dir,
             databricks_oauth_client_id=oauth_client_id,
             execution_certification_store=certification_store,
+            content_repository=None
+            if content_config is None
+            else ContentRepository(content_config),
+            usage_key=usage_key,
         )
         uvicorn.run(app, host=host, port=int(os.environ.get("SKIFER_BOARD_PORT", "8000")))
     finally:
