@@ -1,0 +1,168 @@
+api_version: board.dashboard/v1
+id: 8a1097da-ab89-5fe8-b6c8-2e39d32ab51b
+name: Pilotage commercial
+description: |-
+  Ventes nettes.
+  Le détail est dans le catalogue.
+visibility: shared
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+defaults:
+  legend: shown
+  number_format: compact
+  tooltip: value_and_definition
+filters:
+  - id: 7fd608f9-6695-54f4-85e9-4fb25c70431c
+    label: Région
+    dimension: region
+    operator: in
+    default:
+      - Nord
+      - Sud
+    allowed:
+      - Est
+      - Nord
+      - Ouest
+      - Sud
+    targets:
+      - 4e88603b-fa91-58af-94ec-79c910f51716
+      - 479436b2-bd0c-5a70-bfe6-b53ef16a48cd
+  - id: 733264ae-e30b-50a2-be06-32e3c3c9b851
+    label: Tranche de chiffre d'affaires
+    dimension: revenue_band
+    operator: between
+    default:
+      - 10
+      - 500.5
+    targets:
+      - 4e88603b-fa91-58af-94ec-79c910f51716
+  - id: 689531fa-a04e-5b6b-ae44-c614223ae2a1
+    label: Actif
+    dimension: is_active
+    operator: eq
+    default: true
+    targets:
+      - 479436b2-bd0c-5a70-bfe6-b53ef16a48cd
+  - id: 690cf150-52fc-5231-9d76-f95811a55ebf
+    label: Canal
+    dimension: channel
+    operator: eq
+    targets:
+      - 479436b2-bd0c-5a70-bfe6-b53ef16a48cd
+      - 4e88603b-fa91-58af-94ec-79c910f51716
+layout:
+  sections:
+    - id: d4a19b31-1194-54b4-b3c0-4327e0a8b441
+      title: Introduction
+      rows:
+        - id: 18f5c734-a22d-5ca6-ad33-514d82e53e80
+          columns:
+            - id: 6ab6df7a-00be-54b1-a41d-5a7c88436b5a
+              span: 12
+              children:
+                - id: 5e1d5c31-1d98-52f4-9167-cffaab608c1b
+                  type: text
+                  blocks:
+                    - type: heading
+                      level: 1
+                      content:
+                        - text: Ventes
+                    - type: paragraph
+                      content:
+                        - text: 'Chiffres '
+                        - text: nets
+                          strong: true
+                        - text: ' de l''exercice, '
+                        - text: hors taxes
+                          emphasis: true
+                        - text: .
+                    - type: list
+                      ordered: false
+                      items:
+                        - - text: Régions
+                        - - text: Canaux
+                            emphasis: true
+                            strong: true
+    - id: 5d197797-515d-552c-8d5e-aacca6141dfc
+      rows:
+        - id: 5622dfc9-6c56-5150-8465-74b8dd7da380
+          columns:
+            - id: f9173194-3218-5b18-93d3-370408647e55
+              span: 4
+              children:
+                - id: 479436b2-bd0c-5a70-bfe6-b53ef16a48cd
+                  type: kpi
+                  reference:
+                    analysis_id: f51ef87a-af4f-51f0-9eb7-645518ca35ab
+                    revision: 3
+                  presentation:
+                    title: Chiffre d'affaires
+                    number_format: compact
+                    threshold:
+                      value: 1000000
+                      label: Objectif
+                    tooltip: value_and_definition
+            - id: 0a341529-4c20-511c-91ae-fe5ad708c666
+              span: 8
+              children:
+                - id: 4e88603b-fa91-58af-94ec-79c910f51716
+                  type: analysis
+                  reference:
+                    analysis_id: 338771e8-a508-5b96-b3d5-c71e2d636a85
+                    revision: 5
+                  presentation:
+                    chart: grouped_bars
+                    title: Ventes par région
+                    legend: hidden
+                    number_format: decimal_1
+                    threshold:
+                      value: 0.5
+                      label: Seuil
+                    tooltip: value
+        - id: b476ce4d-6a9f-5e45-ba46-ad98b3b3d856
+          columns:
+            - id: f38cab85-0ba8-567e-9de7-faf70710f2c9
+              span: 12
+              children:
+                - id: a0ac4f71-d318-574a-a81d-7de8add0c13b
+                  type: container
+                  rows:
+                    - id: 8c877658-7c72-524d-a00d-fb3a08c883da
+                      columns:
+                        - id: 8a2bc812-ce61-58b3-8368-f9660e6150e9
+                          span: 6
+                          children:
+                            - id: e54736b0-0b51-5668-84e2-2315d2dc41cd
+                              type: analysis
+                              reference:
+                                analysis_id: 5623dfdf-5644-519f-a7df-10402ec2173e
+                                revision: 1
+                              presentation:
+                                chart: line
+                        - id: b71e4a46-eea4-563c-80ca-bbd09175782c
+                          span: 6
+                          children:
+                            - id: 41921a21-ed2e-5c04-8ca8-4ffe4e889dd8
+                              type: separator
+                    - id: 2f17f5ee-cb51-5adb-8568-8c359fab3222
+                      columns:
+                        - id: 48a31c1d-0678-5fc3-bf7e-a8a1fa4371c0
+                          span: 12
+                          children:
+                            - id: a8651899-9ecc-5cb1-83f3-5942756ab41f
+                              type: container
+                              rows:
+                                - id: 557f0161-cd4e-53c8-b8e2-32064267bc06
+                                  columns:
+                                    - id: e6f9de19-9a5b-5e47-9c78-21b72a3f2293
+                                      span: 12
+                                      children:
+                                        - id: df7f5dd5-7f26-5e35-8222-8ffae80879ce
+                                          type: text
+                                          blocks:
+                                            - type: list
+                                              ordered: true
+                                              items:
+                                                - - text: Un
+                                                - - text: Deux

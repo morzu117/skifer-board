@@ -1,0 +1,42 @@
+api_version: board.dashboard/v1
+id: bd164370-c9cc-500e-998c-ada295b28944
+name: Pilotage des ventes
+description: "a\0b"
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+defaults:
+  legend: auto
+filters:
+- id: 7fd608f9-6695-54f4-85e9-4fb25c70431c
+  label: Région
+  dimension: region
+  operator: eq
+  targets:
+  - 4e88603b-fa91-58af-94ec-79c910f51716
+  default: Nord
+layout:
+  sections:
+  - id: d4a19b31-1194-54b4-b3c0-4327e0a8b441
+    rows:
+    - id: 18f5c734-a22d-5ca6-ad33-514d82e53e80
+      columns:
+      - id: 6ab6df7a-00be-54b1-a41d-5a7c88436b5a
+        span: 6
+        children:
+        - id: 4e88603b-fa91-58af-94ec-79c910f51716
+          type: analysis
+          reference:
+            analysis_id: 338771e8-a508-5b96-b3d5-c71e2d636a85
+            revision: 2
+          presentation: {}
+      - id: f9173194-3218-5b18-93d3-370408647e55
+        span: 6
+        children:
+        - id: 479436b2-bd0c-5a70-bfe6-b53ef16a48cd
+          type: kpi
+          reference:
+            analysis_id: f51ef87a-af4f-51f0-9eb7-645518ca35ab
+            revision: 1
+          presentation: {}

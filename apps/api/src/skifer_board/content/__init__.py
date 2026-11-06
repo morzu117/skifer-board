@@ -1,31 +1,44 @@
-"""Contenus versionnés dans git : format des analyses et dépôt de révisions (plan 18)."""
+"""Contenus versionnés dans git : formats des analyses et des dashboards, dépôt de révisions."""
 
 from .analysis import API_VERSION, RULES, Change, Document, diff, dumps, loads, schema, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
     CODES,
     CONTENT_UNAVAILABLE,
+    DASHBOARD_CODES,
+    DASHBOARD_NOT_FOUND,
     INVALID_ANALYSIS,
+    INVALID_DASHBOARD,
     REVISION_CONFLICT,
     ContentError,
     Violation,
 )
 from .repository import (
+    ANALYSIS_KIND,
+    DASHBOARD_KIND,
+    KINDS,
     ContentConfig,
     ContentConfigError,
     ContentRepository,
     Entry,
+    Kind,
     Revision,
     StoredRevision,
     config_from_env,
 )
 
 __all__ = [
+    "ANALYSIS_KIND",
     "ANALYSIS_NOT_FOUND",
     "API_VERSION",
     "CODES",
     "CONTENT_UNAVAILABLE",
+    "DASHBOARD_CODES",
+    "DASHBOARD_KIND",
+    "DASHBOARD_NOT_FOUND",
     "INVALID_ANALYSIS",
+    "INVALID_DASHBOARD",
+    "KINDS",
     "REVISION_CONFLICT",
     "RULES",
     "Change",
@@ -35,6 +48,7 @@ __all__ = [
     "ContentRepository",
     "Document",
     "Entry",
+    "Kind",
     "Revision",
     "StoredRevision",
     "Violation",

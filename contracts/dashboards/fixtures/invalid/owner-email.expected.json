@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/owner/email",
+      "rule": "unknown_field"
+    }
+  ]
+}

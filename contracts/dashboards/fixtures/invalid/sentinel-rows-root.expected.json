@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/rows",
+      "rule": "unknown_field"
+    }
+  ]
+}

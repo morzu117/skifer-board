@@ -1,0 +1,29 @@
+api_version: board.dashboard/v1
+id: 60033de0-1c42-59be-ab1d-34e55aaed275
+name: Notes
+description: Vue d'ensemble.
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+defaults: {}
+filters: []
+layout:
+  sections:
+    - id: d4a19b31-1194-54b4-b3c0-4327e0a8b441
+      rows:
+        - id: 18f5c734-a22d-5ca6-ad33-514d82e53e80
+          columns:
+            - id: 4deb1fb7-4954-5132-9ffe-5d118c39949c
+              span: 12
+              children:
+                - id: 4430aa2b-08d4-5d86-933c-7927132926d2
+                  type: text
+                  blocks:
+                    - type: heading
+                      level: 2
+                      content:
+                        - text: <b>Titre</b>
+                    - type: paragraph
+                      content:
+                        - text: javascript:alert(1) et [lien](http://x) et <script>

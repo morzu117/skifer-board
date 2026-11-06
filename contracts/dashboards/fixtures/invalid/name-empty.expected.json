@@ -1,0 +1,14 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/name",
+      "rule": "bad_format"
+    },
+    {
+      "path": "/name",
+      "rule": "out_of_bounds"
+    }
+  ]
+}

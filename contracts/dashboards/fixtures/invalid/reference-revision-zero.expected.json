@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/reference/revision",
+      "rule": "out_of_bounds"
+    }
+  ]
+}

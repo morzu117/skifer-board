@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/filters/0/default",
+      "rule": "out_of_bounds"
+    }
+  ]
+}
