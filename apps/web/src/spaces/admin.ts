@@ -3,6 +3,7 @@ import { reportSessionLost } from "../identity/session";
 import { spaceUrl, type Fetch } from "./api";
 import { reportSpaceLost } from "./lost";
 import { ENVIRONMENTS, type Environment } from "../shell/sections";
+import { ANALYSIS_CODES, refusalDetails, type RefusalDetails } from "../analyses/refusal";
 import {
   decodeBinding,
   decodeEvents,
@@ -68,11 +69,12 @@ export const REFUSALS = [
   "result_unavailable",
   "worker_unavailable",
   "binding_changed",
+  ...ANALYSIS_CODES,
 ] as const;
 
 export type RefusalCode = (typeof REFUSALS)[number];
 
-export interface Refusal {
+export interface Refusal extends RefusalDetails {
   code: RefusalCode;
   /** Champ en cause d'un `invalid_request`. */
   field: string | null;
@@ -124,6 +126,12 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   result_unavailable: "Le résultat de cette exécution n'est pas disponible.",
   worker_unavailable: "La file d'exécution est pleine ou indisponible.",
   binding_changed: "La liaison de cette connexion a changé : relancez la demande.",
+  analysis_not_found: "Cette analyse est introuvable ou ne vous est pas accessible.",
+  invalid_analysis: "L'analyse est invalide : des règles ne sont pas respectées.",
+  analysis_in_use: "Cette analyse est encore utilisée : retirez d'abord ce qui en dépend.",
+  revision_conflict: "Une autre révision a été enregistrée entre-temps : relisez l'analyse.",
+  content_unavailable: "Le dépôt des analyses est indisponible.",
+  analysis_model_mismatch: "Le modèle de la demande n'est pas celui de l'analyse référencée.",
 };
 
 export function refusalOf(value: unknown): Refusal | null {
@@ -139,28 +147,36 @@ export function refusalOf(value: unknown): Refusal | null {
     return null;
   }
   const field = "field" in error && typeof error.field === "string" ? error.field : null;
+  // Les refus d'analyses ont une forme exacte : une forme inattendue n'est pas un refus lisible.
+  const details = refusalDetails(code, error);
+  if (details === null) {
+    return null;
+  }
   if (code === "values_incompatible" && "environments" in error && Array.isArray(error.environments)) {
     // Dans l'ordre de promotion, et seulement des environnements connus : le reste n'est pas recopié.
     const named: readonly unknown[] = error.environments;
-    return { code, field, environments: ENVIRONMENTS.filter((environment) => named.includes(environment)) };
+    return { code, field, ...details, environments: ENVIRONMENTS.filter((environment) => named.includes(environment)) };
   }
   if (code === "forbidden" && "required" in error && error.required === "deploy" && "environment" in error) {
     const environment = ENVIRONMENTS.find((known) => known === error.environment);
     if (environment !== undefined) {
-      return { code, field, environment };
+      return { code, field, ...details, environment };
     }
   }
-  return { code, field };
+  return { code, field, ...details };
 }
 
 export interface Call<T> {
   url: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
-  decode: (value: unknown) => T;
+  /** Reçoit le corps et le statut de la réponse : une route qui distingue 200 de 201 en a besoin. */
+  decode: (value: unknown, status: number) => T;
+  /** Lecture du corps d'une réponse réussie, `response.json()` par défaut ; une route qui doit refuser un nombre arrondi par `JSON.parse` fournit la sienne. */
+  read?: (response: Response) => Promise<unknown>;
 }
 
-export async function call<T>({ url, method = "GET", body, decode }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
+export async function call<T>({ url, method = "GET", body, decode, read }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
   let response: Response;
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -186,7 +202,7 @@ export async function call<T>({ url, method = "GET", body, decode }: Call<T>, si
   }
   try {
     if (response.ok) {
-      return { status: "ok", value: decode(response.status === 204 ? null : await response.json()) };
+      return { status: "ok", value: decode(response.status === 204 ? null : await (read === undefined ? response.json() : read(response)), response.status) };
     }
     // Un refus sans corps JSON (proxy, panne) se dit par son statut, pas comme un contrat rompu.
     const refusal = refusalOf(await response.json().catch(() => null));

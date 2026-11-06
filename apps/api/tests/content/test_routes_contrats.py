@@ -175,10 +175,14 @@ def test_contrats_des_etats_de_lecture(banc: Banc) -> None:
     )
     contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{ident}"), "lire-index-perime", 200)
     contrat(banc.appel(LECTEUR_GROUPE, "GET", CHEMIN), "lister-index-perime", 200)
+    # L'écart d'index l'emporte sur les deux autres états : chacun a donc sa propre analyse,
+    # écrite par l'API, dont l'index est à jour.
+    resolue = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+    verifiee = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
     banc.redefinir(["orders"], ["region"])
-    contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{ident}"), "lire-non-resolue", 200)
+    contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{resolue}"), "lire-non-resolue", 200)
     (banc.dossier_modeles / "semantic_catalog.yaml").unlink()
-    contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{ident}"), "lire-non-verifiee", 200)
+    contrat(banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{verifiee}"), "lire-non-verifiee", 200)
     contrat(banc.creer(CREATEUR_GROUPE), "refus-moteur-indisponible", 503)
 
 
