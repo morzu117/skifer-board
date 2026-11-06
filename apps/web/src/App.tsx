@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
+import { AnalysePage } from "./analyses/AnalysePage";
+import { AnalysesPage } from "./analyses/AnalysesPage";
 import { CataloguePage } from "./catalogue/CataloguePage";
 import { ExplorerPage } from "./explorer/ExplorerPage";
 import { ExecutionsPage } from "./executions/ExecutionsPage";
@@ -30,7 +32,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" ? route.space : null;
 }
 
 interface Sections {
@@ -45,17 +47,24 @@ interface Sections {
  */
 export function sectionsFor(space: Space | null, platformAdmin: boolean): Sections {
   if (space === null) {
-    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", espace: "dans un espace" } };
+    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", espace: "dans un espace" } };
   }
   const available = new Set<SectionId>();
   const pending: Partial<Record<SectionId, string>> = {};
   if (space.role === null) {
     pending.catalogue = "sans rôle";
     pending.explorer = "sans rôle";
+    pending.analyses = "sans rôle";
   } else {
     available.add("catalogue");
-    if (!space.implicit) available.add("explorer");
-    else pending.explorer = "mode local";
+    // Les analyses vivent dans un dépôt versionné que le mode local n'a pas : comme l'Explorateur, elles lui sont fermées.
+    if (!space.implicit) {
+      available.add("explorer");
+      available.add("analyses");
+    } else {
+      pending.explorer = "mode local";
+      pending.analyses = "mode local";
+    }
   }
   if (manages(space, platformAdmin)) {
     available.add("espace");
@@ -179,7 +188,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "explorer" ? "explorer" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
+  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -189,7 +198,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
       // Les entrées ne sont offertes que dans un espace confirmé : elles mènent à ses pages.
       onNavigate={(section) => {
         if (space !== null) {
-          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : { page: "catalogue", space: space.id });
+          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : { page: "catalogue", space: space.id });
         }
       }}
       breadcrumb={breadcrumb(route, current)}
@@ -252,6 +261,8 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
       return [current.value.name, "Connexions"];
     }
     if (route.page === "explorer") return [current.value.name, "Explorer"];
+    if (route.page === "analyses") return [current.value.name, "Analyses"];
+    if (route.page === "analysis") return [current.value.name, "Analyses", "Fiche analyse"];
     if (route.page === "executions") {
       return [current.value.name, "Exécutions"];
     }
@@ -362,6 +373,12 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
   }
   if (route.page === "explorer") {
     return <ExplorerPage key={`${current.value.id}:${environment}`} space={current.value} fetcher={fetcher} target={environment} />;
+  }
+  if (route.page === "analyses") {
+    return <AnalysesPage key={current.value.id} space={current.value} fetcher={fetcher} />;
+  }
+  if (route.page === "analysis") {
+    return <AnalysePage key={`${current.value.id}:${route.id}:${String(route.revision)}`} space={current.value} id={route.id} revision={route.revision} fetcher={fetcher} />;
   }
   if (route.page === "executions") {
     return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;

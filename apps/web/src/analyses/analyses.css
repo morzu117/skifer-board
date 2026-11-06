@@ -1,0 +1,40 @@
+.sb-analyses {
+  display: grid;
+  gap: var(--sb-space-6);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.sb-analyses > * { min-width: 0; }
+.sb-analyses a { color: inherit; text-decoration: underline; }
+.sb-analyses a.sb-button { text-decoration: none; }
+.sb-analyses__bar { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); margin: 0; }
+.sb-analyses__note { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
+.sb-analyses__sub { display: block; margin-top: var(--sb-space-1); font-size: var(--sb-text-sm); font-weight: 400; color: inherit; opacity: .85; }
+.sb-analyses__table { min-width: 720px; }
+.sb-analyses__table th[scope="row"] { font-weight: 600; color: inherit; }
+.sb-analyses__description { white-space: pre-line; }
+.sb-analyses__badges { display: flex; flex-wrap: wrap; gap: var(--sb-space-3); margin: 0; }
+.sb-analyses__facts { display: grid; grid-template-columns: minmax(120px, 200px) minmax(0, 1fr); gap: var(--sb-space-3) var(--sb-space-5); margin: 0; }
+.sb-analyses__facts dt { font-weight: 600; }
+.sb-analyses__facts dd { margin: 0; min-width: 0; }
+.sb-analyses__facts ul { margin: 0; padding-left: var(--sb-space-6); }
+.sb-analyses__actions { display: grid; gap: var(--sb-space-4); }
+.sb-analyses__buttons { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); }
+.sb-analyses__tabs { max-width: 100%; overflow-x: auto; }
+.sb-analyses__panel { min-width: 0; }
+.sb-analyses__panel:not([hidden]) { display: grid; gap: var(--sb-space-5); padding: var(--sb-space-6); border: 1px solid var(--sb-line); border-radius: var(--sb-radius-lg); background: var(--sb-surface); }
+.sb-analyses__steps, .sb-analyses__history { margin: 0; padding-left: var(--sb-space-7); display: grid; gap: var(--sb-space-3); }
+.sb-analyses__compare { display: grid; gap: var(--sb-space-4); }
+.sb-analyses__compare h3 { margin: 0; }
+.sb-theme-skifer-ardoise .sb-analyses__panel:not([hidden]) { background: var(--sb-slate-900); border-color: var(--sb-on-slate-muted); color: var(--sb-on-slate); }
+.sb-theme-skifer-ardoise .sb-analyses__note,
+.sb-theme-skifer-ardoise .sb-analyses .sb-members__state,
+.sb-theme-skifer-ardoise .sb-analyses .sb-page-head__lead { color: var(--sb-on-slate-muted); }
+.sb-theme-skifer-ardoise .sb-analyses .sb-field { color: var(--sb-on-slate); }
+
+@media (max-width: 479px) {
+  .sb-analyses__facts { grid-template-columns: 1fr; gap: var(--sb-space-1); }
+  .sb-analyses__facts dd { margin-bottom: var(--sb-space-4); }
+}

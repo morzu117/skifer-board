@@ -66,27 +66,27 @@ describe("Entrées de la navigation selon l'espace (plan 08, 8.4)", () => {
 
   it("hors d'un espace confirmé, le catalogue et les membres se lisent « dans un espace »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", espace: "dans un espace" } });
+      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", espace: "dans un espace" } });
     }
   });
 
   it.each([
-    ["admin", false, ["catalogue", "espace", "explorer"], {}],
-    ["admin", true, ["catalogue", "espace", "explorer"], {}],
-    ["creator", false, ["catalogue", "explorer"], { espace: "administrateurs" }],
-    ["reader", false, ["catalogue", "explorer"], { espace: "administrateurs" }],
-    ["reader", true, ["catalogue", "espace", "explorer"], {}],
-    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle" }],
+    ["admin", false, ["analyses", "catalogue", "espace", "explorer"], {}],
+    ["admin", true, ["analyses", "catalogue", "espace", "explorer"], {}],
+    ["creator", false, ["analyses", "catalogue", "explorer"], { espace: "administrateurs" }],
+    ["reader", false, ["analyses", "catalogue", "explorer"], { espace: "administrateurs" }],
+    ["reader", true, ["analyses", "catalogue", "espace", "explorer"], {}],
+    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle" }],
     // Un espace confirmé sans rôle ne l'est qu'à l'administration de la plateforme (E6) : l'entrée est
     // offerte même avant que la liste l'ait confirmé, et le serveur reste seul juge.
-    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle" }],
+    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle" }],
   ] as [Space["role"], boolean, string[], object][])("rôle %s, plateforme %s", (role, plateforme, available, pending) => {
     expect(resume(de(role), plateforme)).toEqual({ available, pending });
   });
 
   it("l'espace implicite du mode local : catalogue livré, membres « mode local »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local" } });
+      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local", analyses: "mode local" } });
     }
   });
 });
@@ -316,3 +316,69 @@ it("ouvre Explorer depuis la navigation de l'espace", async () => {
   expect(filAriane()).toEqual(["Finance", "Explorer"]);
   expect(window.location.hash).toBe("#/espaces/finance/explorer");
 });
+
+describe("Analyses dans la navigation de l'espace (plan 18, 18.5a)", () => {
+  const ID = "5f1d7c52-3b0e-4d36-9a54-0c7a3e1b9d20";
+  const ROOT = "GET /api/spaces/finance/analyses";
+  const AVEC_ANALYSES = { ...FINANCE, [ROOT]: { status: 200, body: { analyses: [], unreadable: 0 } } };
+
+  it("ouvre la liste depuis la navigation, avec son fil d'Ariane et l'entrée active", async () => {
+    ouvrir("#/espaces/finance/catalogue", AVEC_ANALYSES);
+    await screen.findByRole("heading", { name: "Catalogue Atlas" });
+    await userEvent.click(within(nav()).getByRole("button", { name: "Analyses" }));
+    expect(await screen.findByRole("heading", { name: "Analyses", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByText("Aucune analyse à afficher pour vous dans cet espace")).toBeInTheDocument();
+    expect(filAriane()).toEqual(["Finance", "Analyses"]);
+    expect(window.location.hash).toBe("#/espaces/finance/analyses");
+    expect(within(nav()).getByRole("button", { name: "Analyses" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("ouvre la fiche d'une analyse par son adresse, l'entrée Analyses reste active et l'ouverture est consignée", async () => {
+    const fetcher = ouvrir(`#/espaces/finance/analyses/${ID}`, {
+      ...FINANCE,
+      [`GET /api/spaces/finance/analyses/${ID}`]: {
+        status: 200,
+        body: { ...analyseLue(ID) },
+      },
+      [`POST /api/spaces/finance/analyses/${ID}/opened`]: { status: 202, body: { recorded: true } },
+    });
+    expect(await screen.findByRole("heading", { name: "Chiffre d'affaires", level: 1 })).toBeInTheDocument();
+    expect(filAriane()).toEqual(["Finance", "Analyses", "Fiche analyse"]);
+    expect(within(nav()).getByRole("button", { name: "Analyses" })).toHaveAttribute("aria-current", "page");
+    await waitFor(() => { expect(lus(fetcher)).toContain(`POST /api/spaces/finance/analyses/${ID}/opened`); });
+  });
+
+  it("une révision numérotée dans l'adresse lit cette révision", async () => {
+    const fetcher = ouvrir(`#/espaces/finance/analyses/${ID}/revisions/1`, {
+      ...FINANCE,
+      [`GET /api/spaces/finance/analyses/${ID}/revisions/1`]: { status: 200, body: analyseLue(ID) },
+      [`POST /api/spaces/finance/analyses/${ID}/opened`]: { status: 202, body: { recorded: true } },
+    });
+    expect(await screen.findByRole("heading", { name: "Chiffre d'affaires", level: 1 })).toBeInTheDocument();
+    expect(lus(fetcher)).toContain(`GET /api/spaces/finance/analyses/${ID}/revisions/1`);
+  });
+
+  it("changer d'analyse relit la fiche (clé par identifiant et révision)", async () => {
+    const AUTRE = "0b9e4a77-1c3d-4e58-b2f6-7a8d9c0e1f23";
+    const fetcher = ouvrir(`#/espaces/finance/analyses/${ID}`, {
+      ...FINANCE,
+      [`GET /api/spaces/finance/analyses/${ID}`]: { status: 200, body: analyseLue(ID) },
+      [`POST /api/spaces/finance/analyses/${ID}/opened`]: { status: 202, body: { recorded: true } },
+      [`GET /api/spaces/finance/analyses/${AUTRE}`]: { status: 200, body: analyseLue(AUTRE, "Autre analyse") },
+      [`POST /api/spaces/finance/analyses/${AUTRE}/opened`]: { status: 202, body: { recorded: true } },
+    });
+    await screen.findByRole("heading", { name: "Chiffre d'affaires", level: 1 });
+    act(() => { window.location.hash = `#/espaces/finance/analyses/${AUTRE}`; });
+    expect(await screen.findByRole("heading", { name: "Autre analyse", level: 1 })).toBeInTheDocument();
+    expect(lus(fetcher)).toContain(`POST /api/spaces/finance/analyses/${AUTRE}/opened`);
+  });
+});
+
+function analyseLue(id: string, name = "Chiffre d'affaires") {
+  const person = { issuer: "https://id.example.invalid", subject: "cora" };
+  return {
+    id, space_id: "finance", revision: 1, current_revision: 1, commit: "0123456789abcdef0123456789abcdef01234567", committed_at: "2026-01-15T12:00:00+00:00", revised_by: person, state: "ready", unresolved: [],
+    permissions: { owner: false, revise: false, delete: false, duplicate: false },
+    analysis: { api_version: "board.analysis/v1", id, name, description: "Suivi.", visibility: "shared", owner: person, query: { connection: "finance", model: "sales", metrics: ["revenue"], dimensions: ["region"], filters: [] }, contextual: [], presentation: { chart: "bars" } },
+  };
+}

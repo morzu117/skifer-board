@@ -1,4 +1,4 @@
-import type { Mock } from "vitest";
+import { vi, type Mock } from "vitest";
 import type { Fetch } from "../spaces/api";
 
 /** Aides des tests des analyses : contrats d'exemple du serveur réel et fixtures du format. */
@@ -106,4 +106,18 @@ export function bodyOf(fetcher: Mock<Fetch>, call = 0): string {
 /** Ce que le navigateur envoie pour créer ou réviser : le document sans les champs que le serveur pose. */
 export function draftOf(document: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(document).filter(([key]) => !["api_version", "id", "owner"].includes(key)));
+}
+
+/** Racine des routes d'analyses de l'espace `finance` (celui de `contracts/espaces/espace.json`). */
+export const ROOT = "/api/spaces/finance/analyses";
+
+/**
+ * Faux `fetch` de l'écran : `"METHOD url"` donne l'exemple répondu (ou une fonction qui le calcule) ; toute
+ * autre demande reçoit une erreur 500, ce qui fait échouer un test qui sortirait de son scénario.
+ */
+export function analysesServer(routes: Record<string, Exemple | (() => Exemple)>) {
+  return vi.fn<Fetch>().mockImplementation((url, init) => {
+    const found = routes[`${init?.method ?? "GET"} ${url}`];
+    return Promise.resolve(found === undefined ? Response.json({}, { status: 500 }) : reply(typeof found === "function" ? found() : found));
+  });
 }

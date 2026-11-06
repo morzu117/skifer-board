@@ -18,7 +18,10 @@ export type Route =
   | { page: "parameters"; space: string }
   | { page: "connections"; space: string }
   | { page: "executions"; space: string }
-  | { page: "explorer"; space: string };
+  | { page: "explorer"; space: string }
+  | { page: "analyses"; space: string }
+  /** Fiche d'une analyse : la courante, ou une révision numérotée (plan 18, 18.5a). */
+  | { page: "analysis"; space: string; id: string; revision?: number };
 
 const PROTOTYPE_HASH = "#/prototype";
 const CREATE_HASH = "#/nouvel-espace";
@@ -33,6 +36,7 @@ const SPACE_PAGES = {
   connexions: "connections",
   executions: "executions",
   explorer: "explorer",
+  analyses: "analyses",
 } as const;
 
 export function routeHash(route: Route): string {
@@ -59,6 +63,10 @@ export function routeHash(route: Route): string {
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/explorer`;
     case "executions":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/executions`;
+    case "analyses":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses`;
+    case "analysis":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses/${encodeURIComponent(route.id)}${route.revision === undefined ? "" : `/revisions/${String(route.revision)}`}`;
   }
 }
 
@@ -82,8 +90,14 @@ export function routeFromHash(hash: string): Route {
     return { page: "telemetry" };
   }
   if (hash.startsWith(SPACE_PREFIX)) {
+    // La fiche d'une analyse : `analyses/<id>`, ou `analyses/<id>/revisions/<n>` pour une révision numérotée.
+    const analysis = /^([^/]+)\/analyses\/([^/]+)(?:\/revisions\/([1-9]\d{0,8}))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    if (analysis?.[1] !== undefined && analysis[2] !== undefined) {
+      const found = { page: "analysis", space: decodeSegment(analysis[1]), id: decodeSegment(analysis[2]) } as const;
+      return analysis[3] === undefined ? found : { ...found, revision: Number(analysis[3]) };
+    }
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
-    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions|explorer))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions|explorer|analyses))?$/.exec(hash.slice(SPACE_PREFIX.length));
     if (match?.[1] !== undefined) {
       const space = decodeSegment(match[1]);
       // Le motif n'admet que les segments de `SPACE_PAGES`.
