@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { refusalOf } from "../spaces/admin";
 import { decodeExecution } from "../executions/model";
-import { decodeAnalysisList, decodeDiff, decodeHistory, decodeOpened, decodeRevision, decodeUsage } from "./model";
+import { decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
 import { ANALYSIS_REFUSALS } from "./refusal";
 import { ID, ROUTE_NAMES, route } from "./testing";
 
@@ -38,13 +38,16 @@ const DECODERS: Readonly<Record<string, () => unknown>> = {
   ouvrir: () => decodeOpened(route("ouvrir").body),
   "ouvrir-non-enregistree": () => decodeOpened(route("ouvrir-non-enregistree").body),
   supprimer: () => route("supprimer"),
+  "derniere-execution": () => decodeLastExecution(route("derniere-execution").body, "finance", ID),
+  "derniere-execution-aucune": () => decodeLastExecution(route("derniere-execution-aucune").body, "finance", ID),
+  "derniere-execution-refusee": () => decodeLastExecution(route("derniere-execution-refusee").body, "finance", ID),
   "executer-avec-reference": () => decodeExecution(route("executer-avec-reference", [['"<state>"', '"queued"'], ['"<started_at>"', "null"]]).body, "finance"),
 };
 
 describe("exemples du serveur réel", () => {
   it("a un décodeur ou un refus fermé pour chacun des exemples", () => {
     const refusals = ROUTE_NAMES.filter((name) => name.startsWith("refus-"));
-    expect(refusals).toHaveLength(23);
+    expect(refusals).toHaveLength(24);
     expect([...Object.keys(DECODERS), ...refusals].sort()).toEqual(ROUTE_NAMES);
     for (const name of Object.keys(DECODERS)) expect(DECODERS[name], name).not.toThrow();
     for (const name of refusals) refusal(name);

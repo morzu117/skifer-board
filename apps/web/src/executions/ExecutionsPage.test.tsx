@@ -18,7 +18,7 @@ const base = {
   deadline_at: "2026-11-04T00:00:30Z", can_cancel: false, cancel_requested: false,
   error_code: null, rows: 1, size: ARROW.byteLength, truncated: true,
 };
-const proof = { ...exemple.body.evidence, evidence_id: "proof-1", sql_hash: "abc123", execution_status: "succeeded", model_keys: ["orders"] };
+const proof = { ...exemple.body.evidence, evidence_id: "proof-1", sql_hash: "sha256:v1:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", execution_status: "succeeded", model_keys: ["orders"] };
 const resultContract = { ...exemple.body.result_contract, completeness: "truncated" };
 const detail = { ...base, evidence: proof, connector_run_id: null, result_contract: resultContract };
 const running = { ...base, state: "running", finished_at: null, rows: null, size: null, truncated: null, can_cancel: true };

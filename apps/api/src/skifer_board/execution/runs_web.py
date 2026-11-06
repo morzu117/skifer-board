@@ -118,7 +118,7 @@ def _request(body: Any) -> tuple[str, Environment, SemanticRequest, str]:
     )
 
 
-def _json(record: ExecutionRecord, *, proof: bool = False) -> dict[str, Any]:
+def execution_json(record: ExecutionRecord, *, proof: bool = False) -> dict[str, Any]:
     result: dict[str, Any] = {
         "id": record.id,
         "space_id": record.space_id,
@@ -148,6 +148,25 @@ def _json(record: ExecutionRecord, *, proof: bool = False) -> dict[str, Any]:
         result["evidence"] = record.evidence
         result["connector_run_id"] = record.connector_run_id
     return result
+
+
+def last_execution_of(
+    store: ExecutionStore, clock: Callable[[], datetime]
+) -> Callable[[str, str, PersonRef], tuple[int, dict[str, Any]] | None]:
+    """Dernière exécution d'une personne qui référençait une analyse (plan 18.3b), au format et
+    avec la preuve de la route d'une exécution ; la révision référencée l'accompagne."""
+
+    def last(
+        space_id: str, analysis_id: str, reader: PersonRef
+    ) -> tuple[int, dict[str, Any]] | None:
+        store.recover_stale(clock())
+        record = store.last_for_analysis(space_id, analysis_id, reader)
+        if record is None:
+            return None
+        assert record.analysis_revision is not None
+        return record.analysis_revision, execution_json(record, proof=True)
+
+    return last
 
 
 def install_execution_routes(
@@ -282,6 +301,7 @@ def install_execution_routes(
                     at + LEASE,
                     owner_id,
                     figer(semantic, catalog),
+                    reference,
                 ),
                 semantic,
                 verified,
@@ -296,7 +316,7 @@ def install_execution_routes(
             await asyncio.to_thread(
                 analyses.executed, space_id, reference[0], reference[1], record.id
             )
-        return JSONResponse(_json(record), status_code=202)
+        return JSONResponse(execution_json(record), status_code=202)
 
     @app.get(path)
     def list_executions(request: Request, space_id: str, scope: str = "mine") -> JSONResponse:
@@ -312,7 +332,7 @@ def install_execution_routes(
         assert store is not None
         store.recover_stale(clock())
         records = store.list(access.space.id, actor, manages=scope == "space")
-        return JSONResponse({"executions": [_json(item) for item in records]})
+        return JSONResponse({"executions": [execution_json(item) for item in records]})
 
     @app.get(path + "/{execution_id}")
     def get_execution(request: Request, space_id: str, execution_id: str) -> JSONResponse:
@@ -322,11 +342,11 @@ def install_execution_routes(
         identifier = record_id(execution_id)
         own = store.get(access.space.id, identifier, actor)
         if own is not None:
-            return JSONResponse(_json(own, proof=True))
+            return JSONResponse(execution_json(own, proof=True))
         if access.manages:
             other = store.get(access.space.id, identifier, actor, manages=True)
             if other is not None:
-                return JSONResponse(_json(other))
+                return JSONResponse(execution_json(other))
         raise Refused(404, "execution_not_found")
 
     @app.get(path + "/{execution_id}/result")
@@ -400,4 +420,4 @@ def install_execution_routes(
         )
         if updated is None:
             raise Refused(404, "execution_not_found")
-        return JSONResponse(_json(updated, proof=updated.reader == actor))
+        return JSONResponse(execution_json(updated, proof=updated.reader == actor))

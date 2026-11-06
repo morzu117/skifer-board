@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from spaces.monde import (
     CREATEUR_GROUPE,
     CREATEUR_PERSONNE,
     LECTEUR_GROUPE,
+    LECTEUR_PERSONNE,
     PLATEFORME_SEULE,
     A,
 )
@@ -313,3 +315,74 @@ def test_contrat_d_une_reference_sans_depot(banc_sans_depot: Banc) -> None:
         },
     )
     contrat(reponse, "refus-reference-depot-indisponible", 503)
+
+
+INSTANT_FIXE = "2026-01-15T12:00:00+00:00"
+
+
+def masquer_mesures(evidence: dict[str, Any]) -> dict[str, Any]:
+    """La preuve mesure l'horloge du moteur et sa durée : ces valeurs, seules, sont remplacées
+    par des valeurs fixes de même type. Empreintes, certification et filtres sont comparés tels
+    quels."""
+    fixe = json.loads(json.dumps(evidence))
+    fixe["policy"]["evaluated_at"] = INSTANT_FIXE
+    for champ in ("compiled_at", "executed_at"):
+        fixe[champ] = INSTANT_FIXE
+    fixe["execution_duration_seconds"] = 0.01
+    return fixe  # type: ignore[no-any-return]
+
+
+def executer_et_attendre(banc: Banc, profil: Any, ident: str) -> str:
+    envoi = {
+        "connection": "finance",
+        "environment": "DEV",
+        "model": "sales",
+        "metrics": ["revenue"],
+        "dimensions": [],
+        "filters": [],
+        "analysis": {"id": ident, "revision": 1},
+    }
+    acceptee = banc.appel(profil, "POST", f"/api/spaces/{A}/executions", json=envoi)
+    assert acceptee.status_code == 202, acceptee.text
+    chemin = f"/api/spaces/{A}/executions/{acceptee.json()['id']}"
+    for _ in range(300):
+        if banc.appel(profil, "GET", chemin).json()["state"] not in {"queued", "running"}:
+            return str(acceptee.json()["id"])
+        time.sleep(0.02)
+    pytest.fail("l'exécution ne se termine pas")
+
+
+def contrat_execution(reponse: Response, nom: str) -> None:
+    corps_ = reponse.json()
+    assert reponse.status_code == 200, reponse.text
+    if corps_["execution"] is not None and corps_["execution"]["evidence"] is not None:
+        corps_["execution"]["evidence"] = masquer_mesures(corps_["execution"]["evidence"])
+    obtenu = {"status": reponse.status_code, "body": normaliser(corps_)}
+    chemin = CONTRATS / f"{nom}.json"
+    if os.environ.get("BOARD_REGENERER_CONTRATS"):
+        chemin.write_text(json.dumps(obtenu, separators=(",", ":"), ensure_ascii=False))
+    assert obtenu == json.loads(chemin.read_text(encoding="utf-8")), nom
+
+
+def test_contrats_de_la_derniere_execution(banc: Banc) -> None:
+    ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+    derniere = f"{CHEMIN}/{ident}/last-execution"
+    contrat_execution(banc.appel(LECTEUR_GROUPE, "GET", derniere), "derniere-execution-aucune")
+    executer_et_attendre(banc, LECTEUR_GROUPE, ident)
+    contrat_execution(banc.appel(LECTEUR_GROUPE, "GET", derniere), "derniere-execution")
+    personnelle = banc.creer_ok(CREATEUR_GROUPE, visibility="personal")
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{personnelle}/last-execution"),
+        "refus-derniere-execution-introuvable",
+        404,
+    )
+
+
+def test_contrat_d_une_derniere_execution_refusee(banc_sans_tenant: Banc) -> None:
+    banc = banc_sans_tenant
+    ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+    executer_et_attendre(banc, LECTEUR_PERSONNE, ident)
+    contrat_execution(
+        banc.appel(LECTEUR_PERSONNE, "GET", f"{CHEMIN}/{ident}/last-execution"),
+        "derniere-execution-refusee",
+    )

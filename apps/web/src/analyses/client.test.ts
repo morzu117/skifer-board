@@ -4,7 +4,7 @@ import { onSessionLost } from "../identity/session";
 import type { AdminOutcome } from "../spaces/admin";
 import type { Fetch } from "../spaces/api";
 import { onSpaceLost } from "../spaces/lost";
-import { createAnalysis, deleteAnalysis, duplicateAnalysis, fetchAnalyses, fetchAnalysis, fetchAnalysisRevision, fetchDiff, fetchHistory, fetchUsage, openAnalysis, reviseAnalysis } from "./client";
+import { createAnalysis, deleteAnalysis, duplicateAnalysis, fetchAnalyses, fetchAnalysis, fetchAnalysisRevision, fetchDiff, fetchHistory, fetchLastExecution, fetchUsage, openAnalysis, reviseAnalysis } from "./client";
 import { decodeAnalysisDraft, type AnalysisDraft } from "./document";
 import { newEventId } from "./reference";
 import { ANALYSIS_CODES, ANALYSIS_REFUSALS, SHARED_CODES } from "./refusal";
@@ -71,6 +71,33 @@ describe("routes de lecture", () => {
     const usage = serving(route("usage"));
     expect(await fetchUsage("finance", ID, abort, usage)).toMatchObject({ status: "ok", value: { saved: { total: 1 } } });
     expect(usage).toHaveBeenCalledWith(`${URL}/usage`, { ...GET, signal: abort });
+  });
+
+  it("lit la dernière exécution de la session : trouvée, refusée par le moteur, ou aucune", async () => {
+    const abort = signal();
+    const found = serving(route("derniere-execution"));
+    const outcome = await fetchLastExecution("finance", ID, abort, found);
+    expect(outcome).toMatchObject({ status: "ok", value: { id: ID, last: { revision: 1, execution: { state: "succeeded", errorCode: null, rows: 1 } } } });
+    expect(outcome.status === "ok" ? outcome.value.last?.execution.proof?.sqlHash : null).toMatch(/^sha256:v1:/);
+    expect(found).toHaveBeenCalledWith(`${URL}/last-execution`, { ...GET, signal: abort });
+    // Un refus du moteur reste un refus : jamais une exécution réussie, ni une preuve inventée.
+    const denied = await fetchLastExecution("finance", ID, abort, serving(route("derniere-execution-refusee")));
+    expect(denied).toMatchObject({ status: "ok", value: { last: { revision: 1, execution: { state: "denied", errorCode: "deny", rows: null, proof: null } } } });
+    expect(await fetchLastExecution("finance", ID, abort, serving(route("derniere-execution-aucune")))).toEqual({ status: "ok", value: { id: ID, last: null } });
+  });
+
+  it("refuse une dernière exécution hors contrat ou qui n'est pas celle qu'on a demandée", async () => {
+    const abort = signal();
+    errorIncludes(await fetchLastExecution("finance", OTHER_ID, abort, serving(route("derniere-execution"))), "hors contrat");
+    errorIncludes(await fetchLastExecution("autre", ID, abort, serving(route("derniere-execution"))), "hors contrat");
+    errorIncludes(await fetchLastExecution("finance", ID, abort, serving({ status: 201, body: route("derniere-execution").body })), "HTTP 200");
+    errorIncludes(await fetchLastExecution("finance", ID, abort, serving({ status: 202, body: route("derniere-execution").body })), "HTTP 200");
+    errorIncludes(await fetchLastExecution("finance", "x", abort, serving(route("derniere-execution"))), "identifiant d'analyse");
+    errorIncludes(await fetchLastExecution("finance", ID, abort, serving({ status: 200, body: changed(route("derniere-execution").body, "execution.state", "denied") })), "hors contrat");
+    // Un entier arrondi par JSON.parse n'est pas lu : la réponse est refusée sans être affichée.
+    const text = JSON.stringify(route("derniere-execution").body).replace('"rows":1', '"rows":9007199254740993');
+    const lossy = vi.fn<Fetch>().mockImplementation(() => Promise.resolve(new Response(text, { status: 200 })));
+    errorIncludes(await fetchLastExecution("finance", ID, abort, lossy), "unsafe_integer");
   });
 
   it("refuse une réponse qui n'est pas celle qu'on a demandée", async () => {
@@ -209,6 +236,7 @@ describe("refus", () => {
     ["refus-analyse-utilisee", 409, "analysis_in_use", { field: null, consumers: [{ kind: "dashboard", id: ID }] }],
     ["refus-champ-reserve", 422, "invalid_analysis", { field: null, reason: "field_not_allowed", violations: [{ path: "/owner", rule: "field_not_allowed" }] }],
     ["refus-depot-indisponible", 503, "content_unavailable", noExtra],
+    ["refus-derniere-execution-introuvable", 404, "analysis_not_found", noExtra],
     ["refus-ecart-invalide", 400, "invalid_parameter", { field: null, parameter: "other" }],
     ["refus-ecart-revision-masquee", 404, "analysis_not_found", noExtra],
     ["refus-interdit", 403, "forbidden", { field: null, required: "creator" }],
@@ -246,6 +274,7 @@ describe("refus", () => {
     expect(await openAnalysis("finance", ID, 1, EVENT, serving(example))).toMatchObject({ status: "refused", code });
     expect(await duplicateAnalysis("finance", ID, undefined, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchUsage("finance", ID, abort, serving(example))).toMatchObject({ status: "refused", code });
+    expect(await fetchLastExecution("finance", ID, abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchDiff("finance", ID, 1, 2, abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchAnalyses("finance", abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchAnalysisRevision("finance", ID, 1, abort, serving(example))).toMatchObject({ status: "refused", code });

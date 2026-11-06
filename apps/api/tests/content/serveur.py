@@ -29,6 +29,7 @@ from skifer_board.spaces.model import Environment, PersonRef
 from spaces.monde import (
     ADMIN_GROUPE,
     COOKIE,
+    LECTEUR_PERSONNE,
     ORIGINE,
     A,
     Monde,
@@ -189,7 +190,7 @@ def ouvrir(
         execution_models_dir=dossier,
         execution_certification_mode="off",
         endpoints={"ventes": DuckDbEndpoint(base_de_ventes(racine))},
-        execution_reader_attributes=lambda identite: {"tenant": "A"},
+        execution_reader_attributes=options.get("attributs", lambda identite: {"tenant": "A"}),
         content_repository=options.get("content_repository", depot),
         analysis_consumers=lambda espace, analyse: tuple(consommateurs),
         usage_key=options.get("usage_key", CLE_D_USAGE),
@@ -217,3 +218,13 @@ def banc(monde: Monde, service: CatalogService, tmp_path: Path) -> Iterator[Banc
 def banc_sans_depot(monde: Monde, service: CatalogService, tmp_path: Path) -> Iterator[Banc]:
     """Serveur dont l'exploitation n'a pas configuré de dépôt de contenus."""
     yield from ouvrir(monde, service, tmp_path, content_repository=None)
+
+
+@pytest.fixture
+def banc_sans_tenant(monde: Monde, service: CatalogService, tmp_path: Path) -> Iterator[Banc]:
+    """Serveur où `luc` n'a pas d'attribut de ligne : le moteur lui refuse ses exécutions."""
+
+    def attributs(identite: Any) -> dict[str, str]:
+        return {} if identite.subject == LECTEUR_PERSONNE.sujet else {"tenant": "A"}
+
+    yield from ouvrir(monde, service, tmp_path, attributs=attributs)

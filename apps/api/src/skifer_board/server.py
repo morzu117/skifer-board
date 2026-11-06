@@ -58,7 +58,7 @@ from .execution.oauth_access import PersonalOAuth
 from .execution.oauth_store import OAuthStore
 from .execution.oauth_web import install_oauth
 from .execution.runs import ExecutionRecord, ExecutionState, ExecutionStore
-from .execution.runs_web import install_execution_routes
+from .execution.runs_web import install_execution_routes, last_execution_of
 from .execution.semantic import certification_store_from_path, describe_catalog
 from .execution.vault import CredentialVault, VaultConfigError, VaultKeys, keys_from_env
 from .execution.worker import ExecutionWorkerPool
@@ -323,6 +323,7 @@ def create_app(
         guards.reader,
         analysis_consumers,
         usage_events,
+        None if execution_store is None else last_execution_of(execution_store, spaces.clock),
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store

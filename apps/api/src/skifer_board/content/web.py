@@ -80,6 +80,9 @@ class Consumer:
 
 
 Consumers = Callable[[str, str], Sequence[Consumer]]
+# Dernière exécution d'une personne qui référençait une analyse (plan 18.3b) : la révision
+# référencée et le résumé de l'exécution, ou `None`. Cette personne seule, jamais une autre.
+LastExecution = Callable[[str, str, PersonRef], tuple[int, dict[str, Any]] | None]
 
 
 def no_consumers(space_id: str, analysis_id: str) -> Sequence[Consumer]:
@@ -328,6 +331,7 @@ def install_analysis_routes(
     reader: Callable[[Request, str], Access],
     consumers: Consumers = no_consumers,
     events: UsageEvents | None = None,
+    last_execution: LastExecution | None = None,
 ) -> None:
     """Pose les routes des analyses. Sans dépôt configuré, elles répondent `content_unavailable` ;
     en mode local (ni base ni index), elles répondent `local_mode`, comme les exécutions."""
@@ -701,6 +705,24 @@ def install_analysis_routes(
                     }
                     for kind, found in events.usage(space_id, analysis_id).items()
                 },
+            }
+        )
+
+    @app.get(path + "/{analysis_id}/last-execution")
+    def get_last_execution(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
+        """Preuves de la fiche (18.3b) : la dernière exécution de la session qui référençait
+        cette analyse, toutes révisions confondues. Les droits sont ceux de lire l'analyse
+        courante, vérifiés avant toute lecture d'exécution ; une analyse invisible répond
+        comme une analyse inexistante. Les exécutions des autres personnes ne sont jamais lues."""
+        _, actor = active(request, space_id)
+        current(space_id, analysis_id, actor)
+        assert last_execution is not None
+        found = last_execution(space_id, analysis_id, actor)
+        return JSONResponse(
+            {
+                "id": analysis_id,
+                "revision": None if found is None else found[0],
+                "execution": None if found is None else found[1],
             }
         )
 

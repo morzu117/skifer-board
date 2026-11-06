@@ -252,6 +252,7 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("POST", "/api/spaces/{space_id}/analyses/{analysis_id}/duplicate"),
         ("POST", "/api/spaces/{space_id}/analyses/{analysis_id}/opened"),
         ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/usage"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/last-execution"),
     }
     with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if expiration is not None:

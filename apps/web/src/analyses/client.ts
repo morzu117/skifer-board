@@ -2,7 +2,7 @@ import { ContractError } from "../catalogue/decode";
 import { call, type AdminOutcome, type Call } from "../spaces/admin";
 import { spaceUrl, type Fetch } from "../spaces/api";
 import { decodeAnalysisDraft, decodeName, type AnalysisDraft } from "./document";
-import { decodeAnalysisList, decodeDiff, decodeHistory, decodeOpened, decodeRevision, decodeUsage, type AnalysisList, type AnalysisRevision, type Diff, type History, type Usage } from "./model";
+import { decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage, type AnalysisList, type AnalysisRevision, type Diff, type History, type LastExecution, type Usage } from "./model";
 import { readExact } from "./lossless";
 import { newEventId } from "./reference";
 import { ANALYSIS_REFUSALS } from "./refusal";
@@ -173,4 +173,14 @@ export function fetchUsage(space: string, id: string, signal: AbortSignal, fetch
   const bad = problem(id);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/usage`, decode: (value, status) => { only(status, [200]); return decodeUsage(value, id); } }, signal, fetcher);
+}
+
+/**
+ * Dernière exécution de la session qui référençait l'analyse, toutes révisions confondues. Le serveur ne rend
+ * jamais celle d'une autre personne ; sans exécution, `last` vaut `null`.
+ */
+export function fetchLastExecution(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<LastExecution>> {
+  const bad = problem(id);
+  if (bad !== null) return rejected(bad);
+  return run({ url: `${named(space, id)}/last-execution`, decode: (value, status) => { only(status, [200]); return decodeLastExecution(value, space, id); } }, signal, fetcher);
 }

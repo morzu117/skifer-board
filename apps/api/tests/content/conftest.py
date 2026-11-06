@@ -13,3 +13,4 @@ from state.conftest import migre as migre
 
 from .serveur import banc as banc
 from .serveur import banc_sans_depot as banc_sans_depot
+from .serveur import banc_sans_tenant as banc_sans_tenant

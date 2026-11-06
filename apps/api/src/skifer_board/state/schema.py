@@ -9,6 +9,7 @@ from __future__ import annotations
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Double,
@@ -367,8 +368,16 @@ executions = Table(
     Column("row_count", BigInteger, nullable=True),
     Column("byte_count", BigInteger, nullable=True),
     Column("truncated", Boolean, nullable=True),
+    # Référence d'analyse portée par l'exécution (plan 18.3b) : deux identifiants, jamais le nom
+    # ni le contenu. Les deux ou aucun ; hors de l'empreinte de la requête. Sans clé étrangère.
+    Column("analysis_id", String(36), nullable=True),
+    Column("analysis_revision", Integer, nullable=True),
+    CheckConstraint(
+        "(analysis_id IS NULL) = (analysis_revision IS NULL)", name="ck_executions_analysis"
+    ),
     Index("ix_executions_reader", "space_id", "issuer", "subject", "created_at"),
     Index("ix_executions_lease", "state", "lease_until"),
+    Index("ix_executions_analysis", "space_id", "analysis_id", "issuer", "subject", "created_at"),
 )
 
 # États PKCE et autorisations personnelles Databricks ; secrets intégralement chiffrés.

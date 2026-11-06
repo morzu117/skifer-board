@@ -1,4 +1,5 @@
 import { instant } from "../catalogue/decode";
+import { decodeExecution, type Execution } from "../executions/model";
 import { decodeAnalysis, decodeName, decodeNames, decodePerson, type AnalysisDocument, type Person } from "./document";
 import { decodeViolations, REFERENCE_RULES, type Violation } from "./refusal";
 import { commit, count, distinct, exact, fail, flag, identifier, items, MAX_REVISION, pick, record, revision, uuid, word } from "./shape";
@@ -244,4 +245,27 @@ export function decodeUsage(value: unknown, id: string): Usage {
 /** Réponse d'une ouverture : `recorded: false` dit que la base n'a pas pu consigner, le client peut rejouer. */
 export function decodeOpened(value: unknown): { recorded: boolean } {
   return { recorded: flag(exact(value, ["recorded"], "ouverture").recorded, "ouverture.recorded") };
+}
+
+/**
+ * Dernière exécution de la session qui référençait l'analyse (plan 18, 18.3b) : la révision référencée et
+ * l'exécution, avec la preuve et le décodage de la route d'une exécution. `last: null` dit qu'il n'y en a
+ * pas, ce qui n'est ni une erreur ni une exécution réussie. Un refus ou un échec reste ce qu'il est.
+ */
+export interface LastExecution {
+  id: string;
+  last: { revision: number; execution: Execution } | null;
+}
+
+export function decodeLastExecution(value: unknown, space: string, id: string): LastExecution {
+  const found = exact(value, ["id", "revision", "execution"], "dernière exécution");
+  if (found.id !== id) return fail("dernière exécution.id", "identifiant demandé");
+  if (found.revision === null || found.execution === null) {
+    // Les deux ou aucun : une révision sans exécution, ou l'inverse, n'est pas une réponse du serveur.
+    return found.revision === null && found.execution === null ? { id, last: null } : fail("dernière exécution", "révision et exécution ensemble ou ni l'une ni l'autre");
+  }
+  const run = record(found.execution, "dernière exécution.execution");
+  // La preuve fait partie de la réponse : un résumé sans elle n'est pas celui de cette route.
+  if (!Object.hasOwn(run, "evidence")) return fail("dernière exécution.execution", "résumé avec preuve");
+  return { id, last: { revision: revision(found.revision, "dernière exécution.revision"), execution: decodeExecution(run, space) } };
 }

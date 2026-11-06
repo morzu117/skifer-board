@@ -548,6 +548,9 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         )
         parcours("GET", f"{racine}/{vivante}/usage", an + "/{analysis_id}/usage", 200)
         parcours("GET", f"{racine}/{new_id()}/usage", an + "/{analysis_id}/usage", 404)
+        derniere = an + "/{analysis_id}/last-execution"
+        parcours("GET", f"{racine}/{vivante}/last-execution", derniere, 200)
+        parcours("GET", f"{racine}/{new_id()}/last-execution", derniere, 404)
         parcours(
             "POST",
             f"/api/spaces/{A}/executions",

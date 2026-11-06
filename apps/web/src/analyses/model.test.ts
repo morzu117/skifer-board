@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ContractError } from "../catalogue/decode";
-import { READ_STATES, decodeAnalysisList, decodeDiff, decodeHistory, decodeOpened, decodeRevision, decodeUsage } from "./model";
+import { READ_STATES, decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
 import { changed, COMMIT, ID, OTHER_ID, route } from "./testing";
 
 const revisionOf = (name: string) => route(name).body;
@@ -216,5 +216,68 @@ describe("usage, ouverture", () => {
     expect(decodeOpened(route("ouvrir").body)).toEqual({ recorded: true });
     expect(decodeOpened(route("ouvrir-non-enregistree").body)).toEqual({ recorded: false });
     for (const value of [null, {}, { recorded: 1 }, { recorded: true, extra: 1 }, [], "true"]) refused(() => decodeOpened(value));
+  });
+});
+
+describe("dernière exécution de la session", () => {
+  const found = route("derniere-execution").body;
+  const denied = route("derniere-execution-refusee").body;
+  const none = route("derniere-execution-aucune").body;
+  const last = (body: unknown, id = ID) => decodeLastExecution(body, "finance", id);
+
+  it("décode l'exemple du serveur : révision, état, preuve et trace", () => {
+    const decoded = last(found);
+    expect(decoded.last?.revision).toBe(1);
+    expect(decoded.last?.execution).toMatchObject({ id: ID, space: "finance", state: "succeeded", errorCode: null, rows: 1, connectorRunId: ID });
+    expect(decoded.last?.execution.proof).toMatchObject({ evidenceId: ID, modelKeys: ["sales"], policy: { decision: "ALLOW" } });
+    expect(decoded.last?.execution.proof?.sqlHash).toMatch(/^sha256:v1:[0-9a-f]{64}$/);
+  });
+
+  it("décode un refus du moteur comme un refus : ni résultat ni preuve", () => {
+    const decoded = last(denied);
+    expect(decoded).toMatchObject({ id: ID, last: { revision: 1, execution: { state: "denied", errorCode: "deny", rows: null, size: null, truncated: null, proof: null, resultContract: null } } });
+    const human = changed(denied, "execution.error_code", "require_human");
+    expect(last(human).last?.execution).toMatchObject({ state: "denied", errorCode: "require_human" });
+  });
+
+  it("décode l'absence d'exécution : ni révision ni exécution", () => {
+    expect(last(none)).toEqual({ id: ID, last: null });
+  });
+
+  it("décode une exécution encore en cours", () => {
+    const running = changed(changed(changed(changed(changed(changed(found, "execution.state", "running"), "execution.finished_at", null), "execution.rows", null), "execution.size", null), "execution.truncated", null), "execution.evidence", null);
+    const decoded = last(changed(changed(running, "execution.result_contract", undefined), "execution.connector_run_id", null));
+    expect(decoded.last?.execution).toMatchObject({ state: "running", proof: null });
+  });
+
+  it("refuse un refus qui se déguise en succès, ou un succès qui se déguise en refus", () => {
+    refused(() => last(changed(denied, "execution.state", "succeeded")));
+    refused(() => last(changed(denied, "execution.error_code", null)));
+    refused(() => last(changed(denied, "execution.rows", 1)));
+    refused(() => last(changed(denied, "execution.evidence", (found as { execution: { evidence: unknown } }).execution.evidence)));
+    refused(() => last(changed(denied, "execution.error_code", "execution_failed")));
+    // Un refus ne se présente pas sous un autre état.
+    refused(() => last(changed(denied, "execution.state", "failed")));
+    refused(() => last(changed(changed(denied, "execution.state", "failed"), "execution.error_code", "require_human")));
+    refused(() => last(changed(found, "execution.state", "denied")));
+    refused(() => last(changed(found, "execution.error_code", "deny")));
+    refused(() => last(changed(found, "execution.evidence", null)));
+  });
+
+  it("refuse une réponse hors contrat", () => {
+    const cases: [string, unknown][] = [
+      ["", null], ["", []], ["extra", 1], ["id", OTHER_ID], ["id", undefined], ["revision", undefined], ["execution", undefined], ["revision", 0], ["revision", 1.5], ["revision", "1"], ["revision", 1_000_000_000],
+      ["revision", null], ["execution", null], ["execution", []], ["execution", "x"], ["execution.extra", 1], ["execution.space_id", "autre"], ["execution.id", "pas-un-uuid"],
+      ["execution.evidence.sql_hash", "invalide"], ["execution.evidence.execution_error_type", "DENY"], ["execution.evidence.executed_at", null],
+      ["execution.evidence.metrics.0.certification", "CANDIDATE"], ["execution.evidence.metrics.0.definition_hash", "empreinte"], ["execution.evidence.normalized_filters.0.definition_hash", "empreinte"], ["execution.evidence.normalized_filters.0.definition_hash", null],
+      ["execution.analysis", { id: ID, revision: 1 }], ["execution.created_at", "hier"], ["execution.evidence.sql_hash", undefined], ["execution.evidence", undefined],
+    ];
+    for (const [path, value] of cases) refused(() => last(path === "" ? value : changed(found, path, value)));
+    // La preuve fait partie de la réponse : le résumé de la liste des exécutions n'est pas celui-ci.
+    const summary = Object.fromEntries(Object.entries((found as { execution: object }).execution).filter(([key]) => !["evidence", "connector_run_id", "result_contract"].includes(key)));
+    refused(() => last({ id: ID, revision: 1, execution: summary }));
+    refused(() => last(none, OTHER_ID));
+    refused(() => last(changed(none, "revision", 1)));
+    refused(() => last(changed(none, "execution", (found as { execution: unknown }).execution)));
   });
 });

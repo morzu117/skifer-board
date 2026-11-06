@@ -15,7 +15,7 @@ const success = {
   created_at: CREATED, started_at: STARTED, finished_at: FINISHED, deadline_at: DEADLINE,
   can_cancel: false, cancel_requested: false, error_code: null, rows: 1, size: 128, truncated: false,
 };
-const evidence = { ...exemple.body.evidence, evidence_id: "evidence-1", sql_hash: "sha256:n1:abc", execution_status: "succeeded", model_keys: ["orders"] };
+const evidence = { ...exemple.body.evidence, evidence_id: "evidence-1", sql_hash: "sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", execution_status: "succeeded", model_keys: ["orders"] };
 const contract = { dimensions: ["region"], metrics: [{ name: "revenue", aggregation: "sum", additivity: "additive" }], completeness: "complete" };
 const detail = { ...success, evidence, connector_run_id: SECOND, result_contract: contract };
 const running = { ...success, state: "running", finished_at: null, error_code: null, rows: null, size: null, truncated: null, can_cancel: true };
@@ -29,7 +29,7 @@ function rejects(value: unknown): void {
 describe("contrat des exécutions suivies", () => {
   it("décode une réussite, sa preuve expurgée et les métadonnées d'administration", () => {
     const found = decodeExecution(detail, "finance");
-    expect(found).toMatchObject({ id: ID, space: "finance", state: "succeeded", rows: 1, size: 128, truncated: false, proof: { evidenceId: "evidence-1", sqlHash: "sha256:n1:abc", modelKeys: ["orders"] }, connectorRunId: SECOND });
+    expect(found).toMatchObject({ id: ID, space: "finance", state: "succeeded", rows: 1, size: 128, truncated: false, proof: { evidenceId: "evidence-1", sqlHash: "sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", modelKeys: ["orders"] }, connectorRunId: SECOND });
     expect(found.createdAt).toEqual(new Date(CREATED));
     expect(decodeExecution(success, "finance").proof).toBeNull();
     rejects({ ...success, evidence: null, connector_run_id: null });
@@ -99,7 +99,19 @@ describe("contrat des exécutions suivies", () => {
     { ...success, rows: -1 }, { ...success, rows: 1001 }, { ...success, size: -1 }, { ...success, size: 1048577 },
     { ...denied, error_code: "server_restarted" },
     { ...denied, state: "cancelled" }, { ...denied, state: "timed_out" },
+    // Un code réservé n'appartient qu'à son état : un refus du moteur ne se présente pas comme un échec.
+    { ...denied, state: "failed" }, { ...denied, state: "failed", error_code: "require_human" },
+    { ...denied, state: "failed", error_code: "cancelled" }, { ...denied, state: "failed", error_code: "execution_timed_out" },
+    { ...denied, state: "timed_out", error_code: "deny" }, { ...denied, state: "cancelled", error_code: "require_human" },
+    { ...denied, error_code: "cancelled" }, { ...denied, error_code: "execution_timed_out" },
   ])("refuse un état ou un résultat incohérent : %#", rejects);
+
+  it("accepte un échec sous ses propres codes et un refus sous les siens", () => {
+    for (const code of ["execution_failed", "server_restarted", "connector_unavailable", "worker_unavailable"]) {
+      expect(decodeExecution({ ...denied, state: "failed", error_code: code }, "finance")).toMatchObject({ state: "failed", errorCode: code });
+    }
+    for (const code of ["deny", "require_human"]) expect(decodeExecution({ ...denied, error_code: code }, "finance")).toMatchObject({ state: "denied", errorCode: code });
+  });
 
   it.each([
     { ...detail, evidence: null }, { ...detail, evidence: { ...evidence, sql_text: "SELECT 1" } },
@@ -124,6 +136,7 @@ describe("contrat des exécutions suivies", () => {
 
 describe("preuve expurgée détaillée", () => {
   const raw = exemple.body.evidence;
+  const BASE_HASH = `sha256:v1:${"e".repeat(64)}`;
   it("conserve les champs de provenance et distingue les filtres d'exploration", () => {
     const e = { ...raw, normalized_filters: [...raw.normalized_filters, { column: "region", operator: "eq", value: "<redacted>" }] };
     const proof = decodeExecution({ ...exemple.body, evidence: e }, "finance").proof;
@@ -145,9 +158,32 @@ describe("preuve expurgée détaillée", () => {
     { ...raw, normalized_filters: [{ column: "region", operator: "eq", origin: "inconnu" }] },
     { ...raw, normalized_filters: [{ column: "region", operator: "eq", autre: "secret" }] },
     { ...raw, execution_duration_seconds: -1 }, { ...raw, sql_dialect: "" },
+    // Empreinte de requête : `sha256:v1:` et 64 caractères hexadécimaux minuscules (skifer `hash_sql`).
+    { ...raw, sql_hash: "invalide" }, { ...raw, sql_hash: "sha256:v1:abc" }, { ...raw, sql_hash: `sha256:v2:${"a".repeat(64)}` },
+    { ...raw, sql_hash: `sha256:v1:${"A".repeat(64)}` }, { ...raw, sql_hash: `sha256:v1:${"a".repeat(65)}` }, { ...raw, sql_hash: ` ${raw.sql_hash}` },
+    { ...raw, sql_hash: `${raw.sql_hash}\n` }, { ...raw, sql_hash: `md5:v1:${"a".repeat(64)}` },
+    { ...raw, metrics: [{ ...raw.metrics[0], definition_hash: "empreinte" }] },
+    // Une preuve de réussite ne porte pas d'erreur, et date l'exécution et sa durée.
+    { ...raw, execution_error_type: "DENY" }, { ...raw, execution_error_type: "" }, { ...raw, executed_at: null }, { ...raw, execution_duration_seconds: null },
+    // Un candidat porte son identifiant, une métrique certifiée n'en porte pas (skifer `MetricEvidence`).
+    { ...raw, metrics: [{ ...raw.metrics[0], certification: "CANDIDATE", candidate_id: null }] },
+    { ...raw, metrics: [{ ...raw.metrics[0], certification: "CANDIDATE", candidate_id: "" }] },
+    { ...raw, metrics: [{ ...raw.metrics[0], certification: "CERTIFIED", candidate_id: "c-1" }] },
   ])("refuse une preuve hors contrat %#", (e) => { rejects({ ...exemple.body, evidence: e }); });
+  it("accepte un candidat qui porte son identifiant", () => {
+    const e = { ...raw, metrics: [{ ...raw.metrics[0], certification: "CANDIDATE", candidate_id: "c-1" }] };
+    expect(decodeExecution({ ...exemple.body, evidence: e }, "finance").proof?.metrics[0]).toMatchObject({ certification: "CANDIDATE", candidate_id: "c-1" });
+  });
   it("lit les champs optionnels permis d'un filtre de politique", () => {
-    const e = { ...raw, normalized_filters: [{ column: "base_filter", operator: "sql", origin: "policy", model_key: "orders", definition_hash: "empreinte" }] };
-    expect(decodeExecution({ ...exemple.body, evidence: e }, "finance").proof?.filters[0]).toEqual({ column: "base_filter", operator: "sql", origin: "policy", modelKey: "orders", definitionHash: "empreinte", value: null });
+    const e = { ...raw, normalized_filters: [{ column: "base_filter", operator: "sql", origin: "policy", model_key: "orders", definition_hash: BASE_HASH }] };
+    expect(decodeExecution({ ...exemple.body, evidence: e }, "finance").proof?.filters[0]).toEqual({ column: "base_filter", operator: "sql", origin: "policy", modelKey: "orders", definitionHash: BASE_HASH, value: null });
+  });
+  it("lit un filtre sans empreinte : seul un filtre de base en porte une, et elle n'est jamais nulle", () => {
+    const e = { ...raw, normalized_filters: [{ column: "region", operator: "eq", origin: "exploration" }, { column: "tenant", operator: "eq", origin: "policy", model_key: "orders", value: "<redacted>" }] };
+    expect(decodeExecution({ ...exemple.body, evidence: e }, "finance").proof?.filters.map((item) => item.definitionHash)).toEqual([null, null]);
+  });
+  it.each(["empreinte", "", null, 1, "sha256:v1:abc", `sha256:v2:${"a".repeat(64)}`, `sha256:v1:${"A".repeat(64)}`, `sha256:v1:${"a".repeat(65)}`, `${BASE_HASH}\n`, ` ${BASE_HASH}`])("refuse l'empreinte %j d'un filtre de base", (hash) => {
+    const e = { ...raw, normalized_filters: [{ column: "base_filter", operator: "sql", origin: "policy", model_key: "orders", definition_hash: hash }] };
+    rejects({ ...exemple.body, evidence: e });
   });
 });

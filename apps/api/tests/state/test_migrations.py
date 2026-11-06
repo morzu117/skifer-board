@@ -218,6 +218,8 @@ COLONNES = {
         "row_count": True,
         "byte_count": True,
         "truncated": True,
+        "analysis_id": True,
+        "analysis_revision": True,
     },
     # Événements d'usage des analyses (plan 18.3, révision 0014).
     "analysis_events": {
