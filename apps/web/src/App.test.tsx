@@ -66,9 +66,10 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(within(nav).getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");
   // À l'accueil, hors espace, aucune section n'est offerte ; le catalogue et les membres se lisent « dans un espace ».
   expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
+  for (const name of ["Analyses", "Dashboards", "Déploiements"]) {
     expect(within(nav).getByText(name)).toHaveTextContent("à venir");
   }
+  expect(within(nav).getByText("Explorer")).toHaveTextContent("Explorerdans un espace");
   expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
   expect(within(nav).getByText("Espace & connexions")).toHaveTextContent("Espace & connexionsdans un espace");
   await userEvent.click(await screen.findByRole("link", { name: "Finance" }));
@@ -80,10 +81,10 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(screen.getByRole("navigation", { name: "Fil d'Ariane" })).toHaveTextContent("Catalogue Atlas");
   expect(within(screen.getByRole("navigation", { name: "Fil d'Ariane" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Finance", "Catalogue Atlas"]);
   // L'espace confirmé dit « Administrateur » : Catalogue Atlas et Espace & connexions sont livrés (plan 08, 8.4).
-  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Catalogue Atlas", "Espace & connexions"]);
+  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Explorer", "Catalogue Atlas", "Espace & connexions"]);
   expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
   expect(within(nav).getByRole("button", { name: "Espace & connexions" })).not.toHaveAttribute("aria-current");
-  for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
+  for (const name of ["Analyses", "Dashboards", "Déploiements"]) {
     expect(within(nav).getByText(name)).toHaveTextContent("à venir");
   }
   expect(nav).toHaveTextContent("skifer-atlas");
@@ -548,7 +549,7 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).queryByText("dans un espace")).not.toBeInTheDocument();
-    for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements"]) {
+    for (const name of ["Analyses", "Dashboards", "Déploiements"]) {
       expect(within(nav).getByText(name)).toHaveTextContent("à venir");
     }
     expect(within(nav).getByRole("button", { name: "Espace & connexions" })).toBeInTheDocument();

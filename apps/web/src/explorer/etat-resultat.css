@@ -1,0 +1,9 @@
+.sb-resultat-chargement span {
+  display: block;
+  height: var(--sb-space-4);
+  margin: var(--sb-space-5) 0;
+  background: var(--sb-line-soft);
+  border-radius: var(--sb-radius-md);
+}
+.sb-resultat-chargement span:nth-child(2) { width: 75%; }
+.sb-resultat-chargement span:nth-child(3) { width: 50%; }

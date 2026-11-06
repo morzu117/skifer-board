@@ -16,7 +16,7 @@ export interface ExecutionInput {
   model: string;
   metrics: readonly string[];
   dimensions: readonly string[];
-  filters: readonly { column: string; operator: "eq" | "ne" | "gt" | "gte" | "lt" | "lte"; value: string | number | boolean }[];
+  filters: readonly { column: string; operator: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "between"; value: string | number | boolean | readonly (string | number | boolean)[] }[];
 }
 
 export function fetchExecutions(space: string, scope: "mine" | "space", signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<readonly Execution[]>> {

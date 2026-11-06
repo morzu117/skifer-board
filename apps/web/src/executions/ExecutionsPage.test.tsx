@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi, type Mock } from "vitest";
 import espace from "../../../../contracts/espaces/espace.json";
+import exemple from "../../../../contracts/executions/contextuel-detail.json";
 import type { Fetch } from "../spaces/api";
 import { decodeSpace, type Space } from "../spaces/model";
 import { cellText, durationOf, ExecutionsPage } from "./ExecutionsPage";
@@ -17,8 +18,9 @@ const base = {
   deadline_at: "2026-11-04T00:00:30Z", can_cancel: false, cancel_requested: false,
   error_code: null, rows: 1, size: ARROW.byteLength, truncated: true,
 };
-const proof = { evidence_id: "proof-1", sql_hash: "abc123", execution_status: "succeeded", model_keys: ["orders"] };
-const detail = { ...base, evidence: proof, connector_run_id: null };
+const proof = { ...exemple.body.evidence, evidence_id: "proof-1", sql_hash: "abc123", execution_status: "succeeded", model_keys: ["orders"] };
+const resultContract = { ...exemple.body.result_contract, completeness: "truncated" };
+const detail = { ...base, evidence: proof, connector_run_id: null, result_contract: resultContract };
 const running = { ...base, state: "running", finished_at: null, rows: null, size: null, truncated: null, can_cancel: true };
 const FINANCE = decodeSpace(espace.body, "espace");
 const reader: Space = { ...FINANCE, role: "reader" };
@@ -101,7 +103,7 @@ it("montre un résultat vide sans annoncer de troncature", async () => {
   const empty = { ...base, rows: 0, size: bytes.byteLength, truncated: false };
   open(reader, {
     [`GET ${ROOT}?scope=mine`]: listed([empty]),
-    [`GET ${ROOT}/${ID}`]: { status: 200, body: { ...empty, evidence: proof, connector_run_id: null } },
+    [`GET ${ROOT}/${ID}`]: { status: 200, body: { ...empty, evidence: proof, connector_run_id: null, result_contract: exemple.body.result_contract } },
     [`GET ${ROOT}/${ID}/result`]: new Response(bytes.slice().buffer, { headers: { "Content-Type": "application/vnd.apache.arrow.stream" } }),
   });
   await userEvent.click(await screen.findByRole("button", { name: /source · DEV/ }));

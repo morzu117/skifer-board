@@ -82,6 +82,7 @@ def test_methodes_et_issues() -> None:
         "timed_out",
         "running",
         "queued",
+        "unavailable",
     }
     assert not {"ok", "error", "other"} & REFUSAL_CODES
     # Les issues tiennent dans la colonne `outcome`.
@@ -489,3 +490,21 @@ def test_resume_vide() -> None:
     assert resume.operations == () and resume.oldest is None
     with pytest.raises(dataclasses.FrozenInstanceError):
         resume.operations = ()  # type: ignore[misc]
+
+
+def test_operations_execution_sont_fermees() -> None:
+    for operation in ("semantic.execute", "contextual.compute"):
+        assert (
+            Measure(
+                at=MAINTENANT, kind=Kind.EXECUTION, operation=operation, outcome="ok", duration_ms=1
+            ).operation
+            == operation
+        )
+    with pytest.raises(InvalidMeasure, match="operation"):
+        Measure(
+            at=MAINTENANT,
+            kind=Kind.EXECUTION,
+            operation="valeur-secrete",
+            outcome="ok",
+            duration_ms=1,
+        )

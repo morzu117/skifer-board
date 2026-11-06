@@ -1,0 +1,1 @@
+{"status":200,"body":{"models":[{"name":"orders","label":"Commandes","description":"Description des commandes","metrics":[{"name":"revenue","label":"Chiffre d'affaires","description":"Montant total","aggregation":"sum","additivity":"additive"}],"dimensions":[{"name":"jour","label":"Jour","description":"Date de commande","type":"date","is_time":true}]}]}}

@@ -197,6 +197,19 @@ def create_app(
             )
         )
 
+    def measure_contextual(record: ExecutionRecord, outcome: str, duration: float) -> None:
+        telemetry.submit(
+            Measure(
+                at=spaces.clock(),
+                kind=Kind.EXECUTION,
+                operation="contextual.compute",
+                outcome=outcome,
+                duration_ms=duration * 1000,
+                space=record.space_id,
+                environment=record.environment.value,
+            )
+        )
+
     execution_pool = (
         ExecutionWorkerPool(
             execution_store,
@@ -282,6 +295,7 @@ def create_app(
         endpoints,
         execution_transport,
         personal_oauth.token,
+        measure_contextual,
         execution_reader_attributes,
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).

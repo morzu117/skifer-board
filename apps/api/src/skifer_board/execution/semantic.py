@@ -6,6 +6,7 @@ dans le moteur et le connecteur ; l'appelant ne peut ni le fournir ni le réécr
 
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from skifer.semantic.access_policy import ConsumerContext, SemanticAccessDenied
 from skifer.semantic.evidence import ExecutionResult, SemanticExecutionError, hash_sql
 from skifer.semantic.semantic import SemanticEngine
 
+from ..contextual.rules import Additivity, Aggregation
 from ..identity.model import Identity
 from .connectors import ConnectorError, ExecutionConnector
 from .model import Binding, Connector, IdentityMode
@@ -84,6 +86,141 @@ def _all_models_have_row_policy(models_dir: Path) -> bool:
         return True
     except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError):
         return False
+
+
+_MAX_MODELS = 100
+_MAX_FIELDS = 500
+_MAX_TEXT = 1024
+_IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}\Z")
+
+
+def _text(value: Any) -> str:
+    if not isinstance(value, str) or len(value) > _MAX_TEXT:
+        raise ValueError("Texte de catalogue invalide")
+    value.encode("utf-8")
+    return value
+
+
+def _name(value: Any) -> str:
+    name = _text(value)
+    if _IDENTIFIER.fullmatch(name) is None:
+        raise ValueError("Nom de catalogue invalide")
+    return name
+
+
+def _fields(model: dict[str, Any], entry: dict[str, Any], kind: str) -> list[dict[str, Any]]:
+    definitions = model.get(kind, [])
+    declared = entry.get(kind, [])
+    if not isinstance(definitions, list) or not isinstance(declared, list):
+        raise ValueError("Champs invalides")
+    if len(definitions) > _MAX_FIELDS:
+        raise ValueError("Trop de champs")
+    if len(declared) > _MAX_FIELDS:
+        raise ValueError("Trop de champs")
+    result: list[dict[str, Any]] = []
+    for item in definitions:
+        if not isinstance(item, dict):
+            raise ValueError("Champ invalide")
+        name = _name(item.get("name"))
+        field: dict[str, Any] = {
+            "name": name,
+            "label": _text(item.get("label", name)),
+            "description": _text(item.get("description", "")),
+        }
+        if kind == "metrics":
+            try:
+                aggregation = Aggregation(str(item.get("type", "")).lower())
+            except ValueError:
+                aggregation = None
+            field["aggregation"] = aggregation.value if aggregation is not None else None
+            try:
+                declared_additivity = Additivity(item.get("additivity", Additivity.ADDITIVE))
+            except (ValueError, TypeError):
+                declared_additivity = Additivity.NON_ADDITIVE
+            field["additivity"] = (
+                declared_additivity.value
+                if aggregation in (Aggregation.SUM, Aggregation.COUNT)
+                else Additivity.NON_ADDITIVE.value
+            )
+        else:
+            raw_type = item.get("type", "unknown")
+            logical_type = raw_type.lower() if isinstance(raw_type, str) else "unknown"
+            field["type"] = {
+                "string": "string",
+                "integer": "number",
+                "float": "number",
+                "number": "number",
+                "date": "date",
+                "timestamp": "timestamp",
+                "datetime": "timestamp",
+                "boolean": "boolean",
+            }.get(logical_type, "unknown")
+            field["is_time"] = name == model.get("default_time_dimension") or field["type"] in {
+                "date",
+                "timestamp",
+            }
+        result.append(field)
+    names = [item["name"] for item in result]
+    catalog_names = [item.get("name") if isinstance(item, dict) else item for item in declared]
+    if (
+        len(set(names)) != len(names)
+        or len(set(catalog_names)) != len(catalog_names)
+        or set(names) != set(catalog_names)
+    ):
+        raise ValueError("Champs du catalogue incohérents")
+    return sorted(result, key=lambda item: item["name"])
+
+
+def describe_catalog(models_dir: Path) -> dict[str, Any]:
+    """Décrit les champs chargés par skifer, sans accéder à une source de données."""
+    try:
+        catalog = yaml.safe_load((models_dir / "semantic_catalog.yaml").read_text())
+        entries_raw = catalog["models"]
+        if len(entries_raw) > _MAX_MODELS or len({entry["key"] for entry in entries_raw}) != len(
+            entries_raw
+        ):
+            raise ValueError("Catalogue invalide")
+        if any(
+            (models_dir / entry["file"]).resolve().parent != models_dir.resolve()
+            for entry in entries_raw
+        ):
+            raise ValueError("Fichier hors du répertoire")
+        if not _all_models_have_row_policy(models_dir):
+            raise ValueError("Politique de ligne absente")
+        # list_models ne fournit que le résumé ; le chargeur interne est celui du planner.
+        engine = SemanticEngine.from_backend(_DescriptionBackend(), models_dir=str(models_dir))
+        entries = engine.list_models()
+        if not entries or len(entries) > _MAX_MODELS:
+            raise ValueError("Nombre de modèles invalide")
+        result = []
+        for entry in entries:
+            name = _name(entry["key"])
+            model = engine._get_model(name)
+            result.append(
+                {
+                    "name": name,
+                    "label": _text(model.get("label", name)),
+                    "description": _text(model.get("description", entry.get("description", ""))),
+                    "metrics": _fields(model, entry, "metrics"),
+                    "dimensions": _fields(model, entry, "dimensions"),
+                }
+            )
+        return {"models": sorted(result, key=lambda item: item["name"])}
+    except (
+        OSError,
+        KeyError,
+        TypeError,
+        ValueError,
+        AttributeError,
+        RecursionError,
+        yaml.YAMLError,
+    ):
+        raise SemanticRefusal("engine_unavailable") from None
+
+
+class _DescriptionBackend:
+    def execute_sql(self, sql: str) -> None:
+        raise RuntimeError("La description ne lit aucune source")
 
 
 class _Backend:
@@ -223,7 +360,10 @@ def run_semantic(
                 model_name=request.model,
                 metrics=list(request.metrics),
                 group_by=list(request.dimensions),
-                filters=[dict(item) for item in request.filters],
+                filters=[
+                    {**item, "operator": "neq" if item["operator"] == "ne" else item["operator"]}
+                    for item in request.filters
+                ],
             ),
             consumer_context=context,
         )

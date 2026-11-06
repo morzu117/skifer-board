@@ -80,7 +80,9 @@ REFUSAL_CODES = frozenset(
         "version_not_found",
     }
 )
+EXECUTION_OPERATIONS = frozenset({"semantic.execute", "contextual.compute"})
 EXECUTION_OUTCOMES = {
+    "unavailable",
     "deny",
     "require_human",
     "execution_timed_out",
@@ -160,7 +162,9 @@ class Measure:
             raise InvalidMeasure("at")
         if not isinstance(self.kind, Kind):
             raise InvalidMeasure("kind")
-        if OPERATION.fullmatch(self.operation) is None:
+        if OPERATION.fullmatch(self.operation) is None or (
+            self.kind is Kind.EXECUTION and self.operation not in EXECUTION_OPERATIONS
+        ):
             raise InvalidMeasure("operation")
         if self.outcome not in OUTCOMES:
             raise InvalidMeasure("outcome")

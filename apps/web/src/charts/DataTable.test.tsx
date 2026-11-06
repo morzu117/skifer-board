@@ -37,3 +37,12 @@ describe("DataTable", () => {
     expect(screen.getByRole("row", { name: "a —" })).toBeInTheDocument();
   });
 });
+
+it("nomme les cases avec les dimensions formatées et conserve le repli", () => {
+  const { rerender } = render(<DataTable caption="t" rowKey="id" columns={[{ key: "jour", label: "Jour", format: (value) => `date ${String(value)}` }, { key: "region", label: "Région" }]} rows={[{ id: "1", jour: "2024-01-01", region: "Nord" }]} selectionDimensions={["jour", "region", "absente"]} onToggleRow={() => undefined} />);
+  expect(screen.getByRole("checkbox", { name: "Sélectionner la ligne 1 : Jour : date 2024-01-01, Région : Nord" })).toBeInTheDocument();
+  rerender(<DataTable caption="t" rowKey="id" columns={[{ key: "region", label: "Région" }]} rows={[{ id: "1" }]} selectionDimensions={["region"]} onToggleRow={() => undefined} />);
+  expect(screen.getByRole("checkbox", { name: "Sélectionner la ligne 1 : Région : —" })).toBeInTheDocument();
+  rerender(<DataTable caption="t" rowKey="id" columns={[]} rows={[{ id: "1" }]} onToggleRow={() => undefined} />);
+  expect(screen.getByRole("checkbox", { name: "Sélectionner la ligne 1" })).toBeInTheDocument();
+});

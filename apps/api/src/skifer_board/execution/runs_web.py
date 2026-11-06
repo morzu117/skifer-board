@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
 import re
+import time
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 from hashlib import sha256
@@ -30,17 +30,18 @@ from .connectors import (
     HttpTransport,
     IdentityUnavailable,
 )
+from .contextual import calculer, contrat, figer
 from .model import NAME, Connector, IdentityMode
 from .oauth_access import PersonalAccess
+from .query_validation import filtre, valider
 from .runs import ExecutionRecord, ExecutionState, ExecutionStore, ExecutionUnavailable
-from .semantic import SemanticRequest, VerifiedReader
+from .semantic import SemanticRefusal, SemanticRequest, VerifiedReader, describe_catalog
 from .store import ConnectionStore
 from .vault import CredentialVault
 from .worker import ExecutionBusy, ExecutionWorkerPool
 
 IDENTIFIER = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,79}")
 EXECUTION_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-OPERATORS = frozenset({"eq", "ne", "gt", "gte", "lt", "lte"})
 DEADLINE = timedelta(seconds=30)
 LEASE = timedelta(seconds=40)
 
@@ -80,22 +81,12 @@ def _request(body: Any) -> tuple[str, Environment, SemanticRequest, str]:
         if not isinstance(item, dict) or set(item) != {"column", "operator", "value"}:
             raise Invalid("filters")
         column, operator, value = item["column"], item["operator"], item["value"]
-        if (
-            not isinstance(column, str)
-            or IDENTIFIER.fullmatch(column) is None
-            or not isinstance(operator, str)
-            or operator not in OPERATORS
-            or type(value) not in (str, int, float, bool)
-            or (type(value) is float and not math.isfinite(value))
-            or (type(value) is str and (len(value) > 1024 or "\x00" in value))
-        ):
+        if not isinstance(column, str) or IDENTIFIER.fullmatch(column) is None:
             raise Invalid("filters")
-        filters.append({"column": column, "operator": operator, "value": value})
-    try:
-        canonical = json.dumps(values, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-        request_hash = sha256(canonical.encode()).hexdigest()
-    except UnicodeError:
-        raise Invalid("filters") from None
+        filters.append(filtre(column, operator, value))
+    values["filters"] = filters
+    canonical = json.dumps(values, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    request_hash = sha256(canonical.encode()).hexdigest()
     return (
         name,
         environment,
@@ -124,6 +115,12 @@ def _json(record: ExecutionRecord, *, proof: bool = False) -> dict[str, Any]:
         "size": record.byte_count,
         "truncated": record.truncated,
     }
+    if proof and record.state is ExecutionState.SUCCEEDED:
+        result["result_contract"] = (
+            None
+            if record.result_contract is None
+            else contrat(record.result_contract, bool(record.truncated))
+        )
     if proof:
         result["evidence"] = record.evidence
         result["connector_run_id"] = record.connector_run_id
@@ -142,6 +139,7 @@ def install_execution_routes(
     endpoints: Mapping[str, Endpoint] | None,
     transport: HttpTransport,
     personal_access: PersonalAccess,
+    measure_contextual: Callable[[ExecutionRecord, str, float], None],
     attributes: Callable[[Identity], Mapping[str, str]] | None = None,
 ) -> None:
     path = "/api/spaces/{space_id}/executions"
@@ -170,6 +168,22 @@ def install_execution_routes(
             raise Refused(404, "execution_not_found")
         return value
 
+    @app.get("/api/spaces/{space_id}/explorer/fields")
+    def explorer_fields(request: Request, space_id: str) -> JSONResponse:
+        active(request, space_id)
+        if pool is None:
+            raise Refused(503, "engine_unavailable")
+        try:
+            return JSONResponse(describe_catalog(pool.models_dir))
+        except SemanticRefusal:
+            raise Refused(503, "engine_unavailable") from None
+
+    @app.get("/api/spaces/{space_id}/explorer/connections")
+    def explorer_connections(request: Request, space_id: str) -> JSONResponse:
+        active(request, space_id)
+        assert connections is not None
+        return JSONResponse({"connections": [item.name for item, _ in connections.list(space_id)]})
+
     @app.post(path)
     async def submit_execution(request: Request, space_id: str) -> JSONResponse:
         access, actor = active(request, space_id)
@@ -178,6 +192,11 @@ def install_execution_routes(
         assert store is not None
         await asyncio.to_thread(store.recover_stale, clock())
         name, environment, semantic, request_hash = _request(await _body(request))
+        try:
+            catalog = await asyncio.to_thread(describe_catalog, pool.models_dir)
+        except SemanticRefusal:
+            raise Refused(503, "engine_unavailable") from None
+        semantic = valider(semantic, catalog)
         binding = await asyncio.to_thread(connections.get_binding, space_id, name, environment)
         endpoint = connections.get_endpoint(space_id, binding.endpoint_key) or (
             endpoints or {}
@@ -220,7 +239,14 @@ def install_execution_routes(
             record = await asyncio.to_thread(
                 pool.submit,
                 lambda: store.create(
-                    binding, actor, request_hash, at, at + DEADLINE, at + LEASE, owner_id
+                    binding,
+                    actor,
+                    request_hash,
+                    at,
+                    at + DEADLINE,
+                    at + LEASE,
+                    owner_id,
+                    figer(semantic, catalog),
                 ),
                 semantic,
                 verified,
@@ -279,6 +305,44 @@ def install_execution_routes(
         if data is None:
             raise Refused(503, "result_unavailable")
         return Response(data, media_type="application/vnd.apache.arrow.stream")
+
+    @app.post(path + "/{execution_id}/contextual")
+    async def contextual(request: Request, space_id: str, execution_id: str) -> JSONResponse:
+        access, actor = active(request, space_id)
+        assert store is not None
+        await asyncio.to_thread(store.recover_stale, clock())
+        identifier = record_id(execution_id)
+        own = await asyncio.to_thread(store.get, access.space.id, identifier, actor)
+        if own is None:
+            raise Refused(404, "execution_not_found")
+        if own.state is not ExecutionState.SUCCEEDED:
+            raise Refused(409, "result_unavailable")
+        data = await asyncio.to_thread(store.result, access.space.id, identifier, actor)
+        if data is None:
+            raise Refused(503, "result_unavailable")
+        assert own.evidence is not None
+        started = time.monotonic()
+        outcome = "error"
+        try:
+            body = await _body(request)
+            result = await asyncio.to_thread(
+                calculer,
+                data,
+                own.result_contract,
+                bool(own.truncated),
+                own.evidence["evidence_id"],
+                body,
+            )
+            outcome = "ok" if result["status"] == "derived" else "unavailable"
+            return JSONResponse(result)
+        except Invalid:
+            outcome = "invalid_request"
+            raise
+        finally:
+            try:
+                measure_contextual(own, outcome, max(0.0, time.monotonic() - started))
+            except Exception:
+                pass
 
     @app.post(path + "/{execution_id}/cancel")
     async def cancel_execution(request: Request, space_id: str, execution_id: str) -> JSONResponse:

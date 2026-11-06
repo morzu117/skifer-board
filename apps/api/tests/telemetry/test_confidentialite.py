@@ -371,6 +371,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         xt = xb + "/test"
         parcours("GET", f"/api/spaces/{A}/connections", x, 200)
         parcours("POST", f"/api/spaces/{A}/connections", x, 201, {"name": "connexion_sentinelle"})
+        parcours("GET", f"/api/spaces/{A}/explorer/connections", s + "/explorer/connections", 200)
         parcours(
             "PUT",
             f"/api/spaces/{A}/connections/connexion_sentinelle/bindings/DEV",
@@ -407,6 +408,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         )
         parcours("DELETE", f"/api/spaces/{A}/connections/connexion_sentinelle", x + "/{name}", 204)
 
+        parcours("GET", f"/api/spaces/{A}/explorer/fields", s + "/explorer/fields", 503)
         ex = s + "/executions"
         parcours(
             "POST",
@@ -426,6 +428,7 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         execution = f"/api/spaces/{A}/executions/execution-sentinelle"
         parcours("GET", execution, ex + "/{execution_id}", 404)
         parcours("GET", execution + "/result", ex + "/{execution_id}/result", 404)
+        parcours("POST", execution + "/contextual", ex + "/{execution_id}/contextual", 404)
         parcours("POST", execution + "/cancel", ex + "/{execution_id}/cancel", 404)
 
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)

@@ -30,6 +30,10 @@ select {
   outline-offset: 2px;
 }
 
+/* Deux tons pour conserver un repère sur les fonds clairs et ardoise. */
+.sb-explorer :focus-visible,
+.sb-sidebar :focus-visible { box-shadow: 0 0 0 4px var(--sb-surface); }
+
 .sb-mono {
   font-family: var(--sb-font-mono);
 }

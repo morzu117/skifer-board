@@ -75,14 +75,16 @@ class TelemetryStore:
             telemetry.c.status >= 500,
             and_(
                 telemetry.c.status.is_(None),
-                telemetry.c.outcome.notin_(("ok", "cancelled", "deny", "require_human")),
+                telemetry.c.outcome.notin_(
+                    ("ok", "cancelled", "deny", "require_human", "unavailable", "invalid_request")
+                ),
             ),
         )
         refusal = or_(
             and_(telemetry.c.status >= 400, telemetry.c.status < 500),
             and_(
                 telemetry.c.kind == Kind.EXECUTION.value,
-                telemetry.c.outcome.in_(("deny", "require_human")),
+                telemetry.c.outcome.in_(("deny", "require_human", "invalid_request")),
             ),
         )
         grouped = (

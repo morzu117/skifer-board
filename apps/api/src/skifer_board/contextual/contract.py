@@ -12,6 +12,10 @@ import pyarrow.compute as pc
 from .rules import ContractError, MetricRule
 
 
+class GrainError(ContractError):
+    """Le résultat ne respecte pas l'unicité du grain déclaré."""
+
+
 class Completeness(StrEnum):
     """Ce que le résultat chargé couvre du périmètre filtré."""
 
@@ -89,9 +93,9 @@ class ContextualResult:
         if self.table.num_rows <= 1:
             return
         if not self.contract.dimensions:
-            raise ContractError("A result without dimensions must have at most one row.")
+            raise GrainError("A result without dimensions must have at most one row.")
         counts = self.table.group_by(list(self.contract.dimensions)).aggregate([([], "count_all")])
         if pc.max(counts["count_all"]).as_py() > 1:
-            raise ContractError(
+            raise GrainError(
                 "Result is not at a single grain: several rows share the same dimension key."
             )

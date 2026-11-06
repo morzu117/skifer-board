@@ -543,3 +543,22 @@ def test_identite_effective_du_connecteur_et_duckdb_personnel_refuses(tmp_path: 
                 models,
             )
     assert connector.sql == []
+
+
+def test_filtre_ne_duckdb(tmp_path: Path) -> None:
+    """L'opérateur HTTP ne exclut la région demandée."""
+    models = _model(tmp_path)
+    connector = DuckDbExecution(DuckDbEndpoint(_database(tmp_path)))
+    output = _run(
+        SemanticRequest(
+            "orders",
+            ("revenue",),
+            ("region",),
+            ({"column": "region", "operator": "ne", "value": "North"},),
+        ),
+        _reader("alice", "A"),
+        _binding(),
+        connector,
+        models,
+    )
+    assert output.rows.to_pylist() == [{"region": "South", "revenue": 5}]

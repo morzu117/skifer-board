@@ -6,6 +6,18 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 17, 17.4c : parcours navigateur hors réseau de l’Explorateur, états, accessibilité et captures de référence ordinateur et téléphone sous les deux thèmes ; corrections de lisibilité des calculs arrondis et de leur preuve exacte, cartes de sélection et provenance thématiques, filtres et libellés alignés, annulation contextuelle et panneau Preuves accessible ; assertions renforcées sur les requêtes et mutations, et tableau contextuel accessible, empilé sans débordement sur téléphone, et affichage des arrondis sans doublon.
+
+- Plan 17, 17.4b : écran Explorateur dans la coque, liste des noms de connexions sous les gardes de soumission, requêtes et filtres typés, suivi et annulation, résultat accessible, provenance et calculs contextuels exacts sur la sélection ; dates et horodatages Arrow exacts, type « Valeur » borné à une ligne et touche Entrée réservée aux champs ; protection contre les réponses périmées, notes et parts exactes, vérification de la preuve source des calculs, reprise du suivi interrompu, temporisation des calculs et libellés accessibles des sélections, annulation suspendue lorsque le suivi est interrompu et horodatages sans fuseau affichés sans suffixe UTC ; mocks de preuve et attentes de navigation des parcours navigateur alignés sur les contrats livrés.
+
+- Plan 17, 17.4a : contrat web strict des champs et calculs contextuels, constructeur de filtres typés et clients réutilisant les refus des exécutions, sans écran.
+
+- Plan 17, 17.3 : contrat des résultats figé à la soumission et calculs contextuels Arrow réservés à l'auteur, avec précision, périmètre, provenance et refus explicites. Le centre d'exécutions décode strictement le contrat sans modifier son affichage.
+
+- Plan 17, 17.2 : validation des champs exécutables et des filtres typés avant connecteur ; listes canoniques et plages déclaratives, avec maintien des politiques de ligne.
+
+- Plan 17, 17.1 : description bornée des champs du catalogue sémantique et route de lecture sous les gardes des exécutions, sans lecture de source.
+
 - Plan 16, 16.1 : autorisations OAuth personnelles accessibles aux lecteurs et créateurs, avec résolveur et renouvellement communs ; l'enregistrement des points partagés reste réservé aux administrateurs. Le retour OAuth reprend la page qui a initié la connexion, y compris Exécutions pour un lecteur.
 - Plan 16, 16.2 : soumission Databricks et essai des liaisons `person` avec le jeton du demandeur, sans repli de service ; vérification du mode d'identité effectif dans l'adaptateur sémantique. Les gardes RLS, certification, résultat et annulation sont conservées et éprouvées avec deux lecteurs.
 - Plan 16, 16.3 : connexion personnelle depuis Exécutions, choix et essai du warehouse sans commande d'administration pour le lecteur, messages des liaisons personnelles actualisés et recette documentée. La recette réelle reste en attente du porteur.
@@ -91,7 +103,15 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 - Plan 11, 11.3 : lecture de la télémétrie, `GET /api/telemetry?window=24h|7d|30d`, réservée à l'administration de la plateforme (`403 forbidden` avec `required: platform_admin` sinon, `409 local_mode` sans base, `400 invalid_request` sur `window` pour une fenêtre absente, répétée ou inconnue). Par genre, opération et méthode : nombre de mesures, d'erreurs et de refus, durée médiane, p95 et maximale, taille et documents médians et maximaux, opérations les plus lentes d'abord ; la réponse dit la fenêtre demandée et l'instant de la plus ancienne et de la plus récente mesure. Exemples de contrat dans `contracts/telemetrie/`.
 - Plan 11, 11.4 : écran « Télémétrie » (`#/telemetrie`), offert depuis l'accueil des espaces à l'administration de la plateforme seule. Fenêtre 24 h, 7 j ou 30 j ; tableau des opérations, les plus lentes d'abord (p95 décroissant), en chiffres tabulaires : mesures, durées médiane, p95 et maximale, erreurs et refus avec leur part, tailles et documents médians et maximaux, l'opération restant visible quand le tableau défile. Période couverte et âge de la dernière mesure. États de lecture, d'absence de mesure, de refus, de mode local et de panne ; une réponse d'une autre fenêtre, ou dont la période et les opérations ne vont pas ensemble, est hors contrat.
 
+### Changed
+
+- Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
+
 ### Fixed
+
+- Plan 17, 17.3 : les défauts du résultat stocké sont distingués des erreurs de sélection ; les calculs contextuels indiquent leur effectif et la télémétrie ne compte plus les refus ni les indisponibilités comme des pannes.
+
+- Plan 17, 17.2 : traduction de l'opérateur `ne` en `neq` pour skifer.
 
 - Plan 14, 14.6 : les clés de points d'accès acceptent les underscores `_` et les tirets `-`, dans le registre, la configuration serveur et les liaisons.
 

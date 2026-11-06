@@ -83,3 +83,8 @@
 .sb-theme-skifer-ardoise .sb-table th {
   color: var(--sb-on-slate-muted);
 }
+
+.sb-table__selection { display: flex; align-items: center; justify-content: center; min-width: var(--sb-target-min); min-height: var(--sb-target-min); }
+
+/* Le fond cuivre clair d’une sélection demande du texte sombre sous les deux thèmes. */
+.sb-theme-skifer-ardoise .sb-row--selected td { color: var(--sb-ink); }
