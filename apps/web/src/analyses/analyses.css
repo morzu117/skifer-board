@@ -26,6 +26,9 @@
 .sb-analyses__panel { min-width: 0; }
 .sb-analyses__panel:not([hidden]) { display: grid; gap: var(--sb-space-5); padding: var(--sb-space-6); border: 1px solid var(--sb-line); border-radius: var(--sb-radius-lg); background: var(--sb-surface); }
 .sb-analyses__steps, .sb-analyses__history { margin: 0; padding-left: var(--sb-space-7); display: grid; gap: var(--sb-space-3); }
+.sb-analyses__panneau { display: grid; gap: var(--sb-space-5); min-width: 0; padding-top: var(--sb-space-5); border-top: 1px solid var(--sb-line); }
+.sb-analyses__panneau h3, .sb-analyses__apercu h3, .sb-analyses__impact h4 { margin: 0; }
+.sb-analyses__apercu, .sb-analyses__impact { display: grid; gap: var(--sb-space-4); min-width: 0; }
 .sb-analyses__compare { display: grid; gap: var(--sb-space-4); }
 .sb-analyses__compare h3 { margin: 0; }
 .sb-theme-skifer-ardoise .sb-analyses__panel:not([hidden]) { background: var(--sb-slate-900); border-color: var(--sb-on-slate-muted); color: var(--sb-on-slate); }

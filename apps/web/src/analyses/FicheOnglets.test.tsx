@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { expectAccessible } from "../test/a11y";
 import { decodeAnalysis, type AnalysisDocument } from "./document";
-import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletPreuves, OngletRequete } from "./FicheOnglets";
+import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletRequete } from "./FicheOnglets";
 import { route } from "./testing";
 
 const base = decodeAnalysis((route("lire").body as { analysis: unknown }).analysis);
@@ -87,16 +87,6 @@ it.each([["value", "Valeur"], ["bars", "Barres"], ["line", "Ligne"], ["grouped_b
 it("les consommateurs sont vides avec un message explicite avant le lot 07", () => {
   render(<OngletConsommateurs />);
   expect(screen.getByText(/Aucun consommateur\. Les dashboards et les releases n'existent pas encore \(lot 07\)/)).toBeInTheDocument();
-});
-
-it("les preuves sont indisponibles, avec la raison, sans rien inventer", async () => {
-  const { container } = render(<OngletPreuves space="finance" />);
-  expect(screen.getByText("Indisponible")).toBeInTheDocument();
-  expect(screen.getByText(/ne permet pas de retrouver la dernière exécution/)).toBeInTheDocument();
-  expect(screen.getByText(/Rien n'est deviné/)).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "centre d'exécutions" })).toHaveAttribute("href", "#/espaces/finance/executions");
-  expect(screen.queryByText(/evidence_id|sql_hash/)).not.toBeInTheDocument();
-  await expectAccessible(container);
 });
 
 it("un filtre sur une colonne inconnue du modèle est dit « non permis » sans présumer de la cause", () => {

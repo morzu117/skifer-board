@@ -12,7 +12,9 @@ import { Card } from "../ui/Card";
 import { useOutcome } from "../ui/useOutcome";
 import { deleteAnalysis, duplicateAnalysis, fetchAnalysis, fetchAnalysisRevision, openAnalysis } from "./client";
 import { analysisRefusalText, Unavailable, type Failed } from "./Failure";
-import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletPreuves, OngletRequete } from "./FicheOnglets";
+import { openability } from "./explorer";
+import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletRequete } from "./FicheOnglets";
+import { OngletPreuves } from "./Preuves";
 import { READ_STATE_LABELS, RULE_LABELS, VISIBILITY_LABELS, valueAt } from "./labels";
 import type { AnalysisRevision } from "./model";
 import { newEventId } from "./reference";
@@ -21,7 +23,7 @@ import { OngletUsage } from "./Usage";
 import "./analyses.css";
 import "../executions/executions.css";
 
-interface Props { space: Space; id: string; revision: number | undefined; fetcher: Fetch }
+interface Props { space: Space; id: string; revision: number | undefined; view?: "history" | undefined; compare?: { base: number; other: number } | undefined; fetcher: Fetch }
 
 const TABS = [
   { id: "requete", label: "Requête" }, { id: "calculs", label: "Calculs contextuels" }, { id: "presentation", label: "Présentation par défaut" },
@@ -30,7 +32,7 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 /** Fiche d'une analyse : en-tête et provenance, actions selon les droits du serveur, puis ses onglets (plan 18, A9). */
-export function AnalysePage({ space, id, revision, fetcher }: Props) {
+export function AnalysePage({ space, id, revision, view, compare, fetcher }: Props) {
   const [theme, setTheme] = useState<ChartTheme>(SKIFER_CLAIR);
   const [reload, setReload] = useState(0);
   // Après une suppression réussie (204), la fiche relit toujours la révision supprimée, courante ou numérotée : ce qu'elle montrait n'est plus vrai.
@@ -49,7 +51,7 @@ export function AnalysePage({ space, id, revision, fetcher }: Props) {
     <p><a href={back}>Retour aux analyses</a></p>
     {found.status === "loading" ? <Reading>Lecture de l'analyse…</Reading>
       : found.status !== "ok" ? <Gone deleted={deleted !== null} outcome={found} back={back} />
-      : <Fiche key={`${found.value.id}:${String(found.value.revision)}`} space={space} found={found.value} fetcher={fetcher} onReload={() => { setReload((value) => value + 1); }} onDeleted={(deletedRevision) => { setDeleted(deletedRevision); setReload((value) => value + 1); }} />}
+      : <Fiche key={`${found.value.id}:${String(found.value.revision)}`} space={space} found={found.value} initialTab={view === "history" ? "revisions" : "requete"} compare={compare} fetcher={fetcher} onReload={() => { setReload((value) => value + 1); }} onDeleted={(deletedRevision) => { setDeleted(deletedRevision); setReload((value) => value + 1); }} />}
   </div>;
 }
 
@@ -63,8 +65,8 @@ function Gone({ deleted, outcome, back }: { deleted: boolean; outcome: Failed; b
   </>;
 }
 
-function Fiche({ space, found, fetcher, onReload, onDeleted }: { space: Space; found: AnalysisRevision; fetcher: Fetch; onReload: () => void; onDeleted: (revision: number) => void }) {
-  const [tab, setTab] = useState<TabId>("requete");
+function Fiche({ space, found, initialTab, compare, fetcher, onReload, onDeleted }: { space: Space; found: AnalysisRevision; initialTab: TabId; compare: { base: number; other: number } | undefined; fetcher: Fetch; onReload: () => void; onDeleted: (revision: number) => void }) {
+  const [tab, setTab] = useState<TabId>(initialTab);
   // Un identifiant neuf par affichage (une instance de la fiche pour une révision lue) ; le drapeau empêche un second envoi du même
   // affichage, au re-rendu comme sous StrictMode qui rejoue les effets sur la même instance.
   const [eventId] = useState(newEventId);
@@ -101,20 +103,20 @@ function Fiche({ space, found, fetcher, onReload, onDeleted }: { space: Space; f
     </Card>
     <Tabs tab={tab} onChange={setTab} />
     {TABS.map((item) => <div key={item.id} role="tabpanel" id={`fiche-${item.id}`} aria-labelledby={`fiche-tab-${item.id}`} hidden={tab !== item.id} className="sb-analyses__panel">
-      {tab !== item.id ? null : <Panel tab={item.id} space={space.id} found={found} fetcher={fetcher} />}
+      {tab !== item.id ? null : <Panel tab={item.id} space={space.id} found={found} compare={compare} fetcher={fetcher} />}
     </div>)}
   </>;
 }
 
-function Panel({ tab, space, found, fetcher }: { tab: TabId; space: string; found: AnalysisRevision; fetcher: Fetch }) {
+function Panel({ tab, space, found, compare, fetcher }: { tab: TabId; space: string; found: AnalysisRevision; compare: { base: number; other: number } | undefined; fetcher: Fetch }) {
   switch (tab) {
     case "requete": return <OngletRequete analysis={found.analysis} unresolved={found.unresolved} />;
     case "calculs": return <OngletCalculs analysis={found.analysis} />;
     case "presentation": return <OngletPresentation analysis={found.analysis} />;
-    case "revisions": return <OngletRevisions space={space} id={found.id} fetcher={fetcher} />;
+    case "revisions": return <OngletRevisions space={space} id={found.id} compare={compare} fetcher={fetcher} />;
     case "consommateurs": return <OngletConsommateurs />;
     case "usage": return <OngletUsage space={space} id={found.id} fetcher={fetcher} />;
-    case "preuves": return <OngletPreuves space={space} />;
+    case "preuves": return <OngletPreuves space={space} id={found.id} shown={found.revision} fetcher={fetcher} />;
   }
 }
 
@@ -136,7 +138,10 @@ function Tabs({ tab, onChange }: { tab: TabId; onChange: (tab: TabId) => void })
 
 type Pending = "duplicate" | "delete" | null;
 
-/** Actions offertes par `permissions` du serveur, jamais plus. Dupliquer et supprimer sont câblés ; réviser et rouvrir viennent avec l'Explorateur. */
+/**
+ * Actions offertes par `permissions` du serveur, jamais plus. Ouvrir et réviser mènent à l'Explorateur, où la révision se
+ * prépare puis se confirme (18.5b) ; l'ouverture est refusée avec ses raisons quand l'Explorateur ne peut pas porter l'analyse.
+ */
 function Actions({ space, found, current, fetcher, onReload, onDeleted }: { space: Space; found: AnalysisRevision; current: boolean; fetcher: Fetch; onReload: () => void; onDeleted: (revision: number) => void }) {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState<Pending>(null);
@@ -167,16 +172,19 @@ function Actions({ space, found, current, fetcher, onReload, onDeleted }: { spac
     });
   };
   const canDelete = permissions.delete && current;
+  const blockers = openability(found);
+  const explore = () => { navigate({ page: "explorer", space: space.id, analysis: current ? { id: found.id } : { id: found.id, revision: found.revision } }); };
   return <div className="sb-analyses__actions">
     <div className="sb-analyses__buttons">
-      <button type="button" className="sb-button" disabled>Ouvrir dans l'Explorateur</button>
-      {permissions.revise && current ? <button type="button" className="sb-button" disabled>Nouvelle révision</button> : null}
+      <button type="button" className="sb-button" disabled={blockers.length > 0} aria-describedby={blockers.length > 0 ? "fiche-ouvrir-raisons" : undefined} onClick={explore}>Ouvrir dans l'Explorateur</button>
+      {permissions.revise && current ? <button type="button" className="sb-button" disabled={blockers.length > 0} aria-describedby={blockers.length > 0 ? "fiche-ouvrir-raisons" : undefined} onClick={explore}>Nouvelle révision</button> : null}
       {permissions.duplicate && current ? <button type="button" className="sb-button" disabled={busy !== null} onClick={duplicate}>Dupliquer</button> : null}
       {canDelete && !asking ? <button type="button" className="sb-button" disabled={busy !== null} onClick={() => { setAsking(true); }}>Supprimer</button> : null}
     </div>
     {asking ? <Confirm question="Supprimer cette analyse ? Son historique reste dans le dépôt." action="Confirmer la suppression" busy={busy !== null} onConfirm={remove} onCancel={() => { setAsking(false); }} /> : null}
     {permissions.duplicate && !current && found.currentRevision !== null ? <p className="sb-members__state">Dupliquer copie la révision courante : ouvrez la révision courante pour dupliquer.</p> : null}
-    <p className="sb-members__state">La réouverture dans l'Explorateur et la nouvelle révision ne sont pas encore disponibles.</p>
+    {blockers.length === 0 ? <p className="sb-members__state">{permissions.revise && current ? "Une nouvelle révision se prépare dans l'Explorateur, puis se confirme avec son impact." : "L'Explorateur ouvre cette révision pour la poursuivre ; rien n'est enregistré sans votre confirmation."}</p>
+      : <div id="fiche-ouvrir-raisons" className="sb-members__state"><p>Ouverture dans l'Explorateur indisponible :</p><ul>{blockers.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
     {failure === null ? null : <div ref={announced} tabIndex={-1}>
       <Banner tone="danger" action={failure.status === "refused" && failure.code === "revision_conflict" ? <button type="button" className="sb-button" onClick={onReload}>Relire l'analyse</button> : undefined}>
         {failure.status === "refused" ? analysisRefusalText(failure) : `Action non confirmée : ${failure.message}`}

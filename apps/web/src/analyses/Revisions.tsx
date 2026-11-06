@@ -9,20 +9,24 @@ import { Unavailable } from "./Failure";
 import { ACTION_LABELS, CHANGE_LABELS } from "./labels";
 import type { Change, HistoryEntry } from "./model";
 
-interface Props { space: string; id: string; fetcher: Fetch }
+interface Props { space: string; id: string; /** Écart demandé par l'adresse : lancé tout seul si les deux révisions sont lisibles. */ compare?: { base: number; other: number } | undefined; fetcher: Fetch }
 
 /** Historique immuable, puis écart structurel entre deux révisions lisibles. Une révision masquée n'a que son numéro. */
-export function OngletRevisions({ space, id, fetcher }: Props) {
+export function OngletRevisions({ space, id, compare, fetcher }: Props) {
   const history = useOutcome(`${space}:${id}:historique`, (signal) => fetchHistory(space, id, signal, fetcher));
   if (history.status === "loading") return <Reading>Lecture de l'historique…</Reading>;
   if (history.status !== "ok") return <Unavailable outcome={history} title="Historique indisponible" local="Les analyses ne sont pas disponibles en mode local." />;
   // Une suppression garde le numéro de la dernière sauvegarde : un numéro n'est proposé qu'une fois.
   const readable = [...new Set(history.value.revisions.filter((entry) => entry.available).map((entry) => entry.revision))];
+  // Une comparaison demandée dont une révision n'existe pas ou n'est pas lisible pour la session n'est pas devinée : on le dit, on garde le comportement par défaut.
+  const missing = compare === undefined ? [] : [compare.base, compare.other].filter((number) => !readable.includes(number));
+  const requested = compare !== undefined && missing.length === 0 ? compare : undefined;
   return <>
+    {compare === undefined || requested !== undefined ? null : <p className="sb-members__state" role="status">La comparaison demandée entre r{compare.base} et r{compare.other} n'est pas lancée : {[...new Set(missing)].map((number) => `r${String(number)}`).join(" et ")} {new Set(missing).size === 1 ? "n'existe pas ou n'est pas lisible" : "n'existent pas ou ne sont pas lisibles"} pour votre session.</p>}
     <ol className="sb-analyses__history" aria-label="Historique des révisions">
       {history.value.revisions.map((entry) => <li key={`${String(entry.revision)}:${entry.available ? entry.action : "masquee"}`}><Entry entry={entry} space={space} id={id} /></li>)}
     </ol>
-    <Compare space={space} id={id} readable={readable} fetcher={fetcher} />
+    <Compare space={space} id={id} readable={readable} requested={requested} fetcher={fetcher} />
   </>;
 }
 
@@ -34,11 +38,12 @@ function Entry({ entry, space, id }: { entry: HistoryEntry; space: string; id: s
   </span>;
 }
 
-function Compare({ space, id, readable, fetcher }: { space: string; id: string; readable: readonly number[]; fetcher: Fetch }) {
-  const [base, setBase] = useState(readable[0]);
-  const [other, setOther] = useState(readable.at(-1));
-  const [asked, setAsked] = useState<{ base: number; other: number } | null>(null);
-  if (readable.length < 2 || base === undefined || other === undefined) return <p className="sb-members__state">Il faut deux révisions disponibles pour en comparer.</p>;
+function Compare({ space, id, readable, requested, fetcher }: { space: string; id: string; readable: readonly number[]; requested: { base: number; other: number } | undefined; fetcher: Fetch }) {
+  const [base, setBase] = useState(requested?.base ?? readable[0]);
+  const [other, setOther] = useState(requested?.other ?? readable.at(-1));
+  const [asked, setAsked] = useState<{ base: number; other: number } | null>(requested ?? null);
+  // La garde ne vaut que sans comparaison demandée : une révision lisible se compare à elle-même, et le serveur sait le faire.
+  if ((requested === undefined && readable.length < 2) || base === undefined || other === undefined) return <p className="sb-members__state">Il faut deux révisions disponibles pour en comparer.</p>;
   return <div className="sb-analyses__compare">
     <h3>Écart entre deux révisions</h3>
     <form className="sb-executions__form" onSubmit={(event) => { event.preventDefault(); setAsked({ base, other }); }}>

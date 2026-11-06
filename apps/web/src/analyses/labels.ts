@@ -1,8 +1,8 @@
 import type { BadgeTone } from "../ui/Badge";
 import { genreOfChart, type ExplorerGenre } from "./chart";
-import type { ChartKind, FilterOperator, Visibility } from "./document";
+import type { ChartKind, ContextualStep, FilterOperator, Visibility } from "./document";
 import type { ListState, ReadState } from "./model";
-import type { REFERENCE_RULES } from "./refusal";
+import type { REFERENCE_RULES, ViolationRule } from "./refusal";
 
 /**
  * Libellés des écrans d'analyses (plan 18, 18.5a). Chaque table est indexée par une union fermée du
@@ -82,3 +82,23 @@ export function valueAt(document: unknown, pointer: string): unknown {
   }
   return at;
 }
+
+/** Phrase d'un calcul contextuel : opération, métrique, regroupement et périmètre ou dénominateur. */
+export function stepText(step: ContextualStep): string {
+  const by = step.group_by.length === 0 ? "sans regroupement" : step.group_by.join(", ");
+  if (step.operation === "aggregate") return `${OPERATION_LABELS.aggregate} de ${step.metric} par ${by} · périmètre : ${step.scope === null ? "sélection courante" : SCOPE_LABELS[step.scope]}`;
+  return `${OPERATION_LABELS.share} de ${step.metric} par ${by} · dénominateur : ${DENOMINATOR_LABELS[step.denominator]}`;
+}
+
+/** Règle du serveur qu'un `invalid_analysis` nomme, avec le chemin JSON de la violation. */
+export const VIOLATION_LABELS: Readonly<Record<ViolationRule, string>> = {
+  wrong_type: "type de valeur incorrect", value_not_allowed: "valeur non permise", bad_format: "format incorrect", out_of_bounds: "hors des bornes",
+  duplicate_item: "élément répété", unknown_field: "champ inconnu", missing_field: "champ manquant", field_not_allowed: "champ non permis ici",
+  schema_violation: "document hors du schéma", invalid_filter: "filtre invalide", metric_not_in_query: "métrique absente de la requête",
+  group_by_not_in_query: "regroupement absent des dimensions de la requête", reserved_name: "nom réservé", unsupported_value: "valeur non prise en charge",
+  unreadable_document: "document illisible", not_representable: "non représentable", id_mismatch: "identifiant incohérent", bad_identifier: "identifiant incorrect",
+  bad_revision: "numéro de révision incorrect", bad_actor: "auteur incorrect", unknown_model: "modèle introuvable dans le catalogue",
+  unknown_metric: "métrique introuvable dans le catalogue", unknown_dimension: "dimension introuvable dans le catalogue", unknown_connection: "connexion introuvable dans le catalogue",
+  filter_not_allowed: "filtre non permis (colonne, opérateur ou valeur)", unknown_aggregation: "règle d'agrégation inconnue", share_undefined: "part non définie",
+  count_distinct_not_summable: "un compte distinct ne s'additionne pas", non_additive: "métrique non additive", components_missing: "composantes manquantes",
+};

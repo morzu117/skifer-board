@@ -1,5 +1,5 @@
 import { DataType, type Table } from "apache-arrow";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { ChartCard } from "../charts/ChartCard";
 import { barsOption } from "../charts/specs/bars";
 import { baseOption, categoryAxis, narrowMedia, valueAxis, type ChartTheme } from "../charts/theme";
@@ -47,7 +47,8 @@ function cellules(table: Table): Record<string, string>[] {
   ]));
 }
 
-export function Resultat({ table, input, model, theme, context }: { table: Table; input: ExecutionInput; model: ExplorerModel; theme: ChartTheme; context?: { run: Execution; fetcher: Fetch } | undefined }) {
+/** `depart` : genre à montrer d'abord (celui d'une analyse ouverte) ; `onGenre` rend le genre montré, pour le sauvegarder (plan 18, 18.5b). */
+export function Resultat({ table, input, model, theme, context, depart, onGenre }: { table: Table; input: ExecutionInput; model: ExplorerModel; theme: ChartTheme; context?: { run: Execution; fetcher: Fetch } | undefined; depart?: Genre | undefined; onGenre?: ((genre: Genre) => void) | undefined }) {
   const [selection, setSelection] = useState<ReadonlySet<number>>(() => new Set());
   const toggle = (key: string) => { const index = Number(key); setSelection((previous) => { const suivant = new Set(previous); if (suivant.has(index)) suivant.delete(index); else suivant.add(index); return suivant; }); };
   const lignes = useMemo(() => Array.from({ length: table.numRows }, (_, index) => Object.fromEntries(input.dimensions.map((dimension) => {
@@ -68,10 +69,11 @@ export function Resultat({ table, input, model, theme, context }: { table: Table
   const couverte = selection.size === 0 ? null : selectionChargee(lignes, input.dimensions, selection);
   const initial = genreInitial(input, model);
   const repli = initial === "valeur" && table.numRows > 1 ? "barres" : initial;
-  const [choix, setGenre] = useState<Genre>(() => repli);
+  const [choix, setGenre] = useState<Genre>(() => depart ?? repli);
   const raisonValeur = useId();
   const genre = choix === "valeur" && table.numRows > 1 ? repli : choix;
   if (genre !== choix) setGenre(genre);
+  useEffect(() => { onGenre?.(genre); }, [genre, onGenre]);
   const rows = cellules(table);
   const metric = input.metrics[0] as string;
   const categories = rows.map((row, index) => input.dimensions.map((name) => row[name]).join(" · ") || `Ligne ${String(index + 1)}`);

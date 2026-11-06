@@ -18,10 +18,11 @@ export type Route =
   | { page: "parameters"; space: string }
   | { page: "connections"; space: string }
   | { page: "executions"; space: string }
-  | { page: "explorer"; space: string }
+  /** Explorateur, éventuellement ouvert sur une analyse : sa révision courante, ou une révision numérotée (plan 18, 18.5b). */
+  | { page: "explorer"; space: string; analysis?: { id: string; revision?: number } }
   | { page: "analyses"; space: string }
-  /** Fiche d'une analyse : la courante, ou une révision numérotée (plan 18, 18.5a). */
-  | { page: "analysis"; space: string; id: string; revision?: number };
+  /** Fiche d'une analyse : la courante, ou une révision numérotée (plan 18, 18.5a) ; `view: "history"` ouvre l'onglet Révisions (de la courante, jamais d'une révision numérotée) ; avec `compare`, il lance l'écart du serveur entre ces deux révisions (`…/historique/<a>/<b>`). */
+  | { page: "analysis"; space: string; id: string; revision?: number; view?: "history"; compare?: { base: number; other: number } };
 
 const PROTOTYPE_HASH = "#/prototype";
 const CREATE_HASH = "#/nouvel-espace";
@@ -60,13 +61,13 @@ export function routeHash(route: Route): string {
     case "connections":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/connexions`;
     case "explorer":
-      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/explorer`;
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/explorer${route.analysis === undefined ? "" : `/analyses/${encodeURIComponent(route.analysis.id)}${route.analysis.revision === undefined ? "" : `/revisions/${String(route.analysis.revision)}`}`}`;
     case "executions":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/executions`;
     case "analyses":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses`;
     case "analysis":
-      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses/${encodeURIComponent(route.id)}${route.revision === undefined ? "" : `/revisions/${String(route.revision)}`}`;
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses/${encodeURIComponent(route.id)}${route.revision !== undefined ? `/revisions/${String(route.revision)}` : route.view === undefined ? "" : route.compare === undefined ? "/historique" : `/historique/${String(route.compare.base)}/${String(route.compare.other)}`}`;
   }
 }
 
@@ -91,10 +92,18 @@ export function routeFromHash(hash: string): Route {
   }
   if (hash.startsWith(SPACE_PREFIX)) {
     // La fiche d'une analyse : `analyses/<id>`, ou `analyses/<id>/revisions/<n>` pour une révision numérotée.
-    const analysis = /^([^/]+)\/analyses\/([^/]+)(?:\/revisions\/([1-9]\d{0,8}))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    // `analyses/<id>/historique` ouvre l'onglet Révisions de la fiche ; `…/historique/<a>/<b>` y lance l'écart entre deux révisions.
+    const analysis = /^([^/]+)\/analyses\/([^/]+)(?:\/revisions\/([1-9]\d{0,8})|\/(historique)(?:\/([1-9]\d{0,8})\/([1-9]\d{0,8}))?)?$/.exec(hash.slice(SPACE_PREFIX.length));
     if (analysis?.[1] !== undefined && analysis[2] !== undefined) {
       const found = { page: "analysis", space: decodeSegment(analysis[1]), id: decodeSegment(analysis[2]) } as const;
+      if (analysis[4] !== undefined) return analysis[5] === undefined || analysis[6] === undefined ? { ...found, view: "history" } : { ...found, view: "history", compare: { base: Number(analysis[5]), other: Number(analysis[6]) } };
       return analysis[3] === undefined ? found : { ...found, revision: Number(analysis[3]) };
+    }
+    // L'Explorateur ouvert sur une analyse : `explorer/analyses/<id>`, ou `…/revisions/<n>`.
+    const exploring = /^([^/]+)\/explorer\/analyses\/([^/]+)(?:\/revisions\/([1-9]\d{0,8}))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    if (exploring?.[1] !== undefined && exploring[2] !== undefined) {
+      const reopened = { id: decodeSegment(exploring[2]) };
+      return { page: "explorer", space: decodeSegment(exploring[1]), analysis: exploring[3] === undefined ? reopened : { ...reopened, revision: Number(exploring[3]) } };
     }
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
     const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions|explorer|analyses))?$/.exec(hash.slice(SPACE_PREFIX.length));

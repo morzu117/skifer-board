@@ -10,7 +10,30 @@ it.each([
   [`#/espaces/finance/analyses/${ID}/revisions/3`, { page: "analysis", space: "finance", id: ID, revision: 3 }],
   [`#/espaces/finance/analyses/${ID}/revisions/123456789`, { page: "analysis", space: "finance", id: ID, revision: 123456789 }],
   ["#/espaces/a%2Fb/analyses/x%20y", { page: "analysis", space: "a/b", id: "x y" }],
+  [`#/espaces/finance/analyses/${ID}/historique`, { page: "analysis", space: "finance", id: ID, view: "history" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1/3`, { page: "analysis", space: "finance", id: ID, view: "history", compare: { base: 1, other: 3 } }],
+  [`#/espaces/finance/analyses/${ID}/historique/123456789/2`, { page: "analysis", space: "finance", id: ID, view: "history", compare: { base: 123456789, other: 2 } }],
+  [`#/espaces/finance/explorer/analyses/${ID}`, { page: "explorer", space: "finance", analysis: { id: ID } }],
+  [`#/espaces/finance/explorer/analyses/${ID}/revisions/3`, { page: "explorer", space: "finance", analysis: { id: ID, revision: 3 } }],
+  ["#/espaces/a%2Fb/explorer/analyses/x%20y", { page: "explorer", space: "a/b", analysis: { id: "x y" } }],
+  ["#/espaces/finance/explorer", { page: "explorer", space: "finance" }],
   ["#/espaces/finance/analyses/", { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1/`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/0/2`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1/0`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/01/2`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1/1234567890`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/a/2`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/historique/1/2/3`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/revisions/2/historique/1/3`, { page: "home" }],
+  [`#/espaces/finance/analyses/${ID}/revisions/2/historique`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses/`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses/${ID}/`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses/${ID}/revisions/0`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses/${ID}/revisions/1/x`, { page: "home" }],
+  [`#/espaces/finance/explorer/analyses/${ID}/historique`, { page: "home" }],
   [`#/espaces/finance/analyses/${ID}/`, { page: "home" }],
   [`#/espaces/finance/analyses/${ID}/revisions`, { page: "home" }],
   [`#/espaces/finance/analyses/${ID}/revisions/0`, { page: "home" }],
@@ -31,7 +54,17 @@ it.each([
   [{ page: "analysis", space: "finance", id: ID }, `#/espaces/finance/analyses/${ID}`],
   [{ page: "analysis", space: "finance", id: ID, revision: 2 }, `#/espaces/finance/analyses/${ID}/revisions/2`],
   [{ page: "analysis", space: "a b", id: "x/y" }, "#/espaces/a%20b/analyses/x%2Fy"],
+  [{ page: "analysis", space: "finance", id: ID, view: "history" }, `#/espaces/finance/analyses/${ID}/historique`],
+  [{ page: "analysis", space: "finance", id: ID, view: "history", compare: { base: 1, other: 3 } }, `#/espaces/finance/analyses/${ID}/historique/1/3`],
+  [{ page: "explorer", space: "finance" }, "#/espaces/finance/explorer"],
+  [{ page: "explorer", space: "finance", analysis: { id: ID } }, `#/espaces/finance/explorer/analyses/${ID}`],
+  [{ page: "explorer", space: "finance", analysis: { id: ID, revision: 2 } }, `#/espaces/finance/explorer/analyses/${ID}/revisions/2`],
+  [{ page: "explorer", space: "a b", analysis: { id: "x/y" } }, "#/espaces/a%20b/explorer/analyses/x%2Fy"],
 ] as [Route, string][])("construit l'ancre de %j et la relit à l'identique", (route, hash) => {
   expect(routeHash(route)).toBe(hash);
   expect(routeFromHash(routeHash(route))).toEqual(route);
+});
+
+it("l'onglet Révisions n'a pas de ancre pour une révision numérotée : la révision l'emporte", () => {
+  expect(routeHash({ page: "analysis", space: "finance", id: ID, revision: 2, view: "history" })).toBe(`#/espaces/finance/analyses/${ID}/revisions/2`);
 });

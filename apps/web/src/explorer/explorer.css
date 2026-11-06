@@ -23,6 +23,7 @@
   .sb-explorer form > section:first-child { grid-column: 1; grid-row: 1 / span 2; }
   .sb-explorer form > section:nth-child(2),
   .sb-explorer form > [aria-live] { grid-column: 2; }
+  .sb-explorer form > section.sb-explorer__analyse { grid-column: 2; }
 }
 
 .sb-explorer input,

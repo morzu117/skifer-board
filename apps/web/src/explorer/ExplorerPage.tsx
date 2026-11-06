@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Table } from "apache-arrow";
 import { EtatResultat } from "./EtatResultat";
+import type { ExplorerGenre } from "../analyses/chart";
+import { BandeauAnalyse } from "../analyses/BandeauAnalyse";
+import { draftFromExplorer, fingerprint, openedFrom, saveRight, type ExplorerState, type Meta, type Opened } from "../analyses/explorer";
+import { OuvertureAnalyse, type Opening } from "../analyses/OuvertureAnalyse";
+import { PanneauAnalyse, type Mode } from "../analyses/PanneauAnalyse";
 import type { ExecutionInput } from "../executions/client";
 import type { Execution } from "../executions/model";
 import { SKIFER_CLAIR, type ChartTheme } from "../charts/theme";
@@ -15,15 +20,16 @@ import { Card } from "../ui/Card";
 import { useOutcome } from "../ui/useOutcome";
 import { cancelExecution, fetchExecution, fetchExplorerConnections, fetchFields, fetchResult, submitExecution } from "./client";
 import { buildExecution, OPERATORS } from "./filters";
+import { genreInitial } from "./Resultat";
 import type { ExplorerModel } from "./model";
 import "../executions/executions.css";
 import "../catalogue/catalogue.css";
 import "./explorer.css";
 
-interface Props { space: Space; target: Environment; fetcher: Fetch }
+interface Props { space: Space; target: Environment; analysis?: { id: string; revision?: number | undefined } | undefined; fetcher: Fetch }
 type Filtre = ExecutionInput["filters"][number];
 
-export function ExplorerPage({ space, target, fetcher }: Props) {
+export function ExplorerPage({ space, target, analysis, fetcher }: Props) {
   const connexions = useOutcome(`${space.id}:connexions`, (signal) => fetchExplorerConnections(space.id, signal, fetcher));
   const champs = useOutcome(`${space.id}:champs`, (signal) => fetchFields(space.id, signal, fetcher));
   const [theme, setTheme] = useState<ChartTheme>(SKIFER_CLAIR);
@@ -36,17 +42,20 @@ export function ExplorerPage({ space, target, fetcher }: Props) {
       champs.status === "error" && champs.message.includes("catalogue vide") ? <Banner tone="neutral">Le catalogue ne contient aucun modèle.</Banner> :
       champs.status !== "ok" ? <ReadFailure outcome={champs} title="Catalogue indisponible" /> :
       connexions.value.length === 0 ? <Banner tone="neutral">Aucune connexion dans cet espace.</Banner> :
-      <Editeur key={`${space.id}:${target}`} space={space.id} target={target} fetcher={fetcher} theme={theme} connexions={connexions.value} models={champs.value.models} />}
+      analysis === undefined ? <Editeur key={`${space.id}:${target}`} space={space.id} target={target} fetcher={fetcher} theme={theme} connexions={connexions.value} models={champs.value.models} rights={saveRight(space)} opening={null} />
+      : <OuvertureAnalyse space={space.id} analysis={analysis} catalog={{ connections: connexions.value, models: champs.value.models }} fetcher={fetcher}>
+        {(opening) => <Editeur key={`${space.id}:${target}:${analysis.id}:${analysis.revision === undefined ? "courante" : String(analysis.revision)}`} space={space.id} target={target} fetcher={fetcher} theme={theme} connexions={connexions.value} models={champs.value.models} rights={saveRight(space)} opening={opening} />}
+      </OuvertureAnalyse>}
   </div>;
 }
 
-function Editeur({ space, target, fetcher, theme, connexions, models }: { space: string; target: Environment; fetcher: Fetch; theme: ChartTheme; connexions: readonly string[]; models: readonly ExplorerModel[] }) {
-  const [connection, setConnection] = useState(connexions[0] as string);
-  const [modelName, setModelName] = useState((models[0] as ExplorerModel).name);
+function Editeur({ space, target, fetcher, theme, connexions, models, rights, opening }: { space: string; target: Environment; fetcher: Fetch; theme: ChartTheme; connexions: readonly string[]; models: readonly ExplorerModel[]; rights: ReturnType<typeof saveRight>; opening: Opening | null }) {
+  const [connection, setConnection] = useState(opening === null ? connexions[0] as string : opening.state.connection);
+  const [modelName, setModelName] = useState(opening === null ? (models[0] as ExplorerModel).name : opening.state.model);
   const [search, setSearch] = useState("");
-  const [metrics, setMetrics] = useState<string[]>([]);
-  const [dimensions, setDimensions] = useState<string[]>([]);
-  const [filters, setFilters] = useState<Filtre[]>([]);
+  const [metrics, setMetrics] = useState<string[]>(opening === null ? [] : [...opening.state.metrics]);
+  const [dimensions, setDimensions] = useState<string[]>(opening === null ? [] : [...opening.state.dimensions]);
+  const [filters, setFilters] = useState<Filtre[]>(opening === null ? [] : [...opening.state.filters]);
   const [column, setColumn] = useState("");
   const [operator, setOperator] = useState<Filtre["operator"]>("eq");
   const [value, setValue] = useState("");
@@ -58,10 +67,24 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
   const [suiviInterrompu, setSuiviInterrompu] = useState<Exclude<AdminOutcome<unknown>, { status: "ok" }> | null>(null);
   const [result, setResult] = useState<Table | null>(null);
   const [soumis, setSoumis] = useState<{ input: ExecutionInput; model: ExplorerModel } | null>(null);
+  // Analyse ouverte (plan 18, 18.5b) : la révision d'où part l'exploration, le genre montré, les calculs et le panneau de sauvegarde.
+  const [opened, setOpened] = useState<Opened | null>(opening === null ? null : opening.opened);
+  // Le détachement est durable : changer de modèle ou détacher à la main ne se défait pas en revenant en arrière. Seules la réouverture par l'API ou une publication réussie rétablissent une référence.
+  const [detached, setDetached] = useState<"model" | "explicit" | null>(null);
+  const [calculs, setCalculs] = useState(opening === null ? false : opening.state.calculs);
+  const [depart, setDepart] = useState<ExplorerGenre | undefined>(opening === null ? undefined : opening.state.genre);
+  const [genreMontre, setGenreMontre] = useState<ExplorerGenre | null>(null);
+  const [panneau, setPanneau] = useState<Mode | null>(null);
+  // Un `revision_conflict` rendu pour la révision ouverte : plus aucune révision ne part de cette ouverture, panneau fermé puis rouvert compris.
+  const [conflicted, setConflicted] = useState(false);
   const generation = useRef(0);
   useEffect(() => () => { generation.current += 1; }, []);
   const model = models.find((item) => item.name === modelName) as ExplorerModel;
   const dimension = model.dimensions.find((item) => item.name === column);
+  const state: ExplorerState = { connection, model: modelName, metrics, dimensions, filters, calculs, genre: genreMontre ?? depart ?? genreInitial({ connection, environment: target, model: modelName, metrics, dimensions, filters }, model) };
+  const build = (meta: Meta) => draftFromExplorer(state, meta, models);
+  const linked = opened !== null && detached === null && modelName === opened.model;
+  const modified = opened !== null && fingerprint(build(opened)) !== opened.baseline;
   useEffect(() => {
     if (suiviInterrompu !== null || run === null || (run.state !== "queued" && run.state !== "running")) return;
     const controller = new AbortController();
@@ -76,7 +99,7 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
     void fetchResult(space, run, controller.signal, fetcher).then((answer) => { if (!controller.signal.aborted) { if (answer.status === "ok") setResult(answer.value); else setFailure(answer); } }, () => undefined);
     return () => { controller.abort(); };
   }, [run, space, fetcher]);
-  const reset = () => { generation.current += 1; setBusy(false); setMetrics([]); setDimensions([]); setFilters([]); setColumn(""); setOperator("eq"); setValue(""); setSecond(""); setRun(null); setResult(null); setSoumis(null); setProblem(null); setFailure(null); setSuiviInterrompu(null); };
+  const reset = () => { generation.current += 1; setBusy(false); setMetrics([]); setDimensions([]); setFilters([]); setColumn(""); setOperator("eq"); setValue(""); setSecond(""); setRun(null); setResult(null); setSoumis(null); setProblem(null); setFailure(null); setSuiviInterrompu(null); setGenreMontre(null); };
   const toggle = (name: string, selected: string[], set: (value: string[]) => void) => { set(selected.includes(name) ? selected.filter((item) => item !== name) : [...selected, name]); };
   const addFilter = (dimension: ExplorerModel["dimensions"][number]) => {
     const scalar = (raw: string): string | number | boolean => dimension.type === "number" ? (raw.trim() === "" ? NaN : Number(raw)) : dimension.type === "boolean" ? raw === "true" : raw;
@@ -90,6 +113,8 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
     let input: ExecutionInput;
     try { input = buildExecution({ connection, environment: target, model: model.name, metrics, dimensions, filters }, model); }
     catch { setProblem("Choisissez une connexion et au moins une métrique, puis vérifiez les filtres."); return; }
+    // Les exécutions portent la référence tant que le modèle est celui de l'analyse ouverte ; sinon elles partent sans, et le bandeau le dit.
+    if (linked) input = { ...input, analysis: { id: opened.id, revision: opened.revision } };
     setProblem(null); setFailure(null); setResult(null); setSoumis({ input, model }); setRun(null); setBusy(true);
     const current = ++generation.current;
     void submitExecution(space, input, fetcher).then((answer) => { if (current !== generation.current) return; setBusy(false); if (answer.status === "ok") setRun(answer.value); else setFailure(answer); });
@@ -98,11 +123,13 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
   const toucheRecherche = (event: KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter") event.preventDefault(); };
   const toucheFiltre = (event: KeyboardEvent<HTMLInputElement>, champ: ExplorerModel["dimensions"][number]) => { if (event.key === "Enter") { event.preventDefault(); addFilter(champ); } };
   const visible = (item: { label: string; description: string; name: string }) => `${item.label} ${item.description} ${item.name}`.toLocaleLowerCase().includes(search.toLocaleLowerCase());
-  return <form onSubmit={(event) => { event.preventDefault(); }}>
+  return <>
+    {opened === null ? null : <BandeauAnalyse space={space} opened={opened} modified={modified} linked={linked} detached={detached} onDetach={() => { setDetached("explicit"); }} />}
+  <form onSubmit={(event) => { event.preventDefault(); }}>
     <Card title="Champs">
       <div className="sb-executions__form">
         <label className="sb-field">Connexion<select className="sb-input" value={connection} onChange={(e) => { setConnection(e.target.value); }}>{connexions.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label className="sb-field">Modèle<select className="sb-input" value={modelName} onChange={(e) => { setModelName(e.target.value); reset(); }}>{models.map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
+        <label className="sb-field">Modèle<select className="sb-input" value={modelName} onChange={(e) => { setModelName(e.target.value); setDetached((current) => current ?? "model"); reset(); }}>{models.map((item) => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
         <label className="sb-field">Rechercher un champ<input className="sb-input" value={search} onChange={(e) => { setSearch(e.target.value); }} onKeyDown={toucheRecherche} /></label>
       </div>
       <h3>Métriques</h3>{model.metrics.filter(visible).map((item) => <p key={item.name}><label className="sb-explorer__choix"><input type="checkbox" checked={metrics.includes(item.name)} onChange={() => { toggle(item.name, metrics, setMetrics); }} /> {item.label} · {item.aggregation ?? "type inconnu"} — {item.description}</label></p>)}
@@ -127,6 +154,20 @@ function Editeur({ space, target, fetcher, theme, connexions, models }: { space:
       {run !== null && (run.state === "queued" || run.state === "running") && !run.canCancel && !run.cancelRequested ? <p role="status">L’annulation n’est pas disponible pour cette exécution : la capacité du connecteur ou son état courant ne le permet pas.</p> : null}
       {suiviInterrompu === null ? null : <p role="status">L’annulation est indisponible pendant l’interruption du suivi. Reprenez le suivi pour connaître l’état de l’exécution.</p>}
     </Card>
-    {suiviInterrompu === null ? <EtatResultat run={run} result={result} submitted={soumis} busy={busy} failure={failure} theme={theme} fetcher={fetcher} /> : <div className="sb-banner sb-banner--warning" role="status"><div>Suivi interrompu : {suiviInterrompu.status === "refused" ? REFUSAL_LABELS[suiviInterrompu.code] : suiviInterrompu.message} L’état réel de l’exécution est inconnu. Exécution : {run?.id}. <button type="button" className="sb-button" onClick={() => { setSuiviInterrompu(null); }}>Reprendre le suivi</button></div></div>}
-  </form>;
+    <Card title="Analyse" className="sb-explorer__analyse">
+      <label className="sb-explorer__choix"><input type="checkbox" checked={calculs} onChange={(e) => { setCalculs(e.target.checked); }} /> Enregistrer comme calculs contextuels le total et la part du résultat chargé de chaque métrique, ceux de « Sélection personnelle »</label>
+      <div className="sb-analyses__buttons">
+        <button type="button" className="sb-button" disabled={!rights.allowed} aria-describedby={rights.allowed ? undefined : "explorer-analyse-droit"} onClick={() => { setPanneau("create"); }}>Sauvegarder comme analyse</button>
+        {opened !== null && opened.permissions.duplicate ? <button type="button" className="sb-button" disabled={!rights.allowed} aria-describedby={rights.allowed ? undefined : "explorer-analyse-droit"} onClick={() => { setPanneau("copy"); }}>Dupliquer</button> : null}
+        {opened !== null && opened.permissions.revise && opened.revision === opened.currentRevision ? <button type="button" className="sb-button" onClick={() => { setPanneau("revise"); }}>Nouvelle révision</button> : null}
+      </div>
+      {rights.allowed ? null : <p id="explorer-analyse-droit" className="sb-members__state">{rights.reason}</p>}
+      {panneau === null ? null : <PanneauAnalyse key={panneau} mode={panneau} space={space} opened={opened} build={build} fetcher={fetcher}
+        onClose={() => { setPanneau(null); }}
+        conflicted={conflicted} onConflict={() => { setConflicted(true); }}
+        onRevised={(found) => { setOpened(openedFrom({ ...found, currentRevision: found.revision }, state, models)); setDetached(null); setConflicted(false); setDepart(state.genre); }} />}
+    </Card>
+    {suiviInterrompu === null ? <EtatResultat run={run} result={result} submitted={soumis} busy={busy} failure={failure} theme={theme} fetcher={fetcher} depart={depart} onGenre={setGenreMontre} /> : <div className="sb-banner sb-banner--warning" role="status"><div>Suivi interrompu : {suiviInterrompu.status === "refused" ? REFUSAL_LABELS[suiviInterrompu.code] : suiviInterrompu.message} L’état réel de l’exécution est inconnu. Exécution : {run?.id}. <button type="button" className="sb-button" onClick={() => { setSuiviInterrompu(null); }}>Reprendre le suivi</button></div></div>}
+  </form>
+  </>;
 }

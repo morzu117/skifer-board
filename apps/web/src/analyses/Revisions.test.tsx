@@ -7,9 +7,9 @@ import { OngletRevisions } from "./Revisions";
 
 const HISTORY = `GET ${ROOT}/${ID}/revisions`;
 const DIFF = (base: number, other: number) => `GET ${ROOT}/${ID}/diff?base=${String(base)}&other=${String(other)}`;
-const open = (routes: Parameters<typeof analysesServer>[0]) => {
+const open = (routes: Parameters<typeof analysesServer>[0], compare?: { base: number; other: number }) => {
   const fetcher = analysesServer(routes);
-  return { fetcher, ...render(<OngletRevisions space="finance" id={ID} fetcher={fetcher} />) };
+  return { fetcher, ...render(<OngletRevisions space="finance" id={ID} compare={compare} fetcher={fetcher} />) };
 };
 
 it("liste l'historique avec action, auteur, instant et commit, et un lien vers chaque sauvegarde", async () => {
@@ -123,4 +123,44 @@ it("annonce la lecture de l'écart tant que le serveur n'a pas répondu", async 
   await userEvent.click(await screen.findByRole("button", { name: "Comparer" }));
   expect(screen.getByRole("status")).toHaveTextContent("Lecture de l'écart…");
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
+});
+
+// --- Écart demandé par l'adresse (plan 18, 18.5b) ---
+
+const THREE = () => {
+  const saves = (route("historique").body as { revisions: object[] }).revisions;
+  return { status: 200, body: { id: ID, current_revision: 3, deleted: false, revisions: [...saves, { ...saves[1], revision: 3 }] } };
+};
+
+it("une comparaison demandée par l'adresse positionne les sélecteurs et lance l'écart du serveur", async () => {
+  const { fetcher } = open({ [HISTORY]: THREE(), [DIFF(2, 3)]: route("ecart", [['"base":1', '"base":2'], ['"other":2', '"other":3']]) }, { base: 2, other: 3 });
+  expect(await screen.findByRole("table", { name: "Écart entre r2 et r3" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Révision de base")).toHaveValue("2");
+  expect(screen.getByLabelText("Révision comparée")).toHaveValue("3");
+  expect(screen.queryByText(/n'est pas lancée/)).not.toBeInTheDocument();
+  expect(fetcher.mock.calls.filter(([url]) => url.includes("/diff"))).toHaveLength(1);
+});
+
+it("une révision demandée masquée ou absente est dite, l'écart n'est pas lancé et les sélecteurs gardent leur défaut", async () => {
+  const { fetcher } = open({ [HISTORY]: THREE() }, { base: 2, other: 9 });
+  const notice = await screen.findByText(/La comparaison demandée/);
+  expect(notice).toHaveTextContent("La comparaison demandée entre r2 et r9 n'est pas lancée : r9 n'existe pas ou n'est pas lisible pour votre session.");
+  expect(screen.getByLabelText("Révision de base")).toHaveValue("1");
+  expect(screen.getByLabelText("Révision comparée")).toHaveValue("3");
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  expect(fetcher.mock.calls.some(([url]) => url.includes("/diff"))).toBe(false);
+});
+
+it("dit les deux révisions quand ni l'une ni l'autre n'est lisible", async () => {
+  open({ [HISTORY]: route("historique-revision-masquee") }, { base: 1, other: 7 });
+  expect(await screen.findByText(/La comparaison demandée/)).toHaveTextContent("r1 et r7 n'existent pas ou ne sont pas lisibles pour votre session.");
+});
+
+it("une comparaison demandée d'une révision avec elle-même est lancée même si une seule révision est lisible", async () => {
+  const { fetcher } = open({ [HISTORY]: route("historique-revision-masquee"), [DIFF(2, 2)]: route("ecart", [['"base":1', '"base":2']]) }, { base: 2, other: 2 });
+  expect(await screen.findByRole("table", { name: "Écart entre r2 et r2" })).toBeInTheDocument();
+  expect(screen.queryByText(/Il faut deux révisions disponibles/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Révision de base")).toHaveValue("2");
+  expect(screen.getByLabelText("Révision comparée")).toHaveValue("2");
+  expect(fetcher.mock.calls.filter(([url]) => url === `${ROOT}/${ID}/diff?base=2&other=2`)).toHaveLength(1);
 });

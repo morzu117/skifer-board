@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 import { CHART_KINDS, DENOMINATORS, FILTER_OPERATORS, OPERATIONS, SCOPES, VISIBILITIES } from "./document";
-import { ACTION_LABELS, CHANGE_LABELS, chartLabel, DENOMINATOR_LABELS, LIST_STATE_LABELS, OPERATION_LABELS, OPERATOR_LABELS, READ_STATE_LABELS, RULE_LABELS, SCOPE_LABELS, USAGE_LABELS, valueAt, VISIBILITY_LABELS } from "./labels";
+import { ACTION_LABELS, CHANGE_LABELS, chartLabel, DENOMINATOR_LABELS, LIST_STATE_LABELS, OPERATION_LABELS, OPERATOR_LABELS, READ_STATE_LABELS, RULE_LABELS, SCOPE_LABELS, stepText, USAGE_LABELS, valueAt, VIOLATION_LABELS, VISIBILITY_LABELS } from "./labels";
 import { LIST_STATES, READ_STATES, USAGE_KINDS } from "./model";
-import { REFERENCE_RULES } from "./refusal";
+import { REFERENCE_RULES, VIOLATION_RULES } from "./refusal";
 
 it("chaque valeur fermée du contrat a un libellé, et chaque état a sa raison", () => {
   expect(Object.keys(READ_STATE_LABELS).sort()).toEqual([...READ_STATES].sort());
@@ -42,4 +42,14 @@ it("valueAt suit un pointeur JSON et rend null quand le chemin ne mène nulle pa
   expect(valueAt(document, "/query/text/length")).toBeNull();
   expect(valueAt(document, "/query/__proto__")).toBeNull();
   expect(valueAt(document, "/query/toString")).toBeNull();
+});
+
+it("chaque règle de violation du serveur a un libellé", () => {
+  expect(Object.keys(VIOLATION_LABELS).sort()).toEqual([...VIOLATION_RULES].sort());
+});
+
+it("dit chaque calcul contextuel avec son regroupement et son périmètre ou dénominateur", () => {
+  expect(stepText({ operation: "aggregate", metric: "revenue", group_by: [], scope: null })).toBe("Agrégat de revenue par sans regroupement · périmètre : sélection courante");
+  expect(stepText({ operation: "aggregate", metric: "revenue", group_by: ["region", "channel"], scope: "filtered_perimeter" })).toBe("Agrégat de revenue par region, channel · périmètre : périmètre filtré");
+  expect(stepText({ operation: "share", metric: "orders", group_by: ["region"], denominator: "loaded_result" })).toBe("Part de orders par region · dénominateur : résultat chargé");
 });

@@ -372,13 +372,13 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
     return <ConnectionsPage key={current.value.id} space={current.value} fetcher={fetcher} target={environment} onWritten={onWritten} />;
   }
   if (route.page === "explorer") {
-    return <ExplorerPage key={`${current.value.id}:${environment}`} space={current.value} fetcher={fetcher} target={environment} />;
+    return <ExplorerPage key={`${current.value.id}:${environment}:${route.analysis?.id ?? ""}:${String(route.analysis?.revision)}`} space={current.value} analysis={route.analysis} fetcher={fetcher} target={environment} />;
   }
   if (route.page === "analyses") {
     return <AnalysesPage key={current.value.id} space={current.value} fetcher={fetcher} />;
   }
   if (route.page === "analysis") {
-    return <AnalysePage key={`${current.value.id}:${route.id}:${String(route.revision)}`} space={current.value} id={route.id} revision={route.revision} fetcher={fetcher} />;
+    return <AnalysePage key={`${current.value.id}:${route.id}:${String(route.revision)}:${String(route.view)}:${JSON.stringify(route.compare)}`} space={current.value} id={route.id} revision={route.revision} view={route.view} compare={route.compare} fetcher={fetcher} />;
   }
   if (route.page === "executions") {
     return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;

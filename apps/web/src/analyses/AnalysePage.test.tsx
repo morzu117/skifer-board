@@ -13,10 +13,12 @@ const FICHE = `GET ${ROOT}/${ID}`;
 const OPENED = `POST ${ROOT}/${ID}/opened`;
 const ALL = { owner: true, revise: true, delete: true, duplicate: true };
 const withPermissions = (example: Exemple, permissions: Record<string, boolean>): Exemple => changed(example, "body.permissions", permissions);
-const open = (routes: Parameters<typeof analysesServer>[0], revision?: number) => {
+const open = (routes: Parameters<typeof analysesServer>[0], revision?: number, view?: "history", compare?: { base: number; other: number }) => {
   const fetcher = analysesServer({ [OPENED]: route("ouvrir"), ...routes });
-  return { fetcher, ...render(<AnalysePage space={space} id={ID} revision={revision} fetcher={fetcher} />) };
+  return { fetcher, ...render(<AnalysePage space={space} id={ID} revision={revision} view={view} compare={compare} fetcher={fetcher} />) };
 };
+/** `lire` dont les calculs sont ceux que l'Explorateur sait porter : aucun. */
+const openable = (permissions: Record<string, boolean> = ALL): Exemple => withPermissions(changed(route("lire"), "body.analysis.contextual", []), permissions);
 const opened = (fetcher: ReturnType<typeof analysesServer>) => fetcher.mock.calls.filter(([url, init]) => url === `${ROOT}/${ID}/opened` && init?.method === "POST");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** Événements d'ouverture envoyés, dans l'ordre : identifiant client et révision lue. */
@@ -48,14 +50,69 @@ it("montre l'en-tête : nom, description, visibilité, propriétaire, révision,
   await expectAccessible(container);
 });
 
-it("sans droit, aucune action d'écriture n'est offerte, et le chemin vers l'Explorateur est dit indisponible", async () => {
+it("sans droit, aucune action d'écriture n'est offerte ; l'Explorateur s'ouvre quand il peut porter l'analyse", async () => {
   open({ [FICHE]: route("lire") });
   await screen.findByRole("heading", { name: "Chiffre d'affaires" });
   expect(screen.queryByRole("button", { name: "Dupliquer" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Supprimer" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Nouvelle révision" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Ouvrir dans l'Explorateur" })).toBeDisabled();
-  expect(screen.getByText(/ne sont pas encore disponibles/)).toBeInTheDocument();
+  // `lire` porte un calcul regroupé par région : l'Explorateur ne le représente pas, la raison est dite.
+  const button = screen.getByRole("button", { name: "Ouvrir dans l'Explorateur" });
+  expect(button).toBeDisabled();
+  expect(button).toHaveAccessibleDescription(/Ouverture dans l'Explorateur indisponible/);
+  expect(screen.getByText(/Calcul contextuel 1 \(Agrégat de revenue par region/)).toBeInTheDocument();
+  await userEvent.click(button);
+  expect(window.location.hash).toBe("");
+});
+
+it("ouvre l'Explorateur sur la révision courante, ou sur la révision numérotée lue", async () => {
+  const current = open({ [FICHE]: openable({ owner: false, revise: false, delete: false, duplicate: false }) });
+  await userEvent.click(await screen.findByRole("button", { name: "Ouvrir dans l'Explorateur" }));
+  expect(window.location.hash).toBe(`#/espaces/finance/explorer/analyses/${ID}`);
+  expect(screen.queryByText(/Ouverture dans l'Explorateur indisponible/)).not.toBeInTheDocument();
+  expect(screen.getByText(/rien n'est enregistré sans votre confirmation/)).toBeInTheDocument();
+  current.unmount();
+  const body = changed(changed(route("revision"), "body.analysis.contextual", []), "body.current_revision", 2);
+  open({ [`GET ${ROOT}/${ID}/revisions/1`]: body }, 1);
+  await userEvent.click(await screen.findByRole("button", { name: "Ouvrir dans l'Explorateur" }));
+  expect(window.location.hash).toBe(`#/espaces/finance/explorer/analyses/${ID}/revisions/1`);
+});
+
+it("« Nouvelle révision » mène à l'Explorateur, où elle se confirme", async () => {
+  open({ [FICHE]: openable() });
+  expect(await screen.findByText(/se prépare dans l'Explorateur, puis se confirme avec son impact/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Nouvelle révision" }));
+  expect(window.location.hash).toBe(`#/espaces/finance/explorer/analyses/${ID}`);
+});
+
+it.each([
+  ["lire-non-resolue", /État « Référence non résolue »/],
+  ["lire-non-verifiee", /État « Non vérifiée »/],
+])("l'état « %s » rend l'ouverture indisponible avec sa raison", async (name, reason) => {
+  open({ [FICHE]: changed(route(name), "body.analysis.contextual", []) });
+  const button = await screen.findByRole("button", { name: "Ouvrir dans l'Explorateur" });
+  expect(button).toBeDisabled();
+  expect(button.getAttribute("aria-describedby")).toBeTruthy();
+  expect(document.getElementById("fiche-ouvrir-raisons")).toHaveTextContent(reason);
+});
+
+it("une analyse supprimée ne s'ouvre pas dans l'Explorateur", async () => {
+  open({ [`GET ${ROOT}/${ID}/revisions/1`]: route("revision-supprimee") }, 1);
+  const button = await screen.findByRole("button", { name: "Ouvrir dans l'Explorateur" });
+  expect(button).toBeDisabled();
+  expect(document.getElementById("fiche-ouvrir-raisons")).toHaveTextContent("L'analyse est supprimée");
+});
+
+it("l'ancre d'historique ouvre l'onglet Révisions", async () => {
+  open({ [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/revisions`]: route("historique") }, undefined, "history");
+  expect(await screen.findByRole("tab", { name: "Révisions" })).toHaveAttribute("aria-selected", "true");
+  expect(await screen.findByRole("list", { name: "Historique des révisions" })).toBeInTheDocument();
+});
+
+it("l'ancre d'écart ouvre l'onglet Révisions et lance la comparaison des deux révisions", async () => {
+  open({ [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/revisions`]: route("historique"), [`GET ${ROOT}/${ID}/diff?base=1&other=2`]: route("ecart") }, undefined, "history", { base: 1, other: 2 });
+  expect(await screen.findByRole("tab", { name: "Révisions" })).toHaveAttribute("aria-selected", "true");
+  expect(await screen.findByRole("group", { name: "Écart entre r1 et r2" })).toBeInTheDocument();
 });
 
 it.each([
@@ -68,7 +125,7 @@ it.each([
   for (const name of hidden) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
 });
 
-it("« Nouvelle révision » reste une action à venir, désactivée", async () => {
+it("« Nouvelle révision » est désactivée avec la raison quand l'Explorateur ne peut pas porter l'analyse", async () => {
   open({ [FICHE]: withPermissions(route("lire"), ALL) });
   expect(await screen.findByRole("button", { name: "Nouvelle révision" })).toBeDisabled();
 });
@@ -120,7 +177,7 @@ it("avec un index en retard, les actions accordées par le serveur restent offer
 
 it("les sept onglets se lisent un à un, un seul panneau est monté à la fois", async () => {
   open({
-    [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/revisions`]: route("historique"), [`GET ${ROOT}/${ID}/usage`]: route("usage"),
+    [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/revisions`]: route("historique"), [`GET ${ROOT}/${ID}/usage`]: route("usage"), [`GET ${ROOT}/${ID}/last-execution`]: route("derniere-execution-aucune"),
   });
   await screen.findByRole("heading", { name: "Chiffre d'affaires" });
   expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Requête", "Calculs contextuels", "Présentation par défaut", "Révisions", "Consommateurs", "Usage", "Preuves"]);
@@ -138,7 +195,7 @@ it("les sept onglets se lisent un à un, un seul panneau est monté à la fois",
   await userEvent.click(screen.getByRole("tab", { name: "Usage" }));
   expect(await screen.findByRole("table", { name: "Usage de l'analyse" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "Preuves" }));
-  expect(panel()[0]).toHaveTextContent("Indisponible");
+  expect(await screen.findByText("Aucune exécution de votre part depuis cette analyse.")).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Preuves" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByRole("tab", { name: "Requête" })).toHaveAttribute("tabindex", "-1");
 });

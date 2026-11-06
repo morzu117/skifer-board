@@ -358,6 +358,27 @@ describe("Analyses dans la navigation de l'espace (plan 18, 18.5a)", () => {
     expect(lus(fetcher)).toContain(`GET /api/spaces/finance/analyses/${ID}/revisions/1`);
   });
 
+  it("l'adresse d'historique ouvre l'onglet Révisions de la fiche", async () => {
+    ouvrir(`#/espaces/finance/analyses/${ID}/historique`, {
+      ...FINANCE,
+      [`GET /api/spaces/finance/analyses/${ID}`]: { status: 200, body: analyseLue(ID) },
+      [`POST /api/spaces/finance/analyses/${ID}/opened`]: { status: 202, body: { recorded: true } },
+      [`GET /api/spaces/finance/analyses/${ID}/revisions`]: { status: 500, body: {} },
+    });
+    expect(await screen.findByRole("tab", { name: "Révisions" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("l'adresse de l'Explorateur sur une analyse l'ouvre, l'entrée Explorer reste active", async () => {
+    ouvrir(`#/espaces/finance/explorer/analyses/${ID}`, {
+      ...FINANCE,
+      "GET /api/spaces/finance/explorer/connections": { status: 200, body: { connections: ["finance"] } },
+      "GET /api/spaces/finance/explorer/fields": { status: 200, body: { models: [{ name: "sales", label: "Ventes", description: "Ventes", metrics: [{ name: "revenue", label: "Chiffre d'affaires", description: "Montant", aggregation: "sum", additivity: "additive" }], dimensions: [{ name: "region", label: "Région", description: "Région", type: "string", is_time: false }] }] } },
+      [`GET /api/spaces/finance/analyses/${ID}`]: { status: 200, body: analyseLue(ID) },
+    });
+    expect(await screen.findByText(/Exploration à partir de « Chiffre d'affaires », révision 1/)).toBeInTheDocument();
+    expect(within(nav()).getByRole("button", { name: "Explorer" })).toHaveAttribute("aria-current", "page");
+  });
+
   it("changer d'analyse relit la fiche (clé par identifiant et révision)", async () => {
     const AUTRE = "0b9e4a77-1c3d-4e58-b2f6-7a8d9c0e1f23";
     const fetcher = ouvrir(`#/espaces/finance/analyses/${ID}`, {

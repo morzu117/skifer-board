@@ -1,4 +1,5 @@
 import { vi, type Mock } from "vitest";
+import type { ExplorerModel } from "../explorer/model";
 import type { Fetch } from "../spaces/api";
 
 /** Aides des tests des analyses : contrats d'exemple du serveur réel et fixtures du format. */
@@ -121,3 +122,33 @@ export function analysesServer(routes: Record<string, Exemple | (() => Exemple)>
     return Promise.resolve(found === undefined ? Response.json({}, { status: 500 }) : reply(typeof found === "function" ? found() : found));
   });
 }
+
+/**
+ * Catalogue de l'Explorateur des tests des analyses : les modèles `sales` et `sales_orders` des fixtures de
+ * `contracts/analyses/`, avec des dimensions de chaque type (texte, nombre, booléen, date).
+ */
+export const CATALOG: { connections: readonly string[]; models: readonly ExplorerModel[] } = {
+  connections: ["finance"],
+  models: [
+    {
+      name: "sales", label: "Ventes", description: "Ventes",
+      metrics: [{ name: "revenue", label: "Chiffre d'affaires", description: "Montant", aggregation: "sum", additivity: "additive" }],
+      dimensions: [{ name: "order_month", label: "Mois", description: "Mois de commande", type: "date", is_time: true }, { name: "region", label: "Région", description: "Région", type: "string", is_time: false }],
+    },
+    {
+      name: "sales_orders", label: "Commandes", description: "Commandes",
+      metrics: [
+        { name: "revenue", label: "Chiffre d'affaires", description: "Montant", aggregation: "sum", additivity: "additive" },
+        { name: "orders", label: "Commandes", description: "Nombre", aggregation: "count", additivity: "additive" },
+      ],
+      dimensions: [
+        { name: "region", label: "Région", description: "Région", type: "string", is_time: false },
+        { name: "channel", label: "Canal", description: "Canal", type: "string", is_time: false },
+        { name: "revenue_band", label: "Tranche", description: "Tranche", type: "number", is_time: false },
+        { name: "orders", label: "Nombre de commandes", description: "Nombre", type: "number", is_time: false },
+        { name: "is_active", label: "Actif", description: "Actif", type: "boolean", is_time: false },
+        { name: "day", label: "Jour", description: "Jour", type: "date", is_time: true },
+      ],
+    },
+  ],
+};

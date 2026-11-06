@@ -11,25 +11,17 @@ import type { Fetch } from "../spaces/api";
 import { DatabricksOAuthPanel } from "../spaces/DatabricksOAuthPanel";
 import { CONNECTION_NAME } from "../spaces/connections";
 import { manages, type Space } from "../spaces/model";
-import { Badge, type BadgeTone } from "../ui/Badge";
+import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { useOutcome } from "../ui/useOutcome";
 import { cancelExecution, fetchExecution, fetchExecutions, fetchResult, submitExecution, type ExecutionInput } from "./client";
-import type { Execution, ExecutionState } from "./model";
+import type { Execution } from "./model";
 import { ThemeSwitch } from "../prototype/ThemeSwitch";
+import { STATE_LABELS, STATE_TONES } from "./labels";
 import "./executions.css";
 
 const IDENTIFIER = /^[A-Za-z][A-Za-z0-9_]{0,79}$/;
-const LABELS: Record<ExecutionState, string> = {
-  queued: "En attente", running: "En cours", succeeded: "Réussie", denied: "Refusée",
-  failed: "Échouée", timed_out: "Délai dépassé", cancelled: "Annulée",
-};
-const TONES: Record<ExecutionState, BadgeTone> = {
-  queued: "neutral", running: "warning", succeeded: "success", denied: "danger",
-  failed: "danger", timed_out: "danger", cancelled: "neutral",
-};
-
 export function durationOf(run: Execution): string {
   if (run.startedAt === null) return "Pas encore démarrée";
   if (run.finishedAt === null) return "En cours";
@@ -83,7 +75,7 @@ export function ExecutionsPage({ space, platformAdmin, fetcher, target }: Props)
               <ul className="sb-executions__list" aria-label="Exécutions récentes">{list.value.map((run) => <li key={run.id}>
                 <button type="button" className="sb-executions__item" aria-pressed={selected === run.id} onClick={() => { setSelected(run.id); }}>
                   <span><strong>{run.connection}</strong> · {run.environment}<small>{formatInstant(run.createdAt)}</small></span>
-                  <Badge tone={TONES[run.state]}>{LABELS[run.state]}</Badge>
+                  <Badge tone={STATE_TONES[run.state]}>{STATE_LABELS[run.state]}</Badge>
                 </button>
               </li>)}</ul>
             )}
@@ -149,7 +141,7 @@ function ExecutionDetail({ space, id, fetcher, onChanged }: { space: string; id:
     {detail.status === "loading" ? <Reading>Lecture du détail…</Reading> : detail.status !== "ok" ? <Outcome result={detail} title="Détail indisponible" /> : null}
     {run === null ? null : <>
       <dl className="sb-executions__facts">
-        <dt>État</dt><dd><Badge tone={TONES[run.state]}>{LABELS[run.state]}</Badge></dd>
+        <dt>État</dt><dd><Badge tone={STATE_TONES[run.state]}>{STATE_LABELS[run.state]}</Badge></dd>
         <dt>Identifiant</dt><dd className="sb-mono">{run.id}</dd>
         <dt>Connexion</dt><dd>{run.connection} · {run.environment}</dd>
         <dt>Créée</dt><dd>{formatInstant(run.createdAt)}</dd>
