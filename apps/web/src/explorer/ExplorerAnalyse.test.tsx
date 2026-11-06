@@ -95,7 +95,10 @@ it("enregistre les calculs de sélection comme calculs contextuels quand la case
   open(fetcher);
   await ready();
   await userEvent.click(screen.getByRole("checkbox", { name: /Chiffre d'affaires/ }));
-  await userEvent.click(within(analysis()).getByRole("checkbox", { name: /Enregistrer comme calculs contextuels/ }));
+  const box = within(analysis()).getByRole("checkbox", { name: /Enregistrer comme calculs contextuels/ });
+  // La case dit ce qui sera enregistré, et d'où viennent les calculs : le bloc « Sélection personnelle » du résultat.
+  expect(box).toHaveAccessibleName("Enregistrer comme calculs contextuels, pour chaque métrique, le total de la sélection courante et sa part du résultat chargé : les deux calculs du bloc « Sélection personnelle » du résultat");
+  await userEvent.click(box);
   await click("Sauvegarder comme analyse");
   await userEvent.type(screen.getByLabelText("Nom de l'analyse"), "Total");
   expect(panel("Sauvegarder comme analyse")).toHaveTextContent("Agrégat de revenue par sans regroupement · périmètre : sélection courante");
@@ -106,6 +109,27 @@ it("enregistre les calculs de sélection comme calculs contextuels quand la case
     { operation: "aggregate", metric: "revenue", group_by: [], scope: null },
     { operation: "share", metric: "revenue", group_by: [], denominator: "loaded_result" },
   ]);
+});
+
+it("l'aperçu montre exactement les valeurs du corps envoyé : l'ordre canonique des valeurs de `in` est celui de l'exécution", async () => {
+  const fetcher = server({ [CREATE]: route("creer") });
+  open(fetcher);
+  await ready();
+  await userEvent.click(screen.getByRole("checkbox", { name: /Chiffre d'affaires/ }));
+  await userEvent.selectOptions(screen.getByLabelText("Dimension du filtre"), "region");
+  await userEvent.selectOptions(screen.getByLabelText("Opérateur"), "in");
+  await userEvent.type(screen.getByLabelText(/^Valeur/), "Sud, Nord");
+  await click("Ajouter le filtre");
+  // La puce reprend la saisie ; l'exécution, l'aperçu et le corps de l'écriture portent la forme canonique de `buildExecution`.
+  expect(screen.getByText(/region in Sud,Nord/)).toBeInTheDocument();
+  await click("Sauvegarder comme analyse");
+  await userEvent.type(screen.getByLabelText("Nom de l'analyse"), "Filtrée");
+  const preview = within(panel("Sauvegarder comme analyse")).getByRole("group", { name: "Aperçu de l'analyse" });
+  expect(preview).toHaveTextContent("region parmi Nord, Sud");
+  expect(preview).not.toHaveTextContent("Sud, Nord");
+  await click("Sauvegarder l'analyse");
+  await screen.findByText("Analyse sauvegardée.");
+  expect((sent(fetcher, "POST", ROOT).query as { filters: unknown }).filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }]);
 });
 
 it.each([
@@ -453,6 +477,16 @@ async function conflicted(routes: Record<string, Exemple | (() => Exemple)> = {}
 it("sur un conflit, ne relit jamais pour écraser : deux issues seulement, la révision ouverte reste la r1", async () => {
   const { fetcher, container } = await conflicted();
   const divergence = await screen.findByRole("region", { name: "Révision courante différente" });
+  // L'alerte ne propose aucune relecture : elle dit que la révision n'est pas possible et renvoie aux deux issues.
+  const alert = screen.getAllByRole("alert")[0] as HTMLElement;
+  expect(alert).toHaveTextContent("Une autre révision a été enregistrée entre-temps : la révision n'est pas possible depuis cette exploration. Choisissez l'une des deux issues ci-dessous.");
+  expect(alert).not.toHaveTextContent(/relisez/i);
+  // L'écran d'impact ne nomme plus la r1 comme courante et ne promet aucun remplacement.
+  const impact = screen.getByRole("region", { name: "Impact de la révision" });
+  expect(impact).toHaveTextContent("Révision courante remplacée");
+  expect(impact).toHaveTextContent("Aucune : la révision n'est pas possible depuis cette exploration, rien ne sera remplacé.");
+  expect(impact).not.toHaveTextContent(/r1 de «/);
+  expect(impact).not.toHaveTextContent(/elle reste lisible dans l'historique/);
   // Le numéro de la révision courante vient d'une relecture qui n'est pas adoptée.
   expect(await within(divergence).findByRole("button", { name: "Ouvrir la révision courante (r2)" })).toBeInTheDocument();
   expect(within(divergence).getByRole("button", { name: "Copie indépendante" })).toBeInTheDocument();
@@ -569,6 +603,8 @@ it("quand la relecture voit déjà une autre révision, la révision n'est pas o
   expect(form).toHaveTextContent("Une autre révision a été enregistrée entre-temps : la révision courante est la 2, vous explorez la 1.");
   expect(within(form).getByRole("radio", { name: "Nouvelle révision de l'analyse" })).toBeDisabled();
   expect(within(form).getByRole("radio", { name: /Copie indépendante/ })).toBeChecked();
+  expect(within(form).getByRole("region", { name: "Impact de la révision" })).toHaveTextContent("Aucune : la révision n'est pas possible depuis cette exploration, rien ne sera remplacé.");
+  expect(within(form).getByRole("region", { name: "Impact de la révision" })).not.toHaveTextContent(/r1 de «/);
   expect(within(form).getByRole("button", { name: "Ouvrir la révision courante (r2)" })).toBeInTheDocument();
   expect(within(form).getByRole("link", { name: /Voir ce qui a changé/ })).toBeInTheDocument();
   await click("Enregistrer la copie");

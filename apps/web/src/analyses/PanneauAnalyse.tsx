@@ -30,6 +30,8 @@ interface Props {
   onConflict: () => void;
 }
 
+/** Le refus `revision_conflict` d'une révision depuis l'Explorateur : le message générique dit « relisez », ici aucune relecture n'écrase rien. */
+const CONFLICT_TEXT = "Une autre révision a été enregistrée entre-temps : la révision n'est pas possible depuis cette exploration. Choisissez l'une des deux issues ci-dessous.";
 const TITLES: Record<Mode, string> = { create: "Sauvegarder comme analyse", copy: "Dupliquer l'analyse", revise: "Nouvelle révision" };
 
 /**
@@ -139,7 +141,7 @@ function Formulaire({ mode, space, opened, build, fetcher, onClose, onRevised, c
     {built.status === "ok" ? <ApercuAnalyse draft={built.draft} unsaved={built.unsaved} /> : <p className="sb-members__state">Aperçu indisponible : {built.reason}</p>}
     {failure === null ? null : <div ref={announced} tabIndex={-1}>
       <Banner tone="danger">
-        {failure.status === "refused" ? analysisRefusalText(failure) : `Action non confirmée : ${failure.message}`}
+        {failure.status === "refused" ? (failure.code === "revision_conflict" ? CONFLICT_TEXT : analysisRefusalText(failure)) : `Action non confirmée : ${failure.message}`}
         {failure.status === "refused" && failure.violations !== undefined ? <ul>{failure.violations.map((violation) => <li key={`${violation.path}:${violation.rule}`}><span className="sb-mono">{violation.path === "" ? "(document)" : violation.path}</span> · {VIOLATION_LABELS[violation.rule]}</li>)}</ul> : null}
       </Banner>
     </div>}
@@ -159,7 +161,7 @@ function Impact({ opened, gate, choice, onChoice }: { opened: Opened; gate: Gate
   return <section aria-label="Impact de la révision" className="sb-analyses__impact">
     <h4>Impact</h4>
     <dl className="sb-analyses__facts">
-      <dt>Révision courante remplacée</dt><dd>r{opened.currentRevision} de « {opened.name} » ; elle reste lisible dans l'historique.</dd>
+      <dt>Révision courante remplacée</dt><dd>{gate.canRevise ? `r${String(opened.currentRevision)} de « ${opened.name} » ; elle reste lisible dans l'historique.` : "Aucune : la révision n'est pas possible depuis cette exploration, rien ne sera remplacé."}</dd>
       <dt>Consommateurs</dt><dd>Indisponible : aucune route ne lit les consommateurs avant le lot 07.</dd>
     </dl>
     {gate.blocked === null ? null : <Banner tone="warning">{gate.blocked} Une nouvelle révision n'est pas possible depuis cette exploration.</Banner>}

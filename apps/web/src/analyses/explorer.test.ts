@@ -122,6 +122,21 @@ describe("d'un document vers l'Explorateur", () => {
     expect(result).toMatchObject({ status: "ok", state: { connection: "finance", model: "sales", calculs: false, genre: "valeur", filters: [{ column: "region", operator: "in", value: ["Nord", "Sud"] }] } });
   });
 
+  it("fait l'aller-retour des valeurs de `in` hors du plan multilingue de base, dans l'ordre du serveur (points de code)", () => {
+    // `Ａ` (U+FF21) précède `𐐀` (U+10400) pour Python ; en unités UTF-16 le web les aurait rangés dans l'ordre inverse.
+    const built = draftFromExplorer(state({ metrics: ["revenue"], filters: [{ column: "region", operator: "in", value: ["𐐀", "Ａ"] }] }), meta, CATALOG.models);
+    if (built.status !== "ok") throw new Error(built.reason);
+    expect(built.draft.query.filters).toEqual([{ column: "region", operator: "in", value: ["Ａ", "𐐀"] }]);
+    const back = reopened({ ...base, query: { ...built.draft.query } });
+    expect(back).toMatchObject({ status: "ok", state: { filters: [{ column: "region", operator: "in", value: ["Ａ", "𐐀"] }] } });
+    // Relu dans l'ordre du serveur, et même lu dans l'ordre inverse, l'état rendu et le brouillon qui en repart portent le même ordre.
+    const reversed = reopened({ ...base, query: { ...built.draft.query, filters: [{ column: "region", operator: "in", value: ["𐐀", "Ａ"] }] } });
+    expect(reversed).toMatchObject({ status: "ok", state: { filters: [{ column: "region", operator: "in", value: ["Ａ", "𐐀"] }] } });
+    if (back.status !== "ok") return;
+    const again = draftFromExplorer(back.state, meta, CATALOG.models);
+    expect(again.status === "ok" && again.draft.query.filters).toEqual(built.draft.query.filters);
+  });
+
   it("ne dit les raisons du catalogue qu'une fois les noms résolus, sans en inventer sur les filtres", () => {
     const result = reopened(withQuery({ model: "absent", filters: [{ column: "region", operator: "eq", value: "Nord" }] }));
     expect(result).toMatchObject({ status: "unavailable", reasons: [expect.stringContaining("absent")] });

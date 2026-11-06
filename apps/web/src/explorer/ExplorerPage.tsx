@@ -155,7 +155,7 @@ function Editeur({ space, target, fetcher, theme, connexions, models, rights, op
       {suiviInterrompu === null ? null : <p role="status">L’annulation est indisponible pendant l’interruption du suivi. Reprenez le suivi pour connaître l’état de l’exécution.</p>}
     </Card>
     <Card title="Analyse" className="sb-explorer__analyse">
-      <label className="sb-explorer__choix"><input type="checkbox" checked={calculs} onChange={(e) => { setCalculs(e.target.checked); }} /> Enregistrer comme calculs contextuels le total et la part du résultat chargé de chaque métrique, ceux de « Sélection personnelle »</label>
+      <label className="sb-explorer__choix"><input type="checkbox" checked={calculs} onChange={(e) => { setCalculs(e.target.checked); }} /> Enregistrer comme calculs contextuels, pour chaque métrique, le total de la sélection courante et sa part du résultat chargé : les deux calculs du bloc « Sélection personnelle » du résultat</label>
       <div className="sb-analyses__buttons">
         <button type="button" className="sb-button" disabled={!rights.allowed} aria-describedby={rights.allowed ? undefined : "explorer-analyse-droit"} onClick={() => { setPanneau("create"); }}>Sauvegarder comme analyse</button>
         {opened !== null && opened.permissions.duplicate ? <button type="button" className="sb-button" disabled={!rights.allowed} aria-describedby={rights.allowed ? undefined : "explorer-analyse-droit"} onClick={() => { setPanneau("copy"); }}>Dupliquer</button> : null}

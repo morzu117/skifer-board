@@ -7,12 +7,18 @@
 }
 
 .sb-analyses > * { min-width: 0; }
-.sb-analyses a { color: inherit; text-decoration: underline; }
+.sb-analyses a:not(.sb-button) { color: inherit; text-decoration: underline; }
 .sb-analyses a.sb-button { text-decoration: none; }
+/* Dans l'Explorateur, le panneau n'est pas sous `.sb-analyses` : ses liens prennent la couleur de la carte (thème ardoise compris). */
+.sb-analyses__panneau a:not(.sb-button) { color: inherit; text-decoration: underline; }
 .sb-analyses__bar { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); margin: 0; }
 .sb-analyses__note { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
 .sb-analyses__sub { display: block; margin-top: var(--sb-space-1); font-size: var(--sb-text-sm); font-weight: 400; color: inherit; opacity: .85; }
 .sb-analyses__table { min-width: 720px; }
+/* `overflow-wrap: anywhere` de la page annule la largeur minimale des cellules : en étroit, les mots d'un en-tête ou d'une valeur
+   (« Visibilité », « Partagée ») se coupaient en pleine lettre. Seules les adresses d'émetteur restent sécables n'importe où. */
+.sb-analyses__table th, .sb-analyses__table td { overflow-wrap: normal; }
+.sb-analyses__table .sb-analyses__sub.sb-mono { overflow-wrap: anywhere; }
 .sb-analyses__table th[scope="row"] { font-weight: 600; color: inherit; }
 .sb-analyses__description { white-space: pre-line; }
 .sb-analyses__badges { display: flex; flex-wrap: wrap; gap: var(--sb-space-3); margin: 0; }
@@ -22,20 +28,25 @@
 .sb-analyses__facts ul { margin: 0; padding-left: var(--sb-space-6); }
 .sb-analyses__actions { display: grid; gap: var(--sb-space-4); }
 .sb-analyses__buttons { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); }
-.sb-analyses__tabs { max-width: 100%; overflow-x: auto; }
+.sb-analyses__tabs { display: flex; max-width: 100%; overflow-x: auto; }
+/* Sept onglets : en étroit ils défilent au lieu de se comprimer jusqu'à couper les mots lettre par lettre. */
+.sb-analyses__tabs [role="tab"] { flex: none; white-space: nowrap; }
 .sb-analyses__panel { min-width: 0; }
 .sb-analyses__panel:not([hidden]) { display: grid; gap: var(--sb-space-5); padding: var(--sb-space-6); border: 1px solid var(--sb-line); border-radius: var(--sb-radius-lg); background: var(--sb-surface); }
 .sb-analyses__steps, .sb-analyses__history { margin: 0; padding-left: var(--sb-space-7); display: grid; gap: var(--sb-space-3); }
 .sb-analyses__panneau { display: grid; gap: var(--sb-space-5); min-width: 0; padding-top: var(--sb-space-5); border-top: 1px solid var(--sb-line); }
+/* Un `textarea` ne reprend pas la police de la page : sans cette règle la description s'écrit à chasse fixe, à côté d'un nom en police de la page. */
+.sb-analyses__panneau textarea { font: inherit; }
 .sb-analyses__panneau h3, .sb-analyses__apercu h3, .sb-analyses__impact h4 { margin: 0; }
 .sb-analyses__apercu, .sb-analyses__impact { display: grid; gap: var(--sb-space-4); min-width: 0; }
 .sb-analyses__compare { display: grid; gap: var(--sb-space-4); }
 .sb-analyses__compare h3 { margin: 0; }
 .sb-theme-skifer-ardoise .sb-analyses__panel:not([hidden]) { background: var(--sb-slate-900); border-color: var(--sb-on-slate-muted); color: var(--sb-on-slate); }
-.sb-theme-skifer-ardoise .sb-analyses__note,
-.sb-theme-skifer-ardoise .sb-analyses .sb-members__state,
-.sb-theme-skifer-ardoise .sb-analyses .sb-page-head__lead { color: var(--sb-on-slate-muted); }
-.sb-theme-skifer-ardoise .sb-analyses .sb-field { color: var(--sb-on-slate); }
+/* `.sb-analyses` et `.sb-theme-*` sont sur le même élément : la règle du thème s'écrit sans espace entre eux. Seuls les textes posés
+   sur une carte ou un panneau ardoise passent en clair ; le chapeau et la note de la page restent sur le fond clair de la page. */
+.sb-analyses.sb-theme-skifer-ardoise .sb-card .sb-members__state,
+.sb-analyses.sb-theme-skifer-ardoise .sb-analyses__panel .sb-members__state { color: var(--sb-on-slate-muted); }
+.sb-analyses.sb-theme-skifer-ardoise .sb-field { color: var(--sb-on-slate); }
 
 @media (max-width: 479px) {
   .sb-analyses__facts { grid-template-columns: 1fr; gap: var(--sb-space-1); }
