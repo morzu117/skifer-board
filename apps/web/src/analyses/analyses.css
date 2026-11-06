@@ -14,7 +14,8 @@
 .sb-analyses__bar { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); margin: 0; }
 .sb-analyses__note { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
 .sb-analyses__sub { display: block; margin-top: var(--sb-space-1); font-size: var(--sb-text-sm); font-weight: 400; color: inherit; opacity: .85; }
-.sb-analyses__table { min-width: 720px; }
+/* Deux classes : `.sb-table` (charts.css) a la même spécificité qu'une seule, et l'ordre des feuilles dans le paquet ne doit rien décider. */
+.sb-table.sb-analyses__table { min-width: 720px; }
 /* `overflow-wrap: anywhere` de la page annule la largeur minimale des cellules : en étroit, les mots d'un en-tête ou d'une valeur
    (« Visibilité », « Partagée ») se coupaient en pleine lettre. Seules les adresses d'émetteur restent sécables n'importe où. */
 .sb-analyses__table th, .sb-analyses__table td { overflow-wrap: normal; }
@@ -28,15 +29,17 @@
 .sb-analyses__facts ul { margin: 0; padding-left: var(--sb-space-6); }
 .sb-analyses__actions { display: grid; gap: var(--sb-space-4); }
 .sb-analyses__buttons { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); }
-.sb-analyses__tabs { display: flex; max-width: 100%; overflow-x: auto; }
+.sb-tabs.sb-analyses__tabs { display: flex; max-width: 100%; overflow-x: auto; }
 /* Sept onglets : en étroit ils défilent au lieu de se comprimer jusqu'à couper les mots lettre par lettre. */
 .sb-analyses__tabs [role="tab"] { flex: none; white-space: nowrap; }
 .sb-analyses__panel { min-width: 0; }
 .sb-analyses__panel:not([hidden]) { display: grid; gap: var(--sb-space-5); padding: var(--sb-space-6); border: 1px solid var(--sb-line); border-radius: var(--sb-radius-lg); background: var(--sb-surface); }
 .sb-analyses__steps, .sb-analyses__history { margin: 0; padding-left: var(--sb-space-7); display: grid; gap: var(--sb-space-3); }
 .sb-analyses__panneau { display: grid; gap: var(--sb-space-5); min-width: 0; padding-top: var(--sb-space-5); border-top: 1px solid var(--sb-line); }
-/* Un `textarea` ne reprend pas la police de la page : sans cette règle la description s'écrit à chasse fixe, à côté d'un nom en police de la page. */
-.sb-analyses__panneau textarea { font: inherit; }
+/* Un `textarea` ne reprend pas la police de la page : sans cette règle la description s'écrit à chasse fixe, à côté d'un nom en police de la page.
+   Écrite avec le champ (plus spécifique que `.sb-field textarea`, qui pose `font-size`), famille et taille alignées sur les autres champs, sans le
+   raccourci `font` : l'ordre des feuilles ne décide de rien. */
+.sb-analyses__panneau .sb-field textarea { font-family: inherit; font-size: var(--sb-text-table); line-height: inherit; }
 .sb-analyses__panneau h3, .sb-analyses__apercu h3, .sb-analyses__impact h4 { margin: 0; }
 .sb-analyses__apercu, .sb-analyses__impact { display: grid; gap: var(--sb-space-4); min-width: 0; }
 .sb-analyses__compare { display: grid; gap: var(--sb-space-4); }

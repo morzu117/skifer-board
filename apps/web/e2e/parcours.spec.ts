@@ -13,9 +13,9 @@ test.beforeEach(async ({ page }) => {
 
 test("la coque garde ses entrées à venir inactives et annonce DEV, TEST, PROD", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Navigation principale" });
-  // Hors espace, l'explorateur, le catalogue et les membres ne sont pas offerts : ils se lisent « dans un espace » (plan 08, E9 et 8.4).
+  // Hors espace, l'explorateur, les analyses (plan 18, 18.5a), le catalogue et les membres ne sont pas offerts : ils se lisent « dans un espace » (plan 08, E9 et 8.4).
   await expect(navigation.getByRole("listitem")).toHaveText([
-    "Explorerdans un espace", "Analysesà venir", "Dashboardsà venir", "Catalogue Atlasdans un espace",
+    "Explorerdans un espace", "Analysesdans un espace", "Dashboardsà venir", "Catalogue Atlasdans un espace",
     "Déploiementsà venir", "Espace & connexionsdans un espace",
   ]);
   await expect(navigation.getByRole("link")).toHaveCount(1);
