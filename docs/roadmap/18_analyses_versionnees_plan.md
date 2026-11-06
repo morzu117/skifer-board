@@ -42,6 +42,10 @@ Migration 0013 et réindexation (A4). Routes sous `/api/spaces/{space_id}/analys
 
 Référence d'analyse optionnelle dans la soumission d'exécution, vérifiée par le serveur, et événements durables (A8). Lecture de l'usage d'une analyse pour sa fiche.
 
+### 18.3b — Exécution liée à l'analyse et preuves de la fiche
+
+Ajout du 6 novembre. L'onglet « Preuves de la dernière exécution du lecteur » d'A9 n'a pas de contrat : 18.3 compte les exécutions par un événement, sans conserver la référence sur l'exécution. L'exécution acceptée avec une référence garde `{analysis_id, revision}` (migration 0015). Une route renvoie la dernière exécution **du demandeur** pour une analyse : identifiant, révision, statut, instant et provenance (`evidence_id`, `sql_hash`, certification, âge), avec les mêmes droits que la lecture de l'analyse. Une décision `DENY` ou `REQUIRE_HUMAN` est rendue telle quelle. Aucune exécution d'une autre personne n'est jamais visible. Le contrat web correspondant fait partie du même commit `feat(plan18-18.3b)`.
+
 ### 18.4 — Contrat web
 
 Décodeurs stricts et clients des routes 18.2 et 18.3, sur les contrats d'exemple, avec leurs tests.
