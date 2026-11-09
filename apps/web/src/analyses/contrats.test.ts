@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { refusalOf } from "../spaces/admin";
 import { decodeExecution } from "../executions/model";
-import { decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
+import { decodeAnalysisList, decodeConsumers, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
 import { ANALYSIS_REFUSALS } from "./refusal";
 import { ID, ROUTE_NAMES, route } from "./testing";
 
@@ -16,6 +16,8 @@ const refusal = (name: string) => {
 
 /** Chaque exemple du serveur réel a son décodeur : aucun fichier de `contracts/analyses/routes/` n'est ignoré. */
 const DECODERS: Readonly<Record<string, () => unknown>> = {
+  consommateurs: () => decodeConsumers(route("consommateurs").body, ID),
+  "consommateurs-aucun": () => decodeConsumers(route("consommateurs-aucun").body, ID),
   creer: () => revision("creer"),
   dupliquer: () => revision("dupliquer"),
   "dupliquer-nommee": () => revision("dupliquer-nommee"),
@@ -51,6 +53,11 @@ describe("exemples du serveur réel", () => {
     expect([...Object.keys(DECODERS), ...refusals].sort()).toEqual(ROUTE_NAMES);
     for (const name of Object.keys(DECODERS)) expect(DECODERS[name], name).not.toThrow();
     for (const name of refusals) refusal(name);
+  });
+
+  it("lit les consommateurs d'une analyse : les dashboards visibles et le nombre des autres", () => {
+    expect(decodeConsumers(route("consommateurs").body, ID)).toMatchObject({ consumers: [{ kind: "dashboard" }], others: 1 });
+    expect(decodeConsumers(route("consommateurs-aucun").body, ID)).toEqual({ id: ID, consumers: [], others: 0 });
   });
 
   it("montre chaque état de lecture sur un exemple du serveur", () => {

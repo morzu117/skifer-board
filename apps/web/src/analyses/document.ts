@@ -72,7 +72,8 @@ export function decodeName(value: unknown, path: string): string {
   return bounded(value, path, 1, 120, false);
 }
 
-function bounded(value: unknown, path: string, min: number, max: number, lines: boolean): string {
+/** Texte borné en caractères et sans caractère interdit du schéma ; `lines` admet la tabulation et le saut de ligne. */
+export function bounded(value: unknown, path: string, min: number, max: number, lines: boolean): string {
   const found = word(value, path);
   const size = length(found);
   return size >= min && size <= max && clean(found, lines) ? found : fail(path, "texte conforme au schéma");
@@ -96,15 +97,24 @@ function scalar(value: unknown, path: string): Scalar {
   return fail(path, "valeur de filtre");
 }
 
+/**
+ * Valeur d'un filtre selon son opérateur, jugée comme la soumission d'exécution : un scalaire, ou pour `in` une liste
+ * d'un même type sans doublon (1 à 100), ou pour `between` deux bornes. Les dashboards (plan 19) la réemploient pour
+ * les valeurs par défaut et autorisées de leurs filtres communs.
+ */
+export function decodeFilterValue(operator: FilterOperator, value: unknown, path: string): Scalar | readonly Scalar[] {
+  if (operator !== "in" && operator !== "between") return scalar(value, path);
+  const values = items(value, path, 100, 1).map((item, index) => scalar(item, `${path}[${String(index)}]`));
+  if (operator === "between" && values.length !== 2) return fail(path, "deux bornes");
+  if (operator === "in" && (values.some((item) => typeof item !== typeof values[0]) || new Set(values).size !== values.length)) return fail(path, "valeurs distinctes d'un même type");
+  return values;
+}
+
 function filter(value: unknown, path: string): AnalysisFilter {
   const found = exact(value, ["column", "operator", "value"], path);
   const column = identifier(found.column, `${path}.column`);
   const operator = pick(found.operator, FILTER_OPERATORS, `${path}.operator`);
-  if (operator !== "in" && operator !== "between") return { column, operator, value: scalar(found.value, `${path}.value`) };
-  const values = items(found.value, `${path}.value`, 100, 1).map((item, index) => scalar(item, `${path}.value[${String(index)}]`));
-  if (operator === "between" && values.length !== 2) return fail(`${path}.value`, "deux bornes");
-  if (operator === "in" && (values.some((item) => typeof item !== typeof values[0]) || new Set(values).size !== values.length)) return fail(`${path}.value`, "valeurs distinctes d'un même type");
-  return { column, operator, value: values };
+  return { column, operator, value: decodeFilterValue(operator, found.value, `${path}.value`) };
 }
 
 function query(value: unknown, path: string): AnalysisQuery {

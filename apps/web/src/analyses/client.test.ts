@@ -4,7 +4,7 @@ import { onSessionLost } from "../identity/session";
 import type { AdminOutcome } from "../spaces/admin";
 import type { Fetch } from "../spaces/api";
 import { onSpaceLost } from "../spaces/lost";
-import { createAnalysis, deleteAnalysis, duplicateAnalysis, fetchAnalyses, fetchAnalysis, fetchAnalysisRevision, fetchDiff, fetchHistory, fetchLastExecution, fetchUsage, openAnalysis, reviseAnalysis } from "./client";
+import { createAnalysis, deleteAnalysis, duplicateAnalysis, fetchAnalyses, fetchAnalysis, fetchAnalysisRevision, fetchConsumers, fetchDiff, fetchHistory, fetchLastExecution, fetchUsage, openAnalysis, reviseAnalysis } from "./client";
 import { decodeAnalysisDraft, type AnalysisDraft } from "./document";
 import { newEventId } from "./reference";
 import { ANALYSIS_CODES, ANALYSIS_REFUSALS, SHARED_CODES } from "./refusal";
@@ -71,6 +71,25 @@ describe("routes de lecture", () => {
     const usage = serving(route("usage"));
     expect(await fetchUsage("finance", ID, abort, usage)).toMatchObject({ status: "ok", value: { saved: { total: 1 } } });
     expect(usage).toHaveBeenCalledWith(`${URL}/usage`, { ...GET, signal: abort });
+  });
+
+  it("lit les consommateurs d'une analyse : dashboards visibles et nombre des autres", async () => {
+    const abort = signal();
+    const some = serving(route("consommateurs"));
+    expect(await fetchConsumers("finance", ID, abort, some)).toEqual({ status: "ok", value: { id: ID, consumers: [{ kind: "dashboard", id: ID }], others: 1 } });
+    expect(some).toHaveBeenCalledWith(`${URL}/consumers`, { ...GET, signal: abort });
+    expect(await fetchConsumers("finance", ID, abort, serving(route("consommateurs-aucun")))).toEqual({ status: "ok", value: { id: ID, consumers: [], others: 0 } });
+    // Ni une autre analyse, ni un autre statut, ni un champ en trop, ni un identifiant ou un numéro douteux n'est lu.
+    errorIncludes(await fetchConsumers("finance", OTHER_ID, abort, serving(route("consommateurs"))), "hors contrat");
+    errorIncludes(await fetchConsumers("finance", ID, abort, serving({ status: 201, body: route("consommateurs").body })), "HTTP 200");
+    errorIncludes(await fetchConsumers("finance", ID, abort, serving({ status: 200, body: { ...(route("consommateurs").body as object), name: "Tableau" } })), "hors contrat");
+    const none = serving(route("consommateurs"));
+    errorIncludes(await fetchConsumers("finance", "x", abort, none), "identifiant d'analyse");
+    errorIncludes(await fetchConsumers("finance", ID.toUpperCase(), abort, none), "identifiant d'analyse");
+    expect(none).not.toHaveBeenCalled();
+    // Un nombre d'autres consommateurs que JSON.parse arrondirait n'est pas lu.
+    const lossy = vi.fn<Fetch>().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(route("consommateurs").body).replace('"others":1', '"others":9007199254740993'), { status: 200 })));
+    errorIncludes(await fetchConsumers("finance", ID, abort, lossy), "unsafe_integer");
   });
 
   it("lit la dernière exécution de la session : trouvée, refusée par le moteur, ou aucune", async () => {
@@ -274,6 +293,7 @@ describe("refus", () => {
     expect(await openAnalysis("finance", ID, 1, EVENT, serving(example))).toMatchObject({ status: "refused", code });
     expect(await duplicateAnalysis("finance", ID, undefined, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchUsage("finance", ID, abort, serving(example))).toMatchObject({ status: "refused", code });
+    expect(await fetchConsumers("finance", ID, abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchLastExecution("finance", ID, abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchDiff("finance", ID, 1, 2, abort, serving(example))).toMatchObject({ status: "refused", code });
     expect(await fetchAnalyses("finance", abort, serving(example))).toMatchObject({ status: "refused", code });
@@ -324,6 +344,7 @@ describe("refus", () => {
       [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: "x" }], others: 0 } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID, name: "Tableau" }], others: 0 } }],
       [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: -1 } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: 1.5 } }],
       [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: 0, extra: 1 } }],
+      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }, { kind: "dashboard", id: ID }], others: 0 } }],
     ];
     for (const [status, body] of bad) errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status, body })), `HTTP ${String(status)}`);
     // Un code connu de Board mais étranger aux analyses n'est pas un refus de ces routes.
@@ -334,10 +355,30 @@ describe("refus", () => {
     errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status: 502, body: null })), "HTTP 502");
   });
 
-  it("ignore un paramètre ou un rôle requis hors domaine sans en faire un refus fermé", async () => {
+  // Forme exacte de chaque refus commun, telle que le serveur la rend (garde de lecture, rôle, paramètres, moteur).
+  const EXACT: [number, Record<string, unknown>][] = [
+    [403, { code: "forbidden", required: "creator" }], [403, { code: "forbidden", required: "owner" }], [409, { code: "local_mode" }], [404, { code: "space_not_found" }],
+    [503, { code: "engine_unavailable" }], [400, { code: "invalid_request", field: "analysis.revision" }],
+    [400, { code: "invalid_parameter", parameter: "revision", detail: "Numéro de révision : entier strictement positif." }],
+  ];
+
+  it("lit les refus communs à leur forme exacte et refuse tout champ en plus, en moins ou hors domaine", async () => {
     const abort = signal();
-    expect(await fetchAnalysis("finance", ID, abort, serving({ status: 400, body: { error: { code: "invalid_parameter", parameter: "q" } } }))).toEqual({ status: "refused", code: "invalid_parameter", field: null });
-    expect(await fetchAnalysis("finance", ID, abort, serving({ status: 403, body: { error: { code: "forbidden", required: "admin" } } }))).toEqual({ status: "refused", code: "forbidden", field: null });
+    for (const [status, error] of EXACT) {
+      expect(await fetchAnalysis("finance", ID, abort, serving({ status, body: { error } })), String(error.code)).toMatchObject({ status: "refused", code: error.code });
+      const worse: Record<string, unknown>[] = [
+        { ...error, unexpected: "secret" },
+        ...Object.keys(error).filter((key) => key !== "code").map((key) => Object.fromEntries(Object.entries(error).filter(([name]) => name !== key))),
+        ...Object.keys(error).filter((key) => key !== "code").map((key) => ({ ...error, [key]: 3 })),
+      ];
+      for (const bad of worse) {
+        errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status, body: { error: bad } })), "HTTP");
+      }
+    }
+    // Un rôle ou un paramètre hors domaine n'est pas ignoré : c'est une réponse hors contrat.
+    errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status: 403, body: { error: { code: "forbidden", required: "admin" } } })), "HTTP 403");
+    errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status: 400, body: { error: { code: "invalid_parameter", parameter: "q", detail: "x" } } })), "HTTP 400");
+    errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status: 400, body: { error: { code: "invalid_request", field: "" } } })), "HTTP 400");
   });
 
   it("propage une erreur réseau comme une erreur du serveur et laisse passer l'annulation", async () => {
@@ -346,5 +387,26 @@ describe("refus", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(fetchAnalyses("finance", controller.signal, vi.fn<Fetch>().mockRejectedValue(new DOMException("annulé", "AbortError")))).rejects.toThrow("annulé");
+  });
+});
+
+describe("espace hors format", () => {
+  it("refuse tout espace hors du format des identifiants avant le moindre appel, sur chaque route", async () => {
+    const none = serving(route("lire"));
+    const abort = signal();
+    for (const space of ["..", ".", "", "Finance", "a/b", "a b", "-a", "a-", "a", "x".repeat(41), "fin..ance", "%2e%2e", "finance?x=1"]) {
+      const outcomes = await Promise.all([
+        createAnalysis(space, draft, none), fetchAnalyses(space, abort, none), fetchAnalysis(space, ID, abort, none), fetchAnalysisRevision(space, ID, 1, abort, none),
+        fetchHistory(space, ID, abort, none), fetchDiff(space, ID, 1, 2, abort, none), reviseAnalysis(space, ID, draft, 1, none), duplicateAnalysis(space, ID, undefined, none),
+        deleteAnalysis(space, ID, 1, none), openAnalysis(space, ID, 1, EVENT, none), fetchUsage(space, ID, abort, none), fetchLastExecution(space, ID, abort, none),
+        fetchConsumers(space, ID, abort, none),
+      ]);
+      for (const outcome of outcomes) errorIncludes(outcome, "identifiant d'espace");
+    }
+    expect(none).not.toHaveBeenCalled();
+    // Les deux bornes du format passent.
+    await fetchAnalyses("ab", abort, none);
+    await fetchAnalyses("a".repeat(39) + "b", abort, none);
+    expect(none).toHaveBeenCalledTimes(2);
   });
 });

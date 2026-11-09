@@ -1,7 +1,7 @@
 import { instant } from "../catalogue/decode";
 import { decodeExecution, type Execution } from "../executions/model";
-import { decodeAnalysis, decodeName, decodeNames, decodePerson, type AnalysisDocument, type Person } from "./document";
-import { decodeViolations, REFERENCE_RULES, type Violation } from "./refusal";
+import { decodeAnalysis, decodeName, decodeNames, decodePerson, type AnalysisDocument, type Person, type Visibility } from "./document";
+import { decodeConsumerList, decodeViolations, REFERENCE_RULES, type Consumer, type Violation } from "./refusal";
 import { commit, count, distinct, exact, fail, flag, identifier, items, MAX_REVISION, pick, record, revision, uuid, word } from "./shape";
 
 /** Réponses des routes `/api/spaces/{space_id}/analyses…` (plan 18, 18.2 et 18.3), décodées sans rien compléter. */
@@ -39,9 +39,17 @@ export interface AnalysisRevision {
   analysis: AnalysisDocument;
 }
 
-function permissions(value: unknown, path: string): Permissions {
+export function decodePermissions(value: unknown, path: string): Permissions {
   const found = exact(value, ["owner", "revise", "delete", "duplicate"], path);
   return { owner: flag(found.owner, `${path}.owner`), revise: flag(found.revise, `${path}.revise`), delete: flag(found.delete, `${path}.delete`), duplicate: flag(found.duplicate, `${path}.duplicate`) };
+}
+
+/**
+ * Les droits que le serveur calcule ont une forme (plan 18, A5 ; plan 19, B6) : réviser et supprimer vont ensemble, rien
+ * sur un contenu supprimé, et un contenu personnel n'est jamais rendu à qui n'en est pas le propriétaire.
+ */
+export function coherentRights(rights: Permissions, visibility: Visibility, current: number | null): boolean {
+  return rights.revise === rights.delete && !(current === null && (rights.revise || rights.duplicate)) && !(rights.revise && !rights.owner && visibility !== "shared") && !(visibility === "personal" && !rights.owner);
 }
 
 export function decodeRevision(value: unknown, space: string, path = "révision"): AnalysisRevision {
@@ -52,7 +60,7 @@ export function decodeRevision(value: unknown, space: string, path = "révision"
   const current = found.current_revision === null ? null : revision(found.current_revision, `${path}.current_revision`);
   const state = pick(found.state, READ_STATES, `${path}.state`);
   const unresolved = decodeViolations(found.unresolved, REFERENCE_RULES, `${path}.unresolved`, 0);
-  const rights = permissions(found.permissions, `${path}.permissions`);
+  const rights = decodePermissions(found.permissions, `${path}.permissions`);
   const analysis = decodeAnalysis(found.analysis, `${path}.analysis`);
   if (analysis.id !== id) return fail(`${path}.analysis.id`, "identifiant de la révision");
   if (current !== null && number > current) return fail(`${path}.revision`, "révision au plus égale à la courante");
@@ -60,11 +68,7 @@ export function decodeRevision(value: unknown, space: string, path = "révision"
   if ((unresolved.length > 0) !== (state === "unresolved_reference")) return fail(`${path}.unresolved`, "références cohérentes avec l'état");
   // Un écart d'index ne se juge que sur la révision courante.
   if (state === "index_stale" && current !== number) return fail(`${path}.state`, "écart d'index sur la révision courante");
-  // Les droits que le serveur calcule ont une forme : réviser et supprimer vont ensemble, rien sur une analyse supprimée,
-  // et une analyse personnelle n'est jamais rendue à qui n'en est pas le propriétaire.
-  if (rights.revise !== rights.delete || (current === null && (rights.revise || rights.duplicate)) || (rights.revise && !rights.owner && analysis.visibility !== "shared") || (analysis.visibility === "personal" && !rights.owner)) {
-    return fail(`${path}.permissions`, "droits cohérents avec l'analyse");
-  }
+  if (!coherentRights(rights, analysis.visibility, current)) return fail(`${path}.permissions`, "droits cohérents avec l'analyse");
   return {
     id,
     space,
@@ -268,4 +272,17 @@ export function decodeLastExecution(value: unknown, space: string, id: string): 
   // La preuve fait partie de la réponse : un résumé sans elle n'est pas celui de cette route.
   if (!Object.hasOwn(run, "evidence")) return fail("dernière exécution.execution", "résumé avec preuve");
   return { id, last: { revision: revision(found.revision, "dernière exécution.revision"), execution: decodeExecution(run, space) } };
+}
+
+/** Consommateurs d'une analyse (plan 19, B5) : dashboards visibles du demandeur, et nombre des autres, jamais nommés. */
+export interface Consumers {
+  id: string;
+  consumers: readonly Consumer[];
+  others: number;
+}
+
+export function decodeConsumers(value: unknown, id: string): Consumers {
+  const found = exact(value, ["id", "consumers", "others"], "consommateurs");
+  if (found.id !== id) return fail("consommateurs.id", "identifiant demandé");
+  return { id, ...decodeConsumerList(found, "consommateurs") };
 }

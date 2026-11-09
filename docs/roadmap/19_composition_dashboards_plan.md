@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 et 19.2 réalisées**, 19.3 à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 à 19.3 réalisées**, 19.4 à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -154,3 +154,52 @@ Limites acceptées :
 - `pnpm run check:api` : 7 167 tests, couverture 100 % (7 782 lignes, 2 012 branches), sur une passe postérieure à la dernière modification de code.
 - `check:web` : 3 291 tests, couverture 100 %.
 - `check:docs` et `git diff --check` au vert.
+
+### 19.3 — Contrat web
+
+Développée par Claude Sonnet 5.5, relue par Codex (gpt-6.1-terra) jusqu'à son « OK pour commit », en deux passes. La tranche ajoute des décodeurs stricts et des clients typés, sans écran, sur le modèle de 18.4, dans `apps/web/src/dashboards/` (`document.ts`, `model.ts`, `refusal.ts`, `client.ts`). Ni le serveur ni les contrats ne changent.
+
+*Document.* `decodeDashboard` et `decodeDashboardDraft` suivent `dashboard.v1.json` sans rien compléter ; tout champ inconnu est refusé. Ils jugent les règles inter-champs que le serveur applique sans catalogue :
+- unicité des identifiants ;
+- somme des largeurs au plus 12 ;
+- profondeur et conteneur seul ;
+- cibles des filtres, y compris un filtre sans cible ;
+- valeurs comme à la soumission d'exécution, et `default` inclus dans `allowed` ;
+- bornes, avec le texte compté en points de code.
+
+Les règles qui demandent les analyses ou le catalogue restent au serveur. Elles sont listées, avec leur raison, dans un test, de même que quatre fixtures que `JSON.parse` ne peut pas juger (`2.0` lu comme `2`).
+
+*Réponses.* La révision porte une tuile par composant exécutable, dans l'ordre du document. Chaque tuile vaut `ready`, `unavailable` avec une raison fermée, ou `unverified`. L'état global doit être cohérent avec les tuiles et suivre l'ordre de priorité. Liste, historique masqué et suppression sont décodés eux aussi.
+
+L'écart est jugé nœud par nœud :
+- `before` et `after` sont contrôlés champ par champ selon le genre du nœud et la nature du changement ;
+- un ajout ou un retrait doit respecter le schéma complet ;
+- une modification n'admet que des champs qui diffèrent, jamais `type` ;
+- l'en-tête et les défauts sont jugés feuille par feuille ;
+- `moved` admet le même parent et le même rang, car le serveur marque aussi déplacé un frère sorti de la plus longue suite croissante.
+
+Une sortie réelle de `dashboard.diff` (`ecart-reel.json`, 34 changements sur 11 genres de nœuds, régénérée à l'identique en relecture) est décodée sans perte. Limite : deux nombres égaux de part et d'autre (`1` et `1.0`) restent indiscernables. Les entiers non sûrs donnent `unsafe_integer`, jamais un arrondi.
+
+*Refus.* L'union est fermée et chaque code a sa forme exacte :
+
+| Code | Forme |
+|---|---|
+| `dashboard_not_found` | — |
+| `invalid_dashboard` | violations triées |
+| `personal_reference` | 1 à 40 composants |
+| `revision_conflict` | seulement `stale` ; `head_changed` n'est jamais rendu par les routes |
+| `content_unavailable` | — |
+| `forbidden` | `{code, required}` |
+| `invalid_parameter` | `{code, parameter, detail}` |
+| `invalid_request` | `{code, field}` |
+| `local_mode`, `space_not_found`, `engine_unavailable` | `{code}` |
+
+Ces formes s'appliquent aux clients des analyses et des dashboards. Les clients des espaces, des exécutions et de l'Explorateur gardent la lecture tolérante que décrivent leurs tests.
+
+*Clients.* Création, liste, lecture, historique, écart, révision avec `expected_revision`, duplication et suppression. Avant tout appel, les clients vérifient l'espace (`SPACE_ID` : un `..` ne produit aucun appel), l'identifiant, les numéros et le document. Le statut de succès est contrôlé route par route. Côté analyses, la tranche ajoute `decodeConsumers` et `fetchConsumers`, et le même contrôle d'espace sur tous les clients d'analyses.
+
+*Tests.* Les 27 exemples des routes de dashboards et les `consommateurs*.json` sont tous utilisés. Les fixtures `valid`, `invalid` et `equivalent` sont lues au verdict du serveur. Chaque forme de refus a son cas forgé, et les espaces invalides sont testés avec un faux `fetch` jamais appelé. `analyses/contrats.test.ts` couvre enfin les `consommateurs*.json` de 19.2, qu'un cache Vitest périmé masquait.
+
+*Dette relevée, hors périmètre.* Les clients des espaces, des exécutions et de l'Explorateur ne vérifient pas l'identifiant d'espace avant l'appel. C'est à reprendre dans un plan de durcissement.
+
+*Vérifications.* `pnpm run check:web` : 134 fichiers, 3 399 tests, couverture 100 %, build, relancé sans cache par l'orchestrateur. `check:docs` et `git diff --check` sont au vert.

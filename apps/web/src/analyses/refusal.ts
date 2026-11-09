@@ -1,5 +1,6 @@
 import { ContractError } from "../catalogue/decode";
-import { count, exact, items, pick, uuid, word } from "./shape";
+import type { DashboardRule } from "../dashboards/refusal";
+import { count, distinct, exact, items, pick, uuid, word } from "./shape";
 
 /**
  * Refus des routes d'analyses (plan 18, 18.2 et 18.3) : une union fermée, celle que les contrats
@@ -43,8 +44,12 @@ export const PARAMETERS = ["revision", "base", "other"] as const;
 export interface RefusalDetails {
   required?: (typeof REQUIRED)[number] | undefined;
   parameter?: (typeof PARAMETERS)[number] | undefined;
-  reason?: "stale" | ViolationRule | undefined;
+  reason?: "stale" | ViolationRule | DashboardRule | undefined;
   violations?: readonly Violation[] | undefined;
+  /** Violations d'un `invalid_dashboard` : leurs règles sont celles des dashboards, pas celles des analyses. */
+  dashboardViolations?: readonly Violation<DashboardRule>[] | undefined;
+  /** Composants d'un dashboard partagé dont l'analyse épinglée ne l'est pas (`personal_reference`). */
+  components?: readonly string[] | undefined;
   consumers?: readonly Consumer[] | undefined;
   /** Dépendants que le demandeur ne voit pas : un décompte, jamais leur identité. */
   others?: number | undefined;
@@ -62,7 +67,20 @@ export function decodeViolations<R extends string>(value: unknown, rules: readon
   });
 }
 
-function details(code: string, error: Readonly<Record<string, unknown>>): RefusalDetails {
+/**
+ * `consumers` et `others` d'un objet déjà vérifié (celui d'un refus `analysis_in_use` ou de la route des consommateurs) :
+ * genre et identifiant des dépendants que le demandeur voit, jamais deux fois le même, et le nombre des autres.
+ */
+export function decodeConsumerList(found: Readonly<Record<string, unknown>>, path: string): { consumers: readonly Consumer[]; others: number } {
+  const consumers = items(found.consumers, `${path}.consumers`, Number.MAX_SAFE_INTEGER).map((item, index): Consumer => {
+    const entry = exact(item, ["kind", "id"], `${path}.consumers[${String(index)}]`);
+    return { kind: pick(entry.kind, CONSUMER_KINDS, `${path}.consumers.kind`), id: uuid(entry.id, `${path}.consumers.id`) };
+  });
+  distinct(consumers.map((consumer) => consumer.id), `${path}.consumers`);
+  return { consumers, others: count(found.others, `${path}.others`) };
+}
+
+function details(code: string, error: Readonly<Record<string, unknown>>, closed: boolean): RefusalDetails {
   switch (code) {
     case "analysis_not_found":
     case "content_unavailable":
@@ -82,28 +100,53 @@ function details(code: string, error: Readonly<Record<string, unknown>>): Refusa
     }
     case "analysis_in_use": {
       exact(error, ["code", "consumers", "others"], "refus");
-      const consumers = items(error.consumers, "refus.consumers", Number.MAX_SAFE_INTEGER).map((item, index): Consumer => {
-        const found = exact(item, ["kind", "id"], `refus.consumers[${String(index)}]`);
-        return { kind: pick(found.kind, CONSUMER_KINDS, "refus.consumers.kind"), id: uuid(found.id, "refus.consumers.id") };
-      });
-      const others = count(error.others, "refus.others");
+      const listed = decodeConsumerList(error, "refus");
       // Au moins un dépendant, visible ou non : un refus sans aucun dépendant n'a pas de raison d'être.
-      if (consumers.length + others === 0) throw new ContractError("refus : au moins un dépendant attendu");
-      return { consumers, others };
+      if (listed.consumers.length + listed.others === 0) throw new ContractError("refus : au moins un dépendant attendu");
+      return listed;
     }
     case "forbidden":
+      if (closed) {
+        // Garde de rôle des routes de contenu : `required` seul, parmi les trois rôles.
+        exact(error, ["code", "required"], "refus");
+        return { required: pick(error.required, REQUIRED, "refus.required") };
+      }
       return REQUIRED.some((known) => known === error.required) ? { required: error.required as (typeof REQUIRED)[number] } : {};
     case "invalid_parameter":
+      if (closed) {
+        // Le serveur nomme le paramètre et dit la règle en clair : rien d'autre.
+        exact(error, ["code", "parameter", "detail"], "refus");
+        word(error.detail, "refus.detail");
+        return { parameter: pick(error.parameter, PARAMETERS, "refus.parameter") };
+      }
       return PARAMETERS.some((known) => known === error.parameter) ? { parameter: error.parameter as (typeof PARAMETERS)[number] } : {};
+    case "local_mode":
+    case "space_not_found":
+    case "engine_unavailable":
+      // Aucun champ : `{code}`, comme la garde de lecture et le moteur le rendent.
+      if (closed) exact(error, ["code"], "refus");
+      return {};
+    case "invalid_request":
+      // Le corps rendu par la garde nomme toujours le champ en cause, jamais sa valeur.
+      if (closed) {
+        exact(error, ["code", "field"], "refus");
+        if (word(error.field, "refus.field") === "") throw new ContractError("refus.field : nom de champ attendu");
+      }
+      return {};
     default:
       return {};
   }
 }
 
-/** Détails fermés d'un refus, ou `null` quand un code d'analyse n'a pas la forme exacte de son contrat. */
-export function refusalDetails(code: string, error: Readonly<Record<string, unknown>>): RefusalDetails | null {
+/**
+ * Détails d'un refus, ou `null` quand il n'a pas la forme exacte de son contrat. Les codes d'analyses ont toujours leur
+ * forme exacte. Les codes communs (`forbidden`, `invalid_parameter`, `local_mode`, `space_not_found`, `engine_unavailable`,
+ * `invalid_request`) ne l'ont que si `closed` : les routes d'analyses et de dashboards le demandent, celles des espaces,
+ * des exécutions et de l'explorateur gardent leur lecture tolérante (champ en trop ignoré, champ illisible rendu `null`).
+ */
+export function refusalDetails(code: string, error: Readonly<Record<string, unknown>>, closed = false): RefusalDetails | null {
   try {
-    return details(code, error);
+    return details(code, error, closed);
   } catch {
     return null;
   }

@@ -44,6 +44,8 @@ export function loadYaml(source: string): unknown {
     if (/^(?:~|null|true|false|y|n|yes|no|on|off)$/i.test(text)) return unsupported(`booléen ou nul ambigu ${text}`);
     if (/^[-+]?(?:0|[1-9]\d*)$/.test(text)) return Number(text);
     if (/^[-+]?(?:0|[1-9]\d*)\.\d+$/.test(text)) return Number(text);
+    // Un flottant YAML 1.1 à exposant : un point et un signe sont requis (`1.0e+16`), sans quoi PyYAML lit du texte.
+    if (/^[-+]?(?:0|[1-9]\d*)\.\d+[eE][-+]\d+$/.test(text)) return Number(text);
     if (/^\d{4}-\d{2}-\d{2}(?:[Tt ].*)?$/.test(text)) return new Date(text);
     // Hexadécimal, octal, binaire, séparateurs `_`, exposants, sexagésimaux, `.inf` et `.nan` : un scalaire qui
     // commence comme un nombre sans en être un du sous-ensemble est un nombre pour le serveur, pas du texte.
@@ -59,7 +61,7 @@ export function loadYaml(source: string): unknown {
     }
     if (!text.endsWith('"') || text.length < 2) return unsupported(`guillemets ${text}`);
     return text.slice(1, -1).replace(/\\(x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.)/g, (_all, code: string) => {
-      const simple: Record<string, string> = { t: "\t", n: "\n", '"': '"', "\\": "\\", "/": "/" };
+      const simple: Record<string, string> = { t: "\t", n: "\n", '"': '"', "\\": "\\", "/": "/", "0": "\u0000", a: "\u0007" };
       if (code.length > 1) return String.fromCharCode(parseInt(code.slice(1), 16));
       return simple[code] ?? unsupported(`échappement \\${code}`);
     });
@@ -120,8 +122,27 @@ export function loadYaml(source: string): unknown {
     return cursor === text.length ? value : unsupported(`texte après ${text}`);
   };
 
+  /**
+   * Un texte entre guillemets qui continue sur les lignes suivantes se replie comme en YAML : un saut de ligne devient une
+   * espace, une ligne vide un saut de ligne. Les lignes sont lues à partir de `at`, déjà placé après la première.
+   */
+  const folded = (first: string): string => {
+    const quote = first.slice(0, 1);
+    let text = first;
+    let blank = 0;
+    while (text.length < 2 || !text.endsWith(quote)) {
+      const raw = lines[at];
+      if (raw === undefined) return unsupported(`guillemets ${first}`);
+      at += 1;
+      if (raw.trim() === "") blank += 1;
+      else text += (blank > 0 ? "\n".repeat(blank) : " ") + raw.trim();
+      if (raw.trim() !== "") blank = 0;
+    }
+    return text;
+  };
+
   const inline = (text: string): unknown => {
-    if (text.startsWith('"') || text.startsWith("'")) return quoted(text);
+    if (text.startsWith('"') || text.startsWith("'")) return quoted(folded(text));
     if (text.startsWith("[") || text.startsWith("{")) return flow(text);
     return scalar(text);
   };
@@ -150,6 +171,10 @@ export function loadYaml(source: string): unknown {
         at += 1;
         const next = meaningful();
         list.push(next !== null && next.indent > indent ? node(next.indent) : null);
+      } else if (rest.startsWith("- ")) {
+        // Une liste dont l'élément est une liste (`- - a`) : le tiret interne s'aligne comme une clé de dictionnaire.
+        lines[at] = `${" ".repeat(indent + 2)}${rest}`;
+        list.push(sequence(indent + 2));
       } else if (/^[A-Za-z_][\w-]*:(?: |$)/.test(rest)) {
         // Un élément qui est un dictionnaire : sa première clé suit le tiret, les autres sont alignées dessus.
         lines[at] = `${" ".repeat(indent + 2)}${rest}`;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ContractError } from "../catalogue/decode";
-import { READ_STATES, decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
+import { READ_STATES, decodeAnalysisList, decodeConsumers, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage } from "./model";
 import { changed, COMMIT, ID, OTHER_ID, route } from "./testing";
 
 const revisionOf = (name: string) => route(name).body;
@@ -279,5 +279,28 @@ describe("dernière exécution de la session", () => {
     refused(() => last(none, OTHER_ID));
     refused(() => last(changed(none, "revision", 1)));
     refused(() => last(changed(none, "execution", (found as { execution: unknown }).execution)));
+  });
+});
+
+describe("consommateurs d'une analyse", () => {
+  it("décode les exemples du serveur : dashboards visibles et nombre des autres, jamais leur nom", () => {
+    expect(decodeConsumers(route("consommateurs").body, ID)).toEqual({ id: ID, consumers: [{ kind: "dashboard", id: ID }], others: 1 });
+    expect(decodeConsumers(route("consommateurs-aucun").body, ID)).toEqual({ id: ID, consumers: [], others: 0 });
+    expect(decodeConsumers({ id: ID, consumers: [{ kind: "dashboard", id: ID }, { kind: "dashboard", id: OTHER_ID }], others: 3 }, ID)).toMatchObject({ others: 3, consumers: [{ id: ID }, { id: OTHER_ID }] });
+  });
+
+  it("refuse une réponse hors contrat : autre analyse, champ en trop, genre inconnu, doublon, nombre invalide", () => {
+    const found = route("consommateurs").body;
+    expect(() => decodeConsumers(found, OTHER_ID)).toThrow("identifiant demandé");
+    for (const [path, value] of [
+      ["extra", 1], ["id", undefined], ["id", "x"], ["consumers", undefined], ["consumers", {}], ["consumers", "x"], ["others", undefined], ["others", -1], ["others", 1.5], ["others", "1"], ["others", null],
+      ["others", Number.MAX_SAFE_INTEGER + 1], ["consumers.0", null], ["consumers.0", "dashboard"], ["consumers.0.kind", "report"], ["consumers.0.kind", undefined], ["consumers.0.id", "x"], ["consumers.0.id", undefined],
+      ["consumers.0.name", "Tableau"], ["consumers.0.owner", "cora"],
+    ] as const) {
+      refused(() => decodeConsumers(changed(found, path, value), ID));
+    }
+    for (const value of [null, [], "x", 1]) refused(() => decodeConsumers(value, ID));
+    // Un dashboard n'est listé qu'une fois : deux entrées au même identifiant seraient un décompte faux.
+    refused(() => decodeConsumers({ id: ID, consumers: [{ kind: "dashboard", id: ID }, { kind: "dashboard", id: ID }], others: 0 }, ID));
   });
 });
