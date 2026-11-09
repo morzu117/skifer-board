@@ -395,25 +395,40 @@ function bounds(value: readonly Scalar[], path: string): void {
   if (typeof low === "number" && typeof high === "number" && low > high) fail(path, "bornes ordonnées");
 }
 
-/**
- * Champs d'un filtre hors identifiant, jugés sans le reste du document : types, bornes, forme de `default` et de `allowed`
- * selon l'opérateur, bornes de `between`, `default` parmi `allowed`, au moins une cible. L'existence des cibles dans la
- * mise en page ne se juge qu'avec le document entier.
- */
-function filterValues(found: Readonly<Record<string, unknown>>, path: string): Omit<CommonFilter, "id"> {
-  const label = bounded(found.label, `${path}.label`, 1, LIMITS.label, false);
-  const dimension = identifier(found.dimension, `${path}.dimension`);
-  const operator = pick(found.operator, COMMON_OPERATORS, `${path}.operator`);
-  const targets = distinct(items(found.targets, `${path}.targets`, LIMITS.targets).map((item, index) => uuid(item, `${path}.targets[${String(index)}]`)), `${path}.targets`);
+function commonValueShapes(operator: CommonOperator, found: Readonly<Record<string, unknown>>, path: string): void {
   if (has(found, "default")) shaped(found.default, `${path}.default`, operator !== "eq", operator === "between" ? 2 : 1, operator === "between" ? 2 : LIMITS.values);
   if (has(found, "allowed")) shaped(found.allowed, `${path}.allowed`, true, 1, LIMITS.values);
-  if (targets.length === 0) return fail(`${path}.targets`, "au moins une cible");
+}
+
+function commonValueContents(operator: CommonOperator, found: Readonly<Record<string, unknown>>, path: string): { preferred: Scalar | readonly Scalar[] | undefined; allowed: readonly Scalar[] | undefined } {
   const preferred = has(found, "default") ? decodeFilterValue(operator, found.default, `${path}.default`) : undefined;
   if (operator === "between" && preferred !== undefined) bounds(preferred as readonly Scalar[], `${path}.default`);
   const allowed = has(found, "allowed") ? (decodeFilterValue("in", found.allowed, `${path}.allowed`) as readonly Scalar[]) : undefined;
   if (preferred !== undefined && allowed !== undefined && (Array.isArray(preferred) ? (preferred as readonly Scalar[]) : [preferred as Scalar]).some((one) => !allowed.includes(one))) {
     return fail(`${path}.default`, "valeur par défaut parmi les valeurs autorisées");
   }
+  return { preferred, allowed };
+}
+
+/** Valide forme et contenu des valeurs communes, comme le document. */
+export function decodeCommonValues(operator: CommonOperator, found: Readonly<Record<string, unknown>>, path: string): { preferred: Scalar | readonly Scalar[] | undefined; allowed: readonly Scalar[] | undefined } {
+  commonValueShapes(operator, found, path);
+  return commonValueContents(operator, found, path);
+}
+
+/**
+ * Champs d'un filtre hors identifiant, jugés sans le reste du document : types, bornes, forme de `default` et de `allowed`
+ * selon l'opérateur, bornes de `between`, `default` parmi `allowed`, au moins une cible. L'existence des cibles dans la
+ * mise en page ne se juge qu'avec le document entier.
+ */
+export function filterValues(found: Readonly<Record<string, unknown>>, path: string): Omit<CommonFilter, "id"> {
+  const label = bounded(found.label, `${path}.label`, 1, LIMITS.label, false);
+  const dimension = identifier(found.dimension, `${path}.dimension`);
+  const operator = pick(found.operator, COMMON_OPERATORS, `${path}.operator`);
+  const targets = distinct(items(found.targets, `${path}.targets`, LIMITS.targets).map((item, index) => uuid(item, `${path}.targets[${String(index)}]`)), `${path}.targets`);
+  commonValueShapes(operator, found, path);
+  if (targets.length === 0) return fail(`${path}.targets`, "au moins une cible");
+  const { preferred, allowed } = commonValueContents(operator, found, path);
   return { label, dimension, operator, ...(preferred === undefined ? {} : { default: preferred }), ...(allowed === undefined ? {} : { allowed }), targets };
 }
 

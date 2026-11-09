@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 à 19.3 réalisées**, 19.4 à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 à 19.4 réalisées**, 19.5a à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -50,7 +50,7 @@ Module pur, sans écran : réducteur de commandes avec annuler et rétablir (B10
 
 ### 19.5 — Écrans
 
-Comme 18.5, en trois commits. `feat(plan19-19.5a)` livre la liste, le nouveau dashboard et l'éditeur : palette, canevas, propriétés, tuiles exécutées et panneau bas. `feat(plan19-19.5b)` livre les filtres communs, l'ajout d'analyse, le conflit de révision, l'historique, les aperçus lecteur et responsive, l'épinglage depuis la fiche et l'onglet Consommateurs. `feat(plan19-19.5c)` livre les parcours navigateur et les captures (B11).
+Comme 18.5, en trois commits. `feat(plan19-19.5a)` livre la liste, le nouveau dashboard et l'éditeur : palette, canevas, propriétés, tuiles exécutées et panneau bas. `feat(plan19-19.5b)` livre les filtres communs, l'ajout d'analyse, le conflit de révision, l'historique, les aperçus lecteur et responsive, l'épinglage depuis la fiche et l'onglet Consommateurs. `feat(plan19-19.5c)` livre le parcours d'acceptation complet du §4 et les captures (B11). Demande du porteur du 9 novembre : 19.5a et 19.5b apportent chacune, dans leur propre commit, les tests unitaires, les tests de non-régression et les parcours Playwright de leurs écrans. Ces parcours passent avant la relecture, pour que les tests trouvent le plus d'erreurs possible avant elle.
 
 ## 4. Acceptation du plan
 
@@ -203,3 +203,58 @@ Ces formes s'appliquent aux clients des analyses et des dashboards. Les clients 
 *Dette relevée, hors périmètre.* Les clients des espaces, des exécutions et de l'Explorateur ne vérifient pas l'identifiant d'espace avant l'appel. C'est à reprendre dans un plan de durcissement.
 
 *Vérifications.* `pnpm run check:web` : 134 fichiers, 3 399 tests, couverture 100 %, build, relancé sans cache par l'orchestrateur. `check:docs` et `git diff --check` sont au vert.
+
+### 19.4 — Modèle d'édition
+
+Développée par Codex (gpt-6.1-terra) et relue par Claude Sonnet 5.5, en trois passes, jusqu'à son « OK pour commit ». Le module pur `apps/web/src/dashboards/edition/` n'a pas d'écran. Il comprend `commands.ts`, `execution.ts`, `scheduler.ts`, `problems.ts` et `responsive.ts`, chacun avec ses tests.
+
+*Commandes et historique (B10).*
+- Une commande modifie une copie. Le résultat est rejugé par `decodeDashboard` ou `decodeDashboardDraft`, sans règle réécrite. Un refus a une raison fermée (`not_found`, `incompatible_parent`, `invalid_index`, `invalid_property`, `invalid_document`) et rend le document d'origine.
+- Les commandes couvrent :
+  - la mise en page : ajouter, déplacer, redimensionner, supprimer ;
+  - les propriétés ;
+  - les filtres communs et leurs cibles : `add_filter`, `update_filter` avec `remove`, `delete_filter`. L'identifiant d'un filtre n'est jamais remplacé ;
+  - l'adoption d'une révision d'analyse (`adopt_revision`, B5) ;
+  - les blocs d'un texte (`update_blocks`).
+- `add` impose le genre et l'identifiant généré par un générateur injectable. Le déplacement dans son propre sous-arbre est refusé.
+- Imbriquer passe par un `batch`. Ses commandes s'appliquent dans l'ordre sur la même copie, tout ou rien, avec une seule entrée d'historique. Seule la validation finale décide. Un refus porte l'index de la commande, et un `batch` imbriqué est refusé. Les identifiants produits dans l'ordre par le générateur peuvent être connus d'avance et réutilisés par les commandes suivantes.
+- Supprimer un nœud retire ses cibles des filtres et les filtres devenus sans cible. Le résultat les détaille (`removed`), pour que l'écran puisse le dire et que l'annulation les rende.
+- L'historique garde 100 états. Une commande refusée ou sans effet n'y entre pas, et `isDirty` compare à l'état enregistré.
+
+*Présentation (B9).*
+- `resolveVisual` et `resolveKpi` résolvent chaque champ avec son origine : `theme`, `analysis`, `dashboard` ou `component`.
+- Sans surcharge, `chart` et `title` viennent de l'analyse.
+- Le seuil est facultatif et ne vient que du thème ou du composant, car les défauts du document n'en portent pas.
+- On retire une surcharge en ôtant sa clé.
+- `compatibleCharts` recopie `chart_compatible` du serveur : seul `value` est contraint, et il exige une requête sans dimension.
+
+*Composition et planification (B7, B8).*
+- `composeExecution` garde les filtres de l'analyse et ajoute les filtres communs ciblés. Leur valeur est la valeur de travail, sinon le défaut ; `null` efface le filtre.
+- La valeur de travail est jugée par les règles du document : bornes ordonnées et appartenance à `allowed`.
+- Les recouvrements sont signalés et la borne de 32 est tenue. La référence `{id, revision}` est jointe.
+- La présentation n'entre jamais dans la soumission.
+- Le planificateur soumet les tuiles dans l'ordre du document, quatre au plus en même temps. Ses clients et son attente sont injectés.
+  - Il annule tout au changement de contexte et ignore les réponses tardives. Il ne soumet rien si l'annulation arrive pendant la publication, ni n'annule une exécution déjà terminée.
+  - Il rend `DENY` et `REQUIRE_HUMAN` tels quels, sans nouvel essai ni cache. Il ne soumet jamais une tuile indisponible.
+  - Il garde l'`Execution` d'une erreur, pour son identifiant de trace (§0.2).
+  - Le nombre de tuiles est exposé sans émission, faute de point d'entrée de télémétrie web.
+
+*Problèmes (B10).*
+- Les codes sont fermés : `analysis_unavailable`, `unresolved_reference`, `unverified`, `filter_without_target`, `filter_incompatible`, `chart_incompatible`, `kpi_incompatible`, `limit_reached` et `revision_behind`. Chacun porte une gravité, un nœud et un chemin.
+- Les bornes reprennent celles du serveur : avertissement à la borne, blocage au-delà. Une colonne pleine largeur n'est pas une borne.
+- `unresolved_reference` est un avertissement : le serveur accepte la sauvegarde et rend la tuile indisponible à la lecture.
+- La compatibilité des filtres est jugée comme `_filter_checks` : `validateExecutionFilters`, extrait de `buildExecution`, valide les filtres sans les métriques ni les dimensions de l'analyse. La première cible compatible fixe le type.
+
+*Disposition (B10).*
+- `SHELL_WIDTH` (760 px) est exporté. Un test le relie aux media queries de `shell.css` et d'`identity.css`, ce seuil n'étant pas dans les tokens.
+- Les comparaisons sont inclusives, comme `max-width`. Sous le seuil, les colonnes s'empilent dans l'ordre du document, conteneurs compris.
+- La forme étroite des graphiques (480 px) se juge sur la largeur effective de chaque colonne. Les aperçus font 1 280, 768 et 390 px.
+
+*Réutilisation.* `document.ts` exporte `filterValues` et `decodeCommonValues`. L'ordre des contrôles reste celui du serveur : forme de `default` et `allowed`, puis cibles, puis contenu. Un test couvre le cas combiné.
+
+*Dette relevée.* Le serveur trie ses violations par chemin, puis par règle. Pour un filtre à la fois sans cible et au contenu invalide, sa première raison porte donc sur `default`, alors que le décodeur web rend d'abord « cibles vides ». Cet ordre date de 19.3 et n'est pas testé. Les deux refusent le document ; seule la première raison diffère.
+
+*Vérifications.*
+- `pnpm run check:web` : 139 fichiers, 3 510 tests, couverture 100 %, build. Gate relancée sans cache par l'orchestrateur.
+- `check:docs` et `git diff --check` sont au vert.
+- Le relecteur a prouvé la force des tests par 46 mutations sur trois passes. Une seule survit : celle de la dette ci-dessus.

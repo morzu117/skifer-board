@@ -529,3 +529,14 @@ describe("document board.dashboard/v1", () => {
     expect(Object.keys(UNJUDGEABLE)).toEqual(["span-float", "revision-float", "heading-level-float", "filter-default-type-not-allowed"]);
   });
 });
+
+describe("priorité de la forme des valeurs de filtre", () => {
+  it("refuse un default en liste pour eq avant de juger les cibles vides", () => {
+    const value = document(sections(), [filterOf([], { default: ["FR"] })]);
+    expect(() => decodeDashboard(value)).toThrow("dashboard.filters[0].default : texte, nombre ou booléen attendu");
+  });
+  it("refuse allowed vide avant de juger les cibles vides", () => {
+    const value = document(sections(), [filterOf([], { allowed: [] })]);
+    expect(() => decodeDashboard(value)).toThrow("dashboard.filters[0].allowed : liste de 1 à 100 éléments attendu");
+  });
+});

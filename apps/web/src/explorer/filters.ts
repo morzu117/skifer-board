@@ -37,7 +37,13 @@ export function compareValues(a: string | number | boolean, b: string | number |
 /** La vérification locale assiste la saisie ; le serveur conserve l'autorité. */
 export function buildExecution(input: ExecutionInput, model: ExplorerModel): ExecutionInput {
   if (!CONNECTION_NAME.test(input.connection) || !ENVIRONMENTS.includes(input.environment) || input.model !== model.name || !names(input.metrics, model.metrics.map((item) => item.name), true) || !names(input.dimensions, model.dimensions.map((item) => item.name), false) || !Array.isArray(input.filters) || input.filters.length > 32) invalid();
-  const filters = input.filters.map(({ column, operator, value }) => {
+  const filters = validateExecutionFilters(input.filters, model);
+  return { connection: input.connection, environment: input.environment, model: input.model, metrics: [...input.metrics], dimensions: [...input.dimensions], filters };
+}
+
+/** Valide les filtres seuls, indépendamment des métriques et dimensions sélectionnées. */
+export function validateExecutionFilters(filters: ExecutionInput["filters"], model: ExplorerModel): ExecutionInput["filters"] {
+  return filters.map(({ column, operator, value }) => {
     const dimension = model.dimensions.find((item) => item.name === column);
     if (dimension === undefined || !OPERATORS[dimension.type].includes(operator)) return invalid();
     const values: readonly (string | number | boolean)[] = Array.isArray(value) ? value as readonly (string | number | boolean)[] : [value as string | number | boolean];
@@ -50,5 +56,4 @@ export function buildExecution(input: ExecutionInput, model: ExplorerModel): Exe
     const normalized = operator === "in" ? [...values].sort(compareValues) : value;
     return { column, operator, value: normalized };
   });
-  return { connection: input.connection, environment: input.environment, model: input.model, metrics: [...input.metrics], dimensions: [...input.dimensions], filters };
 }
