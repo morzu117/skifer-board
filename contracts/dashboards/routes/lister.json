@@ -1,0 +1,1 @@
+{"status":200,"body":{"dashboards":[{"id":"<uuid>","name":"Pilotage","visibility":"shared","owner":{"issuer":"https://id.example.invalid","subject":"cora"},"is_owner":false,"revision":1,"commit":"<commit>","committed_at":"2026-01-15T12:00:00+00:00","state":"indexed"}],"unreadable":0}}

@@ -16,7 +16,8 @@ from skifer_board.state import (
     upgrade,
 )
 from skifer_board.state.database import MIGRATIONS, _scripts
-from sqlalchemy import DateTime, Engine, func, inspect, select
+from skifer_board.state.schema import dashboard_index, dashboard_references
+from sqlalchemy import DateTime, Engine, Table, func, inspect, select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 INSTANT = datetime(2026, 1, 15, 12, tzinfo=UTC)
@@ -246,6 +247,27 @@ COLONNES = {
         "state": False,
         "indexed_at": False,
     },
+    # Index des dashboards et de leurs références (plan 19.2, révision 0016).
+    "dashboard_index": {
+        "space_id": False,
+        "dashboard_id": False,
+        "name": False,
+        "owner_issuer": False,
+        "owner_subject": False,
+        "visibility": False,
+        "revision": False,
+        "commit": False,
+        "committed_at": False,
+        "state": False,
+        "indexed_at": False,
+    },
+    "dashboard_references": {
+        "space_id": False,
+        "dashboard_id": False,
+        "component_id": False,
+        "analysis_id": False,
+        "analysis_revision": False,
+    },
 }
 INSTANTS = {
     "databricks_oauth": ["expires_at"],
@@ -266,6 +288,8 @@ INSTANTS = {
     "connection_credentials": {"set_at"},
     "analysis_index": {"committed_at", "indexed_at"},
     "analysis_events": {"occurred_at"},
+    "dashboard_index": {"committed_at", "indexed_at"},
+    "dashboard_references": set(),
     "executions": {
         "binding_set_at",
         "created_at",
@@ -295,6 +319,8 @@ CLES = {
     "executions": ["id"],
     "analysis_index": ["space_id", "analysis_id"],
     "analysis_events": ["event_id"],
+    "dashboard_index": ["space_id", "dashboard_id"],
+    "dashboard_references": ["space_id", "dashboard_id", "component_id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 
@@ -384,6 +410,95 @@ def test_declarations_du_plan() -> None:
             type_ = table.columns[nom].type
             assert isinstance(type_, DateTime) and type_.timezone, nom
     assert set(metadata.tables) == set(COLONNES)
+
+
+def test_la_tete_des_migrations_est_0016(migre: Engine) -> None:
+    assert head_revision() == "0016"
+    assert current_revision(migre) == "0016"
+
+
+def test_index_des_dashboards_cles_et_index_declares(migre: Engine) -> None:
+    inspecteur = inspect(migre)
+    assert inspecteur.get_foreign_keys("dashboard_index") == []
+    assert [
+        (i["name"], tuple(i["column_names"])) for i in inspecteur.get_indexes("dashboard_index")
+    ] == [("ix_dashboard_index_visibility", ("space_id", "visibility"))]
+    assert inspecteur.get_pk_constraint("dashboard_index")["name"] == "pk_dashboard_index"
+    assert inspecteur.get_pk_constraint("dashboard_references")["name"] == (
+        "pk_dashboard_references"
+    )
+    assert [
+        (i["name"], tuple(i["column_names"]))
+        for i in inspecteur.get_indexes("dashboard_references")
+    ] == [("ix_dashboard_references_analysis", ("space_id", "analysis_id"))]
+    (cle,) = inspecteur.get_foreign_keys("dashboard_references")
+    assert cle["name"] == "fk_dashboard_references_dashboard"
+    assert cle["constrained_columns"] == ["space_id", "dashboard_id"]
+    assert cle["referred_table"] == "dashboard_index"
+    assert cle["referred_columns"] == ["space_id", "dashboard_id"]
+    assert cle["options"] == {"ondelete": "CASCADE"}
+
+
+def ligne_dashboard(ident: str = "d1") -> dict[str, object]:
+    return {
+        "space_id": "finance",
+        "dashboard_id": ident,
+        "name": "Pilotage",
+        "owner_issuer": "https://id.example.invalid",
+        "owner_subject": "sujet",
+        "visibility": "personal",
+        "revision": 1,
+        "commit": "a" * 40,
+        "committed_at": INSTANT,
+        "state": "indexed",
+        "indexed_at": INSTANT,
+    }
+
+
+def reference(ident: str = "d1", composant: str = "c1") -> dict[str, object]:
+    return {
+        "space_id": "finance",
+        "dashboard_id": ident,
+        "component_id": composant,
+        "analysis_id": "a1",
+        "analysis_revision": 1,
+    }
+
+
+def compte(migre: Engine, table: Table) -> int:
+    with migre.connect() as connexion:
+        return connexion.execute(select(func.count()).select_from(table)).scalar_one()
+
+
+def test_supprimer_un_dashboard_supprime_ses_references_seulement(migre: Engine) -> None:
+    with migre.begin() as connexion:
+        connexion.execute(dashboard_index.insert(), [ligne_dashboard("d1"), ligne_dashboard("d2")])
+        connexion.execute(
+            dashboard_references.insert(),
+            [reference("d1", "c1"), reference("d1", "c2"), reference("d2", "c1")],
+        )
+    assert compte(migre, dashboard_references) == 3
+    with migre.begin() as connexion:
+        connexion.execute(dashboard_index.delete().where(dashboard_index.c.dashboard_id == "d1"))
+    assert compte(migre, dashboard_index) == 1
+    with migre.connect() as connexion:
+        restantes = connexion.execute(select(dashboard_references)).mappings().all()
+    assert [(r["dashboard_id"], r["component_id"]) for r in restantes] == [("d2", "c1")]
+
+
+def test_une_reference_exige_son_dashboard(migre: Engine) -> None:
+    # pg8000 rend la violation de clé étrangère (23503) comme une ProgrammingError.
+    with pytest.raises(DBAPIError, match="23503"), migre.begin() as connexion:
+        connexion.execute(dashboard_references.insert().values(reference()))
+
+
+def test_un_composant_est_unique_dans_son_dashboard(migre: Engine) -> None:
+    with migre.begin() as connexion:
+        connexion.execute(dashboard_index.insert().values(ligne_dashboard()))
+        connexion.execute(dashboard_references.insert().values(reference()))
+    with pytest.raises(IntegrityError), migre.begin() as connexion:
+        connexion.execute(dashboard_references.insert().values(reference()))
+    assert compte(migre, dashboard_references) == 1
 
 
 def test_cle_primaire_sur_l_empreinte(migre: Engine) -> None:

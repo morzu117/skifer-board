@@ -1,1 +1,1 @@
-{"status":409,"body":{"error":{"code":"analysis_in_use","consumers":[{"kind":"dashboard","id":"<uuid>"}]}}}
+{"status":409,"body":{"error":{"code":"analysis_in_use","consumers":[{"kind":"dashboard","id":"<uuid>"}],"others":0}}}

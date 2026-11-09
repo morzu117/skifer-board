@@ -35,9 +35,10 @@ from .catalog import (
 )
 from .content import ContentConfigError, ContentRepository
 from .content import config_from_env as content_from_env
+from .content.dashboard_web import DashboardConsumers, install_dashboard_routes
 from .content.events import UsageConfigError, UsageEvents, UsageKey, key_from_env
-from .content.index import AnalysisIndex
-from .content.web import AnalysisUse, Consumers, install_analysis_routes, no_consumers
+from .content.index import AnalysisIndex, DashboardIndex
+from .content.web import AnalysisUse, install_analysis_routes
 from .execution import ConnectionStore, install_connections
 from .execution.connectors import (
     Endpoint,
@@ -161,7 +162,6 @@ def create_app(
     databricks_oauth_client_id: str | None = None,
     databricks_oauth_transport: FormTransport | None = None,
     content_repository: ContentRepository | None = None,
-    analysis_consumers: Consumers = no_consumers,
     usage_key: UsageKey | None = None,
 ) -> FastAPI:
     """Sans espaces fournis, le mode local a son espace implicite (plan 08, E11) ; avec OIDC,
@@ -314,16 +314,29 @@ def create_app(
     )
     # Analyses versionnées (plan 18.2) : sans dépôt de contenus, les routes répondent
     # `content_unavailable` ; sans base (mode local), `local_mode`.
+    # Dashboards (plan 19.2) : même état, même dépôt, même catalogue. L'index de leurs références
+    # dit qui consomme une analyse, ce que la suppression d'une analyse interroge.
+    dashboard_index = (
+        None if spaces.store is None else DashboardIndex(spaces.store.engine, spaces.clock)
+    )
+    models = (
+        None if execution_models_dir is None else lambda: describe_catalog(execution_models_dir)
+    )
     install_analysis_routes(
         app,
         content_repository,
         None if spaces.store is None else AnalysisIndex(spaces.store.engine, spaces.clock),
         connections,
-        None if execution_models_dir is None else lambda: describe_catalog(execution_models_dir),
+        models,
         guards.reader,
-        analysis_consumers,
+        None
+        if dashboard_index is None
+        else DashboardConsumers(content_repository, dashboard_index),
         usage_events,
         None if execution_store is None else last_execution_of(execution_store, spaces.clock),
+    )
+    install_dashboard_routes(
+        app, content_repository, dashboard_index, connections, models, guards.reader
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store

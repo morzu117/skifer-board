@@ -1,10 +1,13 @@
-"""Commande `skifer-board-reindex` : reconstruit l'index des analyses depuis git (plan 18, A4).
+"""Commande `skifer-board-reindex` : reconstruit les index des analyses et des dashboards depuis
+git (plans 18, A4, et 19, B5).
 
-Git fait foi. La commande relit chaque analyse existante dans le dépôt de contenus (histoire
-contrôlée comprise) et remplace tout l'index en une transaction : sur une base vierge comme sur
-une base existante, le résultat est le même, et une ligne ancienne ou fausse disparaît. Une
-analyse dont l'histoire ou le contenu est abîmé n'est pas indexée et est nommée ; tout autre
-échec de lecture (dépôt indisponible, git absent) arrête la commande avant de toucher l'index.
+Git fait foi. La commande relit chaque analyse et chaque dashboard existants dans le dépôt de
+contenus (histoire contrôlée comprise) et remplace tous les index (analyses, dashboards et
+références des dashboards) en une seule transaction : sur une base vierge comme sur une base
+existante, le résultat est le même, une ligne ancienne ou fausse disparaît, et les deux genres
+changent ensemble ou pas du tout. Un contenu dont l'histoire ou le contenu est abîmé n'est pas
+indexé et est nommé ; tout autre échec de lecture (dépôt indisponible, git absent) arrête la
+commande avant de toucher les index.
 Une écriture publiée pendant la reconstruction peut y être écrasée par la version qu'on vient
 de lire : la commande relit la tête du dépôt dans la transaction du remplacement, avant son
 commit. Si elle a bougé ou ne se lit plus, la transaction est annulée (l'index n'est jamais
@@ -28,29 +31,35 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..identity.config import ConfigError
 from ..state.config import DATABASE_URL, config_from_env
 from ..state.database import SchemaError, check_schema, connect
-from .errors import ANALYSIS_NOT_FOUND, ContentError
-from .index import AnalysisIndex, IndexRow
-from .repository import REPOSITORY_VARIABLE, ContentConfigError, ContentRepository
+from .errors import ContentError
+from .index import AnalysisIndex, DashboardIndex, DashboardRow, IndexRow
+from .repository import (
+    ANALYSIS_KIND,
+    DAMAGED_REASONS,
+    DASHBOARD_KIND,
+    REPOSITORY_VARIABLE,
+    ContentConfigError,
+    ContentRepository,
+    Kind,
+    StoredRevision,
+)
 from .repository import config_from_env as content_from_env
 
 USAGE = "Usage : skifer-board-reindex"
 ATTEMPTS = 3
-# Raisons qui disent qu'une analyse est abîmée, pas que le dépôt est indisponible.
-DAMAGED = frozenset(
-    {
-        "history_inconsistent",
-        "stored_invalid",
-        "stored_mismatch",
-        "document_too_large",
-        "blob_unreadable",
-    }
-)
+# Raisons qui disent qu'un contenu est abîmé, pas que le dépôt est indisponible.
+DAMAGED = DAMAGED_REASONS
 
 
 @dataclass(frozen=True)
 class Report:
+    """Ce que la reconstruction a indexé et nommé : (espace, identifiant, raison) pour chaque
+    contenu abîmé, analyses d'abord, dashboards ensuite."""
+
     indexed: int
     unreadable: tuple[tuple[str, str, str], ...]
+    dashboards: int = 0
+    dashboards_unreadable: tuple[tuple[str, str, str], ...] = ()
 
 
 class RepositoryMoving(Exception):
@@ -58,14 +67,17 @@ class RepositoryMoving(Exception):
 
 
 def reindex(
-    repository: ContentRepository, index: AnalysisIndex, attempts: int = ATTEMPTS
+    repository: ContentRepository,
+    index: AnalysisIndex,
+    dashboards: DashboardIndex,
+    attempts: int = ATTEMPTS,
 ) -> Report:
-    """Remplace l'index par ce que git contient ; lève `ContentError` si le dépôt est en défaut
+    """Remplace les index par ce que git contient ; lève `ContentError` si le dépôt est en défaut
     et `RepositoryMoving` si la tête a bougé pendant chacun des `attempts` essais.
 
     La tête est relue dans la transaction du remplacement, avant son commit : si elle a bougé
-    ou si elle est illisible, la transaction est annulée et l'index garde son contenu d'avant.
-    Une passe ratée ne modifie donc jamais l'index."""
+    ou si elle est illisible, la transaction est annulée et les index gardent leur contenu
+    d'avant. Une passe ratée ne modifie donc jamais un index."""
     for _ in range(attempts):
         before = repository.head()
 
@@ -74,28 +86,42 @@ def reindex(
                 raise RepositoryMoving
 
         try:
-            return _sweep(repository, index, unchanged)
+            return _sweep(repository, index, dashboards, unchanged)
         except RepositoryMoving:
             continue
     raise RepositoryMoving
 
 
-def _sweep(
-    repository: ContentRepository, index: AnalysisIndex, before_commit: Callable[[], None]
-) -> Report:
-    rows: list[IndexRow] = []
+def _gather[R](
+    repository: ContentRepository,
+    kind: Kind,
+    make: Callable[[str, StoredRevision], R],
+) -> tuple[list[R], list[tuple[str, str, str]]]:
+    """Lignes des contenus d'un genre, et ceux qui sont abîmés (nommés, pas indexés)."""
+    rows: list[R] = []
     unreadable: list[tuple[str, str, str]] = []
-    for space_id, analysis_id in repository.analyses():
+    for space_id, content_id in repository.contents(kind=kind):
         try:
-            rows.append(IndexRow.of(space_id, repository.read(space_id, analysis_id)))
+            rows.append(make(space_id, repository.read(space_id, content_id, kind=kind)))
         except ContentError as error:
-            if error.code == ANALYSIS_NOT_FOUND:
+            if error.code == kind.not_found:
                 continue
             if error.reason not in DAMAGED:
                 raise
-            unreadable.append((space_id, analysis_id, error.reason))
-    index.replace(rows, before_commit)
-    return Report(len(rows), tuple(unreadable))
+            unreadable.append((space_id, content_id, error.reason))
+    return rows, unreadable
+
+
+def _sweep(
+    repository: ContentRepository,
+    index: AnalysisIndex,
+    dashboards: DashboardIndex,
+    before_commit: Callable[[], None],
+) -> Report:
+    rows, unreadable = _gather(repository, ANALYSIS_KIND, IndexRow.of)
+    boards, damaged = _gather(repository, DASHBOARD_KIND, DashboardRow.of)
+    index.replace(rows, before_commit, lambda connection: dashboards.replace_in(connection, boards))
+    return Report(len(rows), tuple(unreadable), len(boards), tuple(damaged))
 
 
 def _utc_now() -> datetime:
@@ -126,7 +152,11 @@ def main(
     engine = connect(database)
     try:
         check_schema(engine, database)
-        report = reindex(ContentRepository(content, clock=clock), AnalysisIndex(engine, clock))
+        report = reindex(
+            ContentRepository(content, clock=clock),
+            AnalysisIndex(engine, clock),
+            DashboardIndex(engine, clock),
+        )
     except SchemaError as error:
         print(error, file=sys.stderr)
         return 1
@@ -149,6 +179,9 @@ def main(
     finally:
         engine.dispose()
     print(f"{report.indexed} analyse(s) indexée(s).")
+    print(f"{report.dashboards} dashboard(s) indexé(s).")
     for space_id, analysis_id, reason in report.unreadable:
         print(f"Illisible : {space_id}/{analysis_id} ({reason}).", file=sys.stderr)
-    return 1 if report.unreadable else 0
+    for space_id, dashboard_id, reason in report.dashboards_unreadable:
+        print(f"Illisible : dashboard {space_id}/{dashboard_id} ({reason}).", file=sys.stderr)
+    return 1 if report.unreadable or report.dashboards_unreadable else 0

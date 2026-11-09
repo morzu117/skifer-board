@@ -3,7 +3,10 @@ import { expect, it } from "vitest";
 import { analysisRefusalText, Unavailable } from "./Failure";
 
 it("un refus se lit par son libellé de serveur ; analysis_in_use ajoute les consommateurs qui bloquent", () => {
-  expect(analysisRefusalText({ code: "analysis_in_use", field: null, consumers: [{ kind: "dashboard", id: "d1" }, { kind: "dashboard", id: "d2" }] })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend. Consommateurs : dashboard d1, dashboard d2.");
+  expect(analysisRefusalText({ code: "analysis_in_use", field: null, consumers: [{ kind: "dashboard", id: "d1" }, { kind: "dashboard", id: "d2" }], others: 0 })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend. Consommateurs : dashboard d1, dashboard d2.");
+  expect(analysisRefusalText({ code: "analysis_in_use", field: null, consumers: [{ kind: "dashboard", id: "d1" }], others: 2 })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend. Consommateurs : dashboard d1. Autres dépendants que vous ne voyez pas : 2.");
+  expect(analysisRefusalText({ code: "analysis_in_use", field: null, consumers: [], others: 3 })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend. Autres dépendants que vous ne voyez pas : 3.");
+  expect(analysisRefusalText({ code: "analysis_in_use", field: null, consumers: [{ kind: "dashboard", id: "d1" }] })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend. Consommateurs : dashboard d1.");
   expect(analysisRefusalText({ code: "analysis_in_use", field: null })).toBe("Cette analyse est encore utilisée : retirez d'abord ce qui en dépend.");
   expect(analysisRefusalText({ code: "revision_conflict", field: null })).toBe("Une autre révision a été enregistrée entre-temps : relisez l'analyse.");
 });

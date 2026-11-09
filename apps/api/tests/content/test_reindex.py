@@ -12,10 +12,11 @@ from pathlib import Path
 
 import pytest
 from skifer_board.content import ContentError, ContentRepository
-from skifer_board.content.index import AnalysisIndex, IndexRow
-from skifer_board.content.reindex import ATTEMPTS, Report, RepositoryMoving, main, reindex
+from skifer_board.content.index import AnalysisIndex, DashboardIndex, IndexRow
+from skifer_board.content.reindex import ATTEMPTS, Report, RepositoryMoving, main
+from skifer_board.content.reindex import reindex as reindex_both
 from skifer_board.state import DATABASE_URL
-from sqlalchemy import Engine
+from sqlalchemy import Connection, Engine
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import OperationalError
 from state.conftest import MOT_DE_PASSE, environnement, injoignable
@@ -40,6 +41,11 @@ def depot(racine: Path) -> ContentRepository:
 @pytest.fixture
 def index(migre: Engine) -> AnalysisIndex:
     return AnalysisIndex(migre, lambda: INSTANT)
+
+
+def reindex(depot: ContentRepository, index: AnalysisIndex, attempts: int = ATTEMPTS) -> Report:
+    """Les deux genres, sur la base de l'index des analyses."""
+    return reindex_both(depot, index, DashboardIndex(index._engine, index._clock), attempts)
 
 
 def ecrire(depot: ContentRepository, espace: str = "finance", **changes: object) -> str:
@@ -198,6 +204,7 @@ def ecrire_pendant_le_remplacement(
         self: AnalysisIndex,
         rows: Iterable[IndexRow],
         before_commit: Callable[[], None] | None = None,
+        inside: Callable[[Connection], None] | None = None,
     ) -> int:
         def verifier() -> None:
             if len(arrivees) < fois:
@@ -205,7 +212,7 @@ def ecrire_pendant_le_remplacement(
             assert before_commit is not None
             before_commit()
 
-        return remplacer(self, rows, verifier)
+        return remplacer(self, rows, verifier, inside)
 
     monkeypatch.setattr(AnalysisIndex, "replace", remplacer_avec_ecriture)
     return arrivees
@@ -306,7 +313,7 @@ def test_commande_sur_une_base_vierge_migree(
     ident = ecrire(depot)
     code, sortie, erreur = lancer(environ(database_url, racine), capsys)
     assert (code, erreur) == (0, "")
-    assert sortie == "1 analyse(s) indexée(s).\n"
+    assert sortie == "1 analyse(s) indexée(s).\n0 dashboard(s) indexé(s).\n"
     assert AnalysisIndex(migre).get("finance", ident) is not None
 
 
@@ -336,7 +343,7 @@ def test_commande_avec_une_analyse_illisible(
     commit(racine, {relative("finance", abimee): b"x: y\n"}, "intrus")
     code, sortie, erreur = lancer(environ(database_url, racine), capsys)
     assert code == 1
-    assert sortie == "1 analyse(s) indexée(s).\n"
+    assert sortie == "1 analyse(s) indexée(s).\n0 dashboard(s) indexé(s).\n"
     assert erreur == f"Illisible : finance/{abimee} (history_inconsistent).\n"
     assert [item.analysis_id for item in AnalysisIndex(migre).rows("finance")] == [saine]
 
@@ -352,7 +359,7 @@ def test_commande_avec_un_blob_manquant(
     supprimer_le_blob(racine, abimee)
     code, sortie, erreur = lancer(environ(database_url, racine), capsys)
     assert code == 1
-    assert sortie == "1 analyse(s) indexée(s).\n"
+    assert sortie == "1 analyse(s) indexée(s).\n0 dashboard(s) indexé(s).\n"
     assert erreur == f"Illisible : finance/{abimee} (blob_unreadable).\n"
     assert [item.analysis_id for item in AnalysisIndex(migre).rows("finance")] == [saine]
 

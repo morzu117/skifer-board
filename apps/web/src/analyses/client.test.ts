@@ -233,7 +233,7 @@ describe("refus", () => {
   const REFUSALS: readonly (readonly [string, number, string, Record<string, unknown>])[] = [
     ["refus-analyse-inconnue", 404, "analysis_not_found", noExtra],
     ["refus-analyse-invalide", 422, "invalid_analysis", { field: null, reason: "unknown_model", violations: [{ path: "/query/model", rule: "unknown_model" }] }],
-    ["refus-analyse-utilisee", 409, "analysis_in_use", { field: null, consumers: [{ kind: "dashboard", id: ID }] }],
+    ["refus-analyse-utilisee", 409, "analysis_in_use", { field: null, consumers: [{ kind: "dashboard", id: ID }], others: 0 }],
     ["refus-champ-reserve", 422, "invalid_analysis", { field: null, reason: "field_not_allowed", violations: [{ path: "/owner", rule: "field_not_allowed" }] }],
     ["refus-depot-indisponible", 503, "content_unavailable", noExtra],
     ["refus-derniere-execution-introuvable", 404, "analysis_not_found", noExtra],
@@ -319,9 +319,11 @@ describe("refus", () => {
       [422, { error: { code: "invalid_analysis", reason: "sql", violations: [{ path: "/query/model", rule: "sql" }] } }],
       [422, { error: { code: "invalid_analysis", reason: "unknown_model", violations: [{ path: 1, rule: "unknown_model" }] } }],
       [422, { error: { code: "invalid_analysis", reason: "unknown_model", violations: {} } }],
-      [409, { error: { code: "analysis_in_use" } }], [409, { error: { code: "analysis_in_use", consumers: [] } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "report", id: ID }] } }],
-      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: "x" }] } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID, name: "Tableau" }] } }],
-      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], extra: 1 } }],
+      [409, { error: { code: "analysis_in_use" } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }] } }],
+      [409, { error: { code: "analysis_in_use", consumers: [], others: 0 } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "report", id: ID }], others: 0 } }],
+      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: "x" }], others: 0 } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID, name: "Tableau" }], others: 0 } }],
+      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: -1 } }], [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: 1.5 } }],
+      [409, { error: { code: "analysis_in_use", consumers: [{ kind: "dashboard", id: ID }], others: 0, extra: 1 } }],
     ];
     for (const [status, body] of bad) errorIncludes(await fetchAnalysis("finance", ID, abort, serving({ status, body })), `HTTP ${String(status)}`);
     // Un code connu de Board mais étranger aux analyses n'est pas un refus de ces routes.

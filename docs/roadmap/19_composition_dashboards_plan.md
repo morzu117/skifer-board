@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 réalisée**, 19.2 à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 et 19.2 réalisées**, 19.3 à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -90,3 +90,67 @@ Développée par Claude Sonnet 5.5, relue par Codex (gpt-6.1-terra) jusqu'à son
 *Diff.* Les nœuds se comparent par identifiant, ajouté, retiré ou modifié, avec le type de nœud. Un déplacement (autre parent, ou autre rang parmi les frères par plus longue suite croissante) est un écart `moved` dont `before` et `after` valent `{parent, index}` ; une insertion ou un retrait ne déplace aucun frère et le sous-arbre déplacé ne produit aucun bruit ; un nœud déplacé et modifié donne deux entrées.
 
 *Vérifications.* 3 fixtures valides, 1 équivalente et 93 invalides ; `pnpm run check:api` : 6 566 tests, couverture 100 % ; trois passes de relecture (genres fermés à l'exécution, renommage `content_id` documenté, portée des valeurs de filtres et fermeture par branches précisées).
+
+### 19.2 — Index, droits, routes et consommateurs
+
+Développée par Claude Sonnet 5.5 et relue par Codex (gpt-6.1-terra) en deux passes. La dernière n'a pas été close par un « OK pour commit » mais par l'arbitrage de l'orchestrateur, sur un point qui relève d'une limite acceptée (voir *Consommateurs*). Le paquet `skifer_board.content` ajoute `dashboard_checks.py` (règles pures de sauvegarde et d'états des tuiles) et `dashboard_web.py` (routes, analyses épinglées, consommateurs). Aucun écran, aucune exécution modifiée.
+
+*Index (B5).* La migration `0016` ajoute deux tables :
+- `dashboard_index`, sur le même modèle que l'index des analyses ;
+- `dashboard_references`, avec un couple `(analysis_id, analysis_revision)` par composant exécutable de la révision courante (clé sur espace, dashboard et composant ; cascade avec le dashboard ; index sur espace et analyse).
+
+Il n'y a pas de `downgrade`, comme pour les migrations précédentes. `skifer-board-reindex` reconstruit les deux genres dans une seule transaction, avec la tête relue avant le commit, trois tentatives et les codes de sortie du plan 18. Les dashboards abîmés sont listés et donnent le code 1.
+
+*Routes (B6).* Sous `/api/spaces/{space_id}/dashboards` : créer, lister, lire la courante ou une révision numérotée, historique, écart (`GET …/diff?base=&other=`, même forme que les analyses), réviser et supprimer avec `expected_revision`, dupliquer. Les garanties sont celles des analyses :
+- droits de A5, administrateur compris ;
+- même 404 pour un dashboard invisible et un dashboard inexistant ;
+- coup d'œil avant toute lecture ;
+- panne de base après publication : la publication git fait foi, et la lecture suivante donne `index_stale` ;
+- mode local et non-membres refusés.
+
+Une requête résout la tête du dépôt une seule fois et la transmet à toutes ses lectures, le dashboard source comme les analyses épinglées. Chaque épingle n'est lue qu'une fois, et cette lecture sert aussi à l'état de la réponse. Une publication concurrente n'est jamais vue. Le second contrôle de visibilité du contenu relu est conservé, comme pour les analyses.
+
+*Validation (B4, B7).* `invalid_dashboard` porte un chemin et une règle prise dans une liste fermée :
+- `analysis_unavailable`, une seule règle pour une analyse invisible, supprimée ou inexistante ;
+- `kpi_requires_value` ;
+- `chart_incompatible` ;
+- `dimension_not_exposed` ;
+- `operator_not_allowed` ;
+- `filter_value_incompatible` ;
+- `filter_type_mismatch` ;
+- `too_many_filters`, au-delà de 32 filtres par tuile.
+
+Un dashboard partagé qui référence une révision non partagée est refusé par `personal_reference`, un code à part (422, `components`). La visibilité d'une révision épinglée se juge sur son en-tête, à son commit, avant son corps : une révision privée d'une autre personne n'est ni chargée ni validée. Sans catalogue lisible, la réponse est 503 `engine_unavailable`.
+
+*Règle des graphiques (arbitrage).* Une règle statique unique, plus stricte que l'Explorateur. Celui-ci (`Resultat.tsx`) permet `value` sur un résultat d'au plus une ligne, ce qu'un dashboard ne peut pas garantir. La règle :
+- un KPI exige une révision dont le graphique est `value` et dont la requête n'a aucune dimension ;
+- une surcharge `value` d'un visuel exige aussi une requête sans dimension ;
+- `bars`, `line` et `grouped_bars` conviennent à toute forme ;
+- un visuel sans surcharge garde la présentation de l'analyse.
+
+*Lecture et états.* Chaque composant exécutable a l'un de ces états :
+- `ready` ;
+- `unavailable`, avec une raison fermée : `analysis_unavailable`, `unresolved_reference` ou `filter_incompatible` ;
+- `unverified`, quand le catalogue ou la base ne permettent rien d'affirmer. Ce troisième état est un écart au plan, jugé justifié en relecture.
+
+La cohérence de type d'un filtre commun entre ses cibles se juge à la lecture comme à la sauvegarde, par la même fonction. L'état global suit la priorité `index_stale`, `unverified`, `unresolved_reference`, `ready`. La réponse ne recopie jamais une requête d'analyse.
+
+*Consommateurs (B5).* `analysis_in_use` et `GET …/analyses/{id}/consumers` rendent `consumers` (dashboards visibles du demandeur) et `others` (un décompte, sans identité). Git fait foi :
+- l'index des références n'est cru que pour une ligne qui porte le dernier commit de son fichier, à la tête de la requête ;
+- un dashboard absent de l'index ou en retard est relu depuis git ;
+- un dashboard supprimé est ignoré ;
+- un dashboard abîmé est compté parmi les autres. Il bloque donc la suppression des analyses de l'espace tant qu'il n'est pas réparé ;
+- si l'index ou le dépôt ne répond pas, la suppression est refusée (`content_unavailable`).
+
+La suppression exige aussi, sous le verrou, la tête sur laquelle les consommateurs ont été jugés (`expected_head`). Si la tête a bougé, la route juge une seconde fois, puis répond `revision_conflict` / `stale`.
+
+Limites acceptées :
+- L'écriture d'un dashboard n'a pas ce contrôle de tête. Une analyse supprimée pendant la sauvegarde d'un dashboard qui l'épingle laisse une tuile `analysis_unavailable`, jamais de données.
+- Pour compter les autres, un dashboard absent de l'index ou en retard est relu avant que sa visibilité pour le demandeur soit connue, puisque ses références sont nécessaires au décompte dans tous les cas. Il n'en sort qu'un nombre, et le temps de réponse dépend de la taille de ces documents, dans la limite de 1 Mio acceptée au plan 18. C'est le point de la dernière relecture, clos par arbitrage.
+
+*Télémétrie et contrats.* Codes `invalid_dashboard`, `dashboard_not_found` et `personal_reference`, sans nom, valeur de filtre ni personne. Les exemples sont produits par le serveur réel sous `contracts/dashboards/routes/` (27) et `contracts/analyses/routes/consommateurs*.json`. Le décodeur web des refus accepte `others`.
+
+*Vérifications.*
+- `pnpm run check:api` : 7 167 tests, couverture 100 % (7 782 lignes, 2 012 branches), sur une passe postérieure à la dernière modification de code.
+- `check:web` : 3 291 tests, couverture 100 %.
+- `check:docs` et `git diff --check` au vert.

@@ -21,6 +21,8 @@ from catalog.conftest import espace as espace
 from catalog.conftest import espace_versionne as espace_versionne
 from catalog.conftest import service as service
 from content.monde import ACTOR, document, init, new_id, repository
+from content.monde_dashboard import common_filter, text, visual, with_components
+from content.serveur import modeles
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx2 import Response
@@ -34,7 +36,8 @@ from identity.test_web import connecter
 from skifer_board.catalog import CatalogService
 from skifer_board.content import ContentRepository
 from skifer_board.content.events import UsageKey
-from skifer_board.content.index import AnalysisIndex, IndexRow
+from skifer_board.content.index import AnalysisIndex, DashboardIndex, DashboardRow, IndexRow
+from skifer_board.content.repository import DASHBOARD_KIND
 from skifer_board.execution import ConnectionStore
 from skifer_board.execution.vault import VaultKeys
 from skifer_board.identity import OidcConfig
@@ -98,19 +101,19 @@ class Serveur:
     depot: ContentRepository
 
 
-@pytest.fixture
-def serveur(
+def assembler(
     espace_versionne: Any,
     service: CatalogService,
     config_plateforme: OidcConfig,
     fournisseur: Fournisseur,
     horloge: Horloge,
     migre: Engine,
-    journal: Journal,
     tmp_path: Path,
+    dossier_modeles: Path | None = None,
 ) -> Iterator[Serveur]:
     """Assemblage de `main()` en OIDC : sessions, demandes de connexion, espaces et mesures en
-    base ; lectures d'Atlas branchées sur le même enregistreur."""
+    base ; lectures d'Atlas branchées sur le même enregistreur. Avec `dossier_modeles`, le moteur
+    sémantique sait décrire un catalogue."""
     moteur = connect(DatabaseConfig(migre.url))
     magasin = SpaceStore(moteur)
     runtime = build_runtime(
@@ -131,6 +134,7 @@ def serveur(
         enregistreur,
         ConnectionStore(moteur),
         VaultKeys("test", {"test": b"1" * 32}),
+        execution_models_dir=dossier_modeles,
         content_repository=depot,
         usage_key=UsageKey(b"u" * 32),
     )
@@ -142,6 +146,46 @@ def serveur(
         yield Serveur(app, moteur, magasin, horloge, depot)
     finally:
         moteur.dispose()
+
+
+@pytest.fixture
+def serveur(
+    espace_versionne: Any,
+    service: CatalogService,
+    config_plateforme: OidcConfig,
+    fournisseur: Fournisseur,
+    horloge: Horloge,
+    migre: Engine,
+    journal: Journal,
+    tmp_path: Path,
+) -> Iterator[Serveur]:
+    yield from assembler(
+        espace_versionne, service, config_plateforme, fournisseur, horloge, migre, tmp_path
+    )
+
+
+@pytest.fixture
+def serveur_avec_moteur(
+    espace_versionne: Any,
+    service: CatalogService,
+    config_plateforme: OidcConfig,
+    fournisseur: Fournisseur,
+    horloge: Horloge,
+    migre: Engine,
+    journal: Journal,
+    tmp_path: Path,
+) -> Iterator[Serveur]:
+    """Le même serveur, dont le moteur décrit un catalogue : les dashboards se sauvegardent."""
+    yield from assembler(
+        espace_versionne,
+        service,
+        config_plateforme,
+        fournisseur,
+        horloge,
+        migre,
+        tmp_path,
+        modeles(tmp_path),
+    )
 
 
 class Parcours:
@@ -559,6 +603,95 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
             {"analysis": {"id": "analyse-sentinelle", "revision": 1}},
         )
 
+        # Dashboards (plan 19.2) : leur nom, leurs valeurs de filtre et leurs personnes ne laissent
+        # aucune trace non plus, pas plus que les consommateurs d'une analyse.
+        db = s + "/dashboards"
+        racine_d = f"/api/spaces/{A}/dashboards"
+        secrets |= {"Dashboard sentinelle", "Dashboard sentinelle bis", "valeur_filtre_dashboard"}
+        composant = new_id()
+        tableau = new_id()
+        premier = {
+            **with_components(
+                visual(ident=composant, analysis_id=vivante),
+                text(),
+                visibility="shared",
+                name="Dashboard sentinelle",
+                filters=[
+                    common_filter(
+                        [composant],
+                        dimension="dimension_sentinelle",
+                        default="valeur_filtre_dashboard",
+                    )
+                ],
+            ),
+            "id": tableau,
+        }
+        serveur.depot.write(
+            A, tableau, premier, expected_revision=None, actor=ACTOR, kind=DASHBOARD_KIND
+        )
+        serveur.depot.write(
+            A,
+            tableau,
+            {**premier, "name": "Dashboard sentinelle bis"},
+            expected_revision=1,
+            actor=ACTOR,
+            kind=DASHBOARD_KIND,
+        )
+        DashboardIndex(serveur.moteur).upsert(
+            DashboardRow.of(A, serveur.depot.read(A, tableau, kind=DASHBOARD_KIND))
+        )
+        parcours("GET", racine_d, db, 200)
+        parcours("GET", f"{racine_d}/{tableau}", db + "/{dashboard_id}", 200)
+        parcours("GET", f"{racine_d}/{new_id()}", db + "/{dashboard_id}", 404)
+        parcours("GET", f"{racine_d}/{tableau}/revisions", db + "/{dashboard_id}/revisions", 200)
+        rev = db + "/{dashboard_id}/revisions/{revision}"
+        parcours("GET", f"{racine_d}/{tableau}/revisions/1", rev, 200)
+        parcours("GET", f"{racine_d}/{tableau}/revisions/revision-sentinelle", rev, 400)
+        parcours(
+            "GET",
+            f"{racine_d}/{tableau}/diff",
+            db + "/{dashboard_id}/diff",
+            200,
+            params={"base": "1", "other": "2"},
+        )
+        parcours("GET", f"{racine_d}/{tableau}/diff", db + "/{dashboard_id}/diff", 400)
+        corps_d = {k: v for k, v in premier.items() if k not in {"api_version", "id", "owner"}}
+        parcours("POST", racine_d, db, 503, corps_d)
+        parcours("POST", racine_d, db, 422, {"name": ["dashboard-sentinelle"]})
+        parcours(
+            "POST",
+            f"{racine_d}/{tableau}/revisions",
+            db + "/{dashboard_id}/revisions",
+            503,
+            {**corps_d, "expected_revision": 2},
+        )
+        parcours("POST", f"{racine_d}/{tableau}/duplicate", db + "/{dashboard_id}/duplicate", 503)
+        consommateurs = an + "/{analysis_id}/consumers"
+        parcours("GET", f"{racine}/{vivante}/consumers", consommateurs, 200)
+        parcours("GET", f"{racine}/{new_id()}/consumers", consommateurs, 404)
+        parcours(
+            "DELETE",
+            f"{racine}/{vivante}",
+            an + "/{analysis_id}",
+            409,
+            params={"expected_revision": "1"},
+        )
+        parcours(
+            "DELETE",
+            f"{racine_d}/{tableau}",
+            db + "/{dashboard_id}",
+            409,
+            params={"expected_revision": "1"},
+        )
+        parcours(
+            "DELETE",
+            f"{racine_d}/{tableau}",
+            db + "/{dashboard_id}",
+            204,
+            params={"expected_revision": "2"},
+        )
+        parcours("GET", f"{racine_d}/{tableau}", db + "/{dashboard_id}", 404)
+
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text
         trouvees = parcours("GET", "/api/people", "/api/people", 200, params={"q": "sentinelle"})
@@ -678,6 +811,23 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
     assert [e["environment"] for e in table if e["operation"] == xc] == ["DEV", "DEV"]
     assert [e["environment"] for e in table if e["operation"] == xt] == ["DEV"]
 
+    # Les refus des dashboards et des consommateurs sont mesurés par leur seul code.
+    issues = {
+        (e["status"], e["outcome"])
+        for e in table
+        if e["kind"] == "http" and "/dashboards" in e["operation"]
+    }
+    assert {
+        (400, "invalid_parameter"),
+        (404, "dashboard_not_found"),
+        (409, "revision_conflict"),
+        (422, "invalid_dashboard"),
+        (503, "engine_unavailable"),
+    } <= issues
+    assert (409, "analysis_in_use") in {
+        (e["status"], e["outcome"]) for e in table if e["operation"] == an + "/{analysis_id}"
+    }
+
     # Rien de T3, ni dans la table ni dans le journal.
     textes = [repr(sorted(e.items())) for e in table] + journal.textes()
     interdits = secrets | {
@@ -699,6 +849,125 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
     # Les valeurs cherchées ont bien traversé le serveur : la recherche n'est pas vide de sens.
     assert any("sentinelle" in r.text for r in parcours.reponses)
     assert retour.status_code == 303
+
+
+def test_les_refus_d_un_dashboard_ne_laissent_ni_nom_ni_valeur_ni_personne(
+    serveur_avec_moteur: Serveur,
+    fournisseur: Fournisseur,
+    cles: Cles,
+    claims: dict[str, Any],
+    journal: Journal,
+) -> None:
+    """Moteur décrivant un catalogue : `invalid_dashboard`, `personal_reference` et
+    `analysis_in_use` (consommateurs nommés) sont mesurés par leur seul code, sans rien de ce qui
+    les a provoqués."""
+    serveur = serveur_avec_moteur
+    identite = {
+        **claims,
+        "sub": "sujet-sentinelle",
+        "name": "Nom Sentinelle",
+        "email": "courriel-sentinelle@example.invalid",
+        "groups": [PLATEFORME, "finance-admins"],
+    }
+    moi = {"issuer": EMETTEUR, "subject": "sujet-sentinelle"}
+    perso, partagee = new_id(), new_id()
+    for ident, visibilite in ((perso, "personal"), (partagee, "shared")):
+        serveur.depot.write(
+            A,
+            ident,
+            document(
+                ident, name=f"Analyse {visibilite} sentinelle", visibility=visibilite, owner=moi
+            ),
+            expected_revision=None,
+            actor=ACTOR,
+        )
+    a, d = f"/api/spaces/{A}/analyses", f"/api/spaces/{A}/dashboards"
+    secrets = {"Analyse personal sentinelle", "Analyse shared sentinelle", perso, partagee}
+    fantome, composant, autre = new_id(), new_id(), new_id()
+    secrets |= {"Dashboard refuse sentinelle", "valeur_filtre_refusee", fantome}
+
+    def corps_d(*composants: dict[str, Any], **plus: Any) -> dict[str, Any]:
+        valeur = with_components(*composants, name="Dashboard refuse sentinelle", **plus)
+        return {k: v for k, v in valeur.items() if k not in {"api_version", "id", "owner"}}
+
+    with TestClient(
+        serveur.app, base_url=ORIGINE, follow_redirects=False, raise_server_exceptions=False
+    ) as client:
+        parcours = Parcours(client)
+        connecter(client, fournisseur, cles, identite)
+        inconnue = parcours(
+            "POST",
+            d,
+            "",
+            422,
+            corps_d(
+                visual(ident=composant, analysis_id=fantome),
+                visibility="shared",
+                filters=[
+                    common_filter([composant], dimension="year", default="valeur_filtre_refusee")
+                ],
+            ),
+        )
+        assert inconnue.json()["error"]["code"] == "invalid_dashboard"
+        dimension = parcours(
+            "POST",
+            d,
+            "",
+            422,
+            corps_d(
+                visual(ident=composant, analysis_id=partagee),
+                filters=[common_filter([composant], dimension="valeur_filtre_refusee")],
+            ),
+        )
+        assert dimension.json()["error"]["code"] == "invalid_dashboard"
+        personnelle = parcours(
+            "POST",
+            d,
+            "",
+            422,
+            corps_d(visual(ident=autre, analysis_id=perso), visibility="shared"),
+        )
+        assert personnelle.json() == {
+            "error": {"code": "personal_reference", "components": [autre]}
+        }
+        creee = parcours(
+            "POST",
+            d,
+            "",
+            201,
+            corps_d(visual(ident=composant, analysis_id=partagee), visibility="shared"),
+        )
+        secrets.add(creee.json()["id"])
+        utilisee = parcours("DELETE", f"{a}/{partagee}", "", 409, params={"expected_revision": "1"})
+        assert utilisee.json()["error"]["consumers"] == [
+            {"kind": "dashboard", "id": creee.json()["id"]}
+        ]
+        parcours("GET", f"{a}/{partagee}/consumers", "", 200)
+        parcours("GET", f"{d}/{new_id()}", "", 404)
+
+    table = [
+        e
+        for e in lignes(serveur.moteur)
+        if e["kind"] == "http"
+        and ("/dashboards" in e["operation"] or "/analyses" in e["operation"])
+    ]
+    sortie = [
+        (e["method"], e["operation"].rsplit("/spaces/{space_id}", 1)[-1], e["status"], e["outcome"])
+        for e in table
+    ]
+    assert sortie == [
+        ("POST", "/dashboards", 422, "invalid_dashboard"),
+        ("POST", "/dashboards", 422, "invalid_dashboard"),
+        ("POST", "/dashboards", 422, "personal_reference"),
+        ("POST", "/dashboards", 201, "ok"),
+        ("DELETE", "/analyses/{analysis_id}", 409, "analysis_in_use"),
+        ("GET", "/analyses/{analysis_id}/consumers", 200, "ok"),
+        ("GET", "/dashboards/{dashboard_id}", 404, "dashboard_not_found"),
+    ]
+    textes = [repr(sorted(e.items())) for e in lignes(serveur.moteur)] + journal.textes()
+    for texte in textes:
+        for interdit in secrets | {"sentinelle", "sujet", "example.invalid"}:
+            assert interdit.lower() not in texte.lower(), (interdit, texte)
 
 
 def test_garde_d_identite_garde_le_gabarit_et_l_environnement(

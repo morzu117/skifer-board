@@ -1,5 +1,5 @@
 import { ContractError } from "../catalogue/decode";
-import { exact, items, pick, uuid, word } from "./shape";
+import { count, exact, items, pick, uuid, word } from "./shape";
 
 /**
  * Refus des routes d'analyses (plan 18, 18.2 et 18.3) : une union fermée, celle que les contrats
@@ -46,6 +46,8 @@ export interface RefusalDetails {
   reason?: "stale" | ViolationRule | undefined;
   violations?: readonly Violation[] | undefined;
   consumers?: readonly Consumer[] | undefined;
+  /** Dépendants que le demandeur ne voit pas : un décompte, jamais leur identité. */
+  others?: number | undefined;
 }
 
 const PATH = /^(?:\/(?:[A-Za-z0-9_]{1,64}|\*))*$/;
@@ -79,12 +81,15 @@ function details(code: string, error: Readonly<Record<string, unknown>>): Refusa
       return { reason, violations };
     }
     case "analysis_in_use": {
-      exact(error, ["code", "consumers"], "refus");
-      const consumers = items(error.consumers, "refus.consumers", Number.MAX_SAFE_INTEGER, 1).map((item, index): Consumer => {
+      exact(error, ["code", "consumers", "others"], "refus");
+      const consumers = items(error.consumers, "refus.consumers", Number.MAX_SAFE_INTEGER).map((item, index): Consumer => {
         const found = exact(item, ["kind", "id"], `refus.consumers[${String(index)}]`);
         return { kind: pick(found.kind, CONSUMER_KINDS, "refus.consumers.kind"), id: uuid(found.id, "refus.consumers.id") };
       });
-      return { consumers };
+      const others = count(error.others, "refus.others");
+      // Au moins un dépendant, visible ou non : un refus sans aucun dépendant n'a pas de raison d'être.
+      if (consumers.length + others === 0) throw new ContractError("refus : au moins un dépendant attendu");
+      return { consumers, others };
     }
     case "forbidden":
       return REQUIRED.some((known) => known === error.required) ? { required: error.required as (typeof REQUIRED)[number] } : {};

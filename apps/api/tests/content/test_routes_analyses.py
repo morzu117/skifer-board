@@ -15,7 +15,6 @@ from fastapi.testclient import TestClient
 from skifer_board.catalog import CatalogService
 from skifer_board.content import ContentRepository
 from skifer_board.content.index import AnalysisIndex
-from skifer_board.content.web import Consumer
 from skifer_board.execution import ConnectionStore
 from skifer_board.execution.semantic import describe_catalog
 from skifer_board.server import create_app
@@ -29,6 +28,7 @@ from spaces.monde import (
 from sqlalchemy.exc import OperationalError
 
 from .monde import commit, new_id, relative
+from .monde_dashboard import text, visual
 from .serveur import CHEMIN, Banc, corps
 
 INCONNUE = "11111111-1111-4111-8111-111111111111"
@@ -486,7 +486,7 @@ def test_suppression_sur_une_revision_obsolete(banc: Banc) -> None:
 
 def test_un_consommateur_empeche_la_suppression(banc: Banc) -> None:
     ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared", name=SECRET)
-    banc.consommateurs.append(Consumer("dashboard", "tb-1"))
+    tableau = banc.creer_tableau_ok(CREATEUR_GROUPE, visual(analysis_id=ident), visibility="shared")
     reponse = banc.appel(
         CREATEUR_GROUPE, "DELETE", f"{CHEMIN}/{ident}", params={"expected_revision": "1"}
     )
@@ -494,13 +494,17 @@ def test_un_consommateur_empeche_la_suppression(banc: Banc) -> None:
     assert reponse.json() == {
         "error": {
             "code": "analysis_in_use",
-            "consumers": [{"kind": "dashboard", "id": "tb-1"}],
+            "consumers": [{"kind": "dashboard", "id": tableau}],
+            "others": 0,
         }
     }
     assert SECRET not in reponse.text
     assert lire(banc, ident)["revision"] == 1 and banc.index.get(A, ident) is not None
-    # Le consommateur parti, la suppression passe.
-    banc.consommateurs.clear()
+    # Le composant retiré du dashboard, la suppression passe.
+    assert (
+        banc.reviser_tableau(CREATEUR_GROUPE, tableau, 1, text(), visibility="shared").status_code
+        == 201
+    )
     assert (
         banc.appel(
             CREATEUR_GROUPE, "DELETE", f"{CHEMIN}/{ident}", params={"expected_revision": "1"}
@@ -512,16 +516,16 @@ def test_un_consommateur_empeche_la_suppression(banc: Banc) -> None:
 def test_le_controle_des_consommateurs_suit_le_droit_de_supprimer(banc: Banc) -> None:
     """Qui ne peut pas supprimer n'apprend pas qui consomme l'analyse."""
     ident = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
-    banc.consommateurs.append(Consumer("dashboard", "tb-1"))
+    tableau = banc.creer_tableau_ok(CREATEUR_GROUPE, visual(analysis_id=ident), visibility="shared")
     reponse = banc.appel(
         LECTEUR_GROUPE, "DELETE", f"{CHEMIN}/{ident}", params={"expected_revision": "1"}
     )
-    assert reponse.status_code == 403 and "tb-1" not in reponse.text
+    assert reponse.status_code == 403 and tableau not in reponse.text
     personnelle = banc.creer_ok(CREATEUR_GROUPE, visibility="personal")
     reponse = banc.appel(
         ADMIN_GROUPE, "DELETE", f"{CHEMIN}/{personnelle}", params={"expected_revision": "1"}
     )
-    assert reponse.status_code == 404 and "tb-1" not in reponse.text
+    assert reponse.status_code == 404 and tableau not in reponse.text
 
 
 def panne(*_: Any, **__: Any) -> None:

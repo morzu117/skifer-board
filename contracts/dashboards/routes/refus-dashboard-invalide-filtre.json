@@ -1,0 +1,1 @@
+{"status":422,"body":{"error":{"code":"invalid_dashboard","reason":"dimension_not_exposed","violations":[{"path":"/filters/0/targets/0","rule":"dimension_not_exposed"}]}}}

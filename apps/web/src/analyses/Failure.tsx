@@ -8,10 +8,11 @@ export type Failed = Exclude<AdminOutcome<unknown>, { status: "ok" }>;
 /** Refus tel que le serveur le dit, avec ce que son code porte : les consommateurs qui bloquent, la révision attendue. */
 export function analysisRefusalText(refusal: Refusal): string {
   const base = refusalText(refusal);
-  if (refusal.code === "analysis_in_use" && refusal.consumers !== undefined) {
-    return `${base} Consommateurs : ${refusal.consumers.map((consumer) => `dashboard ${consumer.id}`).join(", ")}.`;
-  }
-  return base;
+  if (refusal.code !== "analysis_in_use" || refusal.consumers === undefined) return base;
+  const named = refusal.consumers.length === 0 ? "" : ` Consommateurs : ${refusal.consumers.map((consumer) => `dashboard ${consumer.id}`).join(", ")}.`;
+  const hidden = refusal.others ?? 0;
+  const others = hidden === 0 ? "" : ` Autres dépendants que vous ne voyez pas : ${String(hidden)}.`;
+  return `${base}${named}${others}`;
 }
 
 /** Échec d'une lecture : le mode local se dit neutre, tout autre refus ou erreur s'affiche tel quel, sans rien d'autre. */

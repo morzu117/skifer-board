@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from functools import cache
 from pathlib import Path
@@ -349,6 +350,54 @@ def dumps(document: Document) -> bytes:
     if loads(raw) != valid:
         raise _refuse(Violation("", "not_representable"))
     return raw
+
+
+# -- composants exécutables ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Component:
+    """Un composant exécutable (visuel ou KPI) : où il est, quelle révision d'analyse il épingle,
+    et le type de graphique qu'il surcharge (`None` pour un KPI ou sans surcharge)."""
+
+    id: str
+    type: str
+    path: str
+    analysis_id: str
+    revision: int
+    chart: str | None
+
+
+def _components(children: list[dict[str, Any]], base: str) -> Iterator[Component]:
+    for index, child in enumerate(children):
+        path = f"{base}/{index}"
+        if child["type"] == "container":
+            for position, row in enumerate(child["rows"]):
+                yield from _row_components(row, f"{path}/rows/{position}")
+        elif child["type"] in EXECUTABLE:
+            reference = child["reference"]
+            yield Component(
+                child["id"],
+                child["type"],
+                path,
+                reference["analysis_id"],
+                reference["revision"],
+                child["presentation"].get("chart"),
+            )
+
+
+def _row_components(row: dict[str, Any], path: str) -> Iterator[Component]:
+    for position, column in enumerate(row["columns"]):
+        yield from _components(column["children"], f"{path}/columns/{position}/children")
+
+
+def executables(document: Document) -> tuple[Component, ...]:
+    """Composants exécutables d'un document validé, dans l'ordre du document."""
+    found: list[Component] = []
+    for index, section in enumerate(document["layout"]["sections"]):
+        for position, row in enumerate(section["rows"]):
+            found.extend(_row_components(row, f"/layout/sections/{index}/rows/{position}"))
+    return tuple(found)
 
 
 # -- diff structurel ----------------------------------------------------------------------------

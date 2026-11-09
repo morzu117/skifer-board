@@ -305,6 +305,8 @@ class Glance:
 ANALYSIS_REASONS = frozenset(
     {"document_too_large", "stored_invalid", "stored_mismatch", "blob_unreadable"}
 )
+# Les mêmes, plus l'histoire incohérente : un contenu abîmé, pas un dépôt en panne.
+DAMAGED_REASONS = ANALYSIS_REASONS | {"history_inconsistent"}
 
 
 def _closed(kind: object) -> None:
@@ -505,12 +507,18 @@ class ContentRepository:
         revision: int | None = None,
         *,
         at: str | None = None,
+        allow: Callable[[PersonRef | None, str | None, bool], bool] | None = None,
         kind: Kind = ANALYSIS_KIND,
     ) -> StoredRevision:
         """Révision courante, ou la révision donnée (même d'un contenu supprimé depuis), lue
-        depuis la tête du dépôt ou depuis le commit `at` (voir `head`)."""
+        depuis la tête du dépôt ou depuis le commit `at` (voir `head`).
+
+        Avec `allow`, la visibilité de la révision lue est jugée d'abord sur son en-tête, sur son
+        commit (taille mesurée, puis le coup d'œil du genre : ni schéma, ni règles, ni références),
+        comme pour `entries` : une révision que l'appelant ne lira pas est refusée comme une
+        révision inexistante, et son corps n'est ni chargé ni validé."""
         _closed(kind)
-        _relative(kind, space_id, content_id)
+        relative = _relative(kind, space_id, content_id)
         if revision is not None:
             _check_revision(kind, revision)
         place = self._locate()
@@ -524,6 +532,15 @@ class ContentRepository:
             raise ContentError(kind.not_found, "missing_revision")
         else:
             target = saves[revision - 1]
+        if allow is not None and not self._allowed(
+            kind,
+            place,
+            f"{target.commit}:{relative}",
+            content_id,
+            allow,
+            history[-1].action == "delete",
+        ):
+            raise ContentError(kind.not_found, "missing_revision")
         return StoredRevision(target, self._load(kind, place, target, space_id, content_id))
 
     @_guarded
@@ -824,9 +841,15 @@ class ContentRepository:
         *,
         expected_revision: int,
         actor: PersonRef,
+        expected_head: str | None = None,
         kind: Kind = ANALYSIS_KIND,
     ) -> Revision:
-        """Retire le fichier par un commit ; l'historique et chaque révision restent lisibles."""
+        """Retire le fichier par un commit ; l'historique et chaque révision restent lisibles.
+
+        Avec `expected_head`, la suppression n'a lieu que si la tête du dépôt est encore ce commit,
+        contrôle fait sous le verrou : un appelant qui a jugé de la suppression sur une tête (par
+        exemple, qu'aucun dashboard ne consomme l'analyse) sait qu'aucune publication n'est venue
+        s'intercaler. Sinon `revision_conflict` (`head_changed`), et rien n'est publié."""
         _closed(kind)
         relative = _relative(kind, space_id, content_id)
         if not _person_ok(actor.issuer, actor.subject):
@@ -836,6 +859,8 @@ class ContentRepository:
         scratch = _scratch_parent(place.root)
         with self._locked(place):
             head = self._ready(place)
+            if expected_head is not None and head.base != expected_head:
+                raise ContentError(REVISION_CONFLICT, "head_changed")
             history = self._history(kind, place, head.base, space_id, content_id)
             current = self._current(kind, history, expected_revision)
             return self._publish(
