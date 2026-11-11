@@ -3,11 +3,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnalysePage } from "./analyses/AnalysePage";
 import { AnalysesPage } from "./analyses/AnalysesPage";
 import { CataloguePage } from "./catalogue/CataloguePage";
+import { DashboardEditorPage } from "./dashboards/DashboardEditorPage";
+import { DashboardsPage } from "./dashboards/DashboardsPage";
 import { ExplorerPage } from "./explorer/ExplorerPage";
 import { ExecutionsPage } from "./executions/ExecutionsPage";
 import { logout, type Fetch } from "./identity/api";
 import { LoginScreen } from "./identity/LoginScreen";
-import { displayName, loginReasonFrom } from "./identity/model";
+import { displayName, identityKey, loginReasonFrom } from "./identity/model";
 import { useIdentity } from "./identity/useIdentity";
 import { PrototypePage } from "./prototype/PrototypePage";
 import { AppShell } from "./shell/AppShell";
@@ -32,7 +34,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" || route.page === "dashboards" || route.page === "dashboard" ? route.space : null;
 }
 
 interface Sections {
@@ -47,7 +49,7 @@ interface Sections {
  */
 export function sectionsFor(space: Space | null, platformAdmin: boolean): Sections {
   if (space === null) {
-    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", espace: "dans un espace" } };
+    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", espace: "dans un espace" } };
   }
   const available = new Set<SectionId>();
   const pending: Partial<Record<SectionId, string>> = {};
@@ -55,15 +57,18 @@ export function sectionsFor(space: Space | null, platformAdmin: boolean): Sectio
     pending.catalogue = "sans rôle";
     pending.explorer = "sans rôle";
     pending.analyses = "sans rôle";
+    pending.dashboards = "sans rôle";
   } else {
     available.add("catalogue");
-    // Les analyses vivent dans un dépôt versionné que le mode local n'a pas : comme l'Explorateur, elles lui sont fermées.
+    // Les analyses et les dashboards vivent dans un dépôt versionné que le mode local n'a pas : comme l'Explorateur, ils lui sont fermés.
     if (!space.implicit) {
       available.add("explorer");
       available.add("analyses");
+      available.add("dashboards");
     } else {
       pending.explorer = "mode local";
       pending.analyses = "mode local";
+      pending.dashboards = "mode local";
     }
   }
   if (manages(space, platformAdmin)) {
@@ -136,7 +141,7 @@ export function App({ fetcher = fetch, leave = assign }: AppProps) {
       : undefined;
 
   return (
-    <Workspace fetcher={fetcher} identity={identity} onLogout={onLogout}>
+    <Workspace key={state.status === "established" ? identityKey(state.identity) : ""} fetcher={fetcher} identity={identity} session={state.status === "established" ? identityKey(state.identity) : ""} onLogout={onLogout}>
       {logoutError === null ? null : <Banner tone="danger">{logoutError}</Banner>}
     </Workspace>
   );
@@ -145,6 +150,8 @@ export function App({ fetcher = fetch, leave = assign }: AppProps) {
 interface WorkspaceProps {
   fetcher: Fetch;
   identity: Identity | null;
+  /** Clé stable de la session (émetteur et sujet), ou « » sans identité établie. */
+  session: string;
   onLogout: (() => void) | undefined;
   /** Bandeaux de la coque, au-dessus de la page. */
   children: ReactNode;
@@ -157,7 +164,7 @@ type Current = { status: "loading" } | SpaceOutcome<Space> | null;
  * la personne. Un espace absent ou refusé s'affiche « Espace introuvable », sans rien de plus
  * (plan 08, E7).
  */
-function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
+function Workspace({ fetcher, identity, session, onLogout, children }: WorkspaceProps) {
   const [environment, setEnvironment] = useState<Environment>("DEV");
   const route = useRoute();
   const hash = routeHash(route);
@@ -188,7 +195,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
+  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "dashboards" || route.page === "dashboard" ? "dashboards" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -198,7 +205,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
       // Les entrées ne sont offertes que dans un espace confirmé : elles mènent à ses pages.
       onNavigate={(section) => {
         if (space !== null) {
-          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : { page: "catalogue", space: space.id });
+          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : section === "dashboards" ? { page: "dashboards", space: space.id } : { page: "catalogue", space: space.id });
         }
       }}
       breadcrumb={breadcrumb(route, current)}
@@ -226,6 +233,7 @@ function Workspace({ fetcher, identity, onLogout, children }: WorkspaceProps) {
         listed={listed}
         fetcher={fetcher}
         environment={environment}
+        session={session}
         onWritten={() => {
           setRevision((value) => value + 1);
         }}
@@ -263,6 +271,8 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "explorer") return [current.value.name, "Explorer"];
     if (route.page === "analyses") return [current.value.name, "Analyses"];
     if (route.page === "analysis") return [current.value.name, "Analyses", "Fiche analyse"];
+    if (route.page === "dashboards") return [current.value.name, "Dashboards"];
+    if (route.page === "dashboard") return [current.value.name, "Dashboards", "Éditeur"];
     if (route.page === "executions") {
       return [current.value.name, "Exécutions"];
     }
@@ -278,10 +288,12 @@ interface PageProps {
   fetcher: Fetch;
   /** Environnement choisi dans la coque. */
   environment: Environment;
+  /** Clé stable de la session : un changement de personne abandonne ce que les pages de dashboards ont lu et recommence sous la nouvelle. */
+  session: string;
   onWritten: () => void;
 }
 
-function Page({ route, current, listed, fetcher, environment, onWritten }: PageProps) {
+function Page({ route, current, listed, fetcher, environment, session, onWritten }: PageProps) {
   if (route.page === "home") {
     return <SpacesHome listed={listed} />;
   }
@@ -379,6 +391,12 @@ function Page({ route, current, listed, fetcher, environment, onWritten }: PageP
   }
   if (route.page === "analysis") {
     return <AnalysePage key={`${current.value.id}:${route.id}:${String(route.revision)}:${String(route.view)}:${JSON.stringify(route.compare)}`} space={current.value} id={route.id} revision={route.revision} view={route.view} compare={route.compare} fetcher={fetcher} />;
+  }
+  if (route.page === "dashboards") {
+    return <DashboardsPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
+  }
+  if (route.page === "dashboard") {
+    return <DashboardEditorPage key={`${current.value.id}:${route.id}:${session}`} space={current.value} id={route.id} fetcher={fetcher} environment={environment} identity={session} />;
   }
   if (route.page === "executions") {
     return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;

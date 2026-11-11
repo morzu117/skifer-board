@@ -18,6 +18,8 @@ import type { Fetch } from "./identity/api";
 import { LOGIN_REASON_LABELS } from "./identity/model";
 
 import { App } from "./App";
+import * as identityHook from "./identity/useIdentity";
+import { CATALOG } from "./analyses/testing";
 
 type Exemple = { status: number; body: unknown };
 type Reponse = Exemple | (() => Promise<Response>);
@@ -66,11 +68,10 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(within(nav).getByRole("link", { name: "Skifer Board" })).toHaveAttribute("href", "#/");
   // À l'accueil, hors espace, aucune section n'est offerte ; le catalogue et les membres se lisent « dans un espace ».
   expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-  for (const name of ["Dashboards", "Déploiements"]) {
-    expect(within(nav).getByText(name)).toHaveTextContent("à venir");
-  }
+  expect(within(nav).getByText("Déploiements")).toHaveTextContent("à venir");
   expect(within(nav).getByText("Explorer")).toHaveTextContent("Explorerdans un espace");
   expect(within(nav).getByText("Analyses")).toHaveTextContent("Analysesdans un espace");
+  expect(within(nav).getByText("Dashboards")).toHaveTextContent("Dashboardsdans un espace");
   expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
   expect(within(nav).getByText("Espace & connexions")).toHaveTextContent("Espace & connexionsdans un espace");
   await userEvent.click(await screen.findByRole("link", { name: "Finance" }));
@@ -82,12 +83,10 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(screen.getByRole("navigation", { name: "Fil d'Ariane" })).toHaveTextContent("Catalogue Atlas");
   expect(within(screen.getByRole("navigation", { name: "Fil d'Ariane" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Finance", "Catalogue Atlas"]);
   // L'espace confirmé dit « Administrateur » : Catalogue Atlas et Espace & connexions sont livrés (plan 08, 8.4).
-  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Explorer", "Analyses", "Catalogue Atlas", "Espace & connexions"]);
+  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Explorer", "Analyses", "Dashboards", "Catalogue Atlas", "Espace & connexions"]);
   expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
   expect(within(nav).getByRole("button", { name: "Espace & connexions" })).not.toHaveAttribute("aria-current");
-  for (const name of ["Dashboards", "Déploiements"]) {
-    expect(within(nav).getByText(name)).toHaveTextContent("à venir");
-  }
+  expect(within(nav).getByText("Déploiements")).toHaveTextContent("à venir");
   expect(nav).toHaveTextContent("skifer-atlas");
   // Revenir au catalogue par la navigation garde l'espace.
   await userEvent.click(within(nav).getByRole("button", { name: "Catalogue Atlas" }));
@@ -550,10 +549,9 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).queryByText("dans un espace")).not.toBeInTheDocument();
-    for (const name of ["Dashboards", "Déploiements"]) {
-      expect(within(nav).getByText(name)).toHaveTextContent("à venir");
-    }
+    expect(within(nav).getByText("Déploiements")).toHaveTextContent("à venir");
     expect(within(nav).getByRole("button", { name: "Analyses" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Dashboards" })).toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Espace & connexions" })).toBeInTheDocument();
     for (const hash of ["#/prototype", "#/espaces/inconnu", "#/"]) {
       naviguer(hash);
@@ -597,4 +595,35 @@ describe("Espaces dans la coque (plan 08, 8.3)", () => {
     expect(catalogue).toBeLessThanOrEqual(2);
     expect(espaceLu).toBeLessThanOrEqual(2);
   });
+});
+
+
+it("un changement d'identité efface la coque et l'Explorateur puis relit leurs données", async () => {
+  window.history.replaceState(null, "", "/#/espaces/finance/explorer");
+  const person = { issuer: "https://id.example.invalid", subject: "cora", name: "Cora", email: null, groups: [] };
+  const state = (subject: string) => ({ state: { status: "established" as const, identity: { ...person, subject }, expiresAt: new Date() }, retry: vi.fn() });
+  const identity = vi.spyOn(identityHook, "useIdentity").mockReturnValue(state("cora"));
+  const listeSuivante = differee();
+  const espaceSuivant = differee();
+  let lists = 0;
+  let spaces = 0;
+  const fetcher = vi.fn<Fetch>().mockImplementation((url) => {
+    if (url === "/api/spaces") return ++lists === 1 ? Promise.resolve(reponse(liste)) : listeSuivante.promise;
+    if (url === "/api/spaces/finance") return ++spaces === 1 ? Promise.resolve(reponse(espace)) : espaceSuivant.promise;
+    if (url.endsWith("/explorer/fields")) return Promise.resolve(Response.json({ models: CATALOG.models }));
+    if (url.endsWith("/explorer/connections")) return Promise.resolve(Response.json({ connections: ["finance"] }));
+    return Promise.reject(new Error(url));
+  });
+  const view = render(<App fetcher={fetcher} />);
+  await screen.findByRole("heading", { name: "Explorer", level: 1 });
+  await waitFor(() => { expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/explorer/fields"))).toHaveLength(1); });
+  identity.mockReturnValue(state("bob"));
+  view.rerender(<App fetcher={fetcher} />);
+  expect(screen.queryByRole("heading", { name: "Explorer", level: 1 })).not.toBeInTheDocument();
+  expect(screen.queryByText("Finance", { selector: "option" })).not.toBeInTheDocument();
+  await waitFor(() => { expect(lists).toBe(2); expect(spaces).toBe(2); });
+  act(() => { listeSuivante.resolve(reponse(liste)); espaceSuivant.resolve(reponse(espace)); });
+  await screen.findByRole("heading", { name: "Explorer", level: 1 });
+  await waitFor(() => { expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/explorer/fields"))).toHaveLength(2); });
+  identity.mockRestore();
 });

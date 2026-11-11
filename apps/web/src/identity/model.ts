@@ -48,6 +48,14 @@ export function displayName(person: Person): string {
   return person.name ?? person.email ?? person.subject;
 }
 
+/**
+ * Clé stable d'une session : l'émetteur et le sujet, qui désignent une personne ; jamais le nom affiché, que deux personnes
+ * peuvent partager. Une page qui lit sous une identité s'en sert pour abandonner ce qu'elle a lu quand la personne change.
+ */
+export function identityKey(person: Person): string {
+  return JSON.stringify([person.issuer, person.subject]);
+}
+
 /** Raisons fermées d'une connexion qui n'aboutit pas (`contracts/identite/refus-connexion.json`). */
 export const LOGIN_ERRORS = ["login_cancelled", "invalid_state", "code_rejected", "provider_unavailable", "token_refused"] as const;
 

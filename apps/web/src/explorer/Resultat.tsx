@@ -30,7 +30,7 @@ export function genreInitial(input: ExecutionInput, model: ExplorerModel): Genre
   return model.dimensions.find((item) => item.name === input.dimensions[0])?.is_time === true ? "ligne" : "barres";
 }
 
-function cellules(table: Table): Record<string, string>[] {
+export function cellules(table: Table): Record<string, string>[] {
   const columns = table.schema.fields.map((field) => ({ field, vector: table.getChild(field.name) }));
   return Array.from({ length: table.numRows }, (_, index) => Object.fromEntries([
     ["__ligne", String(index)],

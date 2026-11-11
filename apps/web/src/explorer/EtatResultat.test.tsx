@@ -32,7 +32,9 @@ describe.each(THEMES)("états accessibles sous $label", (theme) => {
   });
   it.each(["deny", "require_human"] as const)("affiche la décision %s sans lignes", async (code) => {
     const { container } = renderThemed(<EtatResultat run={{ ...run, state: "denied", errorCode: code, proof: null }} result={one} submitted={submitted} busy={false} failure={null} theme={theme} />, theme);
-    expect(screen.getByText(/Raisons détaillées non fournies par le serveur/)).toHaveTextContent(code === "deny" ? "DENY" : "REQUIRE_HUMAN");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent(code === "deny" ? "DENY" : "REQUIRE_HUMAN");
+    expect(screen.getByText(/Raisons détaillées non fournies par le serveur/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     await expectAccessible(container);
   });

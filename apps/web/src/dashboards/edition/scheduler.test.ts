@@ -123,4 +123,59 @@ describe("planificateur des tuiles", () => {
     expect(scheduler.snapshot().get("a")).toMatchObject({ status: "error" });
     expect(vi.mocked(clients.submit)).toHaveBeenCalledTimes(1);
   });
+  it("garde l'exécution déjà obtenue quand la lecture du résultat échoue", async () => {
+    const done = execution("a", "succeeded");
+    const clients: SchedulerClients = { submit: vi.fn().mockResolvedValue(done), read: vi.fn(), result: vi.fn().mockRejectedValue(new Error("résultat perdu")), wait: vi.fn(), cancel: vi.fn() };
+    const scheduler = schedule([ready("a")], context, clients, () => undefined);
+    await flush();
+    expect(scheduler.snapshot().get("a")).toMatchObject({ status: "error", execution: { id: "a" } });
+  });
+  it("garde la dernière exécution lue quand le suivi échoue en cours de route", async () => {
+    const clients: SchedulerClients = {
+      submit: vi.fn().mockResolvedValue(execution("a", "queued")), wait: vi.fn().mockResolvedValue(undefined),
+      read: vi.fn().mockResolvedValueOnce(execution("a", "running")).mockRejectedValueOnce(new Error("lecture perdue")), result: vi.fn(), cancel: vi.fn(),
+    };
+    const scheduler = schedule([ready("a")], context, clients, () => undefined);
+    await flush();
+    expect(scheduler.snapshot().get("a")).toMatchObject({ status: "error", execution: { id: "a", state: "running" } });
+  });
+  it("sans exécution obtenue, l'erreur n'en porte pas", async () => {
+    const clients: SchedulerClients = { submit: vi.fn().mockRejectedValue(new Error("panne")), read: vi.fn(), result: vi.fn(), wait: vi.fn(), cancel: vi.fn() };
+    const scheduler = schedule([ready("a")], context, clients, () => undefined);
+    await flush();
+    expect(scheduler.snapshot().get("a")).not.toHaveProperty("execution");
+  });
+});
+
+it("met à jour les tâches sans interrompre celles qui restent, et abandonne celles retirées ou modifiées", async () => {
+  const releases = new Map<string, (run: Execution) => void>();
+  const clients: SchedulerClients = {
+    submit: vi.fn((request: ExecutionInput) => new Promise<Execution>((resolve) => { releases.set(request.connection, resolve); })),
+    read: vi.fn(), result: vi.fn().mockResolvedValue(table(1)), wait: vi.fn(), cancel: vi.fn().mockResolvedValue(undefined),
+  };
+  const scheduler = schedule([ready("a"), ready("b"), ready("c")], context, clients, () => undefined);
+  const modified: ScheduledTile = { id: "c", composed: { status: "ready", input: { ...input, connection: "changed" }, overlaps: [] } };
+  scheduler.update([ready("a"), modified, ready("d")]);
+  expect(vi.mocked(clients.submit).mock.calls.map(([value]) => value.connection)).toEqual(["a", "b", "c", "changed"]);
+  releases.get("b")?.(execution("b", "running"));
+  releases.get("c")?.(execution("c", "succeeded"));
+  await flush();
+  expect(clients.cancel).toHaveBeenCalledWith(expect.objectContaining({ id: "b" }));
+  expect(vi.mocked(clients.submit).mock.calls.map(([value]) => value.connection)).toEqual(["a", "b", "c", "changed", "d"]);
+  releases.get("a")?.(execution("a", "succeeded"));
+  await flush();
+  expect(scheduler.snapshot().get("a")).toMatchObject({ status: "success" });
+  expect(scheduler.snapshot().has("b")).toBe(false);
+  scheduler.cancel();
+  scheduler.update([ready("new")]);
+  expect(scheduler.snapshot().has("new")).toBe(false);
+});
+
+it.each(["cancel", "update"] as const)("annule côté serveur une exécution en cours par %s", async (action) => {
+  const run = execution("active", "running");
+  const clients: SchedulerClients = { submit: vi.fn().mockResolvedValue(run), wait: vi.fn(() => new Promise<void>(() => undefined)), read: vi.fn(), result: vi.fn(), cancel: vi.fn().mockResolvedValue(undefined) };
+  const scheduler = schedule([ready("a")], context, clients, () => undefined);
+  await flush();
+  if (action === "cancel") scheduler.cancel(); else scheduler.update([]);
+  expect(clients.cancel).toHaveBeenCalledExactlyOnceWith(run);
 });

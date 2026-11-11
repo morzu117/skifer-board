@@ -100,8 +100,8 @@ test("navigue depuis l'accueil vers le catalogue d'un espace puis revient par la
   await expect(page.getByRole("navigation", { name: "Fil d'Ariane" })).toContainText("Catalogue Atlas");
   await expect(page.getByRole("navigation", { name: "Fil d'Ariane" }).getByRole("listitem")).toHaveText(["Finance", "Catalogue Atlas"]);
   const navigation = page.getByRole("navigation", { name: "Navigation principale" });
-  // L'espace confirmé dit « Administrateur » : les analyses (plan 18, 18.5a), le catalogue et les membres sont offerts (plan 08, 8.4).
-  await expect(navigation.getByRole("button", { disabled: false })).toHaveText(["Explorer", "Analyses", "Catalogue Atlas", "Espace & connexions"]);
+  // L'espace confirmé dit « Administrateur » : les analyses (plan 18, 18.5a), les dashboards (plan 19, 19.5a), le catalogue et les membres sont offerts (plan 08, 8.4).
+  await expect(navigation.getByRole("button", { disabled: false })).toHaveText(["Explorer", "Analyses", "Dashboards", "Catalogue Atlas", "Espace & connexions"]);
   await expect(navigation.getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "Skifer Board" }).click();
   await expect(page).toHaveURL(/#\/$/);

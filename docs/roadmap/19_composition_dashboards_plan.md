@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 à 19.4 réalisées**, 19.5a à 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 à 19.5a réalisées**, 19.5b et 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -258,3 +258,59 @@ Développée par Codex (gpt-6.1-terra) et relue par Claude Sonnet 5.5, en trois 
 - `pnpm run check:web` : 139 fichiers, 3 510 tests, couverture 100 %, build. Gate relancée sans cache par l'orchestrateur.
 - `check:docs` et `git diff --check` sont au vert.
 - Le relecteur a prouvé la force des tests par 46 mutations sur trois passes. Une seule survit : celle de la dette ci-dessus.
+
+### 19.5a — Liste, création et éditeur
+
+Le développement a commencé chez Claude Sonnet 5.5. Codex (gpt-6.1-terra) l'a relu deux fois, puis l'a terminé comme développeur après une interruption de Sonnet par une limite d'usage. Un Sonnet neuf a fait la relecture finale. À partir du 11 novembre, à la demande du porteur, Codex fait tous les développements et Sonnet relit.
+
+*Écrans (B11).*
+- **Liste.** La liste des dashboards de l'espace sépare « Mes dashboards » et « Partagés », avec les états du §0.2 et les refus fermés.
+- **Création.** Le dialogue « Nouveau dashboard » (`ui/Dialog.tsx`, focus piégé et rendu) crée le document puis ouvre l'éditeur, sur `#/espaces/<espace>/dashboards/<id>`. Une création annulée en cours n'ouvre pas l'éditeur ; si le serveur l'a déjà créée, elle apparaît au prochain rafraîchissement de la liste.
+- **Barre d'outils.** Elle enregistre avec la révision attendue et offre annuler et rétablir par l'historique 19.4. Elle signale les modifications non enregistrées. Un conflit 409 est rendu comme un refus explicite, sans écrasement, et son traitement complet vient en 19.5b.
+- **Palette et canevas.** La palette ajoute section, rangée, colonne, conteneur, texte et séparateur. Le canevas sélectionne, déplace et redimensionne, au pointeur et au clavier. Les raccourcis sont documentés et annoncés en `aria-live`. Un refus est rendu avec sa raison fermée, et toute modification passe par les commandes 19.4.
+- **Propriétés.** Le panneau couvre le titre de section, la largeur de colonne, les blocs de texte et les propriétés du dashboard. Il couvre aussi la présentation B9, avec l'origine de chaque champ et le retrait d'une surcharge ; les types de graphique sont limités à `compatibleCharts`.
+- **Panneau bas.**
+  - Problèmes : chacun mène au nœud, et un problème bloquant empêche l'enregistrement.
+  - Structure : un arbre ARIA, avec `treeitem` et `group`.
+  - Filtres : en lecture seule.
+
+*Garde de sortie (B10).* `shell/useExitGuard.ts` et `guardNavigation` dans `shell/route.ts` couvrent :
+- la navigation interne, les liens, `beforeunload`, le bouton Précédent et l'adresse saisie à la main, avec écoute de `popstate` en capture ;
+- les saisies encore actives, qui comptent comme modifications.
+
+Un clic modifié (Ctrl, Cmd, Maj, bouton du milieu) n'est pas intercepté. *Dette :* un Précédent refusé remplace l'entrée précédente de l'historique du navigateur par l'adresse de l'éditeur.
+
+*Tuiles (B8).* `edition/useTiles.ts` branche le planificateur 19.4 sur les clients d'exécution existants.
+- **Contexte.** Lectures d'analyses, exécutions et décisions sont liées au contexte : espace, identité stable (`identityKey`, émetteur et sujet), environnement et dashboard. Un changement de contexte abandonne tout, efface et relit, et une réponse tardive est ignorée.
+- **Décisions.** Les requêtes composées identiques partagent une soumission et une décision.
+  - DENY et REQUIRE_HUMAN sont gardés, rendus tels quels et jamais resoumis, même après un retrait puis un rétablissement de la tuile. Un succès ne remplace jamais un refus.
+  - Les succès et résultats vides sont gardés par signature et par contexte. Les erreurs ne le sont pas.
+- **Plan.** Un changement de plan garde en vol les travaux inchangés et n'annule que les tuiles retirées ou dont la requête change.
+- **Disponibilité.** Une tuile n'est disponible qu'après la vérification complète des filtres qui la ciblent, par la règle unique `incompatibleTargets` que `dashboardProblems` partage. Une tuile ciblée par un filtre incompatible est indisponible avec la raison `filter_incompatible`. Un composant absent de la dernière réponse serveur, restauré ou nouveau, est jugé sur la lecture de son analyse épinglée.
+- **Actions et affichage.**
+  - Une tuile en cours peut être annulée seule. Une exécution partagée continue tant qu'une autre tuile la demande, et elle n'est annulée côté serveur que lorsque plus aucune tuile ne la demande.
+  - Une tuile annulée, localement ou par le serveur, propose « Relancer ». Une annulation n'est pas une décision : la relance soumet de nouveau la requête, une fois par clic.
+  - Une lecture ou une exécution en erreur peut être réessayée par une action explicite, jamais un refus.
+  - Les tuiles rendent les états du §0.2, le résultat partiel (`explorer/ResultatPartiel.tsx`, libellé adapté) et l'identifiant d'exécution d'une erreur.
+  - Le pied de provenance et le bandeau de refus sont ceux de l'Explorateur, partagés.
+
+*Coque.* Un changement d'identité renouvelle la coque et ses pages : espaces, espace courant, Explorateur, analyses et dashboards. L'entrée Dashboards de la navigation est livrée dans un espace, et les specs `parcours` et `catalogue` sont ajustées en conséquence.
+
+*Tests.*
+- Vitest, Testing Library et Axe dans les deux thèmes.
+- `e2e/dashboards.spec.ts`, avec un serveur simulé `e2e/serveur-dashboards.ts` construit sur les exemples réels de `contracts/dashboards/routes/`. Ce serveur consigne tout appel imprévu, ce qui fait échouer le test.
+- Les parcours couvrent, sur ordinateur et téléphone :
+  - la création et la composition au clavier, l'enregistrement et la réouverture ;
+  - les états et refus de tuiles, et la borne de quatre exécutions observée côté serveur ;
+  - le blocage par un problème, et la garde de sortie (Précédent, adresse saisie, saisie active) ;
+  - le refus partagé, le filtre incompatible et le retrait pendant une exécution ;
+  - l'annulation d'une tuile, le réessai, la création annulée et les clics modifiés ;
+  - l'absence de débordement à 390, 768 et 1 280 px.
+
+*Vérifications.*
+- `pnpm run check:web` : 160 fichiers, 3 777 tests, couverture 100 %, build. Gate relancée sans cache par l'orchestrateur.
+- `pnpm run check:e2e` complet : 705 tests passés et 1 ignoré, lancé seul par l'orchestrateur.
+- `check:docs` et `git diff --check` sont au vert.
+- La relecture finale a prouvé la force des tests par environ 85 mutations, sur quatre passes, jusqu'à son « OK pour commit ». Les mutations survivantes sont des gardes redondantes, sans effet observable.
+
+*Dette relevée.* Le test `App.espace.test` « changer d'analyse relit la fiche », étranger à la tranche, a échoué une fois sous charge, puis passé à chaque nouvel essai. Il est à surveiller comme test intermittent.

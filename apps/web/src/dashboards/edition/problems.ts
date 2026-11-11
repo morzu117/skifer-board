@@ -2,7 +2,7 @@ import { CHART_KINDS, type ChartKind } from "../../analyses/document";
 import type { AnalysisRevision } from "../../analyses/model";
 import { validateExecutionFilters, OPERATORS } from "../../explorer/filters";
 import type { ExplorerModel } from "../../explorer/model";
-import { LIMITS, type DashboardDraft, type ExecutableComponent, type Row } from "../document";
+import { LIMITS, type CommonFilter, type DashboardDraft, type ExecutableComponent, type Row } from "../document";
 import type { Tile } from "../model";
 
 /** Codes fermés des problèmes calculés sans appel au serveur. */
@@ -15,6 +15,42 @@ export type KnownAnalyses = Readonly<Record<string, { pinned: AnalysisRevision; 
 /** Types de graphiques compatibles avec le nombre de dimensions de la requête. */
 export function compatibleCharts(dimensions: number): readonly ChartKind[] {
   return CHART_KINDS.filter((chart) => chart !== "value" || dimensions === 0);
+}
+
+/**
+ * Les cibles d'un filtre commun auxquelles il ne s'applique pas, par rang dans `filter.targets` : dimension absente du modèle de
+ * l'analyse épinglée, opérateur que son type refuse, défaut ou valeurs permises que le modèle rejette, ou type de dimension différent
+ * de celui de la première cible compatible. C'est la règle unique de l'éditeur : elle bloque l'enregistrement (`dashboardProblems`) et
+ * rend indisponible la tuile ciblée (`useTiles`). Une cible dont l'analyse épinglée n'est pas lue ne permet pas de conclure.
+ */
+export function incompatibleTargets(filter: CommonFilter, analyses: KnownAnalyses, catalog: readonly ExplorerModel[]): readonly number[] {
+  const found: number[] = [];
+  let firstType: string | undefined;
+  filter.targets.forEach((target, targetIndex) => {
+    const known = analyses[target];
+    if (!known) return;
+    const query = known.pinned.analysis.query;
+    const model = catalog.find((item) => item.name === query.model);
+    const dimension = model?.dimensions.find((item) => item.name === filter.dimension);
+    let incompatible = dimension === undefined || !OPERATORS[dimension.type].includes(filter.operator);
+    if (model) {
+      const probes = [
+        ...(filter.default === undefined ? [] : [{ column: filter.dimension, operator: filter.operator, value: filter.default }]),
+        ...(filter.allowed ?? []).map((value) => ({ column: filter.dimension, operator: "eq" as const, value })),
+      ];
+      try {
+        probes.forEach((probe) => { validateExecutionFilters([probe], model); });
+      } catch {
+        incompatible = true;
+      }
+    }
+    if (!incompatible && dimension !== undefined) {
+      if (firstType === undefined) firstType = dimension.type;
+      else if (firstType !== dimension.type) incompatible = true;
+    }
+    if (incompatible) found.push(targetIndex);
+  });
+  return found;
 }
 
 /**
@@ -88,31 +124,9 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
     const path = `/filters/${String(index)}`;
     if (filter.targets.length === 0) add("filter_without_target", "blocking", filter.id, `${path}/targets`);
     limit(filter.targets.length, LIMITS.targets, filter.id, `${path}/targets`);
-    let firstType: string | undefined;
-    filter.targets.forEach((target, targetIndex) => {
-      const known = analyses[target];
-      if (!known || catalog === null) return;
-      const query = known.pinned.analysis.query;
-      const model = catalog.find((item) => item.name === query.model);
-      const dimension = model?.dimensions.find((item) => item.name === filter.dimension);
-      let incompatible = dimension === undefined || !OPERATORS[dimension.type].includes(filter.operator);
-      if (model) {
-        const probes = [
-          ...(filter.default === undefined ? [] : [{ column: filter.dimension, operator: filter.operator, value: filter.default }]),
-          ...(filter.allowed ?? []).map((value) => ({ column: filter.dimension, operator: "eq" as const, value })),
-        ];
-        try {
-          probes.forEach((probe) => { validateExecutionFilters([probe], model); });
-        } catch {
-          incompatible = true;
-        }
-      }
-      if (!incompatible && dimension !== undefined) {
-        if (firstType === undefined) firstType = dimension.type;
-        else if (firstType !== dimension.type) incompatible = true;
-      }
-      if (incompatible) add("filter_incompatible", "blocking", filter.id, `${path}/targets/${String(targetIndex)}`);
-    });
+    if (catalog !== null) {
+      for (const targetIndex of incompatibleTargets(filter, analyses, catalog)) add("filter_incompatible", "blocking", filter.id, `${path}/targets/${String(targetIndex)}`);
+    }
   });
   return problems;
 }

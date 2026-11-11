@@ -27,7 +27,7 @@ export const TROISIEME_ID = "8c2f6b10-4d7a-4a35-9e81-3b5c7d9e1f42";
 export const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 export const MOI = etabli.body.identity.subject;
 export const EMETTEUR = etabli.body.identity.issuer;
-const RACINE = "/api/spaces/finance";
+export const RACINE = "/api/spaces/finance";
 
 export type Role = "admin" | "creator" | "reader";
 export type Etat = "ready" | "index_stale" | "unverified" | "unresolved_reference";
@@ -90,7 +90,7 @@ export function entree(id: string, revisions: Brouillon[], extra: Partial<Entree
   return { id, proprietaire: "cora", etat: "ready", nonResolues: [], revisions, droits: AUCUN, derniere: "aucune", ...extra };
 }
 
-const MODELES = [
+export const MODELES = [
   {
     name: "sales", label: "Ventes", description: "Ventes",
     metrics: [{ name: "revenue", label: "Chiffre d'affaires", description: "Montant", aggregation: "sum", additivity: "additive" }],
@@ -106,7 +106,7 @@ const MODELES = [
   },
 ];
 
-const fixe = <T>(valeur: T, uuid = ID): T => JSON.parse(JSON.stringify(valeur).replaceAll("<uuid>", uuid).replaceAll("<commit>", COMMIT)) as T;
+export const fixe = <T>(valeur: T, uuid = ID): T => JSON.parse(JSON.stringify(valeur).replaceAll("<uuid>", uuid).replaceAll("<commit>", COMMIT)) as T;
 
 /** Requête d'une exécution, telle que l'Explorateur la soumet (hors référence d'analyse). */
 export interface Requete {
@@ -217,7 +217,7 @@ export function executionTerminee(requete: Requete, id: string, mode: Mode) {
 
 const requeteDe = (revision: Brouillon): Requete => ({ ...structuredClone(revision.query), environment: "DEV" });
 
-function revisionJson(e: Entree, numero: number) {
+export function revisionJson(e: Entree, numero: number) {
   const brouillonLu = e.revisions[numero - 1] as Brouillon;
   return {
     ...fixe(creer, e.id).body,
