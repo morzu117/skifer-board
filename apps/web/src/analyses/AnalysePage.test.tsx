@@ -500,3 +500,17 @@ it("ouvre et ferme le dialogue d'épinglage depuis la fiche", async () => {
   await userEvent.click(within(dialog).getByRole("button", { name: "Fermer" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+
+it("un refus de suppression résout le nom du dashboard visible sans nommer les autres", async () => {
+  const { route: dashboardRoute } = await import("../dashboards/testing");
+  const example = dashboardRoute("lister");
+  const body = example.body as { dashboards: { id: string; name: string }[] };
+  (body.dashboards[0] as { id: string; name: string }).id = ID;
+  (body.dashboards[0] as { id: string; name: string }).name = "Dashboard lisible";
+  const { fetcher } = open({ [FICHE]: withPermissions(route("lire"), ALL), [`DELETE ${ROOT}/${ID}?expected_revision=1`]: changed(route("refus-analyse-utilisee"), "body.error.others", 1), "GET /api/spaces/finance/dashboards": example });
+  await userEvent.click(await screen.findByRole("button", { name: "Supprimer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Confirmer la suppression" }));
+  expect(await screen.findByRole("link", { name: "Dashboard lisible" })).toHaveAttribute("href", `#/espaces/finance/dashboards/${ID}`);
+  expect(screen.getByText("Autres dépendants que vous ne voyez pas : 1.")).toBeInTheDocument();
+  expect(fetcher.mock.calls.filter(([url]) => url.includes("/dashboards"))).toHaveLength(1);
+});

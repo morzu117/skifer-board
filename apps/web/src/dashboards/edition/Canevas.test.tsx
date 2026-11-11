@@ -138,8 +138,21 @@ describe("déplacement au clavier", () => {
     await waitFor(() => { expect(node("Colonne 1 · 4/12")).toHaveFocus(); });
     node("Section 2").focus();
     await userEvent.keyboard("{Delete}");
+    expect(announce()).toBe("Section 2 supprimée, avec ce qu'elle contenait.");
     expect(screen.getByRole("heading", { name: "Propriétés · Dashboard" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Section 2" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Visuel · Chiffre d'affaires par région", "Visuel · Chiffre d'affaires par région supprimé, avec ce qu'il contenait."],
+    ["KPI · Total", "KPI · Total supprimé, avec ce qu'il contenait."],
+  ])("Suppr annonce au masculin la suppression de %s", async (label, message) => {
+    await ready();
+    const selected = await screen.findByRole("button", { name: label });
+    selected.focus();
+    await userEvent.keyboard("{Delete}");
+    expect(announce()).toBe(message);
+    expect(screen.queryByRole("button", { name: label })).not.toBeInTheDocument();
   });
 
   it("une autre touche n'a aucun effet", async () => {

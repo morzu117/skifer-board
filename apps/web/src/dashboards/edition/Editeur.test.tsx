@@ -61,7 +61,7 @@ describe("édition, annulation et enregistrement", () => {
   it("ajoute une section par la palette, l'annonce, puis annule et rétablit", async () => {
     await ready();
     await add("Ajouter une section");
-    expect(announce()).toBe("Section ajouté : Section 3, position 3 sur 3.");
+    expect(announce()).toBe("Section ajoutée : Section 3, position 3 sur 3.");
     expect(screen.getByText("Modifications non enregistrées")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Section 3" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(toolbar().getByRole("button", { name: "Annuler" }));
@@ -404,7 +404,7 @@ it("après conflit bloque toute nouvelle écriture, lit l'écart et rouvre seule
   const conflict = await screen.findByRole("region", { name: "Conflit de révision" });
   expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
   await userEvent.click(await within(conflict).findByRole("button", { name: "Voir l'écart" }));
-  expect(await within(conflict).findByText(/\/name/)).toBeInTheDocument();
+  expect(await within(conflict).findByRole("rowheader", { name: "/name" })).toBeInTheDocument();
   expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith("/diff?base=1&other=2"))).toHaveLength(1);
   expect(server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.endsWith("/revisions"))).toHaveLength(1);
   await userEvent.click(within(conflict).getByRole("button", { name: "Rouvrir la révision courante" }));

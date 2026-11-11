@@ -27,7 +27,7 @@ export function AjouterAnalyse({ space, fetcher, onClose }: { space: string; fet
         {list.value.unreadable > 0 ? <Banner tone="warning">Certaines analyses n'ont pas pu être lues.</Banner> : null}
         {matches.length === 0 ? <p>Aucune analyse ne correspond à la recherche.</p> : null}
         <ul>{matches.map((one) => <li key={one.id}>
-          <button type="button" className="sb-button" aria-pressed={selected?.id === one.id} onClick={() => { setSelected(one); }}>{one.name} · {one.visibility === "shared" ? "Partagée" : "Personnelle"}</button>
+          <button type="button" className="sb-button sb-analysis-choice" aria-pressed={selected?.id === one.id} onClick={() => { setSelected(one); }}>{one.name} · {one.visibility === "shared" ? "Partagée" : "Personnelle"}</button>
         </li>)}</ul>
       </>}
     {selected === null ? null : <Choix key={selected.id} space={space} fetcher={fetcher} analysis={selected} onClose={onClose} />}

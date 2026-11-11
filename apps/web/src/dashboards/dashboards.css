@@ -17,13 +17,24 @@
 .sb-dashboards__table .sb-dashboards__sub.sb-mono { overflow-wrap: anywhere; }
 .sb-dashboards__table th[scope="row"] { font-weight: 600; color: inherit; }
 .sb-dashboards.sb-theme-skifer-ardoise .sb-card .sb-members__state { color: var(--sb-on-slate-muted); }
+/* Le diff est sur le fond clair de la page, même lorsque les cartes sont en ardoise. */
+.sb-theme-skifer-ardoise .sb-dashboard-diff .sb-table th { color: var(--sb-ink-2); }
+.sb-dashboard-diff .sb-table { min-width: 760px; }
+.sb-dashboard-diff .sb-table caption { text-align: start; }
+.sb-analysis-choice[aria-pressed="true"] { outline: 2px solid var(--sb-copper); outline-offset: 2px; }
+.sb-dashboard-diff .sb-table th, .sb-dashboard-diff .sb-table td { overflow-wrap: normal; word-break: normal; }
+.sb-dashboard-diff .sb-table thead th, .sb-dashboard-diff .sb-table td:nth-child(-n+2) { white-space: nowrap; }
 
 /* « Nouveau dashboard » : le dialogue est clair dans les deux thèmes. */
 .sb-dashboards__nouveau { display: grid; gap: var(--sb-space-5); min-width: 0; }
 .sb-dashboards__nouveau .sb-field textarea { width: 100%; font-family: inherit; font-size: var(--sb-text-table); line-height: inherit; }
 .sb-dashboards__nouveau .sb-field input { width: 100%; }
-.sb-dashboards__visibility { display: grid; gap: var(--sb-space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
+.sb-dashboards__visibility { display: flex; flex-wrap: wrap; gap: var(--sb-space-1) var(--sb-space-4); min-width: 0; margin: 0; padding: 0; border: 0; }
+.sb-dashboards__visibility small { flex-basis: 100%; min-width: 0; }
 .sb-dashboards__choice { display: flex; align-items: center; gap: var(--sb-space-3); min-height: var(--sb-target-min); }
+.sb-dashboards__choice input { flex: 0 0 auto; margin: 0; }
+.sb-filters__summary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sb-space-2) var(--sb-space-4); margin: 0; }
+.sb-filters__summary dd { margin: 0; min-width: 0; }
 .sb-dashboards__buttons { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); }
 
 /* -- Éditeur (plan 19, 19.5a) ---------------------------------------------------------------------------------------------------- */
@@ -99,7 +110,10 @@
 .sb-props__fields { display: grid; gap: var(--sb-space-5); min-width: 0; margin: 0; padding: 0; border: 0; }
 .sb-props__choice { display: grid; gap: var(--sb-space-3); min-width: 0; margin: 0; padding: 0; border: 0; }
 .sb-props__choice legend { padding: 0; font-weight: 600; }
+.sb-props__choice.sb-props__visibility { display: flex; flex-wrap: wrap; }
+.sb-props__visibility small { flex-basis: 100%; min-width: 0; }
 .sb-props__radio { display: flex; align-items: center; gap: var(--sb-space-3); min-height: var(--sb-target-min); }
+.sb-props__radio input { flex: 0 0 auto; margin: 0; }
 .sb-props__origin { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sb-space-3); }
 .sb-props .sb-field textarea { width: 100%; font-family: inherit; font-size: var(--sb-text-table); line-height: inherit; }
 .sb-props .sb-field input, .sb-props .sb-field select { width: 100%; max-width: 100%; }

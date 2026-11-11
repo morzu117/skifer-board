@@ -1,4 +1,5 @@
 import type { Block, Segment, TextComponent } from "../document";
+import { accord, GENDERS } from "../labels";
 import { CommitField } from "./Champs";
 import { useEditor } from "./EditorContext";
 import { findLayoutNode } from "./tree";
@@ -91,7 +92,7 @@ export function BlocksEditor({ id }: { id: string }) {
       </div>
     </fieldset>)}
     <div className="sb-blocks__add" role="group" aria-label="Ajouter un bloc">
-      {NEW_BLOCKS.map((entry) => <button key={entry.label} type="button" className="sb-button" disabled={editor.readOnly} onClick={() => { write([...blocks, entry.make()], `${entry.label} ajouté.`); }}>+ {entry.label}</button>)}
+      {NEW_BLOCKS.map((entry) => <button key={entry.label} type="button" className="sb-button" disabled={editor.readOnly} onClick={() => { write([...blocks, entry.make()], `${entry.label} ${accord("ajouté", GENDERS.block[entry.make().type])}.`); }}>+ {entry.label}</button>)}
     </div>
   </div>;
 }

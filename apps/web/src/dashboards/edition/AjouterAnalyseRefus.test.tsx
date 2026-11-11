@@ -17,7 +17,11 @@ it.each([N.c1, N.s1])("garde le dialogue ouvert si la commande d'insertion est r
   const server = editorServer();
   const close = vi.fn();
   render(<AjouterAnalyse space="finance" fetcher={server.fetcher} onClose={close} />);
-  await userEvent.click(await screen.findByRole("button", { name: /Total · Partagée/ }));
+  const choice = await screen.findByRole("button", { name: /Total · Partagée/ });
+  expect(choice).toHaveClass("sb-analysis-choice");
+  expect(choice).toHaveAttribute("aria-pressed", "false");
+  await userEvent.click(choice);
+  expect(choice).toHaveAttribute("aria-pressed", "true");
   await userEvent.click(await screen.findByRole("button", { name: /^Ajouter$/ }));
   expect(mock.editor.run).toHaveBeenCalledOnce();
   expect(close).not.toHaveBeenCalled();

@@ -318,6 +318,7 @@ export async function servirAnalyses(page: Page, reglages: Reglages): Promise<Se
         return route.fulfill({ contentType: "application/vnd.apache.arrow.stream", body: Buffer.from(resultat(connue.requete).octets) });
       }
     }
+    if (sur("/dashboards") && reconnu("GET", "/dashboards")) return route.fulfill({ json: { dashboards: [], unreadable: 0 } });
     if (sur("/analyses") && reconnu("GET", "/analyses")) {
       const visibles = [...entrees.values()].filter((e) => e.proprietaire === MOI || (e.revisions.at(-1) as Brouillon).visibility === "shared");
       return route.fulfill({ json: {

@@ -1,4 +1,4 @@
-import { KIND_LABELS } from "../labels";
+import { accord, GENDERS, KIND_LABELS } from "../labels";
 import { useEditor } from "./EditorContext";
 import { ADDABLE, additionPlace, placed, type Addable } from "./placement";
 
@@ -22,7 +22,7 @@ export function Palette({ onAddAnalysis }: { onAddAnalysis: () => void }) {
     const id = crypto.randomUUID();
     editor.run(
       { type: "add", kind, parent: where.parent, index: where.index, ...(where.span === undefined ? {} : { value: { span: where.span } }) },
-      (tree) => `${KIND_LABELS[kind]} ajouté : ${placed(tree, id)}.`,
+      (tree) => `${KIND_LABELS[kind]} ${accord("ajouté", GENDERS.kind[kind])} : ${placed(tree, id)}.`,
       { select: id, id },
     );
   };

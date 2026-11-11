@@ -1,7 +1,7 @@
 import type { StateLabel } from "../analyses/labels";
 import type { ListState, ReadState } from "../analyses/model";
 import type { ChartKind, Visibility } from "../analyses/document";
-import type { Legend, NumberFormat, Tooltip } from "./document";
+import type { Block, Legend, NumberFormat, Tooltip, VisualPresentation } from "./document";
 import type { Refusal as EditRefusal, Kind, Origin } from "./edition/commands";
 import type { ExecutionRefusal } from "./edition/execution";
 import type { ProblemCode } from "./edition/problems";
@@ -41,6 +41,12 @@ export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
 export const KIND_LABELS: Readonly<Record<Kind, string>> = {
   section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur",
 };
+export const GENDERS = {
+  kind: { section: "f", row: "f", column: "f", container: "m", analysis: "m", kpi: "m", text: "m", separator: "m" } satisfies Record<Kind, "f" | "m">,
+  presentation: { title: "m", chart: "m", legend: "f", number_format: "m", threshold: "m", tooltip: "f" } satisfies Record<keyof VisualPresentation, "f" | "m">,
+  block: { paragraph: "m", heading: "m", list: "f" } satisfies Record<Block["type"], "f" | "m">,
+} as const;
+export const accord = (word: string, gender: "f" | "m"): string => `${word}${gender === "f" ? "e" : ""}`;
 
 /** Refus fermés du modèle d'édition, tels qu'une commande les rend. */
 export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {

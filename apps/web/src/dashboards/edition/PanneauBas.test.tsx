@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -8,6 +8,7 @@ import { decodeSpace } from "../../spaces/model";
 import espace from "../../../../../contracts/espaces/espace.json";
 import { ID } from "../../analyses/testing";
 import { ANALYSES, N, openEditor, ROOT, sampleDraft, uuid } from "./testing";
+import { Cibles } from "./PanneauBas";
 
 const ready = async (options: Parameters<typeof openEditor>[0] = {}) => {
   const view = openEditor(options);
@@ -19,6 +20,11 @@ const tab = (name: RegExp) => screen.getByRole("tab", { name });
 const withFilters = (filters: object[], base: object = sampleDraft()) => decodeDashboardDraft({ ...base, filters });
 const item = (name: string) => screen.getAllByRole("treeitem", { name })[0] as HTMLElement;
 const press = (name: string, key: string) => { const node = item(name); node.focus(); fireEvent.keyDown(node, { key }); };
+
+it("un résumé sans cible le dit explicitement", () => {
+  render(<Cibles targets={[]} tree={[]} reveal={() => undefined} />);
+  expect(screen.getByText("Aucune")).toBeInTheDocument();
+});
 
 describe("onglets", () => {
   it("annoncent leur compte, se parcourent au clavier en boucle et ne gardent que leur panneau", async () => {
@@ -168,14 +174,16 @@ describe("filtres", () => {
   it("liste, en lecture seule, chaque filtre avec ses valeurs et ses cibles, qui mènent au nœud", async () => {
     const draft = withFilters([
       { id: N.filter, label: "Région", dimension: "region", operator: "eq", default: "Nord", targets: [N.visual] },
-      { id: uuid(31), label: "Zones", dimension: "region", operator: "in", default: ["Nord"], allowed: ["Nord", "Sud"], targets: [N.visual] },
+      { id: uuid(31), label: "Zones", dimension: "region", operator: "in", allowed: ["Nord", "Sud"], targets: [N.visual] },
     ]);
     await ready({ draft });
     await userEvent.click(tab(/^Filtres/));
     expect(screen.getByRole("button", { name: "Nouveau filtre" })).toBeInTheDocument();
     const rows = within(panel()).getAllByRole("listitem").filter((one) => one.classList.contains("sb-filters__item"));
-    expect(rows[0]).toHaveTextContent("Région · dimension region · égal à · défaut Nord");
-    expect(rows[1]).toHaveTextContent("Zones · dimension region · parmi · défaut Nord · valeurs permises Nord, Sud");
+    expect(within(rows[0] as HTMLElement).getByText("Dimension").nextElementSibling).toHaveTextContent("region");
+    expect(within(rows[0] as HTMLElement).getByText("Opérateur").nextElementSibling?.textContent).toBe("égal à");
+    expect(within(rows[1] as HTMLElement).getByText("Valeur par défaut").nextElementSibling).toHaveTextContent("Aucune");
+    expect(within(rows[1] as HTMLElement).getByText("Valeurs permises").nextElementSibling).toHaveTextContent("Nord, Sud");
     await userEvent.click(within(rows[0] as HTMLElement).getByRole("button", { name: "Visuel · Chiffre d'affaires par région" }));
     expect(screen.getByRole("heading", { name: /^Propriétés · Visuel/ })).toBeInTheDocument();
   });

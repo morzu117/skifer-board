@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { executables, type Column, type ExecutableComponent, type LayoutNode, type Row, type Section } from "../document";
+import { accord, GENDERS } from "../labels";
 import { BlocksView } from "./Blocs";
 import { handleDomId, nodeDomId, useEditor } from "./EditorContext";
 import { RevisionAnalyse } from "./RevisionAnalyse";
@@ -70,7 +71,7 @@ export function Canevas() {
       resize(node, (node.span as number) + (event.key === "ArrowLeft" ? -1 : 1), nodeDomId(node.id));
     } else if (event.key === "Delete" && !event.altKey) {
       event.preventDefault();
-      editor.run({ type: "delete", id: node.id }, `${node.label} supprimé, avec ce qu'il contenait.`, { select: node.parent, ...(node.parent === null ? {} : { focus: nodeDomId(node.parent) }) });
+      editor.run({ type: "delete", id: node.id }, `${node.label} ${accord("supprimé", GENDERS.kind[node.kind])}, avec ce qu'${GENDERS.kind[node.kind] === "f" ? "elle" : "il"} contenait.`, { select: node.parent, ...(node.parent === null ? {} : { focus: nodeDomId(node.parent) }) });
     }
   };
 

@@ -13,6 +13,7 @@ import type { DashboardChange } from "./model";
 import "./dashboards.css";
 
 const NATURE: Readonly<Record<DashboardChange["kind"], string>> = { added: "Ajouté", removed: "Retiré", modified: "Modifié", moved: "Déplacé" };
+const coupures = (value: string) => value.split(/([/,:])/).map((part, index) => <span key={index}>{part}{/[/,:]/.test(part) ? <wbr /> : null}</span>);
 
 /** L'écart vient de la route et du décodeur : aucun calcul de différence dans l'écran. */
 export function DashboardDiffView({ space, id, base, other, fetcher }: { space: string; id: string; base: number; other: number; fetcher: Fetch }) {
@@ -20,12 +21,12 @@ export function DashboardDiffView({ space, id, base, other, fetcher }: { space: 
   if (diff.status === "loading") return <Reading>Lecture de l'écart…</Reading>;
   if (diff.status !== "ok") return <Unavailable outcome={diff} title="Écart indisponible" local="Écart indisponible en mode local." />;
   if (diff.value.changes.length === 0) return <p>Aucune différence structurelle.</p>;
-  return <div className="sb-table-wrap" role="group" aria-label={`Écart entre r${String(base)} et r${String(other)}`} tabIndex={0}>
+  return <div className="sb-table-wrap sb-dashboard-diff" role="group" aria-label={`Écart entre r${String(base)} et r${String(other)}`} tabIndex={0}>
     <table className="sb-table"><caption>Écart entre r{base} et r{other}</caption>
       <thead><tr><th scope="col">Nature</th><th scope="col">Nœud</th><th scope="col">Chemin</th><th scope="col">Avant</th><th scope="col">Après</th></tr></thead>
       <tbody>{diff.value.changes.map((change, index) => <tr key={`${change.path}:${change.kind}:${String(index)}`}>
-        <td>{NATURE[change.kind]}</td><td>{change.node}{change.id === null ? "" : ` · ${change.id}`}</td><th scope="row">{change.path}</th>
-        <td>{change.before === null ? "—" : JSON.stringify(change.before)}</td><td>{change.after === null ? "—" : JSON.stringify(change.after)}</td>
+        <td>{NATURE[change.kind]}</td><td>{change.node}{change.id === null ? "" : ` · ${change.id}`}</td><th scope="row">{coupures(change.path)}</th>
+        <td>{change.before === null ? "—" : coupures(JSON.stringify(change.before))}</td><td>{change.after === null ? "—" : coupures(JSON.stringify(change.after))}</td>
       </tr>)}</tbody>
     </table>
   </div>;

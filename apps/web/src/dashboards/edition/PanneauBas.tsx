@@ -155,16 +155,22 @@ function Filters() {
       {filters.map((filter) => <li key={filter.id} id={filterDomId(filter.id)} tabIndex={-1} className="sb-filters__item">
         <button type="button" className="sb-problems__link" onClick={() => { editor.select(filter.id); }}>Propriétés · {filter.label}</button>
         <strong>{filter.label}</strong>
-        <span> · dimension <span className="sb-mono">{filter.dimension}</span> · {OPERATOR_LABELS[filter.operator]}</span>
-        {filter.default === undefined ? null : <span> · défaut {text(Array.isArray(filter.default) ? filter.default : [filter.default as string | number | boolean])}</span>}
-        {filter.allowed === undefined ? null : <span> · valeurs permises {text(filter.allowed)}</span>}
+        <dl className="sb-filters__summary">
+          <dt>Dimension</dt><dd className="sb-mono">{filter.dimension}</dd>
+          <dt>Opérateur</dt><dd>{OPERATOR_LABELS[filter.operator]}</dd>
+          <dt>Valeur par défaut</dt><dd>{filter.default === undefined ? "Aucune" : text(Array.isArray(filter.default) ? filter.default : [filter.default as string | number | boolean])}</dd>
+          {filter.allowed === undefined ? null : <><dt>Valeurs permises</dt><dd>{text(filter.allowed)}</dd></>}
+          <dt>Cibles</dt><dd><Cibles targets={filter.targets} tree={editor.tree} reveal={editor.reveal} /></dd>
+        </dl>
         <ValeurFiltre filter={filter} />
-        <span> · cibles :</span>
-        <ul className="sb-filters__targets">{filter.targets.map((target) => <li key={target}>
-          <button type="button" className="sb-problems__link" onClick={() => { editor.reveal(target); }}>{(findNode(editor.tree, target) as TreeNode).label}</button>
-        </li>)}</ul>
       </li>)}
     </ul>
   </>;
+}
+
+export function Cibles({ targets, tree, reveal }: { targets: readonly string[]; tree: readonly TreeNode[]; reveal: (id: string) => void }) {
+  return targets.length === 0 ? <>Aucune</> : <ul className="sb-filters__targets">{targets.map((target) => <li key={target}>
+    <button type="button" className="sb-problems__link" onClick={() => { reveal(target); }}>{(findNode(tree, target) as TreeNode).label}</button>
+  </li>)}</ul>;
 }
 

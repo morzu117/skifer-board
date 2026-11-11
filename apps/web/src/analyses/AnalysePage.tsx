@@ -194,7 +194,7 @@ function Actions({ space, found, current, fetcher, onReload, onDeleted }: { spac
       <Banner tone="danger" action={failure.status === "refused" && failure.code === "revision_conflict" ? <button type="button" className="sb-button" onClick={onReload}>Relire l'analyse</button> : undefined}>
         {failure.status === "refused" ? (failure.code === "analysis_in_use" ? refusalText(failure) : analysisRefusalText(failure)) : `Action non confirmée : ${failure.message}`}
       </Banner>
-      {failure.status === "refused" && failure.code === "analysis_in_use" && failure.consumers !== undefined ? <ListeConsommateurs space={space.id} consumers={failure.consumers} others={failure.others as number} /> : null}
+      {failure.status === "refused" && failure.code === "analysis_in_use" && failure.consumers !== undefined ? <ListeConsommateurs space={space.id} consumers={failure.consumers} others={failure.others as number} fetcher={fetcher} /> : null}
     </div>}
   </div>;
 }

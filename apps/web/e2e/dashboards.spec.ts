@@ -91,13 +91,13 @@ test("créer depuis la liste, composer deux sections au clavier, annuler, rétab
   expect(serveur.journal.creations).toEqual([{ name: "Pilotage commercial", description: "Suivi des ventes.", visibility: "shared", defaults: {}, filters: [], layout: { sections: [] } }]);
   // Composition : une section, sa rangée, sa colonne et un texte, puis une seconde section.
   await ajouter(page, "Ajouter une section");
-  await expect(annonce(page)).toHaveText("Section ajouté : Section 1, position 1 sur 1.");
+  await expect(annonce(page)).toHaveText("Section ajoutée : Section 1, position 1 sur 1.");
   await ajouter(page, "Ajouter une rangée");
   await ajouter(page, "Ajouter une colonne");
   await ajouter(page, "Ajouter un texte");
   await expect(annonce(page)).toHaveText("Texte ajouté : Texte, position 1 sur 1, dans Colonne 1 · 12/12.");
   await ajouter(page, "Ajouter une section");
-  await expect(annonce(page)).toHaveText("Section ajouté : Section 2, position 2 sur 2.");
+  await expect(annonce(page)).toHaveText("Section ajoutée : Section 2, position 2 sur 2.");
   await expect(page.getByText("Modifications non enregistrées")).toBeVisible();
   // Titre de la seconde section, validé en quittant le champ.
   await expect(page.getByRole("heading", { name: "Propriétés · Section 2" })).toBeVisible();
@@ -827,13 +827,13 @@ test("consommateurs visibles et masqués : suppression refusée puis acceptée a
   await aller(page, `analyses/${ANALYSE}`);
   await page.getByRole("tab", { name: "Consommateurs" }).click();
   const panel = page.getByRole("tabpanel", { name: "Consommateurs" });
-  await expect(panel.getByRole("link", { name: `Dashboard ${DASHBOARD_ID}` })).toBeVisible();
+  await expect(panel.getByRole("link", { name: "Visible" })).toBeVisible();
   await expect(panel).toContainText("Autres dépendants que vous ne voyez pas : 1");
   await expect(panel).not.toContainText(AUTRE_DASHBOARD_ID);
   await page.getByRole("button", { name: "Supprimer", exact: true }).click();
   await page.getByRole("button", { name: "Confirmer la suppression" }).click();
   await expect(page.getByRole("alert")).toContainText("Cette analyse est encore utilisée");
-  await expect(page.getByRole("link", { name: `Dashboard ${DASHBOARD_ID}` }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Visible" }).first()).toBeVisible();
   await aller(page, `dashboards/${DASHBOARD_ID}`);
   await noeud(page, /Visuel/).focus();
   await page.keyboard.press("Delete");

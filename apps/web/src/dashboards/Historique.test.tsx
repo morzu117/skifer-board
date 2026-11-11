@@ -26,8 +26,10 @@ it("liste les révisions lisibles et masquées, puis affiche l'écart du serveur
   await screen.findByRole("button", { name: "Comparer" });
   await userEvent.click(screen.getByRole("button", { name: "Comparer" }));
   const table = await screen.findByRole("table", { name: "Écart entre r1 et r2" });
+  expect(table.closest(".sb-dashboard-diff")).not.toBeNull();
   for (const nature of ["Ajouté", "Retiré", "Modifié", "Déplacé"]) expect(within(table).getAllByText(nature).length).toBeGreaterThan(0);
-  expect(within(table).getByText("/name")).toBeInTheDocument();
+  expect(within(table).getByRole("rowheader", { name: "/name" })).toBeInTheDocument();
+  expect(within(table).getByRole("rowheader", { name: "/name" }).querySelector("wbr")).not.toBeNull();
   expect(server.mock.calls.filter(([url]) => url === diffUrl)).toHaveLength(1);
   await expectAccessible(view.container);
 });

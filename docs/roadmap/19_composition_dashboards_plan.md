@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 à 19.5b réalisées**, 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 à 19.5c réalisées** ; gates web, docs et suite navigateur complète au vert. Le lot 07 n'est pas déclaré livré : thèmes, modèles de page et composants approuvés viennent au plan 20 (lot 07b). Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -382,3 +382,58 @@ Développé par Codex (gpt-6.1-terra) en cinq sous-étapes, à la demande du por
   - la saisie en cours qui réarme la garde après une copie ;
   - des valeurs autorisées réduites à des espaces ;
   - la règle CSS qui masque l'éditeur pendant l'aperçu. Celle-ci est gardée par le parcours Playwright.
+
+### 19.5c — Parcours d'acceptation et captures
+
+Développé par Codex (gpt-6.1-terra). L'orchestrateur a relu les 44 captures, ce qui a fait corriger des défauts d'écran. Claude Sonnet 5.5 a ensuite fait une revue, puis une contre-revue. Cette tranche ne touche que le web : aucune route ni migration.
+
+*Parcours d'acceptation (§4).* La spec `apps/web/e2e/dashboards-acceptation.spec.ts` tourne sur ordinateur et téléphone, avec le simulateur `e2e/serveur-dashboards.ts`. Un appel imprévu y fait échouer le test. Chaque titre de test reprend une phrase du §4 :
+- **Composition.** Un créateur compose deux sections avec trois analyses partagées, un KPI et un texte, et ajoute un filtre commun à cibles explicites. Il enregistre (`expected_revision` 1), puis crée une révision (`expected_revision` 2).
+  - Chaque étape est annulée puis rétablie. À chaque pas, le parcours compare la structure, le type de chaque composant et le nombre de filtres.
+  - L'aperçu responsive est vérifié à 1 280, 768 et 390 px : absence de débordement, empilement et forme étroite.
+  - Chaque tuile porte sa provenance (preuve, empreinte SQL, certification, âge). La requête soumise ne contient que la référence et les filtres composés, pour l'identité affichée.
+  - Chaque corps de dashboard envoyé est inspecté : ni SQL, ni requête, ni métriques ou dimensions d'analyse.
+- **Refus et références indisponibles.** DENY et REQUIRE_HUMAN sont rendus tels quels, sans resoumission. Une analyse invisible ou disparue est signalée sans aucune exécution. Deux mises en page utilisent les mêmes analyses.
+- **Présentation.** Changer le titre, le type de graphique ou le seuil sémantique laisse les valeurs inchangées. Aucune soumission supplémentaire n'a lieu, et la requête est identique octet pour octet après rechargement.
+- **Suppression et références personnelles.** La suppression d'une analyse utilisée est refusée avec ses consommateurs : les noms des dashboards visibles, et un simple décompte pour les autres. Un dashboard partagé qui référence une analyse personnelle reçoit le refus `personal_reference`.
+- **Concurrence et historique.** Deux contextes enregistrent en même temps. Le second reçoit un 409, et la révision du premier reste intacte. La réouverture passe par une confirmation. L'historique et le diff sont relus par leurs routes.
+- **Index.** La reconstruction de l'index depuis le dépôt est une propriété du serveur. Elle est prouvée par `apps/api/tests/content/test_reindex_dashboards.py::test_reconstruire_les_deux_genres_depuis_rien`, qui reconstruit les deux genres depuis des index vides.
+
+*Captures (B11).* Onze écrans, en Skifer clair et en Skifer ardoise, sur les deux projets, soit 44 images pleine page dans `apps/web/e2e/__screenshots__/dashboards-acceptation.spec.ts/`. Chaque état passe Axe avant sa capture. Les écrans :
+- la liste, et le dialogue « Nouveau dashboard » ;
+- l'éditeur avec une tuile sélectionnée ;
+- « Ajouter une analyse », avec une analyse sélectionnée, son aperçu et une révision non courante ;
+- les filtres communs ;
+- le conflit ;
+- l'historique et son diff ;
+- l'aperçu lecteur, et l'aperçu au téléphone ;
+- l'épinglage depuis la fiche ;
+- l'onglet Consommateurs.
+
+L'horloge est figée, les identifiants sont déterministes, et chaque état attend un état observable. L'état « conflit » est isolé. La spec a passé deux fois de suite à l'identique. Aucune capture d'une autre spec n'a changé.
+
+*Défauts d'écran corrigés, chacun avec son test.*
+- **Diff.** Il manquait de contraste en thème ardoise. Au téléphone, ses mots se coupaient lettre par lettre : le tableau défile désormais dans son conteneur, sans couper les mots, et sa légende reste visible.
+- **Annonces.** Elles sont accordées en genre, depuis une seule table de `labels.ts`.
+- **Résumé d'un filtre.** C'est une liste de définitions (dimension, opérateur, valeur par défaut, cibles).
+- **Propriétés.** Les libellés « Aucun défaut (thème ou analyse) » ne sont plus tronqués, et les choix « Personnel » et « Partagé » sont rapprochés.
+- **Ajout d'analyse.** L'analyse sélectionnée a un contour en plus d'`aria-pressed`.
+- **Consommateurs.** Les dashboards visibles sont nommés par la liste des dashboards de l'espace, avec l'identifiant en repli. Aucune lecture n'a lieu pour les invisibles, et un changement d'espace ou une réponse tardive ne mélange pas les noms. Cela vaut aussi après le refus `analysis_in_use`.
+
+*Vérifications.*
+- `pnpm run check:web` : 169 fichiers, 3 882 tests, couverture 100 %, build. La gate a été relancée sans cache par l'orchestrateur.
+- `pnpm run check:e2e` complet : 745 tests passés et 1 ignoré. La suite a été lancée seule par l'orchestrateur.
+- `check:docs` et `git diff --check` sont au vert.
+
+*Relecture.* La revue Sonnet a fait :
+- rendre visibles la légende du diff au téléphone et l'analyse sélectionnée ;
+- protéger par des tests les règles CSS de lisibilité ;
+- vérifier le repli sur l'identifiant après la réponse, et le changement d'espace des noms de consommateurs ;
+- centraliser le genre des annonces ;
+- vérifier chaque étape d'annulation et de rétablissement, la révision intacte du premier contexte, ainsi que l'empilement et la forme étroite aux trois largeurs.
+
+La contre-revue a fait resserrer quatre assertions unitaires. Toutes les mutations survivantes de la première revue sont tuées.
+
+*Dette relevée.*
+- Le comptage des exécutions du parcours « présentation » (`expect.poll`) ne prouve pas l'absence d'une soumission tardive. C'est la comparaison octet pour octet après rechargement qui porte la preuve.
+- Pendant le développement, `src/prototype/PrototypePage.a11y.test.tsx` a dépassé son délai de 5 s une fois, sous la charge d'une suite e2e parallèle, puis il est passé à la relance. Il rejoint les tests intermittents à surveiller, avec ceux de 19.5a et 19.5b.

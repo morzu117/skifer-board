@@ -4,7 +4,7 @@ import { VISIBILITIES, type Visibility } from "../../analyses/document";
 import { Badge } from "../../ui/Badge";
 import { Banner } from "../../ui/Banner";
 import { LEGENDS, NUMBER_FORMATS, TOOLTIPS, type Defaults, type ExecutableComponent, type Section, type Threshold } from "../document";
-import { CHART_LABELS, KIND_LABELS, LEGEND_LABELS, NUMBER_FORMAT_LABELS, ORIGIN_LABELS, TOOLTIP_LABELS, VISIBILITY_LABELS } from "../labels";
+import { accord, CHART_LABELS, KIND_LABELS, LEGEND_LABELS, NUMBER_FORMAT_LABELS, ORIGIN_LABELS, GENDERS, TOOLTIP_LABELS, VISIBILITY_LABELS } from "../labels";
 import { BlocksEditor } from "./Blocs";
 import { Choice, CommitField } from "./Champs";
 import type { Origin } from "./commands";
@@ -44,14 +44,14 @@ function DashboardFields() {
   const preference = <K extends keyof Defaults, V extends NonNullable<Defaults[K]>>(key: K, label: string, values: readonly V[], labels: Readonly<Record<V, string>>) => <Choice
     label={label}
     value={(document.defaults[key] ?? "") as V | ""}
-    options={[{ value: "", label: "Aucun défaut : valeur du thème ou de l'analyse" }, ...values.map((value) => ({ value, label: labels[value] }))]}
+    options={[{ value: "", label: "Aucun défaut (thème ou analyse)" }, ...values.map((value) => ({ value, label: labels[value] }))]}
     disabled={editor.readOnly}
-    onChange={(value) => { set("defaults", value === "" ? withoutKey(document.defaults, key) : { ...document.defaults, [key]: value }, `${label} par défaut ${value === "" ? "retiré" : "modifié"}.`); }}
+    onChange={(value) => { set("defaults", value === "" ? withoutKey(document.defaults, key) : { ...document.defaults, [key]: value }, `${label} par défaut ${accord(value === "" ? "retiré" : "modifié", GENDERS.presentation[key])}.`); }}
   />;
   return <>
     <CommitField label="Nom du dashboard" value={document.name} maxLength={120} onCommit={(text) => { set("name", text, "Nom modifié."); }} />
     <CommitField label="Description" value={document.description} multiline maxLength={2000} onCommit={(text) => { set("description", text, "Description modifiée."); }} />
-    <fieldset className="sb-props__choice"><legend>Visibilité</legend>
+    <fieldset className="sb-props__choice sb-props__visibility"><legend>Visibilité</legend>
       {VISIBILITIES.map((item) => <label key={item} className="sb-props__radio"><input type="radio" name="visibilite-edition" value={item} checked={document.visibility === item} onChange={() => { set("visibility", item satisfies Visibility, `Visibilité : ${VISIBILITY_LABELS[item]}.`); }} /> {VISIBILITY_LABELS[item]}</label>)}
       <small className="sb-field__hint">Un dashboard partagé ne peut épingler que des analyses partagées : le serveur refuse l'enregistrement sinon.</small>
     </fieldset>
@@ -121,7 +121,7 @@ function PresentationFields({ component }: { component: ExecutableComponent }) {
   const dimensions = pinned.analysis.query.dimensions.length;
   const presentation = component.presentation;
   const write = (next: typeof presentation, done: string): void => { editor.run({ type: "update", id: component.id, property: "presentation", value: next }, done); };
-  const set = (field: Parameters<typeof withField>[1], value: unknown, label: string): void => { write(withField(presentation, field, value), `${label} modifié.`); };
+  const set = (field: Parameters<typeof withField>[1], value: unknown, label: string): void => { write(withField(presentation, field, value), `${label} ${accord("modifié", GENDERS.presentation[field])}.`); };
   const remove = (field: Parameters<typeof withField>[1], label: string): void => { write(withoutField(presentation, field), `Surcharge retirée : ${label}.`); };
   const { fields } = found;
   const chart = found.type === "analysis" ? found.fields.chart : undefined;

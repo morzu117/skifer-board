@@ -25,20 +25,24 @@ describe("palette", () => {
   it("une section se pose après la branche sélectionnée, ou en queue sans sélection", async () => {
     await ready();
     await add("Ajouter une section");
-    expect(announce()).toBe("Section ajouté : Section 3, position 3 sur 3.");
+    expect(announce()).toBe("Section ajoutée : Section 3, position 3 sur 3.");
     await select("Colonne 1 · 4/12");
     await add("Ajouter une section");
     expect(screen.getAllByRole("button", { name: /^Section \d/ }).map((button) => button.textContent)).toEqual(["Section 1 · Ventes", "Section 2", "Section 3", "Section 4"]);
-    expect(announce()).toBe("Section ajouté : Section 2, position 2 sur 4.");
+    expect(announce()).toBe("Section ajoutée : Section 2, position 2 sur 4.");
   });
 
   it("une rangée, une colonne, un texte, un séparateur et un conteneur se posent dans le plus proche parent qui les accueille", async () => {
     await ready();
     await select("Section 2");
     await add("Ajouter une rangée");
-    expect(announce()).toBe("Rangée ajouté : Rangée 1, position 1 sur 1, dans Section 2.");
+    expect(announce()).toBe("Rangée ajoutée : Rangée 1, position 1 sur 1, dans Section 2.");
     await add("Ajouter une colonne");
-    expect(announce()).toBe("Colonne ajouté : Colonne 1 · 12/12, position 1 sur 1, dans Rangée 1.");
+    expect(announce()).toBe("Colonne ajoutée : Colonne 1 · 12/12, position 1 sur 1, dans Rangée 1.");
+    await add("Ajouter un conteneur");
+    expect(announce()).toMatch(/^Conteneur ajouté :/);
+    await userEvent.keyboard("{Control>}z{/Control}");
+    await userEvent.click(screen.getAllByRole("button", { name: "Colonne 1 · 12/12" }).at(-1) as HTMLElement);
     await add("Ajouter un texte");
     expect(announce()).toMatch(/^Texte ajouté : Texte, position 1 sur 1, dans Colonne 1 · 12\/12\.$/);
     await add("Ajouter un séparateur");
@@ -69,7 +73,7 @@ describe("palette", () => {
     await add("Ajouter une rangée");
     expect(refusal()).toBe("Sélectionnez d'abord une section ou un conteneur pour y ajouter une rangée.");
     await add("Ajouter une section");
-    expect(announce()).toBe("Section ajouté : Section 1, position 1 sur 1.");
+    expect(announce()).toBe("Section ajoutée : Section 1, position 1 sur 1.");
     expect(N.s1).toBeDefined();
   });
 

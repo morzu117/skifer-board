@@ -69,13 +69,15 @@ describe("propriétés du dashboard", () => {
 
   it("les valeurs par défaut se posent et se retirent, sans clé vide", async () => {
     await ready();
+    for (const name of ["Légende", "Format des nombres", "Infobulle"]) expect(within(combo(name)).getByRole("option", { name: "Aucun défaut (thème ou analyse)" })).toBeInTheDocument();
     await userEvent.selectOptions(combo("Légende"), "hidden");
-    expect(announce()).toBe("Légende par défaut modifié.");
+    expect(announce()).toBe("Légende par défaut modifiée.");
     await userEvent.selectOptions(combo("Format des nombres"), "percent");
     await userEvent.selectOptions(combo("Infobulle"), "value_and_definition");
+    expect(announce()).toBe("Infobulle par défaut modifiée.");
     expect(combo("Légende")).toHaveValue("hidden");
     await userEvent.selectOptions(combo("Légende"), "");
-    expect(announce()).toBe("Légende par défaut retiré.");
+    expect(announce()).toBe("Légende par défaut retirée.");
     expect(combo("Légende")).toHaveValue("");
     expect(combo("Format des nombres")).toHaveValue("percent");
   });
@@ -161,6 +163,7 @@ describe("présentation d'un visuel (B9)", () => {
     await userEvent.selectOptions(combo("Légende"), "hidden");
     await userEvent.selectOptions(combo("Format des nombres"), "decimal_2");
     await userEvent.selectOptions(combo("Infobulle"), "value_and_definition");
+    expect(announce()).toBe("Infobulle modifiée.");
     await userEvent.clear(field("Titre"));
     await userEvent.type(field("Titre"), "Mon titre");
     await userEvent.tab();
@@ -251,8 +254,11 @@ describe("texte", () => {
     await open([]);
     expect(screen.getByText("Ce texte n'a aucun bloc.")).toBeInTheDocument();
     expect(screen.getByText("Texte vide : ajoutez des blocs dans les propriétés.")).toBeInTheDocument();
-    for (const name of ["Paragraphe", "Intertitre 1", "Intertitre 2", "Liste à puces", "Liste numérotée"]) await userEvent.click(screen.getByRole("button", { name: `+ ${name}` }));
-    expect(announce()).toBe("Liste numérotée ajouté.");
+    for (const [name, message] of [["Paragraphe", "Paragraphe ajouté."], ["Intertitre 1", "Intertitre 1 ajouté."], ["Intertitre 2", "Intertitre 2 ajouté."], ["Liste à puces", "Liste à puces ajoutée."], ["Liste numérotée", "Liste numérotée ajoutée."]] as const) {
+      await userEvent.click(screen.getByRole("button", { name: `+ ${name}` }));
+      expect(announce()).toBe(message);
+    }
+    expect(announce()).toBe("Liste numérotée ajoutée.");
     expect(document.querySelectorAll(".sb-text > *")).toHaveLength(5);
     expect(document.querySelector(".sb-text__heading--1")?.textContent).toContain("Intertitre de niveau 1 : Nouveau texte");
     expect(document.querySelector(".sb-text__heading--2")).not.toBeNull();
