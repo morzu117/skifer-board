@@ -1,19 +1,25 @@
-"""Dépôt de contenus git : adaptateur unique et révisions des analyses (plan 18, A1 et A3).
+"""Dépôt de contenus git : adaptateur unique et révisions des analyses et des dashboards.
+
+Plan 18 (A1 et A3) pour l'adaptateur et les analyses, plan 19 (B1) pour les genres de contenu.
 
 Ce module est la seule frontière de Board vers git. Il lance `git` sans shell, avec une
 liste d'arguments fixe, un environnement reconstruit (ni configuration globale ou système,
 ni hook, ni invite, ni variable `GIT_*` héritée) et un délai. Aucune valeur extérieure ne
-devient un argument : les chemins sont construits ici à partir de deux UUID de forme vérifiée,
-les empreintes viennent de git et sont revérifiées. Il ne pousse vers aucun dépôt distant.
+devient un argument : les chemins sont construits ici à partir d'un genre fermé et de deux
+identifiants de forme vérifiée, les empreintes viennent de git et sont revérifiées. Il ne pousse
+vers aucun dépôt distant.
 
 Le dépôt (`SKIFER_BOARD_CONTENT_REPOSITORY`) est un dépôt nu (`git init --bare`) dédié à Board
 et provisionné par l'exploitant, qui en lit le contenu par un clone. Sans arbre de travail ni
 index réel, Board n'a rien à synchroniser, rien à écraser et rien à nettoyer : il n'écrit que
 des objets, des références et son verrou. Une révision est un commit sur la branche courante
-qui n'ajoute, ne modifie ou ne retire que `analyses/<space_id>/<analysis_id>.yaml`. Le numéro
-de révision et l'auteur sont portés par des lignes de fin de message (`Board-Revision`,
-`Board-Action`, `Board-Actor`) et relus avec contrôle : une histoire qui n'est pas celle que
-Board a écrite rend le contenu indisponible.
+qui n'ajoute, ne modifie ou ne retire que le fichier d'un contenu, `analyses/<space_id>/<id>.yaml`
+ou `dashboards/<space_id>/<id>.yaml` selon son genre (`Kind`). Les genres ne partagent que le code :
+chacun a son répertoire, son schéma, son en-tête de coup d'œil et son sujet de commit, et un même
+identifiant dans deux genres désigne deux contenus distincts. Le numéro de révision et l'auteur
+sont portés par des lignes de fin de message (`Board-Revision`, `Board-Action`, `Board-Actor`)
+et relus avec contrôle : une histoire qui n'est pas celle que Board a écrite rend le contenu
+indisponible.
 
 Aucune commande lancée ici ne peut exécuter un programme désigné par le dépôt. Un filtre,
 un `textconv`, un pilote, un alias ou un `fsmonitor` n'existent que par la configuration
@@ -54,11 +60,15 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..spaces.model import SPACE_ID, PersonRef
-from .analysis import Change, Document, brief, diff, dumps, loads, validate
+from . import dashboard as dashboard_format
+from .analysis import Document, brief, diff, dumps, loads, validate
+from .common import Change
 from .errors import (
     ANALYSIS_NOT_FOUND,
     CONTENT_UNAVAILABLE,
+    DASHBOARD_NOT_FOUND,
     INVALID_ANALYSIS,
+    INVALID_DASHBOARD,
     REVISION_CONFLICT,
     ContentError,
     Violation,
@@ -77,19 +87,11 @@ LOCK_NAME = "board-content.lock"
 
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _OBJECT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-_PATH = re.compile(
-    r"analyses/([a-z0-9][a-z0-9-]{0,38}[a-z0-9])/"
-    r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.yaml"
-)
 _BRANCH = re.compile(r"refs/heads/[A-Za-z0-9._+@/-]{1,200}")
 _NAME = re.compile(r"[^\x00-\x1f\x7f<>]{1,100}")
 _EMAIL = re.compile(r"[^\s<>@\x00-\x1f\x7f]{1,64}@[^\s<>@\x00-\x1f\x7f]{1,255}")
 _PERSON_PART = re.compile(r"[^\x00-\x1f\x7f-\x9f\u2028\u2029\ud800-\udfff]{1,512}")
 _RECORD = re.compile(r"([0-9a-f]{40}|[0-9a-f]{64})\x1f([^\x1f]+)\x1f(.*)", re.DOTALL)
-_TRAILERS = re.compile(
-    r"analysis [^\n]*\n\nBoard-Revision: ([0-9]{1,9})\nBoard-Action: (save|delete)\n"
-    r"Board-Actor: ([^\n]+)\n*",
-)
 # Configuration locale admise, par clé en minuscules (la sous-section garde sa casse). Tout le
 # reste est refusé : une clé inconnue ou future peut désigner un programme (`unsafe_config`).
 # - `core.*` : ce que `git init --bare` écrit (`repositoryformatversion`, `filemode`, `bare`,
@@ -144,6 +146,73 @@ _OPTIONS = (
     "-c",
     "protocol.allow=never",
 )
+
+
+@dataclass(frozen=True)
+class Kind:
+    """Un genre de contenu : répertoire, fonctions du format, codes de refus et sujet de commit.
+
+    Les fonctions du format sont des enveloppes qui cherchent leur cible à l'appel, dans ce module
+    pour les analyses : un test qui remplace `loads` ou `brief` ici les remplace pour le dépôt.
+
+    L'ensemble des genres est fermé : les méthodes du dépôt n'acceptent que `ANALYSIS_KIND` et
+    `DASHBOARD_KIND` eux-mêmes (test d'identité), jamais une copie, même égale.
+    """
+
+    name: str
+    directory: str
+    reflog: str
+    invalid: str
+    not_found: str
+    validate: Callable[[Any], Document]
+    loads: Callable[[bytes], Document]
+    dumps: Callable[[Document], bytes]
+    brief: Callable[[bytes], tuple[str, str, str, str]]
+    diff: Callable[[Document, Document], tuple[Change, ...]]
+
+
+ANALYSIS_KIND = Kind(
+    name="analysis",
+    directory="analyses",
+    reflog="board:",
+    invalid=INVALID_ANALYSIS,
+    not_found=ANALYSIS_NOT_FOUND,
+    validate=lambda data: validate(data),
+    loads=lambda raw: loads(raw),
+    dumps=lambda document: dumps(document),
+    brief=lambda raw: brief(raw),
+    diff=lambda before, after: diff(before, after),
+)
+DASHBOARD_KIND = Kind(
+    name="dashboard",
+    directory="dashboards",
+    reflog="board: dashboard",
+    invalid=INVALID_DASHBOARD,
+    not_found=DASHBOARD_NOT_FOUND,
+    validate=lambda data: dashboard_format.validate(data),
+    loads=lambda raw: dashboard_format.loads(raw),
+    dumps=lambda document: dashboard_format.dumps(document),
+    brief=lambda raw: dashboard_format.brief(raw),
+    diff=lambda before, after: dashboard_format.diff(before, after),
+)
+KINDS = (ANALYSIS_KIND, DASHBOARD_KIND)
+
+
+@functools.cache
+def _path(directory: str) -> re.Pattern[str]:
+    """Chemins que Board écrit pour un genre : espace puis UUID en minuscules."""
+    return re.compile(
+        rf"{directory}/([a-z0-9][a-z0-9-]{{0,38}}[a-z0-9])/"
+        r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.yaml"
+    )
+
+
+@functools.cache
+def _trailers(name: str) -> re.Pattern[str]:
+    return re.compile(
+        rf"{name} [^\n]*\n\nBoard-Revision: ([0-9]{{1,9}})\nBoard-Action: (save|delete)\n"
+        r"Board-Actor: ([^\n]+)\n*",
+    )
 
 
 class ContentConfigError(ValueError):
@@ -231,41 +300,51 @@ class Glance:
     deleted: bool
 
 
-# Raisons propres au document d'une analyse (contenu ou objet) : le dépôt, lui, fonctionne. Les
+# Raisons propres au document d'un contenu (contenu ou objet) : le dépôt, lui, fonctionne. Les
 # autres raisons (dépôt absent, git indisponible, tête illisible) sont des pannes générales.
 ANALYSIS_REASONS = frozenset(
     {"document_too_large", "stored_invalid", "stored_mismatch", "blob_unreadable"}
 )
+# Les mêmes, plus l'histoire incohérente : un contenu abîmé, pas un dépôt en panne.
+DAMAGED_REASONS = ANALYSIS_REASONS | {"history_inconsistent"}
+
+
+def _closed(kind: object) -> None:
+    """Le genre est fermé : seules les deux constantes, par identité (ni copie, ni genre forgé,
+    ni genre égal d'une autre instance), sinon c'est une erreur du programme appelant."""
+    if kind is not ANALYSIS_KIND and kind is not DASHBOARD_KIND:
+        raise TypeError("kind doit être ANALYSIS_KIND ou DASHBOARD_KIND")
 
 
 def _unavailable(reason: str) -> ContentError:
     return ContentError(CONTENT_UNAVAILABLE, reason)
 
 
-def _invalid(path: str, rule: str) -> ContentError:
-    return ContentError(INVALID_ANALYSIS, rule, (Violation(path, rule),))
+def _invalid(kind: Kind, path: str, rule: str) -> ContentError:
+    return ContentError(kind.invalid, rule, (Violation(path, rule),))
 
 
-def _check_space(space_id: object) -> None:
+def _check_space(kind: Kind, space_id: object) -> None:
     if not isinstance(space_id, str) or SPACE_ID.fullmatch(space_id) is None:
-        raise _invalid("/space_id", "bad_identifier")
+        raise _invalid(kind, "/space_id", "bad_identifier")
 
 
-def _relative(space_id: str, analysis_id: str) -> str:
-    """Seul chemin que Board écrit ; les deux identifiants sont vérifiés avant tout appel git.
+def _relative(kind: Kind, space_id: str, content_id: str) -> str:
+    """Seul chemin que Board écrit ; le genre est fermé et les deux identifiants sont vérifiés
+    avant tout appel git.
 
     L'espace a la forme des identifiants du plan 08 (`finance`, minuscules, chiffres et tirets,
-    jamais de point, de barre ni de tiret initial) ; l'analyse est un UUID en minuscules.
+    jamais de point, de barre ni de tiret initial) ; le contenu est un UUID en minuscules.
     """
-    _check_space(space_id)
-    if not isinstance(analysis_id, str) or _UUID.fullmatch(analysis_id) is None:
-        raise _invalid("/id", "bad_identifier")
-    return f"analyses/{space_id}/{analysis_id}.yaml"
+    _check_space(kind, space_id)
+    if not isinstance(content_id, str) or _UUID.fullmatch(content_id) is None:
+        raise _invalid(kind, "/id", "bad_identifier")
+    return f"{kind.directory}/{space_id}/{content_id}.yaml"
 
 
-def _check_revision(number: object) -> None:
+def _check_revision(kind: Kind, number: object) -> None:
     if type(number) is not int or number < 1 or number > 999_999_999:
-        raise _invalid("/revision", "bad_revision")
+        raise _invalid(kind, "/revision", "bad_revision")
 
 
 def _person_ok(issuer: object, subject: object) -> bool:
@@ -275,12 +354,19 @@ def _person_ok(issuer: object, subject: object) -> bool:
     )
 
 
-def _message(space_id: str, analysis_id: str, number: int, action: str, actor: PersonRef) -> str:
+def _message(
+    space_id: str,
+    content_id: str,
+    number: int,
+    action: str,
+    actor: PersonRef,
+    kind: Kind = ANALYSIS_KIND,
+) -> str:
     who = json.dumps(
         {"issuer": actor.issuer, "subject": actor.subject}, sort_keys=True, separators=(",", ":")
     )
     return (
-        f"analysis {space_id}/{analysis_id}: {action} r{number}\n\n"
+        f"{kind.name} {space_id}/{content_id}: {action} r{number}\n\n"
         f"Board-Revision: {number}\nBoard-Action: {action}\nBoard-Actor: {who}\n"
     )
 
@@ -394,7 +480,11 @@ class _Head:
 
 
 class ContentRepository:
-    """Lecture et écriture des révisions d'analyses dans le dépôt de contenus."""
+    """Lecture et écriture des révisions de contenus dans le dépôt, genre par genre.
+
+    Chaque méthode publique prend le genre en mot-clé (`kind`), les analyses par défaut : une
+    écriture ou une lecture d'un genre ne touche jamais le répertoire de l'autre.
+    """
 
     def __init__(
         self,
@@ -413,49 +503,68 @@ class ContentRepository:
     def read(
         self,
         space_id: str,
-        analysis_id: str,
+        content_id: str,
         revision: int | None = None,
         *,
         at: str | None = None,
+        allow: Callable[[PersonRef | None, str | None, bool], bool] | None = None,
+        kind: Kind = ANALYSIS_KIND,
     ) -> StoredRevision:
-        """Révision courante, ou la révision donnée (même d'une analyse supprimée depuis), lue
-        depuis la tête du dépôt ou depuis le commit `at` (voir `head`)."""
-        _relative(space_id, analysis_id)
+        """Révision courante, ou la révision donnée (même d'un contenu supprimé depuis), lue
+        depuis la tête du dépôt ou depuis le commit `at` (voir `head`).
+
+        Avec `allow`, la visibilité de la révision lue est jugée d'abord sur son en-tête, sur son
+        commit (taille mesurée, puis le coup d'œil du genre : ni schéma, ni règles, ni références),
+        comme pour `entries` : une révision que l'appelant ne lira pas est refusée comme une
+        révision inexistante, et son corps n'est ni chargé ni validé."""
+        _closed(kind)
+        relative = _relative(kind, space_id, content_id)
         if revision is not None:
-            _check_revision(revision)
+            _check_revision(kind, revision)
         place = self._locate()
-        history = self._history(place, self._tip(place, at), space_id, analysis_id)
+        history = self._history(kind, place, self._tip(kind, place, at), space_id, content_id)
         saves = [item for item in history if item.action == "save"]
         if revision is None:
             if not history or history[-1].action == "delete":
-                raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+                raise ContentError(kind.not_found, "missing")
             target = history[-1]
         elif revision > len(saves):
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing_revision")
+            raise ContentError(kind.not_found, "missing_revision")
         else:
             target = saves[revision - 1]
-        return StoredRevision(target, self._load(place, target, space_id, analysis_id))
+        if allow is not None and not self._allowed(
+            kind,
+            place,
+            f"{target.commit}:{relative}",
+            content_id,
+            allow,
+            history[-1].action == "delete",
+        ):
+            raise ContentError(kind.not_found, "missing_revision")
+        return StoredRevision(target, self._load(kind, place, target, space_id, content_id))
 
     @_guarded
     def history(
-        self, space_id: str, analysis_id: str, *, at: str | None = None
+        self, space_id: str, content_id: str, *, at: str | None = None, kind: Kind = ANALYSIS_KIND
     ) -> tuple[Revision, ...]:
         """Révisions de la plus ancienne à la plus récente, suppression comprise."""
-        _relative(space_id, analysis_id)
+        _closed(kind)
+        _relative(kind, space_id, content_id)
         place = self._locate()
-        found = self._history(place, self._tip(place, at), space_id, analysis_id)
+        found = self._history(kind, place, self._tip(kind, place, at), space_id, content_id)
         if not found:
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+            raise ContentError(kind.not_found, "missing")
         return found
 
     @_guarded
     def entries(
         self,
         space_id: str,
-        analysis_id: str,
+        content_id: str,
         *,
         at: str | None = None,
         allow: Callable[[PersonRef | None, str | None, bool], bool] | None = None,
+        kind: Kind = ANALYSIS_KIND,
     ) -> tuple[Entry, ...]:
         """Historique et contenu de chaque révision, relus à partir d'une même tête.
 
@@ -463,18 +572,19 @@ class ContentRepository:
         servir : aucune relecture ultérieure ne peut lui en substituer un autre.
 
         Avec `allow`, la visibilité de chaque révision enregistrée est établie d'abord depuis son
-        en-tête, sur son commit (taille mesurée, puis `analysis.brief` : ni schéma, ni règles, ni
-        références). `allow(propriétaire, visibilité, supprimée)` rend `False` pour une révision
+        en-tête, sur son commit (taille mesurée, puis le coup d'œil du genre : ni schéma, ni règles,
+        ni références). `allow(propriétaire, visibilité, supprimée)` rend `False` pour une révision
         que l'appelant ne lira pas : elle est rendue sans contenu (`hidden`), et son corps n'est
         ni chargé ni validé. Quand l'en-tête est illisible, `allow(None, None, supprimée)` décide :
         `True` charge alors le contenu complet, qui lève l'erreur de la révision. Sans `allow`,
         tout est chargé.
         """
-        relative = _relative(space_id, analysis_id)
+        _closed(kind)
+        relative = _relative(kind, space_id, content_id)
         place = self._locate()
-        history = self._history(place, self._tip(place, at), space_id, analysis_id)
+        history = self._history(kind, place, self._tip(kind, place, at), space_id, content_id)
         if not history:
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+            raise ContentError(kind.not_found, "missing")
         deleted = history[-1].action == "delete"
         found: list[Entry] = []
         for item in history:
@@ -482,24 +592,25 @@ class ContentRepository:
                 found.append(Entry(item, None))
                 continue
             if allow is not None and not self._allowed(
-                place, f"{item.commit}:{relative}", analysis_id, allow, deleted
+                kind, place, f"{item.commit}:{relative}", content_id, allow, deleted
             ):
                 found.append(Entry(item, None, hidden=True))
                 continue
-            found.append(Entry(item, self._load(place, item, space_id, analysis_id)))
+            found.append(Entry(item, self._load(kind, place, item, space_id, content_id)))
         return tuple(found)
 
     @classmethod
     def _allowed(
         cls,
+        kind: Kind,
         place: _Place,
         spec: str,
-        analysis_id: str,
+        content_id: str,
         allow: Callable[[PersonRef | None, str | None, bool], bool],
         deleted: bool,
     ) -> bool:
         try:
-            issuer, subject, visibility, _ = cls._brief(place, spec, analysis_id)
+            issuer, subject, visibility, _ = cls._brief(kind, place, spec, content_id)
         except ContentError as error:
             if error.reason not in ANALYSIS_REASONS:
                 raise
@@ -507,22 +618,25 @@ class ContentRepository:
         return allow(PersonRef(issuer, subject), visibility, deleted)
 
     @_guarded
-    def glance(self, space_id: str, analysis_id: str, *, at: str | None = None) -> Glance:
-        """Qui possède cette analyse ? Au plus quelques lectures, quelle que soit la longueur de
-        l'histoire : le contenu de la tête (un seul blob), et pour une analyse supprimée le
+    def glance(
+        self, space_id: str, content_id: str, *, at: str | None = None, kind: Kind = ANALYSIS_KIND
+    ) -> Glance:
+        """Qui possède ce contenu ? Au plus quelques lectures, quelle que soit la longueur de
+        l'histoire : le contenu de la tête (un seul blob), et pour un contenu supprimé le
         dernier commit qui touche le fichier et son contenu d'avant.
 
-        Une erreur propre à l'analyse (document illisible ou invalide) ne se lève pas : elle est
-        rendue par `document` à `None`, pour que l'appelant la traite comme une analyse dont il
+        Une erreur propre au contenu (document illisible ou invalide) ne se lève pas : elle est
+        rendue par `document` à `None`, pour que l'appelant la traite comme un contenu dont il
         n'a pas pu établir la visibilité. Une panne du dépôt, elle, se lève comme ailleurs.
         """
-        relative = _relative(space_id, analysis_id)
+        _closed(kind)
+        relative = _relative(kind, space_id, content_id)
         place = self._locate()
-        tip = self._tip(place, at)
+        tip = self._tip(kind, place, at)
         if tip is None:
             return Glance(None, None, False)
-        # Le dernier commit qui touche le chemin est toujours lu, que l'analyse soit présente,
-        # supprimée ou absente : les états ne se distinguent pas par les commandes lancées d'abord.
+        # Le dernier commit qui touche le chemin est toujours lu, que le contenu soit présent,
+        # supprimé ou absent : les états ne se distinguent pas par les commandes lancées d'abord.
         last = place.git.text(
             [
                 "log",
@@ -549,12 +663,12 @@ class ContentRepository:
             source = place.git.object_id(["rev-parse", "--verify", f"{last}^"])
         try:
             issuer, subject, visibility, found = self._brief(
-                place, f"{source}:{relative}", analysis_id
+                kind, place, f"{source}:{relative}", content_id
             )
         except ContentError as error:
             if error.reason not in ANALYSIS_REASONS:
                 raise
-            return Glance(self._creator(place, tip, space_id, analysis_id), None, deleted)
+            return Glance(self._creator(kind, place, tip, space_id, content_id), None, deleted)
         return Glance(PersonRef(issuer, subject), visibility, deleted)
 
     @_guarded
@@ -563,31 +677,45 @@ class ContentRepository:
         return self._commit(self._locate(), "HEAD")
 
     @_guarded
-    def analyses(self) -> tuple[tuple[str, str], ...]:
-        """Couples (espace, analyse) dont le fichier existe dans la tête, triés.
+    def contents(self, *, kind: Kind = ANALYSIS_KIND) -> tuple[tuple[str, str], ...]:
+        """Couples (espace, identifiant) des contenus du genre dont le fichier existe dans la tête,
+        triés.
 
-        Un chemin qui n'a pas la forme `analyses/<espace>/<uuid>.yaml` est ignoré : Board ne
-        l'a pas écrit. Les analyses supprimées n'y figurent pas ; leur historique reste lisible.
+        Un chemin qui n'a pas la forme `<répertoire>/<espace>/<uuid>.yaml` est ignoré : Board ne
+        l'a pas écrit. Les contenus supprimés n'y figurent pas ; leur historique reste lisible.
         """
+        _closed(kind)
         place = self._locate()
         tip = self._commit(place, "HEAD")
         if tip is None:
             return ()
-        listing = place.git.text(["ls-tree", "-r", "-z", "--name-only", tip, "--", "analyses"])
-        found = (_PATH.fullmatch(name) for name in listing.split("\0") if name)
+        listing = place.git.text(["ls-tree", "-r", "-z", "--name-only", tip, "--", kind.directory])
+        found = (_path(kind.directory).fullmatch(name) for name in listing.split("\0") if name)
         return tuple(sorted((match[1], match[2]) for match in found if match is not None))
 
-    @_guarded
-    def latest(self, space_id: str, *, at: str | None = None) -> dict[str, str]:
-        """Dernier commit qui a touché le fichier de chaque analyse de l'espace (une lecture).
+    def analyses(self) -> tuple[tuple[str, str], ...]:
+        """Couples (espace, analyse) dont le fichier existe dans la tête, triés."""
+        return self.contents(kind=ANALYSIS_KIND)
 
-        Une analyse supprimée y figure avec le commit de sa suppression. Cette seule lecture suffit
+    def dashboards(self) -> tuple[tuple[str, str], ...]:
+        """Couples (espace, dashboard) dont le fichier existe dans la tête, triés."""
+        return self.contents(kind=DASHBOARD_KIND)
+
+    @_guarded
+    def latest(
+        self, space_id: str, *, at: str | None = None, kind: Kind = ANALYSIS_KIND
+    ) -> dict[str, str]:
+        """Dernier commit qui a touché le fichier de chaque contenu du genre dans l'espace (une
+        lecture).
+
+        Un contenu supprimé y figure avec le commit de sa suppression. Cette seule lecture suffit
         à constater qu'une ligne de l'index ne correspond plus à git : tout commit qui touche le
         fichier, de Board ou d'un autre outil, change l'empreinte.
         """
-        _check_space(space_id)
+        _closed(kind)
+        _check_space(kind, space_id)
         place = self._locate()
-        tip = self._tip(place, at)
+        tip = self._tip(kind, place, at)
         if tip is None:
             return {}
         output = place.git.text(
@@ -601,7 +729,7 @@ class ContentRepository:
                 "--name-only",
                 tip,
                 "--",
-                f"analyses/{space_id}",
+                f"{kind.directory}/{space_id}",
             ]
         )
         newest: dict[str, str] = {}
@@ -610,21 +738,30 @@ class ContentRepository:
             if not lines or _OBJECT.fullmatch(lines[0]) is None:
                 continue
             for name in lines[1:]:
-                found = _PATH.fullmatch(name)
+                found = _path(kind.directory).fullmatch(name)
                 if found is not None:
                     newest.setdefault(found[2], lines[0])
         return newest
 
     @_guarded
     def diff(
-        self, space_id: str, analysis_id: str, before: int, after: int, *, at: str | None = None
+        self,
+        space_id: str,
+        content_id: str,
+        before: int,
+        after: int,
+        *,
+        at: str | None = None,
+        kind: Kind = ANALYSIS_KIND,
     ) -> tuple[Change, ...]:
-        """Écarts structurels entre deux révisions enregistrées, calculés sur le contenu validé."""
-        _check_revision(before)
-        _check_revision(after)
-        return diff(
-            self.read(space_id, analysis_id, before, at=at).document,
-            self.read(space_id, analysis_id, after, at=at).document,
+        """Écarts structurels entre deux révisions enregistrées, calculés sur le contenu validé
+        avec le diff du genre."""
+        _closed(kind)
+        _check_revision(kind, before)
+        _check_revision(kind, after)
+        return kind.diff(
+            self.read(space_id, content_id, before, at=at, kind=kind).document,
+            self.read(space_id, content_id, after, at=at, kind=kind).document,
         )
 
     # -- écriture ----------------------------------------------------------------------------
@@ -633,16 +770,17 @@ class ContentRepository:
     def write(
         self,
         space_id: str,
-        analysis_id: str,
+        content_id: str,
         document: Document,
         *,
         expected_revision: int | None,
         actor: PersonRef,
+        kind: Kind = ANALYSIS_KIND,
     ) -> StoredRevision:
         """Crée la révision 1 (`expected_revision=None`) ou la suivante de la révision attendue.
 
         Un document dont les octets canoniques dépassent `MAX_DOCUMENT_BYTES` est refusé
-        (`invalid_analysis`, règle `out_of_bounds` à la racine).
+        (code de refus du genre, règle `out_of_bounds` à la racine).
 
         Un contenu identique à celui de la révision attendue n'est pas publié : `git log` par
         fichier ne montrerait pas ce commit, son numéro serait inconnu de l'historique. La
@@ -650,41 +788,43 @@ class ContentRepository:
         de la révision attendue (une révision obsolète reste un conflit). « Identique » veut dire
         mêmes octets canoniques.
         """
-        relative = _relative(space_id, analysis_id)
-        valid = validate(document)
-        if valid["id"] != analysis_id:
-            raise _invalid("/id", "id_mismatch")
+        _closed(kind)
+        relative = _relative(kind, space_id, content_id)
+        valid = kind.validate(document)
+        if valid["id"] != content_id:
+            raise _invalid(kind, "/id", "id_mismatch")
         if not _person_ok(actor.issuer, actor.subject):
-            raise _invalid("/actor", "bad_actor")
+            raise _invalid(kind, "/actor", "bad_actor")
         if expected_revision is not None:
-            _check_revision(expected_revision)
-        payload = dumps(valid)
+            _check_revision(kind, expected_revision)
+        payload = kind.dumps(valid)
         if len(payload) > MAX_DOCUMENT_BYTES:
             # Le schéma seul admet bien plus (voir la Réalisation 18.3) : la borne est celle de la
             # lecture, pour qu'on ne puisse pas écrire ce que Board refuserait de relire.
-            raise _invalid("", "out_of_bounds")
+            raise _invalid(kind, "", "out_of_bounds")
         place = self._locate()
         scratch = _scratch_parent(place.root)
         with self._locked(place):
             head = self._ready(place)
-            history = self._history(place, head.base, space_id, analysis_id)
+            history = self._history(kind, place, head.base, space_id, content_id)
             if expected_revision is None:
                 if history:
                     raise ContentError(REVISION_CONFLICT, "exists")
                 number = 1
             else:
-                current = self._current(history, expected_revision)
-                stored = self._load(place, current, space_id, analysis_id)
+                current = self._current(kind, history, expected_revision)
+                stored = self._load(kind, place, current, space_id, content_id)
                 # Les octets canoniques, pas l'égalité Python : `True == 1 == 1.0` y confondrait
                 # un booléen, un entier et un flottant, et perdrait une modification.
-                if dumps(stored) == payload:
+                if kind.dumps(stored) == payload:
                     return StoredRevision(current, stored, unchanged=True)
                 number = current.number + 1
             saved = self._publish(
+                kind,
                 place,
                 head,
                 relative,
-                (space_id, analysis_id),
+                (space_id, content_id),
                 number,
                 "save",
                 payload,
@@ -695,24 +835,40 @@ class ContentRepository:
 
     @_guarded
     def delete(
-        self, space_id: str, analysis_id: str, *, expected_revision: int, actor: PersonRef
+        self,
+        space_id: str,
+        content_id: str,
+        *,
+        expected_revision: int,
+        actor: PersonRef,
+        expected_head: str | None = None,
+        kind: Kind = ANALYSIS_KIND,
     ) -> Revision:
-        """Retire le fichier par un commit ; l'historique et chaque révision restent lisibles."""
-        relative = _relative(space_id, analysis_id)
+        """Retire le fichier par un commit ; l'historique et chaque révision restent lisibles.
+
+        Avec `expected_head`, la suppression n'a lieu que si la tête du dépôt est encore ce commit,
+        contrôle fait sous le verrou : un appelant qui a jugé de la suppression sur une tête (par
+        exemple, qu'aucun dashboard ne consomme l'analyse) sait qu'aucune publication n'est venue
+        s'intercaler. Sinon `revision_conflict` (`head_changed`), et rien n'est publié."""
+        _closed(kind)
+        relative = _relative(kind, space_id, content_id)
         if not _person_ok(actor.issuer, actor.subject):
-            raise _invalid("/actor", "bad_actor")
-        _check_revision(expected_revision)
+            raise _invalid(kind, "/actor", "bad_actor")
+        _check_revision(kind, expected_revision)
         place = self._locate()
         scratch = _scratch_parent(place.root)
         with self._locked(place):
             head = self._ready(place)
-            history = self._history(place, head.base, space_id, analysis_id)
-            current = self._current(history, expected_revision)
+            if expected_head is not None and head.base != expected_head:
+                raise ContentError(REVISION_CONFLICT, "head_changed")
+            history = self._history(kind, place, head.base, space_id, content_id)
+            current = self._current(kind, history, expected_revision)
             return self._publish(
+                kind,
                 place,
                 head,
                 relative,
-                (space_id, analysis_id),
+                (space_id, content_id),
                 current.number,
                 "delete",
                 None,
@@ -759,14 +915,14 @@ class ContentRepository:
             if entry and _ALLOWED.fullmatch(entry.partition("\n")[0]) is None:
                 raise _unavailable("unsafe_config")
 
-    def _tip(self, place: _Place, at: str | None) -> str | None:
+    def _tip(self, kind: Kind, place: _Place, at: str | None) -> str | None:
         """La tête du dépôt, ou le commit donné : un appelant qui juge et lit en plusieurs étapes
         résout la tête une fois (`head`) et la transmet, pour que toutes les lectures portent sur
         le même commit."""
         if at is None:
             return self._commit(place, "HEAD")
         if _OBJECT.fullmatch(at) is None:
-            raise _invalid("/commit", "bad_identifier")
+            raise _invalid(kind, "/commit", "bad_identifier")
         return at
 
     def _commit(self, place: _Place, ref: str) -> str | None:
@@ -793,12 +949,12 @@ class ContentRepository:
         return _Head(branch, self._commit(place, branch))
 
     def _history(
-        self, place: _Place, tip: str | None, space_id: str, analysis_id: str
+        self, kind: Kind, place: _Place, tip: str | None, space_id: str, content_id: str
     ) -> tuple[Revision, ...]:
         """Histoire relue et contrôlée : révisions 1, 2, 3…, puis éventuellement la suppression."""
         if tip is None:
             return ()
-        relative = _relative(space_id, analysis_id)
+        relative = _relative(kind, space_id, content_id)
         output = place.git.text(
             [
                 "log",
@@ -817,7 +973,7 @@ class ContentRepository:
         records = [item.lstrip("\n") for item in output.split("\x1e") if item.strip("\n")]
         try:
             for record in reversed(records):
-                entry = self._parse(record, space_id, analysis_id)
+                entry = self._parse(kind, record, space_id, content_id)
                 last = revisions[-1] if revisions else None
                 if last is not None and last.action == "delete":
                     raise ValueError
@@ -835,12 +991,12 @@ class ContentRepository:
         return tuple(revisions)
 
     @staticmethod
-    def _parse(record: str, space_id: str, analysis_id: str) -> Revision:
+    def _parse(kind: Kind, record: str, space_id: str, content_id: str) -> Revision:
         found = _RECORD.fullmatch(record)
         if found is None:
             raise ValueError
         commit, stamp, body = found.groups()
-        trailers = _TRAILERS.fullmatch(body)
+        trailers = _trailers(kind.name).fullmatch(body)
         if trailers is None:
             raise ValueError
         number, action, who = int(trailers[1]), trailers[2], json.loads(trailers[3])
@@ -849,10 +1005,10 @@ class ContentRepository:
         if not _person_ok(who["issuer"], who["subject"]):
             raise ValueError
         actor = PersonRef(who["issuer"], who["subject"])
-        if body.rstrip("\n") + "\n" != _message(space_id, analysis_id, number, action, actor):
+        if body.rstrip("\n") + "\n" != _message(space_id, content_id, number, action, actor, kind):
             raise ValueError
-        kind: Literal["save", "delete"] = "save" if action == "save" else "delete"
-        return Revision(number, commit, datetime.fromisoformat(stamp), actor, kind)
+        verb: Literal["save", "delete"] = "save" if action == "save" else "delete"
+        return Revision(number, commit, datetime.fromisoformat(stamp), actor, verb)
 
     @staticmethod
     def _present(place: _Place, revision: str, relative: str) -> bool:
@@ -861,11 +1017,11 @@ class ContentRepository:
         return listing.rstrip("\0") == relative
 
     def _creator(
-        self, place: _Place, tip: str, space_id: str, analysis_id: str
+        self, kind: Kind, place: _Place, tip: str, space_id: str, content_id: str
     ) -> PersonRef | None:
         """Auteur du commit qui a créé le fichier, lu de son message ; `None` s'il est illisible.
 
-        Ne sert qu'à une analyse dont le contenu est abîmé : la personne qui l'a créée reste
+        Ne sert qu'à un contenu dont le document est abîmé : la personne qui l'a créé reste
         celle qui peut en constater l'état, personne d'autre.
         """
         output = place.git.text(
@@ -882,24 +1038,26 @@ class ContentRepository:
                 "--format=%H%x1f%cI%x1f%B%x1e",
                 tip,
                 "--",
-                _relative(space_id, analysis_id),
+                _relative(kind, space_id, content_id),
             ]
         )
         try:
-            created = self._parse(output.split("\x1e")[0].lstrip("\n"), space_id, analysis_id)
+            created = self._parse(kind, output.split("\x1e")[0].lstrip("\n"), space_id, content_id)
         except (ValueError, KeyError, TypeError):
             return None
         return created.actor
 
-    def _load(self, place: _Place, revision: Revision, space_id: str, analysis_id: str) -> Document:
+    def _load(
+        self, kind: Kind, place: _Place, revision: Revision, space_id: str, content_id: str
+    ) -> Document:
         return self._blob(
-            place, f"{revision.commit}:{_relative(space_id, analysis_id)}", analysis_id
+            kind, place, f"{revision.commit}:{_relative(kind, space_id, content_id)}", content_id
         )
 
     @staticmethod
     def _status(done: subprocess.CompletedProcess[bytes]) -> None:
         """Issue d'un `cat-file` : l'objet absent ou illisible (code 128 de git) est propre à
-        l'analyse ; tout autre échec (signal, code inattendu) est une défaillance de git. La
+        au contenu ; tout autre échec (signal, code inattendu) est une défaillance de git. La
         sortie d'erreur n'est jamais lue ni reprise."""
         if done.returncode == 128:
             raise _unavailable("blob_unreadable")
@@ -921,25 +1079,25 @@ class ContentRepository:
 
     @classmethod
     def _brief(
-        cls, place: _Place, spec: str, analysis_id: str
+        cls, kind: Kind, place: _Place, spec: str, content_id: str
     ) -> tuple[str, str, Literal["personal", "shared"], str]:
         """Propriétaire et visibilité du blob, avant toute validation de son contenu : seul
-        l'en-tête canonique est analysé (voir `analysis.brief`)."""
+        l'en-tête canonique est analysé (voir `analysis.brief` et `dashboard.brief`)."""
         cls._measured(place, spec)
         done = place.git.run(["cat-file", "blob", spec], ok=None)
         cls._status(done)
         try:
-            issuer, subject, visibility, found = brief(done.stdout)
+            issuer, subject, visibility, found = kind.brief(done.stdout)
         except ContentError:
             raise _unavailable("stored_invalid") from None
         if not _person_ok(issuer, subject):
             raise _unavailable("stored_invalid")
-        if found != analysis_id:
+        if found != content_id:
             raise _unavailable("stored_mismatch")
         return issuer, subject, "shared" if visibility == "shared" else "personal", found
 
     @classmethod
-    def _blob(cls, place: _Place, spec: str, analysis_id: str) -> Document:
+    def _blob(cls, kind: Kind, place: _Place, spec: str, content_id: str) -> Document:
         cls._measured(place, spec)
         done = place.git.run(["cat-file", "blob", spec], ok=None)
         cls._status(done)
@@ -948,17 +1106,17 @@ class ContentRepository:
             # Garde supplémentaire : le blob a changé entre la mesure et la lecture.
             raise _unavailable("document_too_large")
         try:
-            document = loads(raw)
+            document = kind.loads(raw)
         except ContentError:
             raise _unavailable("stored_invalid") from None
-        if document["id"] != analysis_id:
+        if document["id"] != content_id:
             raise _unavailable("stored_mismatch")
         return document
 
     @staticmethod
-    def _current(history: tuple[Revision, ...], expected: int) -> Revision:
+    def _current(kind: Kind, history: tuple[Revision, ...], expected: int) -> Revision:
         if not history or history[-1].action == "delete":
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+            raise ContentError(kind.not_found, "missing")
         if history[-1].number != expected:
             raise ContentError(REVISION_CONFLICT, "stale")
         return history[-1]
@@ -1025,6 +1183,7 @@ class ContentRepository:
 
     def _publish(
         self,
+        kind: Kind,
         place: _Place,
         head: _Head,
         relative: str,
@@ -1040,7 +1199,7 @@ class ContentRepository:
         now = self._now()
         stamp = now.isoformat()
         identity = {"GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp}
-        message = _message(ids[0], ids[1], number, action, actor)
+        message = _message(ids[0], ids[1], number, action, actor, kind)
         blob = (
             None
             if payload is None
@@ -1067,7 +1226,7 @@ class ContentRepository:
         arguments = [
             "update-ref",
             "-m",
-            f"board: {action} {ids[0]}/{ids[1]} r{number}",
+            f"{kind.reflog} {action} {ids[0]}/{ids[1]} r{number}",
             head.branch,
             commit,
             head.base or "",

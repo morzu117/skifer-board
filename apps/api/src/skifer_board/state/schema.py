@@ -429,6 +429,52 @@ analysis_index = Table(
     Index("ix_analysis_index_visibility", "space_id", "visibility"),
 )
 
+# Index des dashboards (plan 19, B5) : une ligne par dashboard existant, reconstruite depuis git
+# par `skifer-board-reindex` comme celui des analyses. Il ne contient ni mise en page, ni filtre,
+# ni texte : le contenu servi vient toujours de git. Sans clé étrangère vers `spaces`, pour la même
+# raison que l'index des analyses.
+dashboard_index = Table(
+    "dashboard_index",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("dashboard_id", String(36), nullable=False),
+    Column("name", String(120), nullable=False),
+    Column("owner_issuer", Text, nullable=False),
+    Column("owner_subject", Text, nullable=False),
+    Column("visibility", String(8), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("commit", String(64), nullable=False),
+    Column("committed_at", DateTime(timezone=True), nullable=False),
+    Column("state", String(24), nullable=False),
+    Column("indexed_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("space_id", "dashboard_id", name="pk_dashboard_index"),
+    Index("ix_dashboard_index_visibility", "space_id", "visibility"),
+)
+
+# Références des dashboards (plan 19, B5) : pour la révision courante de chaque dashboard, les
+# analyses épinglées par ses composants exécutables. Elles n'existent que par leur ligne d'index
+# (suppression en cascade) et servent à répondre à « qui consomme cette analyse ? » : aucune
+# n'est jamais la source d'un contenu. Un identifiant de composant est unique dans son dashboard.
+dashboard_references = Table(
+    "dashboard_references",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("dashboard_id", String(36), nullable=False),
+    Column("component_id", String(36), nullable=False),
+    Column("analysis_id", String(36), nullable=False),
+    Column("analysis_revision", Integer, nullable=False),
+    PrimaryKeyConstraint(
+        "space_id", "dashboard_id", "component_id", name="pk_dashboard_references"
+    ),
+    ForeignKeyConstraint(
+        ["space_id", "dashboard_id"],
+        ["dashboard_index.space_id", "dashboard_index.dashboard_id"],
+        name="fk_dashboard_references_dashboard",
+        ondelete="CASCADE",
+    ),
+    Index("ix_dashboard_references_analysis", "space_id", "analysis_id"),
+)
+
 # Événements d'usage des analyses (plan 18, A8) : sauvegarde, ouverture et exécution depuis une
 # analyse. Une ligne ne porte que de quoi compter et dater : ni personne, ni nom, ni valeur de
 # filtre, ni contenu, ni donnée. `event_id` est l'identifiant unique de l'événement : l'insérer

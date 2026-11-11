@@ -253,6 +253,16 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("POST", "/api/spaces/{space_id}/analyses/{analysis_id}/opened"),
         ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/usage"),
         ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/last-execution"),
+        ("GET", "/api/spaces/{space_id}/analyses/{analysis_id}/consumers"),
+        ("POST", "/api/spaces/{space_id}/dashboards"),
+        ("GET", "/api/spaces/{space_id}/dashboards"),
+        ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}"),
+        ("DELETE", "/api/spaces/{space_id}/dashboards/{dashboard_id}"),
+        ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}/revisions"),
+        ("POST", "/api/spaces/{space_id}/dashboards/{dashboard_id}/revisions"),
+        ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}/revisions/{revision}"),
+        ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}/diff"),
+        ("POST", "/api/spaces/{space_id}/dashboards/{dashboard_id}/duplicate"),
     }
     with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if expiration is not None:

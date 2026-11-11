@@ -95,7 +95,7 @@ def test_migration_0015_depuis_0014(engine: Engine) -> None:
             {"id": ancienne, "at": INSTANT, "owner": new_id()},
         )
     upgrade(engine)
-    assert current_revision(engine) == "0015"
+    assert current_revision(engine) == "0016"
     assert SpaceStore(engine).get_space("finance") is not None
     inspecteur = inspect(engine)
     colonnes = {colonne["name"]: colonne for colonne in inspecteur.get_columns("executions")}

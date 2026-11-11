@@ -128,3 +128,38 @@
 .sb-theme-skifer-ardoise .sb-kpi__delta--negative { color: var(--sb-danger-bg); }
 .sb-theme-skifer-ardoise .sb-kpi__delta--neutral { color: var(--sb-on-slate); }
 .sb-theme-skifer-ardoise .sb-kpi__trend { color: var(--sb-series-muted-light); }
+
+/* Dialogue modal : un voile sur la page et une boîte claire, dans les deux thèmes (la boîte ne reprend pas l'ardoise des cartes). */
+.sb-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--sb-space-5);
+}
+
+/* Le voile est un calque propre : son opacité ne touche pas la boîte. */
+.sb-dialog::before {
+  position: absolute;
+  inset: 0;
+  background: var(--sb-slate-900);
+  opacity: 0.6;
+  content: "";
+}
+
+.sb-dialog__box {
+  display: grid;
+  gap: var(--sb-space-5);
+  position: relative;
+  width: min(100%, 520px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--sb-space-7);
+  border: 1px solid var(--sb-line-strong);
+  border-radius: var(--sb-radius-lg);
+  background: var(--sb-surface);
+  color: var(--sb-ink);
+}
+
+.sb-dialog__title { margin: 0; font-size: var(--sb-text-xl); }

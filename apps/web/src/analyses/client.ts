@@ -1,8 +1,9 @@
 import { ContractError } from "../catalogue/decode";
 import { call, type AdminOutcome, type Call } from "../spaces/admin";
 import { spaceUrl, type Fetch } from "../spaces/api";
+import { SPACE_ID } from "../spaces/model";
 import { decodeAnalysisDraft, decodeName, type AnalysisDraft } from "./document";
-import { decodeAnalysisList, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage, type AnalysisList, type AnalysisRevision, type Diff, type History, type LastExecution, type Usage } from "./model";
+import { decodeAnalysisList, decodeConsumers, decodeDiff, decodeHistory, decodeLastExecution, decodeOpened, decodeRevision, decodeUsage, type AnalysisList, type AnalysisRevision, type Consumers, type Diff, type History, type LastExecution, type Usage } from "./model";
 import { readExact } from "./lossless";
 import { newEventId } from "./reference";
 import { ANALYSIS_REFUSALS } from "./refusal";
@@ -15,25 +16,40 @@ import { fail, isRevision, isUuid, uuid } from "./shape";
  */
 const base = (space: string) => `${spaceUrl(space)}/analyses`;
 const named = (space: string, id: string) => `${base(space)}/${encodeURIComponent(id)}`;
-const rejected = <T>(message: string): Promise<AdminOutcome<T>> => Promise.resolve({ status: "error", message });
+export const rejected = <T>(message: string): Promise<AdminOutcome<T>> => Promise.resolve({ status: "error", message });
 
-/** Un refus hors de l'union fermée des analyses n'est pas un refus lisible : c'est une réponse hors contrat. */
-function run<T>(request: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
-  return call({ ...request, read: readExact }, signal, fetcher).then((outcome) => (outcome.status === "refused" && !(ANALYSIS_REFUSALS as readonly string[]).includes(outcome.code)
+/**
+ * Un refus hors de l'union fermée des routes n'est pas un refus lisible : c'est une réponse hors contrat. Celle des
+ * analyses par défaut ; les dashboards (plan 19) passent la leur.
+ */
+export function run<T>(request: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch, refusals: readonly string[] = ANALYSIS_REFUSALS): Promise<AdminOutcome<T>> {
+  return call({ ...request, read: readExact, closed: true }, signal, fetcher).then((outcome) => (outcome.status === "refused" && !refusals.includes(outcome.code)
     ? { status: "error", message: "Réponse du serveur hors contrat : refus inattendu." }
     : outcome));
 }
 
-function problem(id: string, ...numbers: readonly number[]): string | null {
+/**
+ * Un espace hors du format des identifiants n'en désigne aucun : le serveur répondrait `space_not_found`, et un `..`
+ * ferait sortir l'appel du chemin des espaces. Refusé avant tout appel.
+ */
+export function spaceProblem(space: string): string | null {
+  return SPACE_ID.test(space) ? null : "L'identifiant d'espace est invalide.";
+}
+
+function problem(space: string, id: string, ...numbers: readonly number[]): string | null {
+  const bad = spaceProblem(space);
+  if (bad !== null) return bad;
   if (!isUuid(id)) return "L'identifiant d'analyse est invalide.";
   return numbers.every(isRevision) ? null : "Le numéro de révision est invalide.";
 }
 
-function only(status: number, allowed: readonly number[]): void {
+export function only(status: number, allowed: readonly number[]): void {
   if (!allowed.includes(status)) fail("statut", `HTTP ${allowed.join(" ou ")}`);
 }
 
 export function createAnalysis(space: string, draft: AnalysisDraft, fetcher: Fetch = fetch): Promise<AdminOutcome<AnalysisRevision>> {
+  const unknown = spaceProblem(space);
+  if (unknown !== null) return rejected(unknown);
   let body: AnalysisDraft;
   try {
     body = decodeAnalysisDraft(draft);
@@ -49,12 +65,14 @@ export function createAnalysis(space: string, draft: AnalysisDraft, fetcher: Fet
 }
 
 export function fetchAnalyses(space: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<AnalysisList>> {
+  const bad = spaceProblem(space);
+  if (bad !== null) return rejected(bad);
   return run({ url: base(space), decode: (value, status) => { only(status, [200]); return decodeAnalysisList(value); } }, signal, fetcher);
 }
 
 /** Révision courante : la révision lue est la courante. */
 export function fetchAnalysis(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<AnalysisRevision>> {
-  const bad = problem(id);
+  const bad = problem(space, id);
   if (bad !== null) return rejected(bad);
   return run({ url: named(space, id), decode: (value, status) => {
     only(status, [200]);
@@ -66,7 +84,7 @@ export function fetchAnalysis(space: string, id: string, signal: AbortSignal, fe
 
 /** Révision numérotée, courante ou passée, éventuellement d'une analyse supprimée. */
 export function fetchAnalysisRevision(space: string, id: string, revision: number, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<AnalysisRevision>> {
-  const bad = problem(id, revision);
+  const bad = problem(space, id, revision);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/revisions/${String(revision)}`, decode: (value, status) => {
     only(status, [200]);
@@ -78,13 +96,13 @@ export function fetchAnalysisRevision(space: string, id: string, revision: numbe
 
 /** Historique, suppression comprise ; une révision masquée n'a que son numéro. */
 export function fetchHistory(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<History>> {
-  const bad = problem(id);
+  const bad = problem(space, id);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/revisions`, decode: (value, status) => { only(status, [200]); return decodeHistory(value, id); } }, signal, fetcher);
 }
 
 export function fetchDiff(space: string, id: string, base: number, other: number, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<Diff>> {
-  const bad = problem(id, base, other);
+  const bad = problem(space, id, base, other);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/diff?${new URLSearchParams({ base: String(base), other: String(other) }).toString()}`, decode: (value, status) => {
     only(status, [200]);
@@ -100,7 +118,7 @@ export interface Revised {
 
 /** Crée la révision qui suit `expectedRevision` ; une autre révision entre-temps répond `revision_conflict`. */
 export function reviseAnalysis(space: string, id: string, draft: AnalysisDraft, expectedRevision: number, fetcher: Fetch = fetch): Promise<AdminOutcome<Revised>> {
-  const bad = problem(id, expectedRevision);
+  const bad = problem(space, id, expectedRevision);
   if (bad !== null) return rejected(bad);
   let body: AnalysisDraft;
   try {
@@ -121,7 +139,7 @@ export function reviseAnalysis(space: string, id: string, draft: AnalysisDraft, 
 
 /** Copie personnelle de l'appelant, nommée « Copie de … » par le serveur sauf nom donné. */
 export function duplicateAnalysis(space: string, id: string, name?: string, fetcher: Fetch = fetch): Promise<AdminOutcome<AnalysisRevision>> {
-  const bad = problem(id);
+  const bad = problem(space, id);
   if (bad !== null) return rejected(bad);
   const request: Pick<Call<AnalysisRevision>, "body"> = {};
   if (name !== undefined) {
@@ -143,7 +161,7 @@ export function duplicateAnalysis(space: string, id: string, name?: string, fetc
 
 /** Supprime la révision courante `expectedRevision` ; l'historique reste dans le dépôt. */
 export function deleteAnalysis(space: string, id: string, expectedRevision: number, fetcher: Fetch = fetch): Promise<AdminOutcome<null>> {
-  const bad = problem(id, expectedRevision);
+  const bad = problem(space, id, expectedRevision);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}?${new URLSearchParams({ expected_revision: String(expectedRevision) }).toString()}`, method: "DELETE", decode: (value, status) => {
     only(status, [204]);
@@ -156,7 +174,7 @@ export function deleteAnalysis(space: string, id: string, expectedRevision: numb
  * identifiant ne compte qu'une fois. `recorded: false` : la base n'a pas pu consigner, rejouer.
  */
 export function openAnalysis(space: string, id: string, revision: number, eventId: string = newEventId(), fetcher: Fetch = fetch): Promise<AdminOutcome<{ recorded: boolean }>> {
-  const bad = problem(id, revision);
+  const bad = problem(space, id, revision);
   if (bad !== null) return rejected(bad);
   try {
     uuid(eventId, "event_id");
@@ -170,7 +188,7 @@ export function openAnalysis(space: string, id: string, revision: number, eventI
 }
 
 export function fetchUsage(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<Usage>> {
-  const bad = problem(id);
+  const bad = problem(space, id);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/usage`, decode: (value, status) => { only(status, [200]); return decodeUsage(value, id); } }, signal, fetcher);
 }
@@ -180,7 +198,17 @@ export function fetchUsage(space: string, id: string, signal: AbortSignal, fetch
  * jamais celle d'une autre personne ; sans exécution, `last` vaut `null`.
  */
 export function fetchLastExecution(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<LastExecution>> {
-  const bad = problem(id);
+  const bad = problem(space, id);
   if (bad !== null) return rejected(bad);
   return run({ url: `${named(space, id)}/last-execution`, decode: (value, status) => { only(status, [200]); return decodeLastExecution(value, space, id); } }, signal, fetcher);
+}
+
+/**
+ * Dashboards dont la révision courante épingle l'analyse (plan 19, B5), pour l'onglet Consommateurs de la fiche : genre
+ * et identifiant pour ceux que la session voit, un simple nombre pour les autres. Mêmes droits que la lecture de l'analyse.
+ */
+export function fetchConsumers(space: string, id: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<AdminOutcome<Consumers>> {
+  const bad = problem(space, id);
+  if (bad !== null) return rejected(bad);
+  return run({ url: `${named(space, id)}/consumers`, decode: (value, status) => { only(status, [200]); return decodeConsumers(value, id); } }, signal, fetcher);
 }

@@ -143,6 +143,16 @@ def test_chaque_code_rendu_par_l_api_est_connu() -> None:
     assert codes_des_contrats() - REFUSAL_CODES == set()
 
 
+def test_codes_des_dashboards_connus_et_illustres_par_un_exemple() -> None:
+    """Les refus du plan 19.2 sont des issues de la liste fermée, et chacun a son exemple de
+    contrat produit par le serveur (dossiers `routes` des analyses et des dashboards)."""
+    nouveaux = {"dashboard_not_found", "invalid_dashboard", "personal_reference", "analysis_in_use"}
+    assert nouveaux <= REFUSAL_CODES
+    assert nouveaux <= codes_des_contrats()
+    for code in nouveaux:
+        assert outcome(422, code) == code
+
+
 # --- Issue normalisée ------------------------------------------------------------------------
 
 

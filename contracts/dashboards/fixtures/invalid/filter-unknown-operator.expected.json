@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/filters/0/operator",
+      "rule": "value_not_allowed"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"status":200,"body":{"id":"<uuid>","base":1,"other":2,"changes":[{"path":"/name","kind":"modified","node":"dashboard","id":null,"before":"Pilotage","after":"Révisé"},{"path":"/layout/sections/0/rows/0/columns/0/children/0","kind":"modified","node":"analysis","id":"<uuid>","before":{"presentation":{}},"after":{"presentation":{"chart":"line"}}}]}}

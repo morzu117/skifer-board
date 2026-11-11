@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { expectAccessible } from "../test/a11y";
 import { decodeAnalysis, type AnalysisDocument } from "./document";
-import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletRequete } from "./FicheOnglets";
+import { OngletCalculs, OngletPresentation, OngletRequete } from "./FicheOnglets";
 import { route } from "./testing";
 
 const base = decodeAnalysis((route("lire").body as { analysis: unknown }).analysis);
@@ -82,11 +82,6 @@ it("dit qu'il n'y a aucun calcul contextuel", () => {
 it.each([["value", "Valeur"], ["bars", "Barres"], ["line", "Ligne"], ["grouped_bars", "Barres groupées"]] as const)("la présentation %s se lit « %s » avec son nom de schéma", (chart, label) => {
   render(<OngletPresentation analysis={{ ...base, presentation: { chart } }} />);
   expect(screen.getByText("Type de graphique").nextElementSibling).toHaveTextContent(`${label} (${chart})`);
-});
-
-it("les consommateurs sont vides avec un message explicite avant le lot 07", () => {
-  render(<OngletConsommateurs />);
-  expect(screen.getByText(/Aucun consommateur\. Les dashboards et les releases n'existent pas encore \(lot 07\)/)).toBeInTheDocument();
 });
 
 it("un filtre sur une colonne inconnue du modèle est dit « non permis » sans présumer de la cause", () => {

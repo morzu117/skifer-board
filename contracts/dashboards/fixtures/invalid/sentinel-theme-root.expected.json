@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/theme",
+      "rule": "unknown_field"
+    }
+  ]
+}

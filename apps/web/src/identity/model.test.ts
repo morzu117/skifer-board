@@ -4,7 +4,7 @@ import etabli from "../../../../contracts/identite/me-etabli.json";
 import anonyme from "../../../../contracts/identite/non-authentifie.json";
 import refus from "../../../../contracts/identite/refus-connexion.json";
 import { ContractError } from "../catalogue/decode";
-import { decodeMe, decodeUnauthenticated, displayName, LOGIN_ERRORS, LOGIN_REASON_LABELS, loginReasonFrom } from "./model";
+import { decodeMe, decodeUnauthenticated, displayName, identityKey, LOGIN_ERRORS, LOGIN_REASON_LABELS, loginReasonFrom } from "./model";
 
 describe("Contrat de l'identité", () => {
   it("décode le mode local du serveur", () => {
@@ -52,5 +52,21 @@ describe("Contrat de l'identité", () => {
   });
   it.each(["inconnu", ""])("conserve l'échec pour le code inconnu ou vide : %s", (raison) => {
     expect(loginReasonFrom(`?login_error=${raison}`)).toBe("unknown");
+  });
+});
+
+describe("clé d'identité", () => {
+  const personne = { issuer: "https://id.example.invalid", subject: "cora", name: "Cora", email: null, groups: [] };
+  it("désigne la personne par l'émetteur et le sujet, jamais par le nom affiché", () => {
+    expect(identityKey(personne)).toBe(identityKey({ ...personne, name: "Autre nom", email: "cora@example.invalid", groups: ["finance"] }));
+    expect(identityKey(personne)).not.toBe(identityKey({ ...personne, subject: "bob" }));
+    expect(identityKey(personne)).not.toBe(identityKey({ ...personne, issuer: "https://autre.example.invalid" }));
+  });
+  it("ne confond pas deux couples dont la simple concaténation serait la même", () => {
+    expect(identityKey({ ...personne, issuer: "a b", subject: "c" })).not.toBe(identityKey({ ...personne, issuer: "a", subject: "b c" }));
+  });
+  it("deux personnes de même nom affiché ont deux clés", () => {
+    expect(displayName(personne)).toBe(displayName({ ...personne, subject: "cora-2" }));
+    expect(identityKey(personne)).not.toBe(identityKey({ ...personne, subject: "cora-2" }));
   });
 });

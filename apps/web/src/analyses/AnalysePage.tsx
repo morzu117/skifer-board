@@ -3,7 +3,7 @@ import { SKIFER_CLAIR, type ChartTheme } from "../charts/theme";
 import { formatInstant } from "../format/date";
 import { ThemeSwitch } from "../prototype/ThemeSwitch";
 import { navigate, routeHash } from "../shell/route";
-import { Confirm, Reading } from "../spaces/AdminParts";
+import { Confirm, Reading, refusalText } from "../spaces/AdminParts";
 import type { Fetch } from "../spaces/api";
 import type { Space } from "../spaces/model";
 import { Badge } from "../ui/Badge";
@@ -13,7 +13,9 @@ import { useOutcome } from "../ui/useOutcome";
 import { deleteAnalysis, duplicateAnalysis, fetchAnalysis, fetchAnalysisRevision, openAnalysis } from "./client";
 import { analysisRefusalText, Unavailable, type Failed } from "./Failure";
 import { openability } from "./explorer";
-import { OngletCalculs, OngletConsommateurs, OngletPresentation, OngletRequete } from "./FicheOnglets";
+import { OngletCalculs, OngletPresentation, OngletRequete } from "./FicheOnglets";
+import { ListeConsommateurs, OngletConsommateurs } from "./Consommateurs";
+import { EpinglerDashboard } from "./EpinglerDashboard";
 import { OngletPreuves } from "./Preuves";
 import { READ_STATE_LABELS, RULE_LABELS, VISIBILITY_LABELS, valueAt } from "./labels";
 import type { AnalysisRevision } from "./model";
@@ -114,7 +116,7 @@ function Panel({ tab, space, found, compare, fetcher }: { tab: TabId; space: str
     case "calculs": return <OngletCalculs analysis={found.analysis} />;
     case "presentation": return <OngletPresentation analysis={found.analysis} />;
     case "revisions": return <OngletRevisions space={space} id={found.id} compare={compare} fetcher={fetcher} />;
-    case "consommateurs": return <OngletConsommateurs />;
+    case "consommateurs": return <OngletConsommateurs space={space} id={found.id} fetcher={fetcher} />;
     case "usage": return <OngletUsage space={space} id={found.id} fetcher={fetcher} />;
     case "preuves": return <OngletPreuves space={space} id={found.id} shown={found.revision} fetcher={fetcher} />;
   }
@@ -144,6 +146,7 @@ type Pending = "duplicate" | "delete" | null;
  */
 function Actions({ space, found, current, fetcher, onReload, onDeleted }: { space: Space; found: AnalysisRevision; current: boolean; fetcher: Fetch; onReload: () => void; onDeleted: (revision: number) => void }) {
   const [asking, setAsking] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const [busy, setBusy] = useState<Pending>(null);
   const [failure, setFailure] = useState<Failed | null>(null);
   const announced = useRef<HTMLDivElement>(null);
@@ -177,18 +180,21 @@ function Actions({ space, found, current, fetcher, onReload, onDeleted }: { spac
   return <div className="sb-analyses__actions">
     <div className="sb-analyses__buttons">
       <button type="button" className="sb-button" disabled={blockers.length > 0} aria-describedby={blockers.length > 0 ? "fiche-ouvrir-raisons" : undefined} onClick={explore}>Ouvrir dans l'Explorateur</button>
+      {found.currentRevision === null ? null : <button type="button" className="sb-button" onClick={() => { setPinning(true); }}>Épingler à un dashboard</button>}
       {permissions.revise && current ? <button type="button" className="sb-button" disabled={blockers.length > 0} aria-describedby={blockers.length > 0 ? "fiche-ouvrir-raisons" : undefined} onClick={explore}>Nouvelle révision</button> : null}
       {permissions.duplicate && current ? <button type="button" className="sb-button" disabled={busy !== null} onClick={duplicate}>Dupliquer</button> : null}
       {canDelete && !asking ? <button type="button" className="sb-button" disabled={busy !== null} onClick={() => { setAsking(true); }}>Supprimer</button> : null}
     </div>
+    {pinning ? <EpinglerDashboard space={space.id} found={found} fetcher={fetcher} onClose={() => { setPinning(false); }} /> : null}
     {asking ? <Confirm question="Supprimer cette analyse ? Son historique reste dans le dépôt." action="Confirmer la suppression" busy={busy !== null} onConfirm={remove} onCancel={() => { setAsking(false); }} /> : null}
     {permissions.duplicate && !current && found.currentRevision !== null ? <p className="sb-members__state">Dupliquer copie la révision courante : ouvrez la révision courante pour dupliquer.</p> : null}
     {blockers.length === 0 ? <p className="sb-members__state">{permissions.revise && current ? "Une nouvelle révision se prépare dans l'Explorateur, puis se confirme avec son impact." : "L'Explorateur ouvre cette révision pour la poursuivre ; rien n'est enregistré sans votre confirmation."}</p>
       : <div id="fiche-ouvrir-raisons" className="sb-members__state"><p>Ouverture dans l'Explorateur indisponible :</p><ul>{blockers.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
     {failure === null ? null : <div ref={announced} tabIndex={-1}>
       <Banner tone="danger" action={failure.status === "refused" && failure.code === "revision_conflict" ? <button type="button" className="sb-button" onClick={onReload}>Relire l'analyse</button> : undefined}>
-        {failure.status === "refused" ? analysisRefusalText(failure) : `Action non confirmée : ${failure.message}`}
+        {failure.status === "refused" ? (failure.code === "analysis_in_use" ? refusalText(failure) : analysisRefusalText(failure)) : `Action non confirmée : ${failure.message}`}
       </Banner>
+      {failure.status === "refused" && failure.code === "analysis_in_use" && failure.consumers !== undefined ? <ListeConsommateurs space={space.id} consumers={failure.consumers} others={failure.others as number} fetcher={fetcher} /> : null}
     </div>}
   </div>;
 }

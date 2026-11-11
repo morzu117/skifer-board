@@ -1,0 +1,19 @@
+api_version: board.dashboard/v1
+id: bd164370-c9cc-500e-998c-ada295b28944
+name: Pilotage des ventes
+description: Vue d'ensemble.
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+defaults:
+  legend: auto
+filters:
+- id: 7fd608f9-6695-54f4-85e9-4fb25c70431c
+  label: Région
+  dimension: region
+  operator: eq
+  targets:
+  - 4e88603b-fa91-58af-94ec-79c910f51716
+  default: Nord
+layout: {}

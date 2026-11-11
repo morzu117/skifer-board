@@ -53,7 +53,7 @@ def refusal(violations: Collection[Violation]) -> ContentError:
     return ContentError(INVALID_ANALYSIS, ordered[0].rule, ordered)
 
 
-def _model(catalog: dict[str, Any], name: str) -> dict[str, Any] | None:
+def model_of(catalog: dict[str, Any], name: str) -> dict[str, Any] | None:
     return next((item for item in catalog["models"] if item["name"] == name), None)
 
 
@@ -65,7 +65,7 @@ def reference_violations(
     violations: list[Violation] = []
     if query["connection"] not in connections:
         violations.append(Violation("/query/connection", "unknown_connection"))
-    model = _model(catalog, query["model"])
+    model = model_of(catalog, query["model"])
     if model is None:
         violations.append(Violation("/query/model", "unknown_model"))
         return violations
@@ -100,7 +100,7 @@ def contextual_violations(document: Document, catalog: dict[str, Any]) -> list[V
     non additive (la semi-additivité y est traitée comme telle), moyenne sans composantes.
     """
     query = document["query"]
-    model = _model(catalog, query["model"])
+    model = model_of(catalog, query["model"])
     if model is None:
         return []
     known = {item["name"]: item for item in model["metrics"]}

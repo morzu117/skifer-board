@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "semantic",
+  "violations": [
+    {
+      "path": "/filters/0/allowed",
+      "rule": "invalid_filter"
+    }
+  ]
+}

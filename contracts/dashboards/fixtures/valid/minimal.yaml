@@ -1,0 +1,12 @@
+api_version: board.dashboard/v1
+id: 1b66755a-56fa-5bd2-bd95-5515ae30ba3d
+name: Minimal
+description: ''
+visibility: personal
+owner:
+  issuer: https://idp.example.test
+  subject: user-0001
+defaults: {}
+filters: []
+layout:
+  sections: []

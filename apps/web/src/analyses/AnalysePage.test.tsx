@@ -177,7 +177,7 @@ it("avec un index en retard, les actions accordées par le serveur restent offer
 
 it("les sept onglets se lisent un à un, un seul panneau est monté à la fois", async () => {
   open({
-    [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/revisions`]: route("historique"), [`GET ${ROOT}/${ID}/usage`]: route("usage"), [`GET ${ROOT}/${ID}/last-execution`]: route("derniere-execution-aucune"),
+    [FICHE]: route("lire"), [`GET ${ROOT}/${ID}/consumers`]: route("consommateurs-aucun"), [`GET ${ROOT}/${ID}/revisions`]: route("historique"), [`GET ${ROOT}/${ID}/usage`]: route("usage"), [`GET ${ROOT}/${ID}/last-execution`]: route("derniere-execution-aucune"),
   });
   await screen.findByRole("heading", { name: "Chiffre d'affaires" });
   expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Requête", "Calculs contextuels", "Présentation par défaut", "Révisions", "Consommateurs", "Usage", "Preuves"]);
@@ -191,7 +191,7 @@ it("les sept onglets se lisent un à un, un seul panneau est monté à la fois",
   await userEvent.click(screen.getByRole("tab", { name: "Révisions" }));
   expect(await screen.findByRole("list", { name: "Historique des révisions" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "Consommateurs" }));
-  expect(panel()[0]).toHaveTextContent("Aucun consommateur");
+  expect(await screen.findByText("Aucun consommateur.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "Usage" }));
   expect(await screen.findByRole("table", { name: "Usage de l'analyse" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "Preuves" }));
@@ -449,15 +449,24 @@ it("la suppression envoie la révision lue et non un 1 constant, depuis une rév
 });
 
 it("une analyse encore utilisée refuse la suppression et nomme ses consommateurs", async () => {
-  open({ [FICHE]: withPermissions(route("lire"), ALL), [`DELETE ${ROOT}/${ID}?expected_revision=1`]: route("refus-analyse-utilisee") });
+  open({ [FICHE]: withPermissions(route("lire"), ALL), [`DELETE ${ROOT}/${ID}?expected_revision=1`]: changed(route("refus-analyse-utilisee"), "body.error.others", 1) });
   await userEvent.click(await screen.findByRole("button", { name: "Supprimer" }));
   await userEvent.click(screen.getByRole("button", { name: "Confirmer la suppression" }));
   const alert = await screen.findByRole("alert");
   expect(alert).toHaveTextContent("Cette analyse est encore utilisée");
-  expect(alert).toHaveTextContent(`Consommateurs : dashboard ${ID}.`);
+  expect(alert).not.toHaveTextContent(`Consommateurs : dashboard ${ID}.`);
+  expect(screen.getByRole("link", { name: `Dashboard ${ID}` })).toHaveAttribute("href", `#/espaces/finance/dashboards/${ID}`);
+  expect(screen.getAllByText("Autres dépendants que vous ne voyez pas : 1.")).toHaveLength(1);
+  expect(screen.getAllByText(new RegExp(ID))).toHaveLength(2);
   expect(screen.queryByText(/Analyse supprimée/)).not.toBeInTheDocument();
   expect(screen.queryByRole("group", { name: /Supprimer cette analyse/ })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Supprimer" })).toBeInTheDocument();
+});
+
+it("une analyse supprimée ne propose pas l'épinglage", async () => {
+  open({ [`GET ${ROOT}/${ID}/revisions/1`]: route("revision-supprimee") }, 1);
+  await screen.findByText(/Cette analyse est supprimée/);
+  expect(screen.queryByRole("button", { name: "Épingler à un dashboard" })).not.toBeInTheDocument();
 });
 
 it("un conflit de révision propose de relire l'analyse, qui est alors relue", async () => {
@@ -482,4 +491,26 @@ it("une suppression en erreur ne dit pas qu'elle a réussi", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Action non confirmée :");
   expect(screen.queryByText(/Analyse supprimée/)).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Relire l'analyse" })).not.toBeInTheDocument();
+});
+
+it("ouvre et ferme le dialogue d'épinglage depuis la fiche", async () => {
+  open({ [FICHE]: route("lire"), "GET /api/spaces/finance/dashboards": { status: 200, body: { dashboards: [], unreadable: 0 } } });
+  await userEvent.click(await screen.findByRole("button", { name: "Épingler à un dashboard" }));
+  const dialog = await screen.findByRole("dialog", { name: "Épingler à un dashboard" });
+  await userEvent.click(within(dialog).getByRole("button", { name: "Fermer" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("un refus de suppression résout le nom du dashboard visible sans nommer les autres", async () => {
+  const { route: dashboardRoute } = await import("../dashboards/testing");
+  const example = dashboardRoute("lister");
+  const body = example.body as { dashboards: { id: string; name: string }[] };
+  (body.dashboards[0] as { id: string; name: string }).id = ID;
+  (body.dashboards[0] as { id: string; name: string }).name = "Dashboard lisible";
+  const { fetcher } = open({ [FICHE]: withPermissions(route("lire"), ALL), [`DELETE ${ROOT}/${ID}?expected_revision=1`]: changed(route("refus-analyse-utilisee"), "body.error.others", 1), "GET /api/spaces/finance/dashboards": example });
+  await userEvent.click(await screen.findByRole("button", { name: "Supprimer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Confirmer la suppression" }));
+  expect(await screen.findByRole("link", { name: "Dashboard lisible" })).toHaveAttribute("href", `#/espaces/finance/dashboards/${ID}`);
+  expect(screen.getByText("Autres dépendants que vous ne voyez pas : 1.")).toBeInTheDocument();
+  expect(fetcher.mock.calls.filter(([url]) => url.includes("/dashboards"))).toHaveLength(1);
 });

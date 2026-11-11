@@ -38,7 +38,3 @@ export function OngletPresentation({ analysis }: { analysis: Pick<AnalysisDocume
     <dt>Type de graphique</dt><dd>{chartLabel(analysis.presentation.chart)} <span className="sb-mono">({analysis.presentation.chart})</span></dd>
   </dl>;
 }
-
-export function OngletConsommateurs() {
-  return <p>Aucun consommateur. Les dashboards et les releases n'existent pas encore (lot 07) : la liste est vide jusque-là, et le contrôle à la suppression est déjà en place.</p>;
-}

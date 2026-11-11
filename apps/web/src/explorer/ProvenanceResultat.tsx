@@ -15,7 +15,7 @@ export function age(sources: Proof["sources"]): string {
   if (sources.some((source) => source.data_age_seconds === null)) return "inconnu";
   return `${formatNumber(Math.max(...sources.map((source) => source.data_age_seconds as number)))} s`;
 }
-export function ProvenanceResultat({ run }: { run: Execution & { proof: NonNullable<Execution["proof"]> } }) {
+export function ProvenanceResultat({ run, label = "Provenance" }: { run: Execution & { proof: NonNullable<Execution["proof"]> }; label?: string }) {
   const [copie, setCopie] = useState<string | null>(null);
   const [ouvert, setOuvert] = useState(false);
   const panneauId = useId();
@@ -26,7 +26,7 @@ export function ProvenanceResultat({ run }: { run: Execution & { proof: NonNulla
   const clavier = (event: KeyboardEvent<HTMLElement>) => { if (event.key === "Escape") { event.preventDefault(); fermer(); } };
   const copier = () => { void navigator.clipboard.writeText(run.proof.sqlHash).then(() => { setCopie("Empreinte copiée."); }, () => { setCopie("Copie indisponible."); }); };
   const duree = run.proof.duration === null ? "inconnue" : `${formatNumber(run.proof.duration)} s`;
-  return <Card title="Provenance" className="sb-explorer__provenance">
+  return <Card title={label} className="sb-explorer__provenance">
     <dl className="sb-executions__facts"><dt>Preuve</dt><dd className="sb-mono">{run.proof.evidenceId}</dd><dt>Empreinte SQL</dt><dd><span className="sb-mono">{run.proof.sqlHash}</span> <button type="button" className="sb-button" onClick={copier}>Copier l'empreinte</button><span aria-live="polite"> {copie}</span></dd><dt>Certification des sources</dt><dd>{certification(run.proof.sources)}</dd><dt>Âge des données</dt><dd>{age(run.proof.sources)}</dd><dt>Durée</dt><dd>{duree}</dd></dl>
     <div><button ref={bouton} type="button" className="sb-button" aria-expanded={ouvert} aria-controls={panneauId} onClick={() => { if (ouvert) fermer(); else setOuvert(true); }}>Preuves</button></div>
     <section id={panneauId} ref={panneau} tabIndex={-1} aria-label="Preuves" hidden={!ouvert} onKeyDown={clavier}>

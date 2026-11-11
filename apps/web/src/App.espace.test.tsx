@@ -66,27 +66,27 @@ describe("Entrées de la navigation selon l'espace (plan 08, 8.4)", () => {
 
   it("hors d'un espace confirmé, le catalogue et les membres se lisent « dans un espace »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", espace: "dans un espace" } });
+      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", espace: "dans un espace" } });
     }
   });
 
   it.each([
-    ["admin", false, ["analyses", "catalogue", "espace", "explorer"], {}],
-    ["admin", true, ["analyses", "catalogue", "espace", "explorer"], {}],
-    ["creator", false, ["analyses", "catalogue", "explorer"], { espace: "administrateurs" }],
-    ["reader", false, ["analyses", "catalogue", "explorer"], { espace: "administrateurs" }],
-    ["reader", true, ["analyses", "catalogue", "espace", "explorer"], {}],
-    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle" }],
+    ["admin", false, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
+    ["admin", true, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
+    ["creator", false, ["analyses", "catalogue", "dashboards", "explorer"], { espace: "administrateurs" }],
+    ["reader", false, ["analyses", "catalogue", "dashboards", "explorer"], { espace: "administrateurs" }],
+    ["reader", true, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
+    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle" }],
     // Un espace confirmé sans rôle ne l'est qu'à l'administration de la plateforme (E6) : l'entrée est
     // offerte même avant que la liste l'ait confirmé, et le serveur reste seul juge.
-    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle" }],
+    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle" }],
   ] as [Space["role"], boolean, string[], object][])("rôle %s, plateforme %s", (role, plateforme, available, pending) => {
     expect(resume(de(role), plateforme)).toEqual({ available, pending });
   });
 
   it("l'espace implicite du mode local : catalogue livré, membres « mode local »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local", analyses: "mode local" } });
+      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local", analyses: "mode local", dashboards: "mode local" } });
     }
   });
 });
@@ -315,6 +315,34 @@ it("ouvre Explorer depuis la navigation de l'espace", async () => {
   expect(await screen.findByRole("heading", { name: "Explorer", level: 1 })).toBeInTheDocument();
   expect(filAriane()).toEqual(["Finance", "Explorer"]);
   expect(window.location.hash).toBe("#/espaces/finance/explorer");
+});
+
+describe("Dashboards dans la navigation de l'espace (plan 19, 19.5a)", () => {
+  const ID = "5f1d7c52-3b0e-4d36-9a54-0c7a3e1b9d20";
+  const ROOT = "/api/spaces/finance/dashboards";
+
+  it("ouvre la liste depuis la navigation, avec son fil d'Ariane et l'entrée active", async () => {
+    ouvrir("#/espaces/finance/catalogue", { ...FINANCE, [`GET ${ROOT}`]: { status: 200, body: { dashboards: [], unreadable: 0 } } });
+    await screen.findByRole("heading", { name: "Catalogue Atlas" });
+    await userEvent.click(within(nav()).getByRole("button", { name: "Dashboards" }));
+    expect(await screen.findByRole("heading", { name: "Dashboards", level: 1 })).toBeInTheDocument();
+    expect(filAriane()).toEqual(["Finance", "Dashboards"]);
+    expect(window.location.hash).toBe("#/espaces/finance/dashboards");
+    expect(within(nav()).getByRole("button", { name: "Dashboards" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("ouvre l'éditeur par son adresse : l'entrée Dashboards reste active et le dashboard est lu", async () => {
+    const fetcher = ouvrir(`#/espaces/finance/dashboards/${ID}`, { ...FINANCE, [`GET ${ROOT}/${ID}`]: { status: 404, body: { code: "dashboard_not_found" } } });
+    await waitFor(() => { expect(lus(fetcher)).toContain(`GET ${ROOT}/${ID}`); });
+    expect(filAriane()).toEqual(["Finance", "Dashboards", "Éditeur"]);
+    expect(within(nav()).getByRole("button", { name: "Dashboards" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("ouvre l'historique du dashboard depuis son adresse", async () => {
+    const fetcher = ouvrir(`#/espaces/finance/dashboards/${ID}/historique`, { ...FINANCE, [`GET ${ROOT}/${ID}/revisions`]: { status: 404, body: { code: "dashboard_not_found" } } });
+    expect(await screen.findByRole("heading", { name: "Historique du dashboard" })).toBeInTheDocument();
+    await waitFor(() => { expect(lus(fetcher)).toContain(`GET ${ROOT}/${ID}/revisions`); });
+  });
 });
 
 describe("Analyses dans la navigation de l'espace (plan 18, 18.5a)", () => {

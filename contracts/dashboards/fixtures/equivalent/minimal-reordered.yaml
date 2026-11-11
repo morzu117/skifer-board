@@ -1,0 +1,10 @@
+# Même contenu que valid/minimal.yaml : ordre des clés et style différents.
+layout: {sections: []}
+filters: []
+defaults: {}
+owner: {subject: user-0001, issuer: "https://idp.example.test"}
+visibility: personal
+description: ""
+name: "Minimal"
+id: 1b66755a-56fa-5bd2-bd95-5515ae30ba3d
+api_version: board.dashboard/v1

@@ -1,10 +1,10 @@
 """Serveur réel des analyses (plan 18.2) : base migrée, espaces et rôles du plan 08, dépôt de
-contenus git jetable, catalogue sémantique de test et consommateurs simulés."""
+contenus git jetable et catalogue sémantique de test (plan 19.2 : et les routes des dashboards)."""
 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +18,7 @@ from identity.conftest import horloge as horloge
 from skifer_board.catalog import CatalogService
 from skifer_board.content import ContentRepository
 from skifer_board.content.events import UsageKey
-from skifer_board.content.index import AnalysisIndex
-from skifer_board.content.web import Consumer
+from skifer_board.content.index import AnalysisIndex, DashboardIndex
 from skifer_board.execution import ConnectionStore
 from skifer_board.execution.connectors import DuckDbEndpoint
 from skifer_board.execution.model import Connector, IdentityMode
@@ -38,8 +37,10 @@ from spaces.monde import (
 )
 
 from .monde import document, init, new_id, repository
+from .monde_dashboard import with_components
 
 CHEMIN = f"/api/spaces/{A}/analyses"
+CHEMIN_TABLEAUX = f"/api/spaces/{A}/dashboards"
 CLE_D_USAGE = UsageKey(b"u" * 32)
 
 
@@ -96,6 +97,15 @@ def corps(**changes: Any) -> dict[str, Any]:
     return valeur
 
 
+def corps_tableau(*composants: dict[str, Any], **changes: Any) -> dict[str, Any]:
+    """Corps d'une création de dashboard : le document d'exemple, avec ces composants dans son
+    unique colonne, sans les champs que pose le serveur."""
+    valeur = with_components(*composants, **changes)
+    for nom in ("api_version", "id", "owner"):
+        del valeur[nom]
+    return valeur
+
+
 @dataclass
 class Banc:
     monde: Monde
@@ -104,7 +114,7 @@ class Banc:
     depot: ContentRepository
     dossier_modeles: Path
     index: AnalysisIndex
-    consommateurs: list[Consumer] = field(default_factory=list)
+    tableaux: DashboardIndex
 
     def appel(self, profil: Profil | None, methode: str, chemin: str, **options: Any) -> Response:
         entetes = {"Origin": ORIGINE}
@@ -120,6 +130,33 @@ class Banc:
         assert reponse.status_code == 201, reponse.text
         identifiant: str = reponse.json()["id"]
         return identifiant
+
+    def creer_tableau(
+        self, profil: Profil, *composants: dict[str, Any], **changes: Any
+    ) -> Response:
+        corps_ = corps_tableau(*composants, **changes)
+        return self.appel(profil, "POST", CHEMIN_TABLEAUX, json=corps_)
+
+    def creer_tableau_ok(self, profil: Profil, *composants: dict[str, Any], **changes: Any) -> str:
+        reponse = self.creer_tableau(profil, *composants, **changes)
+        assert reponse.status_code == 201, reponse.text
+        identifiant: str = reponse.json()["id"]
+        return identifiant
+
+    def reviser_tableau(
+        self,
+        profil: Profil,
+        identifiant: str,
+        revision: int,
+        *composants: dict[str, Any],
+        **changes: Any,
+    ) -> Response:
+        return self.appel(
+            profil,
+            "POST",
+            f"{CHEMIN_TABLEAUX}/{identifiant}/revisions",
+            json={**corps_tableau(*composants, **changes), "expected_revision": revision},
+        )
 
     def redefinir(self, metriques: list[str], dimensions: list[str]) -> None:
         """Le catalogue change sous les pieds d'une analyse : seuls ces champs subsistent."""
@@ -179,7 +216,6 @@ def ouvrir(
 ) -> Iterator[Banc]:
     depot = repository(init(racine / "contenus"), clock=monde.horloge)
     dossier = modeles(racine)
-    consommateurs: list[Consumer] = []
     connecter_finance(monde)
     app = create_app(
         service,
@@ -192,7 +228,6 @@ def ouvrir(
         endpoints={"ventes": DuckDbEndpoint(base_de_ventes(racine))},
         execution_reader_attributes=options.get("attributs", lambda identite: {"tenant": "A"}),
         content_repository=options.get("content_repository", depot),
-        analysis_consumers=lambda espace, analyse: tuple(consommateurs),
         usage_key=options.get("usage_key", CLE_D_USAGE),
     )
     with TestClient(
@@ -205,7 +240,7 @@ def ouvrir(
             depot,
             dossier,
             AnalysisIndex(monde.moteur, monde.horloge),
-            consommateurs,
+            DashboardIndex(monde.moteur, monde.horloge),
         )
 
 

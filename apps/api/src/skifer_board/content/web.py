@@ -36,7 +36,9 @@ from .analysis import API_VERSION, Document, diff, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
     CONTENT_UNAVAILABLE,
+    DASHBOARD_NOT_FOUND,
     INVALID_ANALYSIS,
+    INVALID_DASHBOARD,
     REVISION_CONFLICT,
     ContentError,
     Violation,
@@ -44,7 +46,17 @@ from .errors import (
 from .events import Kind, UsageEvents, saved_id
 from .index import INDEXED, AnalysisIndex, IndexRow
 from .references import contextual_violations, reference_violations, refusal
-from .repository import ContentRepository, Entry, Glance, Revision, StoredRevision
+from .repository import (
+    ANALYSIS_KIND,
+    ContentRepository,
+    Entry,
+    Glance,
+    Revision,
+    StoredRevision,
+)
+from .repository import (
+    Kind as ContentKind,
+)
 
 LOGGER = "skifer_board.content"
 ANALYSIS_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -66,6 +78,8 @@ _STATUS = {
     REVISION_CONFLICT: 409,
     INVALID_ANALYSIS: 422,
     ANALYSIS_NOT_FOUND: 404,
+    INVALID_DASHBOARD: 422,
+    DASHBOARD_NOT_FOUND: 404,
 }
 
 Catalog = Callable[[], dict[str, Any]]
@@ -73,21 +87,38 @@ Catalog = Callable[[], dict[str, Any]]
 
 @dataclass(frozen=True)
 class Consumer:
-    """Ce qui dépend d'une analyse (un tableau de bord, au lot 07) ; sans nom ni contenu."""
+    """Ce qui dépend d'une analyse (un dashboard, plan 19) ; sans nom ni contenu."""
 
     kind: str
     id: str
 
 
-Consumers = Callable[[str, str], Sequence[Consumer]]
+@dataclass(frozen=True)
+class Dependents:
+    """Les consommateurs d'une analyse pour une session : ceux qu'elle a le droit de voir, avec
+    genre et identifiant, et le simple nombre des autres. Les autres ne sont jamais nommés."""
+
+    visible: tuple[Consumer, ...] = ()
+    others: int = 0
+
+    def __bool__(self) -> bool:
+        return bool(self.visible) or self.others > 0
+
+    def json(self) -> dict[str, Any]:
+        return {
+            "consumers": [{"kind": item.kind, "id": item.id} for item in self.visible],
+            "others": self.others,
+        }
+
+
+# Qui consomme cette analyse, pour cette session, sur cette tête du dépôt ? (espace, analyse,
+# session, tête). Git fait foi : l'index des références n'est cru que là où il dit ce que dit git ;
+# quand l'exhaustivité ne peut pas être établie, l'appel lève (`content_unavailable`), et l'appelant
+# ne supprime rien.
+Consumers = Callable[[str, str, PersonRef, str | None], Dependents]
 # Dernière exécution d'une personne qui référençait une analyse (plan 18.3b) : la révision
 # référencée et le résumé de l'exécution, ou `None`. Cette personne seule, jamais une autre.
 LastExecution = Callable[[str, str, PersonRef], tuple[int, dict[str, Any]] | None]
-
-
-def no_consumers(space_id: str, analysis_id: str) -> Sequence[Consumer]:
-    """Avant le lot 07, rien ne consomme une analyse : le contrôle est en place, la liste vide."""
-    return ()
 
 
 @dataclass(frozen=True)
@@ -155,6 +186,10 @@ class Located:
     entries: tuple[Entry, ...]
     shown: tuple[bool, ...]
     deleted: bool
+    not_found: str = ANALYSIS_NOT_FOUND
+    # Tête du dépôt dont toutes ces lectures sont tirées ; les lectures qui suivent (par exemple
+    # les analyses épinglées d'un dashboard) la reprennent plutôt que d'en résoudre une autre.
+    tip: str | None = None
 
     @property
     def current(self) -> int | None:
@@ -169,7 +204,7 @@ class Located:
             if entry.revision.action == "save"
         ]
         if number > len(saves) or not saves[number - 1][1]:
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing_revision")
+            raise ContentError(self.not_found, "missing_revision")
         entry = saves[number - 1][0]
         assert entry.document is not None
         return StoredRevision(entry.revision, entry.document)
@@ -225,6 +260,7 @@ def establish(
     analysis_id: str,
     actor: PersonRef,
     at: str | None = None,
+    kind: ContentKind = ANALYSIS_KIND,
 ) -> tuple[str, Glance]:
     """Refuse, comme une analyse inconnue, ce que la session n'a pas le droit de voir, avant de
     lire l'histoire ou le moindre autre contenu : le coût d'un refus ne dépend ni du nombre de
@@ -241,19 +277,23 @@ def establish(
     """
     tip = repository.head() if at is None else at
     if tip is None:
-        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
-    seen = repository.glance(space_id, analysis_id, at=tip)
+        raise ContentError(kind.not_found, "missing")
+    seen = repository.glance(space_id, analysis_id, at=tip, kind=kind)
     if seen.owner is None or seen.visibility is None:
         # Inconnue, ou contenu illisible : seule la personne qui l'a créée passe.
         if seen.owner is None or seen.owner != actor:
-            raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+            raise ContentError(kind.not_found, "missing")
     elif not visible_to(seen.owner, seen.visibility, actor, deleted=seen.deleted):
-        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+        raise ContentError(kind.not_found, "missing")
     return tip, seen
 
 
 def find(
-    repository: ContentRepository | None, space_id: str, analysis_id: str, actor: PersonRef
+    repository: ContentRepository | None,
+    space_id: str,
+    analysis_id: str,
+    actor: PersonRef,
+    kind: ContentKind = ANALYSIS_KIND,
 ) -> Located:
     """Historique d'une analyse que la session a le droit de voir ; sinon, comme inconnue.
 
@@ -265,8 +305,8 @@ def find(
     if repository is None:
         raise ContentError(CONTENT_UNAVAILABLE, "not_configured")
     if ANALYSIS_ID.fullmatch(analysis_id) is None:
-        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
-    tip, seen = establish(repository, space_id, analysis_id, actor)
+        raise ContentError(kind.not_found, "missing")
+    tip, seen = establish(repository, space_id, analysis_id, actor, kind=kind)
 
     def allow(owner: PersonRef | None, visibility: str | None, deleted: bool) -> bool:
         """Révision lisible par la session, jugée sur son seul en-tête. Un en-tête illisible ne
@@ -276,11 +316,11 @@ def find(
             return seen.owner == actor
         return visible_to(owner, visibility, actor, deleted=deleted)
 
-    entries = repository.entries(space_id, analysis_id, at=tip, allow=allow)
+    entries = repository.entries(space_id, analysis_id, at=tip, allow=allow, kind=kind)
     deleted = entries[-1].revision.action == "delete"
     last = [entry for entry in entries if entry.revision.action == "save"][-1]
     if last.document is None or not visible(last.document, actor, deleted=deleted):
-        raise ContentError(ANALYSIS_NOT_FOUND, "missing")
+        raise ContentError(kind.not_found, "missing")
     # Une suppression n'a pas de contenu : elle se montre à qui voit l'analyse supprimée,
     # c'est-à-dire à son propriétaire. Une révision masquée n'a pas été chargée.
     shown = tuple(
@@ -288,7 +328,7 @@ def find(
         and (entry.document is None or visible(entry.document, actor, deleted=deleted))
         for entry in entries
     )
-    return Located(entries, shown, deleted)
+    return Located(entries, shown, deleted, kind.not_found, tip)
 
 
 class AnalysisUse:
@@ -329,7 +369,7 @@ def install_analysis_routes(
     connections: ConnectionStore | None,
     catalog: Catalog | None,
     reader: Callable[[Request, str], Access],
-    consumers: Consumers = no_consumers,
+    consumers: Consumers | None = None,
     events: UsageEvents | None = None,
     last_execution: LastExecution | None = None,
 ) -> None:
@@ -341,7 +381,7 @@ def install_analysis_routes(
     @app.exception_handler(ContentError)
     async def content_error(request: Request, error: ContentError) -> JSONResponse:
         status = _STATUS[error.code]
-        if error.code == INVALID_ANALYSIS:
+        if error.code in {INVALID_ANALYSIS, INVALID_DASHBOARD}:
             return _error(
                 status, error.code, reason=error.reason, violations=_violations(error.violations)
             )
@@ -726,6 +766,17 @@ def install_analysis_routes(
             }
         )
 
+    @app.get(path + "/{analysis_id}/consumers")
+    def get_consumers(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
+        """Onglet Consommateurs de la fiche (plan 19, B5) : les dashboards dont la révision
+        courante épingle l'analyse. Mêmes droits que la lecture de l'analyse ; genre et
+        identifiant pour ceux que la session peut voir, un simple nombre pour les autres."""
+        _, actor = active(request, space_id)
+        current(space_id, analysis_id, actor)
+        assert consumers is not None
+        dependents = consumers(space_id, analysis_id, actor, depot().head())
+        return JSONResponse({"id": analysis_id, **dependents.json()})
+
     @app.post(path + "/{analysis_id}/revisions")
     async def revise_analysis(request: Request, space_id: str, analysis_id: str) -> JSONResponse:
         access, actor = active(request, space_id)
@@ -812,14 +863,38 @@ def install_analysis_routes(
             raise Refused(403, "forbidden", required="owner")
         if stored.revision.number != expected:
             raise ContentError(REVISION_CONFLICT, "stale")
-        dependents = consumers(space_id, analysis_id)
-        if dependents:
-            return _error(
-                409,
-                ANALYSIS_IN_USE,
-                consumers=[{"kind": item.kind, "id": item.id} for item in dependents],
-            )
-        removed = depot_.delete(space_id, analysis_id, expected_revision=expected, actor=actor)
+        assert consumers is not None
+
+        def attempt() -> Dependents | Revision | None:
+            """Consommateurs jugés sur une tête, puis suppression qui exige cette même tête
+            (contrôle sous le verrou) : aucun dashboard n'a pu épingler l'analyse entre les
+            deux. `None` : la tête a bougé entre les deux."""
+            tip = depot_.head()
+            dependents = consumers(space_id, analysis_id, actor, tip)
+            if dependents:
+                return dependents
+            try:
+                return depot_.delete(
+                    space_id,
+                    analysis_id,
+                    expected_revision=expected,
+                    actor=actor,
+                    expected_head=tip,
+                )
+            except ContentError as error:
+                if error.code != REVISION_CONFLICT or error.reason != "head_changed":
+                    raise
+                return None
+
+        # Si la tête a bougé, on juge une fois de plus ; si elle bouge encore, c'est un conflit.
+        outcome = attempt()
+        if outcome is None:
+            outcome = attempt()
+            if outcome is None:
+                raise ContentError(REVISION_CONFLICT, "stale")
+        if isinstance(outcome, Dependents):
+            return _error(409, ANALYSIS_IN_USE, **outcome.json())
+        removed = outcome
         assert index is not None
         try:
             index.remove(space_id, analysis_id, removed.number)

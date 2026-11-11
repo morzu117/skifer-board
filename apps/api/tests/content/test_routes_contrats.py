@@ -20,7 +20,6 @@ from fastapi.testclient import TestClient
 from httpx2 import Response
 from skifer_board.catalog import CatalogService
 from skifer_board.content.events import UsageEvents
-from skifer_board.content.web import Consumer
 from skifer_board.server import create_app
 from spaces.monde import (
     ADMIN_GROUPE,
@@ -34,6 +33,7 @@ from spaces.monde import (
 from sqlalchemy.exc import OperationalError
 
 from .monde import init, new_id, repository
+from .monde_dashboard import visual
 from .serveur import CHEMIN, Banc, corps
 
 CONTRATS = Path(__file__).resolve().parents[4] / "contracts/analyses/routes"
@@ -157,12 +157,13 @@ def test_contrats_des_refus(banc: Banc) -> None:
         "refus-ecart-invalide",
         400,
     )
-    banc.consommateurs.append(Consumer("dashboard", new_id()))
+    banc.creer_tableau_ok(
+        CREATEUR_GROUPE, visual(analysis_id=ident, revision=2), visibility="shared"
+    )
     utilisee = banc.appel(
         CREATEUR_GROUPE, "DELETE", f"{CHEMIN}/{ident}", params={"expected_revision": "2"}
     )
     contrat(utilisee, "refus-analyse-utilisee", 409)
-    banc.consommateurs.clear()
 
 
 def test_contrats_des_etats_de_lecture(banc: Banc) -> None:

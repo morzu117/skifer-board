@@ -4,6 +4,7 @@ import { spaceUrl, type Fetch } from "./api";
 import { reportSpaceLost } from "./lost";
 import { ENVIRONMENTS, type Environment } from "../shell/sections";
 import { ANALYSIS_CODES, refusalDetails, type RefusalDetails } from "../analyses/refusal";
+import { DASHBOARD_CODES, dashboardRefusalDetails, isDashboardCode } from "../dashboards/refusal";
 import {
   decodeBinding,
   decodeEvents,
@@ -70,6 +71,7 @@ export const REFUSALS = [
   "worker_unavailable",
   "binding_changed",
   ...ANALYSIS_CODES,
+  ...DASHBOARD_CODES,
 ] as const;
 
 export type RefusalCode = (typeof REFUSALS)[number];
@@ -132,9 +134,16 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   revision_conflict: "Une autre révision a été enregistrée entre-temps : relisez l'analyse.",
   content_unavailable: "Le dépôt des analyses est indisponible.",
   analysis_model_mismatch: "Le modèle de la demande n'est pas celui de l'analyse référencée.",
+  dashboard_not_found: "Ce dashboard est introuvable ou ne vous est pas accessible.",
+  invalid_dashboard: "Le dashboard est invalide : des règles ne sont pas respectées.",
+  personal_reference: "Un dashboard partagé ne peut épingler que des analyses partagées : des composants référencent une analyse personnelle.",
 };
 
-export function refusalOf(value: unknown): Refusal | null {
+/**
+ * Refus lisible d'un corps d'erreur. `closed` exige la forme exacte des codes communs (analyses et dashboards) ;
+ * sans lui, un champ en trop est ignoré et un `field` illisible devient `null`, comme pour les routes plus anciennes.
+ */
+export function refusalOf(value: unknown, closed = false): Refusal | null {
   if (typeof value !== "object" || value === null || !("error" in value)) {
     return null;
   }
@@ -147,8 +156,8 @@ export function refusalOf(value: unknown): Refusal | null {
     return null;
   }
   const field = "field" in error && typeof error.field === "string" ? error.field : null;
-  // Les refus d'analyses ont une forme exacte : une forme inattendue n'est pas un refus lisible.
-  const details = refusalDetails(code, error);
+  // Les refus d'analyses et de dashboards ont une forme exacte : une forme inattendue n'est pas un refus lisible.
+  const details = isDashboardCode(code) ? dashboardRefusalDetails(code, error) : refusalDetails(code, error, closed);
   if (details === null) {
     return null;
   }
@@ -172,11 +181,13 @@ export interface Call<T> {
   body?: unknown;
   /** Reçoit le corps et le statut de la réponse : une route qui distingue 200 de 201 en a besoin. */
   decode: (value: unknown, status: number) => T;
+  /** Exige la forme exacte des refus communs : les routes d'analyses et de dashboards la demandent. */
+  closed?: boolean;
   /** Lecture du corps d'une réponse réussie, `response.json()` par défaut ; une route qui doit refuser un nombre arrondi par `JSON.parse` fournit la sienne. */
   read?: (response: Response) => Promise<unknown>;
 }
 
-export async function call<T>({ url, method = "GET", body, decode, read }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
+export async function call<T>({ url, method = "GET", body, decode, read, closed = false }: Call<T>, signal: AbortSignal | undefined, fetcher: Fetch): Promise<AdminOutcome<T>> {
   let response: Response;
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
@@ -205,7 +216,7 @@ export async function call<T>({ url, method = "GET", body, decode, read }: Call<
       return { status: "ok", value: decode(response.status === 204 ? null : await (read === undefined ? response.json() : read(response)), response.status) };
     }
     // Un refus sans corps JSON (proxy, panne) se dit par son statut, pas comme un contrat rompu.
-    const refusal = refusalOf(await response.json().catch(() => null));
+    const refusal = refusalOf(await response.json().catch(() => null), closed);
     if (refusal === null) {
       return { status: "error", message: `Réponse inattendue du serveur (HTTP ${String(response.status)}).` };
     }

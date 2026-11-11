@@ -11,19 +11,43 @@ from __future__ import annotations
 
 import copy
 import json
-import math
-import re
-from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
 
 from ..execution.query_validation import filtre
 from ..spaces.web import Invalid
+from .common import (
+    HEADER_MAX,
+    Change,
+    Dumper,
+    Loader,
+    header,
+    ordered,
+    plain,
+    schema_violations,
+    walk,
+)
 from .errors import CONTENT_UNAVAILABLE, INVALID_ANALYSIS, ContentError, Violation
+
+__all__ = [
+    "API_VERSION",
+    "HEADER_MAX",
+    "MAX_DEPTH",
+    "RULES",
+    "SCHEMA_PATH",
+    "Change",
+    "Document",
+    "brief",
+    "diff",
+    "dumps",
+    "loads",
+    "schema",
+    "validate",
+]
 
 API_VERSION = "board.analysis/v1"
 SCHEMA_PATH = Path(__file__).resolve().parents[5] / "contracts" / "analyses" / "analysis.v1.json"
@@ -59,19 +83,6 @@ RULES = frozenset(
     }
 )
 
-_KEYWORD_RULES = {
-    "type": "wrong_type",
-    "enum": "value_not_allowed",
-    "const": "value_not_allowed",
-    "pattern": "bad_format",
-    "minLength": "out_of_bounds",
-    "maxLength": "out_of_bounds",
-    "minItems": "out_of_bounds",
-    "maxItems": "out_of_bounds",
-    "uniqueItems": "duplicate_item",
-    "not": "field_not_allowed",
-}
-
 # Ordre de lecture des clés du texte canonique : identité d'abord, puis la requête.
 _ORDER = (
     "api_version",
@@ -101,7 +112,6 @@ _ORDER = (
     "chart",
 )
 _RANK = {key: position for position, key in enumerate(_ORDER)}
-_SAFE_FIELD = re.compile(r"[A-Za-z0-9_]{1,64}")
 
 
 @cache
@@ -129,59 +139,8 @@ def _key(violation: Violation) -> tuple[str, str]:
     return (violation.path, violation.rule)
 
 
-def _field(base: str, name: str) -> str:
-    """Un nom de champ inconnu n'est cité que s'il est inoffensif : aucune injection de journal."""
-    return f"{base}/{name if _SAFE_FIELD.fullmatch(name) else '*'}"
-
-
-def _pointer(path: Any) -> str:
-    return "".join(f"/{str(part).replace('~', '~0').replace('/', '~1')}" for part in path)
-
-
-def _plain(data: Any) -> list[Violation]:
-    """Types du JSON seulement, clés textuelles, nombres finis, imbrication bornée."""
-    violations: list[Violation] = []
-    pending: list[tuple[str, int, Any]] = [("", 0, data)]
-    while pending:
-        path, depth, value = pending.pop()
-        if isinstance(value, dict | list) and depth > MAX_DEPTH:
-            violations.append(Violation(path, "out_of_bounds"))
-        elif isinstance(value, dict):
-            if any(type(key) is not str for key in value):
-                violations.append(Violation(path, "unsupported_value"))
-                continue
-            pending.extend((_field(path, key), depth + 1, item) for key, item in value.items())
-        elif type(value) is list:
-            pending.extend((f"{path}/{index}", depth + 1, item) for index, item in enumerate(value))
-        elif type(value) not in (str, bool, int, float, type(None)) or (
-            type(value) is float and not math.isfinite(value)
-        ):
-            violations.append(Violation(path, "unsupported_value"))
-    return violations
-
-
 def _schema_violations(data: Any) -> list[Violation]:
-    violations: list[Violation] = []
-    for error in _validator().iter_errors(data):
-        base = _pointer(error.absolute_path)
-        if error.validator == "additionalProperties":
-            known = error.schema.get("properties", {})
-            violations.extend(
-                Violation(_field(base, name), "unknown_field")
-                for name in error.instance
-                if name not in known
-            )
-        elif error.validator == "required":
-            violations.extend(
-                Violation(f"{base}/{name}", "missing_field")
-                for name in error.validator_value
-                if name not in error.instance
-            )
-        else:
-            violations.append(
-                Violation(base, _KEYWORD_RULES.get(error.validator, "schema_violation"))
-            )
-    return violations
+    return schema_violations(_validator(), data)
 
 
 def _semantic(document: Document) -> tuple[Document, list[Violation]]:
@@ -213,7 +172,7 @@ def _semantic(document: Document) -> tuple[Document, list[Violation]]:
 
 def validate(data: Any) -> Document:
     """Document validé et normalisé (listes de valeurs triées), ou refus avec ses violations."""
-    violations = _plain(data)
+    violations = plain(data, MAX_DEPTH)
     if not violations:
         violations = _schema_violations(data)
     if violations:
@@ -224,58 +183,13 @@ def validate(data: Any) -> Document:
     return document
 
 
-class _Loader(yaml.SafeLoader):  # type: ignore[misc]
-    """YAML sans alias ni clé en double : un texte, un seul sens."""
-
-    def compose_node(self, parent: Any, index: Any) -> Any:
-        if self.check_event(yaml.AliasEvent):
-            raise yaml.constructor.ConstructorError(
-                None, None, "alias refusé", self.peek_event().start_mark
-            )
-        return super().compose_node(parent, index)
-
-    def construct_mapping(self, node: Any, deep: bool = False) -> Any:
-        mapping = super().construct_mapping(node, deep)
-        if len(mapping) != len(node.value):
-            raise yaml.constructor.ConstructorError(None, None, "clé en double", node.start_mark)
-        return mapping
-
-
-class _Dumper(yaml.SafeDumper):  # type: ignore[misc]
-    def ignore_aliases(self, data: Any) -> bool:
-        return True
-
-    def increase_indent(self, flow: bool = False, indentless: bool = False) -> Any:
-        return super().increase_indent(flow, False)
-
-
-def _text(dumper: Any, data: str) -> Any:
-    """Un texte sur plusieurs lignes en bloc littéral, quand le format YAML le permet."""
-    return dumper.represent_scalar(
-        "tag:yaml.org,2002:str", data, style="|" if "\n" in data else None
-    )
-
-
-_Dumper.add_representer(str, _text)
-
-
 def loads(raw: bytes) -> Document:
     """Texte YAML (UTF-8) en document validé."""
     try:
-        data = yaml.load(raw.decode("utf-8"), Loader=_Loader)
+        data = yaml.load(raw.decode("utf-8"), Loader=Loader)
     except (UnicodeDecodeError, yaml.YAMLError, RecursionError):
         raise _refuse(Violation("", "unreadable_document")) from None
     return validate(data)
-
-
-# Plus grand en-tête canonique que le schéma admet : `api_version` et `id`, un nom de 120
-# caractères, une description de 2 000 et deux textes de personne de 512. Un caractère s'écrit en
-# 4 octets au plus en UTF-8 brut, ou en échappement `\uXXXX` de 6 octets s'il n'est pas imprimable
-# (U+FFFE) : environ 19 Kio mesurés ; même à 10 octets par caractère, 31,6 Kio. Un en-tête réel
-# fait moins d'un Kio.
-HEADER_MAX = 32 * 1024
-_HEADER_KEYS = {"api_version", "id", "name", "description", "visibility", "owner"}
-_QUERY_LINE = re.compile(rb"^query:", re.MULTILINE)
 
 
 def brief(raw: bytes) -> tuple[str, str, str, str]:
@@ -291,38 +205,18 @@ def brief(raw: bytes) -> tuple[str, str, str, str]:
     inattendues : document abîmé (`unreadable_document`), y compris un document valide mais non
     canonique, écrit hors de Board. Ni schéma, ni règles, ni références.
     """
-    found = _QUERY_LINE.search(raw[: HEADER_MAX + len(b"query:")])
+    found = header(raw, b"query:")
     if found is None:
         raise _refuse(Violation("", "unreadable_document"))
-    try:
-        data = yaml.load(raw[: found.start()].decode("utf-8"), Loader=_Loader)
-    except (UnicodeDecodeError, yaml.YAMLError, RecursionError):
-        raise _refuse(Violation("", "unreadable_document")) from None
-    if not isinstance(data, dict) or set(data) != _HEADER_KEYS:
-        raise _refuse(Violation("", "unreadable_document"))
-    owner = data["owner"]
-    if not isinstance(owner, dict) or set(owner) != {"issuer", "subject"}:
-        raise _refuse(Violation("", "unreadable_document"))
-    values = (owner["issuer"], owner["subject"], data["visibility"], data["id"])
-    if not all(isinstance(item, str) for item in values) or values[2] not in {"personal", "shared"}:
-        raise _refuse(Violation("", "unreadable_document"))
-    return values
-
-
-def _ordered(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {key: _ordered(value[key]) for key in sorted(value, key=_RANK.__getitem__)}
-    if isinstance(value, list):
-        return [_ordered(item) for item in value]
-    return value
+    return found
 
 
 def dumps(document: Document) -> bytes:
     """Octets canoniques : même contenu validé, mêmes octets, clés dans l'ordre de lecture."""
     valid = validate(document)
     text: str = yaml.dump(
-        _ordered(valid),
-        Dumper=_Dumper,
+        ordered(valid, _RANK),
+        Dumper=Dumper,
         sort_keys=False,
         allow_unicode=True,
         default_flow_style=False,
@@ -335,43 +229,8 @@ def dumps(document: Document) -> bytes:
     return raw
 
 
-@dataclass(frozen=True)
-class Change:
-    """Un écart entre deux révisions : chemin JSON, nature, ancienne et nouvelle valeur."""
-
-    path: str
-    kind: Literal["added", "removed", "modified"]
-    before: Any
-    after: Any
-
-
 def diff(before: Document, after: Document) -> tuple[Change, ...]:
     """Écarts entre deux documents validés. Les listes se comparent position par position."""
     changes: list[Change] = []
-    _walk("", before, after, changes)
+    walk("", before, after, changes, _RANK)
     return tuple(changes)
-
-
-def _walk(path: str, old: Any, new: Any, changes: list[Change]) -> None:
-    if isinstance(old, dict) and isinstance(new, dict):
-        for key in sorted(
-            old.keys() | new.keys(), key=lambda name: (_RANK.get(name, len(_RANK)), name)
-        ):
-            child = f"{path}/{key}"
-            if key not in new:
-                changes.append(Change(child, "removed", old[key], None))
-            elif key not in old:
-                changes.append(Change(child, "added", None, new[key]))
-            else:
-                _walk(child, old[key], new[key], changes)
-    elif isinstance(old, list) and isinstance(new, list):
-        for index in range(max(len(old), len(new))):
-            child = f"{path}/{index}"
-            if index >= len(new):
-                changes.append(Change(child, "removed", old[index], None))
-            elif index >= len(old):
-                changes.append(Change(child, "added", None, new[index]))
-            else:
-                _walk(child, old[index], new[index], changes)
-    elif old != new or type(old) is not type(new):
-        changes.append(Change(path, "modified", old, new))

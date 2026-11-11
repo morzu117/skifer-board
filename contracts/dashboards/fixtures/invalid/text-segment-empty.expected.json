@@ -1,0 +1,14 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "structural",
+  "violations": [
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/blocks/0/content/0/text",
+      "rule": "bad_format"
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/blocks/0/content/0/text",
+      "rule": "out_of_bounds"
+    }
+  ]
+}

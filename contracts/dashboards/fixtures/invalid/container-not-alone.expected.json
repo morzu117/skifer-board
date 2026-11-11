@@ -1,0 +1,10 @@
+{
+  "code": "invalid_dashboard",
+  "layer": "semantic",
+  "violations": [
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children",
+      "rule": "container_not_alone"
+    }
+  ]
+}

@@ -1,0 +1,400 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skifer-board.dev/schema/dashboard.v1.json",
+  "title": "board.dashboard/v1",
+  "description": "Dashboard versionné de Board : une mise en page de sections, rangées, colonnes et composants fermés (visuel d'analyse, KPI, texte, séparateur), des filtres communs à cibles explicites et des défauts de présentation sémantiques. Les composants référencent une analyse par son identifiant et sa révision. Ni SQL, ni requête, ni donnée, ni environnement, ni thème, ni couleur, ni option de rendu, ni secret. Les règles que JSON Schema n'exprime pas (identifiants uniques, somme des largeurs, profondeur, cibles des filtres, bornes globales, valeurs des filtres) sont vérifiées par le serveur et listées dans la section Réalisation 19.1 de docs/roadmap/19_composition_dashboards_plan.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "id",
+    "name",
+    "description",
+    "visibility",
+    "owner",
+    "defaults",
+    "filters",
+    "layout"
+  ],
+  "properties": {
+    "api_version": { "const": "board.dashboard/v1" },
+    "id": { "$ref": "#/$defs/uuid" },
+    "name": { "$ref": "#/$defs/name" },
+    "description": {
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]*$(?!\\n)"
+    },
+    "visibility": { "enum": ["personal", "shared"] },
+    "owner": { "$ref": "#/$defs/person" },
+    "defaults": { "$ref": "#/$defs/defaults" },
+    "filters": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/common_filter" }
+    },
+    "layout": { "$ref": "#/$defs/layout" }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?!\\n)"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,79}$(?!\\n)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+    },
+    "short_label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuer", "subject"],
+      "properties": {
+        "issuer": { "$ref": "#/$defs/person_part" },
+        "subject": { "$ref": "#/$defs/person_part" }
+      }
+    },
+    "person_part": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+    },
+    "legend": { "enum": ["auto", "shown", "hidden"] },
+    "number_format": {
+      "enum": ["auto", "integer", "decimal_1", "decimal_2", "percent", "compact"]
+    },
+    "tooltip": { "enum": ["value", "value_and_definition"] },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label"],
+      "properties": {
+        "value": { "type": "number", "minimum": -1e15, "maximum": 1e15 },
+        "label": { "$ref": "#/$defs/short_label" }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "legend": { "$ref": "#/$defs/legend" },
+        "number_format": { "$ref": "#/$defs/number_format" },
+        "tooltip": { "$ref": "#/$defs/tooltip" }
+      }
+    },
+    "visual_presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chart": { "enum": ["value", "bars", "line", "grouped_bars"] },
+        "title": { "$ref": "#/$defs/name" },
+        "legend": { "$ref": "#/$defs/legend" },
+        "number_format": { "$ref": "#/$defs/number_format" },
+        "threshold": { "$ref": "#/$defs/threshold" },
+        "tooltip": { "$ref": "#/$defs/tooltip" }
+      }
+    },
+    "kpi_presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "$ref": "#/$defs/name" },
+        "number_format": { "$ref": "#/$defs/number_format" },
+        "threshold": { "$ref": "#/$defs/threshold" },
+        "tooltip": { "$ref": "#/$defs/tooltip" }
+      }
+    },
+    "scalar": {
+      "description": "Valeur scalaire d'un filtre commun (default, allowed), au même niveau structurel que les filtres d'analyse : type et longueur seulement. Le contenu des valeurs (caractères admis, entiers sur 64 bits, nombres finis, types homogènes, doublons, et pour `between` des bornes de même type, ordonnées seulement quand elles sont numériques : deux chaînes ne sont pas comparées) est vérifié par le serveur avec les règles de la soumission d'exécution (violation invalid_filter), comme pour board.analysis/v1.",
+      "type": ["string", "number", "boolean"],
+      "maxLength": 1024
+    },
+    "common_filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "dimension", "operator", "targets"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "label": { "$ref": "#/$defs/short_label" },
+        "dimension": { "$ref": "#/$defs/identifier" },
+        "operator": { "enum": ["eq", "in", "between"] },
+        "default": true,
+        "allowed": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/scalar" }
+        },
+        "targets": {
+          "type": "array",
+          "maxItems": 40,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/uuid" }
+        }
+      },
+      "if": {
+        "properties": { "operator": { "enum": ["in", "between"] } },
+        "required": ["operator"]
+      },
+      "then": {
+        "properties": {
+          "default": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": { "$ref": "#/$defs/scalar" }
+          }
+        }
+      },
+      "else": {
+        "properties": { "default": { "$ref": "#/$defs/scalar" } }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "operator": { "const": "between" } },
+            "required": ["operator"]
+          },
+          "then": {
+            "properties": { "default": { "minItems": 2, "maxItems": 2 } }
+          }
+        }
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sections"],
+      "properties": {
+        "sections": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rows"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "title": { "$ref": "#/$defs/name" },
+        "rows": { "$ref": "#/$defs/rows" }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "columns"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "columns": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/column" }
+        }
+      }
+    },
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "span", "children"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "span": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "children": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/node" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["container", "analysis", "kpi", "text", "separator"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "container" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/container" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "analysis" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/analysis_component" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "kpi" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/kpi_component" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/text_component" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "separator" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/separator_component" }
+        }
+      ]
+    },
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "rows"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": { "const": "container" },
+        "rows": { "$ref": "#/$defs/rows" }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analysis_id", "revision"],
+      "properties": {
+        "analysis_id": { "$ref": "#/$defs/uuid" },
+        "revision": { "type": "integer", "minimum": 1, "maximum": 999999999 }
+      }
+    },
+    "analysis_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "reference", "presentation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": { "const": "analysis" },
+        "reference": { "$ref": "#/$defs/reference" },
+        "presentation": { "$ref": "#/$defs/visual_presentation" }
+      }
+    },
+    "kpi_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "reference", "presentation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": { "const": "kpi" },
+        "reference": { "$ref": "#/$defs/reference" },
+        "presentation": { "$ref": "#/$defs/kpi_presentation" }
+      }
+    },
+    "separator_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": { "const": "separator" }
+      }
+    },
+    "text_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "blocks"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "type": { "const": "text" },
+        "blocks": {
+          "type": "array",
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/block" }
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+        },
+        "emphasis": { "const": true },
+        "strong": { "const": true }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/segment" }
+    },
+    "paragraph_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "content"],
+      "properties": {
+        "type": { "const": "paragraph" },
+        "content": { "$ref": "#/$defs/segments" }
+      }
+    },
+    "heading_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "level", "content"],
+      "properties": {
+        "type": { "const": "heading" },
+        "level": { "enum": [1, 2] },
+        "content": { "$ref": "#/$defs/segments" }
+      }
+    },
+    "list_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "ordered", "items"],
+      "properties": {
+        "type": { "const": "list" },
+        "ordered": { "type": "boolean" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/segments" }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["paragraph", "heading", "list"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "paragraph" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/paragraph_block" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "heading" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/heading_block" }
+        },
+        {
+          "if": { "properties": { "type": { "const": "list" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/list_block" }
+        }
+      ]
+    }
+  }
+}

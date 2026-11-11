@@ -11,7 +11,7 @@ describe("lecteur YAML des fixtures", () => {
       "d: null",
       "e:",
       "f: ''",
-      "g: \"x\\ty\\x01\\u00e9\\\\\\\"\\/\\n\"",
+      "g: \"x\\ty\\x01\\u00e9\\\\\\\"\\/\\n\\0\\a\"",
       "h: 'l''eau'",
       "i: https://example.test/x",
       "j: [a, 'b', \"c\", 1, [2], {k: v}]",
@@ -37,11 +37,28 @@ describe("lecteur YAML des fixtures", () => {
       "r:",
       "  s: 2026-01-01",
     ].join("\n"))).toEqual({
-      a: 1, b: -2.5, c: true, d: null, e: null, f: "", g: "x\ty\u0001é\\\"/\n", h: "l'eau", i: "https://example.test/x",
+      a: 1, b: -2.5, c: true, d: null, e: null, f: "", g: "x\ty\u0001é\\\"/\n\u0000\u0007", h: "l'eau", i: "https://example.test/x",
       j: ["a", "b", "c", 1, [2], { k: "v" }], k: { x1: 1, y1: "z", w1: [] },
       l: ["one", { key: "v", other: [] }, ["nested"], null], m: {}, n: [], o: "line 1\n\n  line 2", p: "keep\n", q: ["same", "indent"],
       r: { s: new Date("2026-01-01") },
     });
+  });
+
+  it("lit une liste de listes, dont les éléments sont des dictionnaires ou des scalaires", () => {
+    expect(loadYaml("a:\n  - - text: Un\n    - - text: Deux\n        strong: true\n  - - 1\n    - 2\nb: 3")).toEqual({
+      a: [[{ text: "Un" }, [{ text: "Deux", strong: true }]], [1, 2]], b: 3,
+    });
+  });
+
+  it("lit un flottant à exposant signé, et refuse les autres exposants", () => {
+    expect(loadYaml("a: 1.0e+16\nb: -2.5E-3")).toEqual({ a: 1e16, b: -0.0025 });
+    expect(() => loadYaml("a: 1e16")).toThrow("nombre");
+    expect(() => loadYaml("a: 1.0e16")).toThrow("nombre");
+  });
+
+  it("replie un texte entre guillemets sur plusieurs lignes comme YAML", () => {
+    expect(loadYaml("a: 'un\n\n  deux\n  trois'\nb:\n  - \"x\n    y\"\n  - 'z'\nc: 1")).toEqual({ a: "un\ndeux trois", b: ["x y", "z"], c: 1 });
+    expect(() => loadYaml("a: 'jamais fermé\n")).toThrow("guillemets");
   });
 
   it("lit un scalaire racine, un document vide et une liste racine", () => {
