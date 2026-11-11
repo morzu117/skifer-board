@@ -3,7 +3,9 @@ import { useState, type KeyboardEvent } from "react";
 import { Badge } from "../../ui/Badge";
 import type { CommonFilter } from "../document";
 import { LIMIT_LABELS, PROBLEM_LABELS } from "../labels";
+import { FiltreForm, ValeurFiltre } from "./Filtres";
 import { filterDomId, treeDomId, useEditor } from "./EditorContext";
+import { RevisionAnalyse } from "./RevisionAnalyse";
 import type { Problem } from "./problems";
 import { findNode, type TreeNode } from "./tree";
 
@@ -73,6 +75,7 @@ function Problems() {
           {detail(problem) === "" ? null : <span className="sb-problems__detail"> · {detail(problem)}</span>}
           {" "}<span className="sb-mono sb-problems__path">{problem.path}</span>
         </button>
+        {problem.code === "revision_behind" ? <RevisionAnalyse id={problem.nodeId} /> : null}
       </li>)}
     </ul>}
     <p className="sb-bottom__note">{editor.problems.some((problem) => problem.severity === "blocking") ? "Un problème bloquant empêche l'enregistrement : corrigez-le d'abord." : "Aucun problème ne bloque l'enregistrement."}</p>
@@ -143,15 +146,19 @@ const text = (values: readonly (string | number | boolean)[]): string => values.
 function Filters() {
   const editor = useEditor();
   const { filters } = editor.document;
-  if (filters.length === 0) return <p className="sb-bottom__note">Aucun filtre commun. Leur édition viendra à l'étape suivante ; ici la liste est en lecture seule.</p>;
+  const [creating, setCreating] = useState(false);
   return <>
-    <p className="sb-bottom__note">Lecture seule : les filtres communs ne s'éditent pas encore.</p>
+    <button type="button" className="sb-button" disabled={editor.readOnly} onClick={() => { setCreating(!creating); }}>Nouveau filtre</button>
+    {creating ? <FiltreForm onDone={() => { setCreating(false); }} /> : null}
+    {filters.length === 0 ? <p className="sb-bottom__note">Aucun filtre commun.</p> : null}
     <ul className="sb-filters">
       {filters.map((filter) => <li key={filter.id} id={filterDomId(filter.id)} tabIndex={-1} className="sb-filters__item">
+        <button type="button" className="sb-problems__link" onClick={() => { editor.select(filter.id); }}>Propriétés · {filter.label}</button>
         <strong>{filter.label}</strong>
         <span> · dimension <span className="sb-mono">{filter.dimension}</span> · {OPERATOR_LABELS[filter.operator]}</span>
         {filter.default === undefined ? null : <span> · défaut {text(Array.isArray(filter.default) ? filter.default : [filter.default as string | number | boolean])}</span>}
         {filter.allowed === undefined ? null : <span> · valeurs permises {text(filter.allowed)}</span>}
+        <ValeurFiltre filter={filter} />
         <span> · cibles :</span>
         <ul className="sb-filters__targets">{filter.targets.map((target) => <li key={target}>
           <button type="button" className="sb-problems__link" onClick={() => { editor.reveal(target); }}>{(findNode(editor.tree, target) as TreeNode).label}</button>

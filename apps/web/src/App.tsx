@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnalysePage } from "./analyses/AnalysePage";
 import { AnalysesPage } from "./analyses/AnalysesPage";
 import { CataloguePage } from "./catalogue/CataloguePage";
+import { HistoriqueDashboard } from "./dashboards/Historique";
 import { DashboardEditorPage } from "./dashboards/DashboardEditorPage";
 import { DashboardsPage } from "./dashboards/DashboardsPage";
 import { ExplorerPage } from "./explorer/ExplorerPage";
@@ -396,7 +397,8 @@ function Page({ route, current, listed, fetcher, environment, session, onWritten
     return <DashboardsPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
   }
   if (route.page === "dashboard") {
-    return <DashboardEditorPage key={`${current.value.id}:${route.id}:${session}`} space={current.value} id={route.id} fetcher={fetcher} environment={environment} identity={session} />;
+    if (route.view === "history") return <HistoriqueDashboard key={`${current.value.id}:${route.id}:${session}:${JSON.stringify(route.compare)}`} space={current.value.id} id={route.id} compare={route.compare} fetcher={fetcher} />;
+    return <DashboardEditorPage key={`${current.value.id}:${route.id}:${session}:${String(route.revision)}`} space={current.value} id={route.id} revision={route.revision} fetcher={fetcher} environment={environment} identity={session} />;
   }
   if (route.page === "executions") {
     return <ExecutionsPage key={current.value.id} space={current.value} platformAdmin={listed.status === "ok" && listed.value.platformAdmin} fetcher={fetcher} target={environment} />;

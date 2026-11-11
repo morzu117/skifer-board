@@ -11,12 +11,19 @@ it.each([
   ["#/espaces/a%2Fb/dashboards/x%20y", { page: "dashboard", space: "a/b", id: "x y" }],
   ["#/espaces/finance/dashboards/", { page: "home" }],
   [`#/espaces/finance/dashboards/${ID}/`, { page: "home" }],
-  [`#/espaces/finance/dashboards/${ID}/revisions/2`, { page: "home" }],
+  [`#/espaces/finance/dashboards/${ID}/revisions/2`, { page: "dashboard", space: "finance", id: ID, revision: 2 }],
+  [`#/espaces/finance/dashboards/${ID}/historique`, { page: "dashboard", space: "finance", id: ID, view: "history" }],
+  [`#/espaces/finance/dashboards/${ID}/historique/1/2`, { page: "dashboard", space: "finance", id: ID, view: "history", compare: { base: 1, other: 2 } }],
+  [`#/espaces/finance/dashboards/${ID}/revisions/0`, { page: "home" }],
+  [`#/espaces/finance/dashboards/${ID}/historique/1/02`, { page: "home" }],
 ] satisfies [string, Route][])("lit l'adresse %s", (hash, route) => {
   expect(routeFromHash(hash)).toEqual(route);
 });
 
 it.each([
+  [{ page: "dashboard", space: "finance", id: ID, revision: 2 }, `#/espaces/finance/dashboards/${ID}/revisions/2`],
+  [{ page: "dashboard", space: "finance", id: ID, view: "history" }, `#/espaces/finance/dashboards/${ID}/historique`],
+  [{ page: "dashboard", space: "finance", id: ID, view: "history", compare: { base: 1, other: 2 } }, `#/espaces/finance/dashboards/${ID}/historique/1/2`],
   [{ page: "dashboards", space: "a/b" }, "#/espaces/a%2Fb/dashboards"],
   [{ page: "dashboard", space: "finance", id: "x y" }, "#/espaces/finance/dashboards/x%20y"],
 ] satisfies [Route, string][])("écrit l'adresse de %j", (route, hash) => {

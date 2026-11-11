@@ -11,6 +11,7 @@ import type { ExplorerModel } from "../../explorer/model";
 /** Ce que les panneaux de l'éditeur partagent : le document, la sélection et le seul chemin d'écriture, `run`. */
 export interface Editor {
   document: DashboardDraft;
+  space: string;
   tree: readonly TreeNode[];
   /** Identifiant du nœud sélectionné, ou `null` : les propriétés du dashboard. */
   selected: string | null;
@@ -19,11 +20,14 @@ export interface Editor {
    * Applique une commande par le modèle d'édition et annonce son résultat (`after.id` est l'identifiant que prendra le nœud ajouté). Rend `true` si elle a été appliquée ; un refus se lit,
    * avec sa raison fermée, dans la zone d'annonces, et le document reste tel quel.
    */
-  run: (command: Command, done: string | ((tree: readonly TreeNode[]) => string), after?: { select?: string | null; focus?: string; id?: string }) => boolean;
+  run: (command: Command, done: string | ((tree: readonly TreeNode[]) => string), after?: { select?: string | null; focus?: string; id?: string; ids?: readonly string[] }) => boolean;
   /** Dit quelque chose aux lecteurs d'écran, sans toucher au document ; `refused` en fait un refus, affiché en alerte. */
   say: (text: string, refused?: boolean) => void;
   readOnly: boolean;
   states: ReadonlyMap<string, TileState>;
+  values: Readonly<Record<string, unknown>>;
+  setValue: (id: string, value: unknown) => void;
+  overlaps: ReadonlyMap<string, readonly string[]>;
   cancelTile: (id: string) => void;
   retryTile: (id: string) => void;
   restartTile: (id: string) => void;

@@ -9,6 +9,7 @@ import { BlocksEditor } from "./Blocs";
 import { Choice, CommitField } from "./Champs";
 import type { Origin } from "./commands";
 import { useEditor } from "./EditorContext";
+import { FiltreForm } from "./Filtres";
 import { effective, titleOf, withField, withoutField } from "./presentation";
 import { compatibleCharts } from "./problems";
 import { findLayoutNode, findNode } from "./tree";
@@ -24,11 +25,12 @@ export const PROPS_TITLE_ID = "sb-props-title";
 export function Proprietes() {
   const editor = useEditor();
   const node = editor.selected === null ? undefined : findNode(editor.tree, editor.selected);
+  const filter = editor.document.filters.find((one) => one.id === editor.selected);
   return <aside className="sb-props" aria-labelledby={PROPS_TITLE_ID}>
-    <h2 id={PROPS_TITLE_ID} tabIndex={-1} className="sb-props__title">Propriétés · {node === undefined ? "Dashboard" : node.label}</h2>
+    <h2 id={PROPS_TITLE_ID} tabIndex={-1} className="sb-props__title">Propriétés · {filter === undefined ? (node === undefined ? "Dashboard" : node.label) : `Filtre · ${filter.label}`}</h2>
     <fieldset className="sb-props__fields" disabled={editor.readOnly}>
       <legend className="sb-visually-hidden">Propriétés modifiables</legend>
-      {node === undefined ? <DashboardFields /> : <NodeFields id={node.id} />}
+      {filter !== undefined ? <FiltreForm key={JSON.stringify(filter)} filter={filter} /> : node === undefined ? <DashboardFields /> : <NodeFields id={node.id} />}
     </fieldset>
   </aside>;
 }

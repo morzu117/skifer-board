@@ -9,7 +9,7 @@ import type { Fetch } from "../../spaces/api";
 import espace from "../../../../../contracts/espaces/espace.json";
 import { decodeSpace } from "../../spaces/model";
 import { DashboardEditorPage } from "../DashboardEditorPage";
-import { decodeDashboardDraft, type DashboardDraft } from "../document";
+import { decodeDashboardDraft, executables, type DashboardDraft } from "../document";
 import { CATALOG, ID, route as analysisRoute } from "../../analyses/testing";
 import { route as dashboardRoute } from "../testing";
 
@@ -78,6 +78,7 @@ export interface AnalysisSpec {
   /** Dernière révision connue (par défaut 1, celle qui est épinglée). */
   current?: number;
   state?: string;
+  visibility?: "personal" | "shared";
 }
 
 export const ANALYSES: Readonly<Record<string, AnalysisSpec>> = {
@@ -90,7 +91,8 @@ export function analysisBody(id: string, spec: AnalysisSpec, revision = 1) {
   const body = analysisRoute("lire", [[ID, id]]).body as { analysis: Record<string, unknown> } & Record<string, unknown>;
   return {
     ...body, revision, current_revision: spec.current ?? revision, state: spec.state ?? "ready",
-    analysis: { ...body.analysis, name: spec.name, visibility: "shared", query: spec.query, contextual: [], presentation: { chart: spec.chart } },
+    ...(spec.visibility === "personal" ? { permissions: { owner: true, revise: true, delete: true, duplicate: true } } : {}),
+    analysis: { ...body.analysis, name: spec.name, visibility: spec.visibility ?? "shared", query: spec.query, contextual: [], presentation: { chart: spec.chart } },
   };
 }
 
@@ -166,7 +168,18 @@ export function editorServer(options: ServerOptions = {}): EditorServer {
       bodies.push(body);
       const { expected_revision: expected, ...sent } = body;
       revision = (expected as number) + 1;
-      return Response.json(dashboardBody(decodeDashboardDraft(sent), { ...(options.tiles === undefined ? {} : { tiles: options.tiles }), revision }), { status: 201 });
+      const saved = decodeDashboardDraft(sent);
+      return Response.json(dashboardBody(saved, { tiles: executables(saved).map((item) => ({ id: item.id, state: "ready" as const })), revision }), { status: 201 });
+    }
+    if (key === `GET ${ROOT}/analyses`) {
+      const example = analysisRoute("lister").body as { analyses: Record<string, unknown>[] };
+      return Response.json({ analyses: Object.entries(analyses).map(([id, spec]) => ({ ...example.analyses[0], id, name: spec.name, visibility: spec.visibility ?? "shared", is_owner: spec.visibility === "personal", model: spec.query.model, metrics: spec.query.metrics, revision: spec.current ?? 1 })), unreadable: 0 });
+    }
+    const history = /^GET \/api\/spaces\/finance\/analyses\/([^/]+)\/revisions$/.exec(key);
+    if (history?.[1] !== undefined && analyses[history[1]] !== undefined) {
+      const current = analyses[history[1]]?.current ?? 1;
+      const example = analysisRoute("historique", [[ID, history[1]]]).body as { revisions: Record<string, unknown>[] };
+      return Response.json({ ...example, current_revision: current, revisions: Array.from({ length: current }, (_, i) => ({ ...example.revisions[0], revision: i + 1 })) });
     }
     const read = /^GET \/api\/spaces\/finance\/analyses\/([^/]+)\/revisions\/(\d+)$/.exec(key);
     if (read?.[1] !== undefined && analyses[read[1]] !== undefined) return Response.json(analysisBody(read[1], analyses[read[1]] as AnalysisSpec, Number(read[2])));

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type Key
 import type { ChartTheme } from "../../charts/theme";
 import { fetchFields } from "../../explorer/client";
 import { ThemeSwitch } from "../../prototype/ThemeSwitch";
+import { routeHash } from "../../shell/route";
 import { useExitGuard } from "../../shell/useExitGuard";
 import type { Environment } from "../../shell/sections";
 import type { Fetch } from "../../spaces/api";
@@ -15,6 +16,9 @@ import { executables } from "../document";
 import { dashboardRefusalText } from "../Failure";
 import { EDIT_REFUSAL_LABELS, READ_STATE_LABELS, VISIBILITY_LABELS } from "../labels";
 import type { DashboardRevision } from "../model";
+import { AjouterAnalyse } from "./AjouterAnalyse";
+import { Apercu } from "./Apercu";
+import { ConflitDashboard } from "./ConflitDashboard";
 import { Canevas } from "./Canevas";
 import { createHistory, dispatch, isDirty, redo, undo, type Command, type History } from "./commands";
 import { PendingInputs } from "./Champs";
@@ -31,6 +35,7 @@ import type { DashboardDraft } from "../document";
 
 interface Props {
   space: string;
+  historical?: boolean;
   identity: string;
   revision: DashboardRevision;
   environment: Environment;
@@ -59,7 +64,7 @@ const stored = (found: DashboardRevision): Stored => ({ revision: found.revision
  * qu'à l'enregistrement, avec la révision attendue. Un refus du serveur (dont le conflit de révision) se lit tel quel : rien n'est
  * écrasé et le brouillon reste ouvert.
  */
-export function Editeur({ space, identity, revision, environment, fetcher, theme, onTheme, poll }: Props) {
+export function Editeur({ space, identity, revision, environment, fetcher, theme, onTheme, poll, historical = false }: Props) {
   const id = revision.id;
   const [history, setHistory] = useState<History<DashboardDraft>>(() => createHistory(draftOf(revision.dashboard)));
   const latest = useRef(history);
@@ -69,6 +74,10 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
   const [refusal, setRefusal] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [tab, setTab] = useState<BottomTab>("problems");
+  const [addingAnalysis, setAddingAnalysis] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
   const focusLater = useRef<string | null>(null);
@@ -86,11 +95,15 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     });
   }, []);
   const unsaved = dirty || typing.size > 0;
-  const guard = useExitGuard(unsaved);
-  const readOnly = !server.permissions.revise;
+  const guard = useExitGuard(unsaved && (copied !== JSON.stringify(document_) || typing.size > 0));
+  const readOnly = historical || !server.permissions.revise;
 
+  const workContext = JSON.stringify([space, identity, environment, id]);
+  const [work, setWork] = useState<{ context: string; values: Readonly<Record<string, unknown>> }>({ context: workContext, values: {} });
+  if (work.context !== workContext) setWork({ context: workContext, values: {} });
+  const values = work.context === workContext ? work.values : {};
   const fields = useOutcome(`${space}:${identity}:${environment}:champs`, (signal) => fetchFields(space, signal, fetcher));
-  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server.tiles, catalog: fields, fetcher, poll });
+  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server.tiles, catalog: fields, fetcher, poll, values });
   const catalog = fields.status === "ok" ? fields.value.models : null;
 
   const titles = useMemo(() => Object.fromEntries(executables(document_).map((component) => {
@@ -119,7 +132,9 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
 
   const run: Editor["run"] = (command: Command, done, after) => {
     if (readOnly) { say("Le serveur n'accorde pas la modification de ce dashboard à votre compte.", true); return false; }
-    const out = dispatch(latest.current, command, after?.id === undefined ? undefined : () => after.id as string);
+    const ids = after?.ids === undefined ? (after?.id === undefined ? undefined : [after.id]) : after.ids;
+    let at = 0;
+    const out = dispatch(latest.current, command, ids === undefined ? undefined : () => ids[at++] as string);
     if (!out.result.ok) {
       const { reason, detail } = out.result;
       say(`Refusé : ${[EDIT_REFUSAL_LABELS[reason], detail].filter((part) => part !== undefined).join(" ")}`, true);
@@ -147,7 +162,7 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
   };
 
   const save = (): void => {
-    if (saveLock.current || readOnly || blocking.length > 0) return;
+    if (saveLock.current || readOnly || conflict || blocking.length > 0) return;
     if (!dirty) { setNotice({ tone: "neutral", text: "Rien à enregistrer : le dashboard est identique à la révision enregistrée." }); return; }
     saveLock.current = true;
     setSaving(true);
@@ -156,6 +171,7 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     void reviseDashboard(space, id, sent, server.revision, fetcher).then((outcome) => {
       saveLock.current = false;
       setSaving(false);
+      if (outcome.status === "refused" && outcome.code === "revision_conflict") { setConflict(true); return; }
       if (outcome.status === "refused") { setNotice({ tone: "danger", text: dashboardRefusalText(outcome) }); return; }
       if (outcome.status === "error") { setNotice({ tone: "danger", text: `Enregistrement non confirmé : ${outcome.message} Rien ne dit que la révision existe : rouvrez le dashboard avant de recommencer.` }); return; }
       const found = outcome.value.revision;
@@ -173,7 +189,8 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     const target = event.target as HTMLElement;
     if (!(event.ctrlKey || event.metaKey) || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
     const key = event.key.toLowerCase();
-    if (key === "z" && !event.shiftKey) { event.preventDefault(); history_undo(); }
+    if (key === "a" && event.shiftKey && !readOnly && !addingAnalysis) { event.preventDefault(); setAddingAnalysis(true); }
+    else if (key === "z" && !event.shiftKey) { event.preventDefault(); history_undo(); }
     else if ((key === "z" && event.shiftKey) || key === "y") { event.preventDefault(); history_redo(); }
   };
   const history_undo = (): void => {
@@ -187,41 +204,48 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     say("Modification rétablie.");
   };
 
-  const editor: Editor = { document: document_, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme, reveal };
+  const editor: Editor = { document: document_, space, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, values, setValue: (filterId, value) => { setWork((previous) => ({ context: workContext, values: { ...previous.values, [filterId]: value } })); }, overlaps: tiles.overlaps, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme, reveal };
   const read = READ_STATE_LABELS[server.state];
   const reason = blocking.length > 0 ? `${String(blocking.length)} problème${blocking.length > 1 ? "s" : ""} bloquant${blocking.length > 1 ? "s" : ""}` : null;
   return <EditorContext value={editor}><PendingInputs value={report}>
-    <div className="sb-editor" onKeyDown={keys}>
+    {previewing ? <Apercu onClose={() => { setPreviewing(false); }} /> : null}
+    <div className="sb-editor" onKeyDown={keys} hidden={previewing}>
       <div className="sb-page-head">
         <div>
           <h1 className="sb-page-head__title">{document_.name}</h1>
           <p className="sb-page-head__lead">
-            Éditeur de dashboard · {VISIBILITY_LABELS[document_.visibility]} · révision {String(server.revision)}{" "}
+            {historical ? "Révision en lecture seule" : "Éditeur de dashboard"} · {VISIBILITY_LABELS[document_.visibility]} · révision {String(server.revision)}{" "}
             <Badge tone={read.tone}>{read.label}</Badge>
           </p>
         </div>
         <ThemeSwitch value={theme} onChange={onTheme} />
       </div>
       <p className="sb-editor__note">{read.reason}</p>
-      {readOnly ? <Banner tone="warning">Le serveur n'accorde pas la modification de ce dashboard à votre compte : il s'ouvre en lecture seule, rien ne peut y être changé ni enregistré.</Banner> : null}
-      <div role="toolbar" aria-label="Actions de l'éditeur" className="sb-toolbar">
+      {readOnly && !historical ? <Banner tone="warning">Le serveur n'accorde pas la modification de ce dashboard à votre compte : il s'ouvre en lecture seule, rien ne peut y être changé ni enregistré.</Banner> : null}
+      {historical ? <p>Révision historique en lecture seule.</p> : <div role="toolbar" aria-label="Actions de l'éditeur" className="sb-toolbar">
         <button type="button" className="sb-button" disabled={history.past.length === 0} onClick={history_undo}>Annuler</button>
         <button type="button" className="sb-button" disabled={history.future.length === 0} onClick={history_redo}>Rétablir</button>
-        <button type="button" className="sb-button sb-button--primary" disabled={saving || readOnly || reason !== null} aria-describedby="sb-save-state" onClick={save}>{saving ? "Enregistrement…" : "Enregistrer"}</button>
+        <button type="button" className="sb-button" onClick={() => { setPreviewing(true); }}>Aperçu lecteur</button>
+        <button type="button" className="sb-button sb-button--primary" disabled={saving || readOnly || conflict || reason !== null} aria-describedby="sb-save-state" onClick={save}>{saving ? "Enregistrement…" : "Enregistrer"}</button>
         <span id="sb-save-state" className="sb-toolbar__state">
           <span className={`sb-toolbar__dirty${unsaved ? " sb-toolbar__dirty--on" : ""}`} aria-hidden="true" />
           {unsaved ? "Modifications non enregistrées" : "Tout est enregistré"}
           {reason === null ? null : <> · Enregistrement impossible : {reason}. <button type="button" className="sb-problems__link" onClick={() => { setTab("problems"); focusOn("sb-bottom-tab-problems"); }}>Voir les problèmes</button></>}
         </span>
-      </div>
+      </div>}
+      <p><a href={routeHash({ page: "dashboard", space, id, view: "history" })}>Historique des révisions</a></p>
       {notice === null ? null : <Banner tone={notice.tone}>{notice.text}</Banner>}
+      {conflict ? <ConflitDashboard space={space} id={id} opened={server.revision} draft={document_} fetcher={fetcher} onSaved={() => { setCopied(JSON.stringify(document_)); }} onReopen={(found) => { commit(createHistory(draftOf(found.dashboard))); setServer(stored(found)); setSelected(null); setConflict(false); setCopied(null); }} /> : null}
+      {document_.visibility === "shared" && Object.values(tiles.analyses).some((known) => known?.pinned.analysis.visibility === "personal") ? <Banner tone="warning">Ce dashboard partagé référence une analyse personnelle : le serveur refusera son enregistrement.</Banner> : null}
       {refusal === null ? null : <Banner tone="danger">{refusal}</Banner>}
       <p className="sb-editor__announce" aria-live="polite" aria-atomic="true">{announcement}</p>
       <div className="sb-editor__grid">
-        <div className="sb-editor__main"><Palette /><Canevas /></div>
-        <Proprietes />
+        <div className="sb-editor__main">{historical ? null : <Palette onAddAnalysis={() => { setAddingAnalysis(true); }} />}<Canevas /></div>
+        {historical ? null : <Proprietes />}
       </div>
       <PanneauBas tab={tab} onTab={setTab} />
+      {addingAnalysis ? <AjouterAnalyse space={space} fetcher={fetcher} onClose={() => { setAddingAnalysis(false); }} /> : null}
+    </div>
       {guard.pending === null ? null : <Dialog title="Quitter sans enregistrer ?" onClose={guard.stay}>
         <p>Ce dashboard a des modifications non enregistrées. Les quitter les perd : rien n'a été envoyé au serveur.</p>
         <div className="sb-dashboards__buttons">
@@ -229,7 +253,6 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
           <button type="button" className="sb-button" onClick={guard.leave}>Quitter sans enregistrer</button>
         </div>
       </Dialog>}
-    </div>
   </PendingInputs></EditorContext>;
 }
 

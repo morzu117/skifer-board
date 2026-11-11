@@ -11,7 +11,7 @@ const ARTICLES: Readonly<Record<Addable, string>> = {
  * plus proche parent qui accueille son genre ; sans parent qui convienne, la palette le dit au lieu d'en deviner un. Ajouter une
  * analyse ou un KPI est l'objet de 19.5b : rien ici n'épingle ni n'exécute.
  */
-export function Palette() {
+export function Palette({ onAddAnalysis }: { onAddAnalysis: () => void }) {
   const editor = useEditor();
   const add = (kind: Addable): void => {
     const where = additionPlace(editor.tree, kind, editor.selected);
@@ -28,9 +28,10 @@ export function Palette() {
   };
   return <section className="sb-palette" aria-labelledby="sb-palette-title">
     <h2 id="sb-palette-title" className="sb-palette__title">Palette</h2>
-    <p className="sb-palette__note">Le nœud est posé après la sélection, dans le plus proche parent qui l'accueille. L'ajout d'analyses et de KPI n'est pas encore disponible.</p>
+    <p className="sb-palette__note">Le nœud est posé après la sélection, dans le plus proche parent qui l'accueille. Ajouter une analyse : Ctrl ou Cmd + Maj + A.</p>
     <div className="sb-palette__buttons" role="group" aria-label="Ajouter un nœud">
       {ADDABLE.map((kind) => <button key={kind} type="button" className="sb-button" disabled={editor.readOnly} aria-label={`Ajouter ${ARTICLES[kind]}`} onClick={() => { add(kind); }}>+ {KIND_LABELS[kind]}</button>)}
+      <button type="button" className="sb-button" disabled={editor.readOnly} onClick={onAddAnalysis}>Ajouter une analyse</button>
     </div>
   </section>;
 }

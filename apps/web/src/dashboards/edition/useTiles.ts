@@ -5,6 +5,7 @@ import type { Failed } from "../../analyses/Failure";
 import type { AnalysisRevision } from "../../analyses/model";
 import { cancelExecution, fetchExecution, fetchResult, submitExecution } from "../../executions/client";
 import type { ExplorerModel } from "../../explorer/model";
+import { validateExecutionFilters } from "../../explorer/filters";
 import type { Environment } from "../../shell/sections";
 import type { AdminOutcome } from "../../spaces/admin";
 import type { Fetch } from "../../spaces/api";
@@ -85,6 +86,8 @@ export interface TileSources {
   catalog: TileCatalog;
   fetcher: Fetch;
   poll: number;
+  /** Valeurs de travail, absentes du document enregistré ; null désactive le filtre. */
+  values?: Readonly<Record<string, unknown>>;
 }
 
 export interface Tiles {
@@ -96,6 +99,7 @@ export interface Tiles {
   cancel: (id: string) => void;
   retry: (id: string) => void;
   restart: (id: string) => void;
+  overlaps: ReadonlyMap<string, readonly string[]>;
 }
 
 const keyOf = (reference: { analysis_id: string; revision: number }): string => `${reference.analysis_id}:${String(reference.revision)}`;
@@ -103,6 +107,7 @@ const keyOf = (reference: { analysis_id: string; revision: number }): string => 
 /** Ce que le hook a gardé pour un contexte : rien n'en survit à un autre contexte. */
 interface Scoped<T> { context: string; value: T }
 const NO_READS: ReadonlyMap<string, AdminOutcome<AnalysisRevision>> = new Map();
+const NO_VALUES: Readonly<Record<string, unknown>> = {};
 const NO_RESULTS: ReadonlyMap<string, ScheduledState> = new Map();
 /** Les états dont la requête est tranchée : un résultat, une table vide ou la décision du moteur. */
 const KEPT = new Set<ScheduledState["status"]>(["success", "empty", "denied"]);
@@ -111,7 +116,7 @@ type ReadyComposed = Extract<ComposedExecution, { status: "ready" }>;
 /** Une tuile : sa composition, ou l'état qui en tient lieu tant qu'elle ne peut pas être composée. */
 interface Composed { id: string; composed: ComposedExecution | null; waiting?: TileState; signature?: string }
 
-export function useTiles({ space, dashboard, identity, environment, document, tiles, catalog, fetcher, poll }: TileSources): Tiles {
+export function useTiles({ space, dashboard, identity, environment, document, tiles, catalog, fetcher, poll, values = NO_VALUES }: TileSources): Tiles {
   const context = JSON.stringify([space, identity, environment, dashboard]);
   const components = useMemo(() => executables(document), [document]);
   // Un composant que la réponse du serveur ne connaît pas (retiré puis rétabli par « Annuler » après un enregistrement, ou ajouté
@@ -131,24 +136,36 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
   if (doneState.context !== context) setDone({ context, value: NO_RESULTS });
   const reads = readState.context === context ? readState.value : NO_READS;
   const done = doneState.context === context ? doneState.value : NO_RESULTS;
-  const life = useRef<{ controller: AbortController; asked: Set<string> } | null>(null);
+  const life = useRef<{ controller: AbortController; asked: Set<string>; enqueue: (work: () => Promise<void>) => void } | null>(null);
   // La durée de vie des lectures est celle du contexte : en changer, ou quitter l'éditeur, les abandonne (et un rejeu des effets les relance).
   useEffect(() => {
-    const own = { controller: new AbortController(), asked: new Set<string>() };
+    const controller = new AbortController();
+    const queue: (() => Promise<void>)[] = [];
+    let active = 0;
+    const pump = (): void => {
+      while (!controller.signal.aborted && active < 40 && queue.length > 0) {
+        const work = queue.shift() as () => Promise<void>;
+        active += 1;
+        void work().finally(() => { active -= 1; pump(); });
+      }
+    };
+    const own = { controller, asked: new Set<string>(), enqueue: (work: () => Promise<void>) => { queue.push(work); pump(); } };
     life.current = own;
-    return () => { own.controller.abort(); };
+    return () => { controller.abort(); queue.length = 0; };
   }, [context]);
   // Une lecture par analyse épinglée, jamais deux : les lectures d'un composant retiré puis rétabli restent connues.
   useEffect(() => {
-    const { controller, asked } = life.current as NonNullable<typeof life.current>;
+    const { controller, asked, enqueue } = life.current as NonNullable<typeof life.current>;
     for (const component of wanted) {
       const key = keyOf(component.reference);
       if (asked.has(key)) continue;
       asked.add(key);
-      fetchAnalysisRevision(space, component.reference.analysis_id, component.reference.revision, controller.signal, fetcher).then(
-        (outcome) => { if (!controller.signal.aborted) setReads((previous) => ({ context, value: new Map(previous.value).set(key, outcome) })); },
-        () => undefined,
-      );
+      enqueue(async () => {
+        await fetchAnalysisRevision(space, component.reference.analysis_id, component.reference.revision, controller.signal, fetcher).then(
+          (outcome) => { if (!controller.signal.aborted) setReads((previous) => ({ context, value: new Map(previous.value).set(key, outcome) })); },
+          () => undefined,
+        );
+      });
     }
   }, [wanted, space, context, fetcher, retryCount]);
   const settled = wanted.every((component) => reads.has(keyOf(component.reference)));
@@ -171,17 +188,24 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
     const read = reads.get(keyOf(component.reference));
     if (read === undefined) return { id: component.id, composed: null, waiting: { status: "reading" } };
     if (read.status !== "ok") return { id: component.id, composed: null, waiting: { status: "unreadable", outcome: read } };
-    const one = composeExecution(component, read.value, document.filters, {}, tile, environment);
+    const one = composeExecution(component, read.value, document.filters, values, tile, environment);
     if (one.status !== "ready") return { id: component.id, composed: one };
     // Une tuile ciblée par un filtre n'est ni soumise ni montrée prête avant d'avoir établi que le filtre lui convient.
     if (document.filters.some((filter) => filter.targets.includes(component.id))) {
       if (catalog.status === "loading") return { id: component.id, composed: null, waiting: { status: "reading", source: "catalog" } };
       if (catalog.status !== "ok") return { id: component.id, composed: null, waiting: { status: "unreadable", outcome: catalog, source: "catalog" } };
       if (incompatible.has(component.id)) return { id: component.id, composed: { status: "unavailable", reason: "filter_incompatible" } };
+      // La règle incompatibleTargets a déjà établi que ce modèle existe.
+      const model = catalog.value.models.find((item) => item.name === read.value.analysis.query.model) as ExplorerModel;
+      try {
+        validateExecutionFilters(one.input.filters, model);
+      } catch {
+        return { id: component.id, composed: { status: "unavailable", reason: "invalid_filter_value" } };
+      }
     }
     return { id: component.id, composed: one, signature: JSON.stringify(one.input) };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `tileOf` ne dépend que de `tiles`
-  }), [components, reads, tiles, document.filters, environment, catalog, incompatible]);
+  }), [components, reads, tiles, document.filters, environment, catalog, incompatible, values]);
   // Une tâche par requête distincte, dans l'ordre du document : les tuiles de même signature partagent sa soumission et sa décision.
   const requests = new Map<string, ReadyComposed>();
   for (const item of composed) {
@@ -240,5 +264,6 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
     setReads((previous) => { const value = new Map(previous.value); value.delete(key); return { context, value }; });
     setRetryCount((value) => value + 1);
   };
-  return { states, analyses, settled, cancel, retry, restart };
+  const overlaps = new Map(composed.flatMap((item) => item.composed?.status === "ready" ? [[item.id, item.composed.overlaps] as const] : []));
+  return { states, analyses, settled, cancel, retry, restart, overlaps };
 }

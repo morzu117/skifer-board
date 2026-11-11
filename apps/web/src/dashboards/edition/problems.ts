@@ -1,7 +1,7 @@
 import { CHART_KINDS, type ChartKind } from "../../analyses/document";
 import type { AnalysisRevision } from "../../analyses/model";
 import { validateExecutionFilters, OPERATORS } from "../../explorer/filters";
-import type { ExplorerModel } from "../../explorer/model";
+import type { ExplorerModel, LogicalType } from "../../explorer/model";
 import { LIMITS, type CommonFilter, type DashboardDraft, type ExecutableComponent, type Row } from "../document";
 import type { Tile } from "../model";
 
@@ -17,15 +17,20 @@ export function compatibleCharts(dimensions: number): readonly ChartKind[] {
   return CHART_KINDS.filter((chart) => chart !== "value" || dimensions === 0);
 }
 
+/** Un KPI exige une analyse présentée en valeur, sans dimension. */
+export function kpiCompatible(revision: AnalysisRevision): boolean {
+  return revision.analysis.presentation.chart === "value" && revision.analysis.query.dimensions.length === 0;
+}
+
 /**
  * Les cibles d'un filtre commun auxquelles il ne s'applique pas, par rang dans `filter.targets` : dimension absente du modèle de
  * l'analyse épinglée, opérateur que son type refuse, défaut ou valeurs permises que le modèle rejette, ou type de dimension différent
  * de celui de la première cible compatible. C'est la règle unique de l'éditeur : elle bloque l'enregistrement (`dashboardProblems`) et
  * rend indisponible la tuile ciblée (`useTiles`). Une cible dont l'analyse épinglée n'est pas lue ne permet pas de conclure.
  */
-export function incompatibleTargets(filter: CommonFilter, analyses: KnownAnalyses, catalog: readonly ExplorerModel[]): readonly number[] {
+export function incompatibleTargets(filter: CommonFilter, analyses: KnownAnalyses, catalog: readonly ExplorerModel[], expectedType?: LogicalType): readonly number[] {
   const found: number[] = [];
-  let firstType: string | undefined;
+  let firstType: string | undefined = expectedType;
   filter.targets.forEach((target, targetIndex) => {
     const known = analyses[target];
     if (!known) return;
@@ -118,7 +123,7 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
     if (known.pinned.state === "unverified") add("unverified", "warning", id, `${path}/reference`);
     if (known.current !== null && known.current > node.reference.revision) problems.push({ code: "revision_behind", severity: "warning", nodeId: id, path: `${path}/reference`, pinned: node.reference.revision, current: known.current });
     if (node.type === "analysis" && node.presentation.chart !== undefined && !compatibleCharts(known.pinned.analysis.query.dimensions.length).includes(node.presentation.chart)) add("chart_incompatible", "blocking", id, `${path}/presentation/chart`);
-    if (node.type === "kpi" && (known.pinned.analysis.presentation.chart !== "value" || known.pinned.analysis.query.dimensions.length > 0)) add("kpi_incompatible", "blocking", id, `${path}/reference`);
+    if (node.type === "kpi" && !kpiCompatible(known.pinned)) add("kpi_incompatible", "blocking", id, `${path}/reference`);
   }
   document.filters.forEach((filter, index) => {
     const path = `/filters/${String(index)}`;

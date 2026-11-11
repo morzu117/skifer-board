@@ -507,3 +507,56 @@ it.each(["deny", "require_human"] as const)("ne relance jamais le refus %s", asy
   expect(result.current.states.get(N.visual)?.status).toBe("denied");
   expect(server.submitted()).toHaveLength(count);
 });
+
+it("borne les lectures d'analyses à quarante même quand le canevas change", async () => {
+  const ids = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
+  const draft = (start: number) => decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: Array.from({ length: 16 }, (_, i) => ({ id: ids(100 + i), type: "analysis", reference: { analysis_id: ids(start + i), revision: 1 }, presentation: {} })) }] }] }] } });
+  // Trois documents successifs laissent en vol des lectures retirées du canevas.
+  let release!: (response: Response) => void;
+  const held = new Promise<Response>((resolve) => { release = resolve; });
+  const fetcher = vi.fn<Fetch>().mockImplementation((url) => url.includes("/analyses/") ? held : Promise.reject(new Error(url)));
+  const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document: draft(1000), tiles: [], catalog: { status: "ok", value: { models: MODELS } }, fetcher, poll: 1 };
+  const { rerender, unmount } = renderHook((value: TileSources) => useTiles(value), { initialProps: props });
+  rerender({ ...props, document: draft(2000) });
+  rerender({ ...props, document: draft(3000) });
+  expect(fetcher.mock.calls.filter(([url]) => url.includes("/analyses/"))).toHaveLength(40);
+  release(Response.json({}, { status: 500 }));
+  await waitFor(() => { expect(fetcher.mock.calls.filter(([url]) => url.includes("/analyses/"))).toHaveLength(48); });
+  unmount();
+});
+
+it("applique la valeur de travail, puis null retire le filtre sans toucher à celui de l'analyse", async () => {
+  const draft = decodeDashboardDraft({ ...sampleDraft(), filters: [{ id: N.filter, label: "Région", dimension: "region", operator: "eq", default: "Nord", targets: [N.visual] }] });
+  const server = editorServer();
+  const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document: draft, tiles: [{ id: N.visual, state: "ready" }, { id: N.kpi, state: "ready" }], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1, values: { [N.filter]: "Sud" } };
+  const { result, rerender } = renderHook((value: TileSources) => useTiles(value), { initialProps: props });
+  await waitFor(() => { expect(server.submitted()).toHaveLength(2); });
+  expect(server.submitted().find((one) => one.dimensions.length > 0)?.filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }, { column: "region", operator: "eq", value: "Sud" }]);
+  expect(result.current.overlaps.get(N.visual)).toEqual(["region"]);
+  rerender({ ...props, values: { [N.filter]: null } });
+  await waitFor(() => { expect(server.submitted()).toHaveLength(3); });
+  expect(server.submitted()[2]?.filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }]);
+  expect(result.current.overlaps.get(N.visual)).toEqual([]);
+});
+
+it.each(["analysis", "kpi"] as const)("lit et exécute un nouveau composant %s absent de la réponse serveur", async (kind) => {
+  const server = editorServer();
+  const id = kind === "analysis" ? N.visual : N.kpi;
+  const reference = kind === "analysis" ? N.bars : N.total;
+  const document = decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id, type: kind, reference: { analysis_id: reference, revision: 1 }, presentation: {} }] }] }] }] } });
+  const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document, tiles: [], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1 };
+  const { result } = renderHook(() => useTiles(props));
+  await waitFor(() => { expect(result.current.states.get(id)?.status).toBe("success"); });
+  expect(server.fetcher.mock.calls.filter(([url]) => url === `${ROOT}/analyses/${reference}/revisions/1`)).toHaveLength(1);
+  expect(server.submitted()).toHaveLength(1);
+});
+
+it("une valeur de travail de type incompatible ne lance aucune exécution de la tuile ciblée", async () => {
+  const server = editorServer();
+  const document = decodeDashboardDraft({ ...sampleDraft(), filters: [{ id: N.filter, label: "Région", dimension: "region", operator: "eq", targets: [N.visual] }] });
+  const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document, tiles: [{ id: N.visual, state: "ready" }, { id: N.kpi, state: "ready" }], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1, values: { [N.filter]: 42 } };
+  const { result } = renderHook(() => useTiles(props));
+  await waitFor(() => { expect(result.current.states.get(N.visual)).toEqual({ status: "unavailable", reason: "invalid_filter_value" }); });
+  await waitFor(() => { expect(server.submitted()).toHaveLength(1); });
+  expect(server.submitted()[0]?.dimensions).toEqual([]);
+});

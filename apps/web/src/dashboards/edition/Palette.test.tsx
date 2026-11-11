@@ -16,10 +16,10 @@ const add = (name: string) => userEvent.click(screen.getByRole("button", { name 
 const select = (name: string | RegExp) => userEvent.click(screen.getByRole("button", { name }));
 
 describe("palette", () => {
-  it("offre six genres de nœuds, sans analyse ni KPI, et le dit", async () => {
+  it("offre six genres de nœuds et l’ajout d’analyse", async () => {
     await ready();
-    expect(screen.getAllByRole("button", { name: /^Ajouter / }).map((button) => button.textContent)).toEqual(["+ Section", "+ Rangée", "+ Colonne", "+ Conteneur", "+ Texte", "+ Séparateur"]);
-    expect(screen.getByText(/L'ajout d'analyses et de KPI n'est pas encore disponible\./)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Ajouter / }).map((button) => button.textContent)).toEqual(["+ Section", "+ Rangée", "+ Colonne", "+ Conteneur", "+ Texte", "+ Séparateur", "Ajouter une analyse"]);
+    expect(screen.getByText(/Ctrl ou Cmd \+ Maj \+ A/)).toBeInTheDocument();
   });
 
   it("une section se pose après la branche sélectionnée, ou en queue sans sélection", async () => {

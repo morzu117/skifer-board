@@ -3,6 +3,7 @@ import { useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type Poi
 import { executables, type Column, type ExecutableComponent, type LayoutNode, type Row, type Section } from "../document";
 import { BlocksView } from "./Blocs";
 import { handleDomId, nodeDomId, useEditor } from "./EditorContext";
+import { RevisionAnalyse } from "./RevisionAnalyse";
 import { placed } from "./placement";
 import { dropPlace, flatten, reparentPlace, stepPlace, type TreeNode } from "./tree";
 import { Tuile } from "./Tuile";
@@ -186,7 +187,7 @@ export function Canevas() {
     if (child.type === "text") return frame(child.id, <BlocksView blocks={child.blocks} />);
     if (child.type === "separator") return frame(child.id, <hr className="sb-node__rule" />);
     const component = components.get(child.id) as ExecutableComponent;
-    return frame(child.id, <Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} />);
+    return frame(child.id, <><Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} /><RevisionAnalyse id={child.id} />{(editor.overlaps.get(child.id) ?? []).length === 0 ? null : <p className="sb-tile__state">Filtres de l’analyse et du dashboard appliqués ensemble : {editor.overlaps.get(child.id)?.join(", ")}.</p>}</>);
   };
 
   const column = (item: Column): ReactNode => frame(item.id, item.children.length === 0 ? <p className="sb-node__empty">Colonne vide : ajoutez-y un texte, un séparateur ou un conteneur.</p> : item.children.map(leaf));

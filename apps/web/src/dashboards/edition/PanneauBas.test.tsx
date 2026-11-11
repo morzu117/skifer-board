@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { decodeDashboardDraft } from "../document";
+import { DashboardEditorPage } from "../DashboardEditorPage";
+import { decodeSpace } from "../../spaces/model";
+import espace from "../../../../../contracts/espaces/espace.json";
+import { ID } from "../../analyses/testing";
 import { ANALYSES, N, openEditor, ROOT, sampleDraft, uuid } from "./testing";
 
 const ready = async (options: Parameters<typeof openEditor>[0] = {}) => {
@@ -168,10 +172,10 @@ describe("filtres", () => {
     ]);
     await ready({ draft });
     await userEvent.click(tab(/^Filtres/));
-    expect(screen.getByText("Lecture seule : les filtres communs ne s'éditent pas encore.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nouveau filtre" })).toBeInTheDocument();
     const rows = within(panel()).getAllByRole("listitem").filter((one) => one.classList.contains("sb-filters__item"));
-    expect(rows[0]).toHaveTextContent("Région · dimension region · égal à · défaut Nord · cibles :Visuel · Chiffre d'affaires par région");
-    expect(rows[1]).toHaveTextContent("Zones · dimension region · parmi · défaut Nord · valeurs permises Nord, Sud · cibles :");
+    expect(rows[0]).toHaveTextContent("Région · dimension region · égal à · défaut Nord");
+    expect(rows[1]).toHaveTextContent("Zones · dimension region · parmi · défaut Nord · valeurs permises Nord, Sud");
     await userEvent.click(within(rows[0] as HTMLElement).getByRole("button", { name: "Visuel · Chiffre d'affaires par région" }));
     expect(screen.getByRole("heading", { name: /^Propriétés · Visuel/ })).toBeInTheDocument();
   });
@@ -181,4 +185,94 @@ describe("filtres", () => {
     await userEvent.click(tab(/^Filtres/));
     expect(screen.getByText(/^Aucun filtre commun\./)).toBeInTheDocument();
   });
+});
+
+it("crée un filtre ciblé, applique une valeur, le modifie et annule sa suppression", async () => {
+  const { server } = await ready({ draft: withFilters([]) });
+  await waitFor(() => { expect(server.submitted()).toHaveLength(2); });
+  await userEvent.click(tab(/^Filtres/));
+  await userEvent.click(screen.getByRole("button", { name: "Nouveau filtre" }));
+  await userEvent.type(screen.getByRole("textbox", { name: "Libellé" }), "Région active");
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Dimension" }), "region:string");
+  await userEvent.type(screen.getByRole("textbox", { name: "Valeur par défaut" }), "Nord");
+  await userEvent.click(screen.getByRole("checkbox", { name: /Visuel · Chiffre/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Ajouter le filtre" }));
+  await waitFor(() => { expect(server.submitted()).toHaveLength(3); });
+  expect(server.submitted()[2]?.filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }, { column: "region", operator: "eq", value: "Nord" }]);
+  expect(server.submitted().filter((one) => one.dimensions.length === 0)).toHaveLength(1);
+  const toolbar = screen.getByRole("toolbar", { name: "Actions de l'éditeur" });
+  await userEvent.click(within(toolbar).getByRole("button", { name: "Annuler" }));
+  expect(tab(/^Filtres/)).toHaveTextContent("Filtres (0)");
+  await userEvent.click(within(toolbar).getByRole("button", { name: "Rétablir" }));
+  expect(tab(/^Filtres/)).toHaveTextContent("Filtres (1)");
+  expect(screen.getByText(/Filtres de l’analyse et du dashboard appliqués ensemble/)).toHaveTextContent("region");
+  const input = screen.getByRole("textbox", { name: "Valeur de travail · Région active" });
+  await userEvent.clear(input);
+  await userEvent.type(input, "Sud");
+  await userEvent.click(screen.getByRole("button", { name: "Appliquer la valeur" }));
+  await waitFor(() => { expect(server.submitted()).toHaveLength(4); });
+  expect(server.submitted()[3]?.filters[1]).toEqual({ column: "region", operator: "eq", value: "Sud" });
+  await userEvent.click(screen.getByRole("button", { name: "Propriétés · Région active" }));
+  const properties = screen.getByRole("complementary", { name: "Propriétés · Filtre · Région active" });
+  await userEvent.clear(within(properties).getByRole("textbox", { name: "Valeur par défaut" }));
+  await userEvent.click(within(properties).getByRole("button", { name: "Appliquer les propriétés" }));
+  await userEvent.click(within(properties).getByRole("button", { name: "Supprimer le filtre" }));
+  expect(tab(/^Filtres/)).toHaveTextContent("Filtres (0)");
+  await userEvent.click(within(screen.getByRole("toolbar", { name: "Actions de l'éditeur" })).getByRole("button", { name: "Annuler" }));
+  expect(tab(/^Filtres/)).toHaveTextContent("Filtres (1)");
+});
+
+it("refuse une saisie incomplète puis retire le défaut et les valeurs autorisées d'un filtre", async () => {
+  await ready({ draft: withFilters([]) });
+  await waitFor(() => { expect(screen.getAllByText("Preuve")).toHaveLength(2); });
+  await userEvent.click(tab(/^Filtres/));
+  await userEvent.click(screen.getByRole("button", { name: "Nouveau filtre" }));
+  await userEvent.click(screen.getByRole("button", { name: "Ajouter le filtre" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("Choisissez une dimension");
+  await userEvent.type(screen.getByRole("textbox", { name: "Libellé" }), "Zones");
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Dimension" }), "region:string");
+  await userEvent.click(screen.getByRole("button", { name: "Ajouter le filtre" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("au moins une cible");
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Opérateur" }), "in");
+  await userEvent.type(screen.getByRole("textbox", { name: "Valeur par défaut" }), "Nord");
+  await userEvent.type(screen.getByRole("textbox", { name: "Valeurs autorisées" }), "Nord{Enter}Sud");
+  const checkbox = screen.getByRole("checkbox", { name: /Visuel · Chiffre/ });
+  await userEvent.click(checkbox);
+  await userEvent.click(checkbox);
+  await userEvent.click(checkbox);
+  await userEvent.click(screen.getByRole("button", { name: "Ajouter le filtre" }));
+  await userEvent.click(screen.getByRole("button", { name: "Propriétés · Zones" }));
+  const properties = screen.getByRole("complementary", { name: "Propriétés · Filtre · Zones" });
+  await userEvent.clear(within(properties).getByRole("textbox", { name: "Valeur par défaut" }));
+  await userEvent.clear(within(properties).getByRole("textbox", { name: "Valeurs autorisées" }));
+  await userEvent.click(within(properties).getByRole("button", { name: "Appliquer les propriétés" }));
+  expect(panel().querySelector(".sb-filters__item")).not.toHaveTextContent("valeurs permises");
+  await userEvent.click(screen.getByRole("button", { name: "Effacer le filtre" }));
+});
+
+
+it("changer d'environnement efface les valeurs de travail", async () => {
+  const draft = withFilters([{ id: N.filter, label: "Région", dimension: "region", operator: "eq", default: "Nord", targets: [N.visual] }]);
+  const view = await ready({ draft });
+  await waitFor(() => { expect(view.server.submitted()).toHaveLength(2); });
+  await userEvent.click(tab(/^Filtres/));
+  const input = screen.getByRole("textbox", { name: "Valeur de travail · Région" });
+  await userEvent.clear(input);
+  await userEvent.type(input, "Sud");
+  await userEvent.click(screen.getByRole("button", { name: "Appliquer la valeur" }));
+  await waitFor(() => { expect(view.server.submitted()).toHaveLength(3); });
+  view.rerender(<DashboardEditorPage space={decodeSpace(espace.body, "espace")} id={ID} fetcher={view.server.fetcher} environment="TEST" identity="cora" poll={1} />);
+  await waitFor(() => { expect(view.server.submitted()).toHaveLength(5); });
+  expect(view.server.submitted()[3]?.filters.at(-1)).toEqual({ column: "region", operator: "eq", value: "Nord" });
+});
+
+it("une saisie de filtre non appliquée active la garde de sortie", async () => {
+  await ready({ draft: withFilters([]) });
+  await userEvent.click(tab(/^Filtres/));
+  await userEvent.click(screen.getByRole("button", { name: "Nouveau filtre" }));
+  await userEvent.type(screen.getByRole("textbox", { name: "Libellé" }), "En cours");
+  expect(screen.getByText("Modifications non enregistrées")).toBeInTheDocument();
+  const before = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(before);
+  expect(before.defaultPrevented).toBe(true);
 });

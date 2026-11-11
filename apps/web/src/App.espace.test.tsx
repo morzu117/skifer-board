@@ -337,6 +337,12 @@ describe("Dashboards dans la navigation de l'espace (plan 19, 19.5a)", () => {
     expect(filAriane()).toEqual(["Finance", "Dashboards", "Éditeur"]);
     expect(within(nav()).getByRole("button", { name: "Dashboards" })).toHaveAttribute("aria-current", "page");
   });
+
+  it("ouvre l'historique du dashboard depuis son adresse", async () => {
+    const fetcher = ouvrir(`#/espaces/finance/dashboards/${ID}/historique`, { ...FINANCE, [`GET ${ROOT}/${ID}/revisions`]: { status: 404, body: { code: "dashboard_not_found" } } });
+    expect(await screen.findByRole("heading", { name: "Historique du dashboard" })).toBeInTheDocument();
+    await waitFor(() => { expect(lus(fetcher)).toContain(`GET ${ROOT}/${ID}/revisions`); });
+  });
 });
 
 describe("Analyses dans la navigation de l'espace (plan 18, 18.5a)", () => {

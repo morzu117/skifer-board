@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { navigate } from "../../shell/route";
 import { expectAccessible } from "../../test/a11y";
 import { ID, route } from "../testing";
-import { dashboardBody, echo, N, openEditor, ROOT, sampleDraft, type TileInfo } from "./testing";
+import { decodeDashboardDraft } from "../document";
+import { ANALYSES, dashboardBody, echo, N, openEditor, ROOT, sampleDraft, type AnalysisSpec, type TileInfo } from "./testing";
 
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
@@ -159,10 +160,10 @@ describe("édition, annulation et enregistrement", () => {
     const { server } = await ready({ overrides: { [`POST ${ROOT}/dashboards/${ID}/revisions`]: () => refused("refus-revision-conflit") } });
     await add("Ajouter une section");
     await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
-    expect(await screen.findByText(/rien n'a été écrasé/)).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Conflit de révision" })).toBeInTheDocument();
     expect(screen.getByText("Modifications non enregistrées")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Section 3" })).toBeInTheDocument();
-    expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeEnabled();
+    expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
     expect(server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.endsWith("/revisions"))).toHaveLength(1);
   });
 
@@ -368,4 +369,153 @@ describe("double envoi", () => {
     await waitFor(() => { expect(screen.getByText(/révision 2/)).toBeInTheDocument(); });
     expect(server.fetcher.mock.calls.filter(([, init]) => init?.method === "POST" && (init.body as string).includes("expected_revision"))).toHaveLength(1);
   });
+});
+
+it("propose de comparer, adopter et garder une révision d'analyse, sans adoption implicite", async () => {
+  const { server } = await ready({ analyses: { ...ANALYSES, [N.bars]: { ...ANALYSES[N.bars] as AnalysisSpec, current: 2 } } });
+  await waitFor(() => { expect(screen.getAllByText(/Analyse épinglée r1 ; révision courante r2/).length).toBeGreaterThan(0); });
+  const actions = screen.getAllByLabelText("Révision d'analyse plus récente")[0] as HTMLElement;
+  expect(within(actions).getByRole("link", { name: "Comparer les révisions" })).toHaveAttribute("href", `#/espaces/finance/analyses/${N.bars}/historique/1/2`);
+  expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`))).toHaveLength(0);
+  await userEvent.click(within(actions).getByRole("button", { name: "Adopter r2" }));
+  await waitFor(() => { expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`)).length).toBeGreaterThan(0); });
+  await userEvent.click(toolbar().getByRole("button", { name: "Annuler" }));
+  await waitFor(() => { expect(screen.getAllByText(/Analyse épinglée r1 ; révision courante r2/).length).toBeGreaterThan(0); });
+  const readsBefore = server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`)).length;
+  const submissions = server.submitted().length;
+  const keptAction = screen.getAllByLabelText("Révision d'analyse plus récente")[0] as HTMLElement;
+  await userEvent.click(within(keptAction).getByRole("button", { name: "Garder l'épingle" }));
+  expect(keptAction).not.toBeInTheDocument();
+  expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`))).toHaveLength(readsBefore);
+  expect(server.submitted()).toHaveLength(submissions);
+  expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
+});
+
+it("après conflit bloque toute nouvelle écriture, lit l'écart et rouvre seulement après confirmation", async () => {
+  let reads = 0;
+  const revised = dashboardBody(sampleDraft(), { revision: 2 });
+  const { server } = await ready({ overrides: {
+    [`GET ${ROOT}/dashboards/${ID}`]: () => Response.json(reads++ === 0 ? dashboardBody(sampleDraft()) : revised),
+    [`POST ${ROOT}/dashboards/${ID}/revisions`]: () => refused("refus-revision-conflit"),
+    [`GET ${ROOT}/dashboards/${ID}/diff?base=1&other=2`]: () => refused("ecart"),
+  } });
+  await add("Ajouter une section");
+  await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+  const conflict = await screen.findByRole("region", { name: "Conflit de révision" });
+  expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+  await userEvent.click(await within(conflict).findByRole("button", { name: "Voir l'écart" }));
+  expect(await within(conflict).findByText(/\/name/)).toBeInTheDocument();
+  expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith("/diff?base=1&other=2"))).toHaveLength(1);
+  expect(server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.endsWith("/revisions"))).toHaveLength(1);
+  await userEvent.click(within(conflict).getByRole("button", { name: "Rouvrir la révision courante" }));
+  expect(screen.getByRole("group", { name: "Abandonner les modifications" })).toBeInTheDocument();
+  await userEvent.click(within(conflict).getByRole("button", { name: "Abandonner et rouvrir" }));
+  expect(screen.queryByRole("region", { name: "Conflit de révision" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Section 3" })).not.toBeInTheDocument();
+  expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
+  expect(screen.getByText(/Éditeur de dashboard · Partagé · révision 2/)).toBeInTheDocument();
+  await add("Ajouter une section");
+  await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+  await waitFor(() => { expect(server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.endsWith("/revisions"))).toHaveLength(2); });
+  const posts = server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.endsWith("/revisions"));
+  expect(JSON.parse(posts[1]?.[1]?.body as string)).toMatchObject({ expected_revision: 2 });
+});
+
+it("crée une copie indépendante puis y enregistre le brouillon sans réécrire l'original", async () => {
+  const copyId = "00000000-0000-4000-8000-000000000099";
+  const duplicate = JSON.parse(JSON.stringify(route("dupliquer").body).replaceAll(ID, copyId)) as Record<string, unknown>;
+  const { server } = await ready({ overrides: {
+    [`POST ${ROOT}/dashboards/${ID}/revisions`]: () => refused("refus-revision-conflit"),
+    [`POST ${ROOT}/dashboards/${ID}/duplicate`]: Response.json(duplicate, { status: 201 }),
+    [`POST ${ROOT}/dashboards/${copyId}/revisions`]: (init) => {
+      const sent = JSON.parse(init?.body as string) as Record<string, unknown>;
+      delete sent.expected_revision;
+      const body = dashboardBody(decodeDashboardDraft(sent), { revision: 2 });
+      return Response.json({ ...body, id: copyId, dashboard: { ...body.dashboard, id: copyId } }, { status: 201 });
+    },
+  } });
+  await add("Ajouter une section");
+  await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+  const conflict = await screen.findByRole("region", { name: "Conflit de révision" });
+  await userEvent.click(within(conflict).getByRole("button", { name: "Copie indépendante" }));
+  expect(await within(conflict).findByRole("link", { name: "Ouvrir la copie" })).toHaveAttribute("href", `#/espaces/finance/dashboards/${copyId}`);
+  const writes = server.fetcher.mock.calls.filter(([url, init]) => init?.method === "POST" && url.includes("/dashboards/"));
+  expect(writes.map(([url]) => url)).toEqual([`${ROOT}/dashboards/${ID}/revisions`, `${ROOT}/dashboards/${ID}/duplicate`, `${ROOT}/dashboards/${copyId}/revisions`]);
+  const sent = JSON.parse(writes[2]?.[1]?.body as string) as { expected_revision: number; visibility: string; layout: { sections: { id: string }[] } };
+  expect(sent).toMatchObject({ expected_revision: 1, visibility: "personal" });
+  expect(sent.layout.sections.map((section) => section.id)).toContain(N.s1);
+  expect(within(conflict).getByText(/Copie enregistrée/)).toBeInTheDocument();
+  act(() => { navigate({ page: "dashboards", space: "finance" }); });
+  expect(screen.queryByRole("dialog", { name: "Quitter sans enregistrer ?" })).not.toBeInTheDocument();
+  expect(window.location.hash).toBe("#/espaces/finance/dashboards");
+});
+
+it("conserve une saisie de filtre pendant l'aperçu", async () => {
+  await ready();
+  await userEvent.click(screen.getByRole("tab", { name: /^Filtres/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Nouveau filtre" }));
+  await userEvent.type(screen.getByRole("textbox", { name: "Libellé" }), "Saisie en cours");
+  await add("Aperçu lecteur");
+  expect(screen.getByRole("heading", { name: "Aperçu lecteur · Pilotage" })).toBeInTheDocument();
+  await add("Retour à l'éditeur");
+  expect(screen.getByRole("textbox", { name: "Libellé" })).toHaveValue("Saisie en cours");
+});
+
+it("la garde retient l'ouverture de l'historique tant que le brouillon est modifié", async () => {
+  await ready();
+  await add("Ajouter une section");
+  await userEvent.click(screen.getByRole("link", { name: "Historique des révisions" }));
+  expect(screen.getByRole("dialog", { name: "Quitter sans enregistrer ?" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Section 3" })).toBeInTheDocument();
+});
+
+describe("aperçu lecteur et responsive", () => {
+  it("conserve résultats et refus, masque les outils et ne resoumet rien en changeant de largeur", async () => {
+    const { server, container } = await ready({ outcomes: { [N.total]: "deny" } });
+    await screen.findByText(/DENY/);
+    await waitFor(() => { expect(server.submitted()).toHaveLength(2); });
+    const submitted = structuredClone(server.submitted());
+    await add("Aperçu lecteur");
+    expect(screen.getByText(/les données restent celles de l'éditeur/)).toBeInTheDocument();
+    expect(screen.queryByRole("toolbar", { name: "Actions de l'éditeur" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ajouter une section" })).not.toBeInTheDocument();
+    const preview = screen.getByRole("region", { name: "Aperçu lecteur" });
+    expect(within(preview).getByText(/DENY/)).toBeInTheDocument();
+    expect(within(preview).getByText("Bonjour")).toBeInTheDocument();
+    expect(container.querySelector(".sb-preview__row")).toHaveAttribute("data-stacked", "false");
+    await userEvent.click(screen.getByRole("radio", { name: "Tablette · 768 px" }));
+    expect(container.querySelector(".sb-preview__row")).toHaveAttribute("data-stacked", "false");
+    await userEvent.click(screen.getByRole("radio", { name: "Téléphone · 390 px" }));
+    expect(container.querySelector(".sb-preview__row")).toHaveAttribute("data-stacked", "true");
+    await userEvent.click(screen.getByRole("radio", { name: "Bureau · 1 280 px" }));
+    expect(server.submitted()).toEqual(submitted);
+    await expectAccessible(container);
+    await add("Retour à l'éditeur");
+    expect(screen.getByRole("toolbar", { name: "Actions de l'éditeur" })).toBeInTheDocument();
+    expect(server.submitted()).toEqual(submitted);
+  });
+});
+
+it("la garde protège aussi les modifications pendant l'aperçu", async () => {
+  await ready();
+  await add("Ajouter une section");
+  await add("Aperçu lecteur");
+  act(() => { navigate({ page: "dashboards", space: "finance" }); });
+  const dialog = await screen.findByRole("dialog", { name: "Quitter sans enregistrer ?" });
+  await userEvent.click(within(dialog).getByRole("button", { name: "Rester" }));
+  expect(screen.getByRole("heading", { name: "Aperçu lecteur · Pilotage" })).toBeInTheDocument();
+  act(() => { navigate({ page: "dashboards", space: "finance" }); });
+  await userEvent.click(within(await screen.findByRole("dialog", { name: "Quitter sans enregistrer ?" })).getByRole("button", { name: "Quitter sans enregistrer" }));
+  expect(window.location.hash).toBe("#/espaces/finance/dashboards");
+});
+
+it("garder l'épingle masque l'invite sans lire r2 ni modifier le document", async () => {
+  const { server } = await ready({ analyses: { ...ANALYSES, [N.bars]: { ...ANALYSES[N.bars] as AnalysisSpec, current: 2 } } });
+  const invite = (await screen.findAllByLabelText("Révision d'analyse plus récente"))[0] as HTMLElement;
+  expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`))).toHaveLength(0);
+  await userEvent.click(within(invite).getByRole("button", { name: "Garder l'épingle" }));
+  expect(invite).not.toBeInTheDocument();
+  expect(server.fetcher.mock.calls.filter(([url]) => url.endsWith(`/analyses/${N.bars}/revisions/2`))).toHaveLength(0);
+  expect(server.saved()).toHaveLength(0);
+  expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
 });

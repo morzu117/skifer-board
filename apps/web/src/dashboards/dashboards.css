@@ -28,11 +28,18 @@
 
 /* -- Éditeur (plan 19, 19.5a) ---------------------------------------------------------------------------------------------------- */
 .sb-editor { display: grid; gap: var(--sb-space-6); min-width: 0; }
+.sb-editor[hidden] { display: none; }
 .sb-editor > * { min-width: 0; }
 .sb-editor__note { margin: 0; color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
 .sb-editor__announce { margin: 0; min-height: var(--sb-space-8); color: var(--sb-ink-2); font-size: var(--sb-text-sm); }
 .sb-editor__grid { display: grid; gap: var(--sb-space-6); min-width: 0; }
 .sb-editor__main { display: grid; gap: var(--sb-space-6); min-width: 0; align-content: start; }
+.sb-preview, .sb-preview__viewport, .sb-preview__section, .sb-preview__column, .sb-preview__container { display: grid; gap: var(--sb-space-5); min-width: 0; }
+.sb-preview__frame { min-width: 0; }
+.sb-preview__tile { min-width: 0; }
+.sb-preview__row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--sb-space-4); min-width: 0; }
+.sb-preview__sizes { display: flex; flex-wrap: wrap; gap: var(--sb-space-4); border: 0; padding: 0; margin: 0; }
+.sb-preview__sizes label { display: flex; align-items: center; gap: var(--sb-space-2); min-height: var(--sb-target-min); }
 @media (min-width: 1100px) {
   .sb-editor__grid { grid-template-columns: minmax(0, 1fr) var(--sb-props-w); align-items: start; }
 }

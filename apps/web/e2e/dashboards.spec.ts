@@ -578,3 +578,300 @@ test("relancer une exécution annulée par le serveur soumet une nouvelle requê
   await expect(tuile(page, "Ventes").getByText("Preuve", { exact: true })).toBeVisible();
   expect(serveur.journal.executions).toHaveLength(2);
 });
+
+test("filtre commun ciblé, valeur de travail et annulation de suppression", async ({ page }) => {
+  const autres = { [ANALYSE]: { nom: "Visuel ciblé" }, [ANALYSE_DENY]: { nom: "Visuel libre" } };
+  const document = pageDe("Filtres communs", [visuel(uuid(160), ANALYSE), visuel(uuid(161), ANALYSE_DENY)]);
+  const serveur = await servir(page, { role: "creator", analyses: autres, dashboards: [entreeDashboard(DASHBOARD_ID, document)] }, []);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await expect.poll(() => serveur.journal.executions.length).toBe(2);
+  await page.getByRole("tab", { name: /^Filtres/ }).click();
+  await page.getByRole("button", { name: "Nouveau filtre" }).click();
+  await page.getByRole("textbox", { name: "Libellé" }).fill("Région active");
+  await page.getByRole("combobox", { name: "Dimension" }).selectOption("region:string");
+  await page.getByRole("textbox", { name: "Valeur par défaut" }).fill("Nord");
+  await page.getByRole("checkbox", { name: /Visuel · Visuel ciblé/ }).check();
+  for (const theme of THEMES) { await choisirTheme(page, theme); await axe(page); }
+  await page.getByRole("button", { name: "Ajouter le filtre" }).click();
+  await expect.poll(() => serveur.journal.executions.length).toBe(3);
+  expect(serveur.journal.executions[2]?.filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }, { column: "region", operator: "eq", value: "Nord" }]);
+  expect(serveur.journal.executions.filter((one) => (one.analysis as { id: string }).id === ANALYSE_DENY)).toHaveLength(1);
+  await page.getByRole("textbox", { name: "Valeur de travail · Région active" }).fill("Sud");
+  await page.getByRole("button", { name: "Appliquer la valeur" }).click();
+  await expect.poll(() => serveur.journal.executions.length).toBe(4);
+  expect(serveur.journal.executions[3]?.filters).toEqual([{ column: "region", operator: "in", value: ["Nord", "Sud"] }, { column: "region", operator: "eq", value: "Sud" }]);
+  await page.getByRole("button", { name: "Propriétés · Région active" }).click();
+  await page.getByRole("button", { name: "Supprimer le filtre" }).click();
+  await expect(page.getByRole("tab", { name: /^Filtres/ })).toContainText("(0)");
+  await page.getByRole("toolbar", { name: "Actions de l'éditeur" }).getByRole("button", { name: "Annuler" }).click();
+  await expect(page.getByRole("tab", { name: /^Filtres/ })).toContainText("(1)");
+});
+
+test("ajouter un visuel et un KPI, annuler et enregistrer leurs références", async ({ page }) => {
+  const analyses: Record<string, AnalysePinglee> = {
+    [ANALYSE]: { nom: "Analyse visuelle" },
+    [ANALYSE_DENY]: { nom: "Analyse totale", contenu: { presentation: { chart: "value" }, query: { connection: "finance", model: "sales", metrics: ["revenue"], dimensions: [], filters: [] } } },
+  };
+  const serveur = await servir(page, { role: "creator", analyses, dashboards: [entreeDashboard(DASHBOARD_ID, pageDe("Ajouts", []))] }, ["POST /dashboards/:id/revisions"]);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  for (const theme of THEMES) {
+    await choisirTheme(page, theme);
+    await page.getByRole("button", { name: "Ajouter une analyse" }).click();
+    await expect(page.getByRole("dialog", { name: "Ajouter une analyse" })).toBeVisible();
+    await axe(page);
+    await page.keyboard.press("Escape");
+  }
+  await page.getByRole("button", { name: "Ajouter une analyse" }).click();
+  let dialog = page.getByRole("dialog", { name: "Ajouter une analyse" });
+  await dialog.getByRole("textbox", { name: "Rechercher une analyse" }).fill("visuelle");
+  await dialog.getByRole("button", { name: /Analyse visuelle/ }).click();
+  await expect(dialog.getByText(/Modèle : sales/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await expect(noeud(page, /Visuel · Analyse visuelle/)).toBeVisible();
+  await page.getByRole("toolbar", { name: "Actions de l'éditeur" }).getByRole("button", { name: "Annuler" }).click();
+  await expect(noeud(page, /Visuel · Analyse visuelle/)).toHaveCount(0);
+  await page.getByRole("toolbar", { name: "Actions de l'éditeur" }).getByRole("button", { name: "Rétablir" }).click();
+  await page.getByRole("button", { name: "Ajouter une analyse" }).click();
+  dialog = page.getByRole("dialog", { name: "Ajouter une analyse" });
+  await dialog.getByRole("button", { name: /Analyse totale/ }).click();
+  await dialog.getByRole("radio", { name: "KPI" }).check();
+  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await expect(noeud(page, /KPI · Analyse totale/)).toBeVisible();
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect.poll(() => serveur.journal.revisions.length).toBe(1);
+  const json = JSON.stringify(serveur.journal.revisions[0]?.corps);
+  expect(json).toContain(JSON.stringify({ analysis_id: ANALYSE, revision: 1 }));
+  expect(json).toContain(JSON.stringify({ analysis_id: ANALYSE_DENY, revision: 1 }));
+});
+
+test("un dashboard partagé signale puis rend le refus d'une analyse personnelle", async ({ page }) => {
+  const analyses: Record<string, AnalysePinglee> = { [ANALYSE]: { nom: "Analyse privée", contenu: { visibility: "personal" } } };
+  const serveur = await servir(page, { role: "creator", analyses, dashboards: [entreeDashboard(DASHBOARD_ID, pageDe("Partagé", []))] }, ["POST /dashboards/:id/revisions"]);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await page.getByRole("button", { name: "Ajouter une analyse" }).click();
+  const dialog = page.getByRole("dialog", { name: "Ajouter une analyse" });
+  await dialog.getByRole("button", { name: /Analyse privée/ }).click();
+  await expect(dialog.getByText(/Une analyse personnelle ne peut pas/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await expect(page.getByText(/Ce dashboard partagé référence une analyse personnelle/)).toBeVisible();
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Composants :" })).toBeVisible();
+  expect(serveur.journal.revisions).toHaveLength(1);
+});
+
+test("un conflit entre deux éditeurs propose une copie et la réouverture sans écrasement", async ({ page, context }) => {
+  const shared = entreeDashboard(DASHBOARD_ID, pageDe("Concurrence", []));
+  const first = await servir(page, { role: "creator", dashboards: [shared] }, ["POST /dashboards/:id/revisions"]);
+  const autre = await context.newPage();
+  const second = await servir(autre, { role: "creator", dashboards: [shared] }, ["POST /dashboards/:id/revisions", "POST /dashboards/:id/duplicate", "POST /dashboards/:id/revisions"]);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await aller(autre, `dashboards/${DASHBOARD_ID}`);
+  await ajouter(page, "Ajouter une section");
+  await ajouter(autre, "Ajouter une section");
+  await ajouter(autre, "Ajouter une section");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect.poll(() => first.entree(DASHBOARD_ID).revisions.length).toBe(2);
+  await autre.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  const conflit = autre.getByRole("region", { name: "Conflit de révision" });
+  await expect(conflit).toBeVisible();
+  await expect(autre.getByRole("button", { name: "Enregistrer", exact: true })).toBeDisabled();
+  await expect(conflit.getByRole("button", { name: "Copie indépendante" })).toBeVisible();
+  await expect(conflit.getByRole("button", { name: "Rouvrir la révision courante" })).toBeVisible();
+  await conflit.getByRole("button", { name: "Voir l'écart" }).click();
+  await expect(conflit.getByText("Écart entre r1 et r2")).toBeVisible();
+  expect(second.journal.appels).toContain("GET /dashboards/:id/diff");
+  expect(second.journal.revisions).toHaveLength(1);
+  await conflit.getByRole("button", { name: "Copie indépendante" }).click();
+  await expect(conflit.getByRole("link", { name: "Ouvrir la copie" })).toBeVisible();
+  expect(shared.revisions).toHaveLength(2);
+  expect(second.journal.revisions).toHaveLength(2);
+  expect(second.journal.revisions[1]?.id).not.toBe(DASHBOARD_ID);
+  await autre.close();
+});
+
+test("une révision d'analyse plus récente peut être comparée, adoptée puis annulée", async ({ page }) => {
+  const analyses: Record<string, AnalysePinglee> = { [ANALYSE]: { nom: "Analyse révisée", revisions: [{}, {}] } };
+  const serveur = await servir(page, { role: "creator", analyses, dashboards: [entreeDashboard(DASHBOARD_ID, pageDe("Écart d'analyse", [visuel(uuid(170), ANALYSE)]))] }, []);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  const actions = page.getByLabel("Révision d'analyse plus récente").first();
+  await expect(actions).toContainText("r1");
+  await expect(actions.getByRole("link", { name: "Comparer les révisions" })).toHaveAttribute("href", `#/espaces/finance/analyses/${ANALYSE}/historique/1/2`);
+  await actions.getByRole("button", { name: "Adopter r2" }).click();
+  await expect.poll(() => serveur.journal.executions.length).toBe(2);
+  expect(serveur.journal.executions[1]?.analysis).toEqual({ id: ANALYSE, revision: 2 });
+  await page.getByRole("toolbar", { name: "Actions de l'éditeur" }).getByRole("button", { name: "Annuler" }).click();
+  await expect(page.getByLabel("Révision d'analyse plus récente").first()).toContainText("r1");
+  const avant = serveur.journal.executions.length;
+  const lectures = serveur.journal.appels.filter((appel) => appel === "GET /analyses/:id/revisions/:n").length;
+  const invite = page.getByLabel("Révision d'analyse plus récente").first();
+  await invite.getByRole("button", { name: "Garder l'épingle" }).click();
+  await expect(page.getByLabel("Révision d'analyse plus récente")).toHaveCount(1);
+  expect(serveur.journal.executions).toHaveLength(avant);
+  expect(serveur.journal.appels.filter((appel) => appel === "GET /analyses/:id/revisions/:n")).toHaveLength(lectures);
+  expect(serveur.entree(DASHBOARD_ID).revisions).toHaveLength(1);
+});
+
+test("historique, révision en lecture et écart structurel fourni par le serveur", async ({ page }) => {
+  const chemins: string[] = [];
+  page.on("request", (request) => { if (request.method() === "GET") chemins.push(new URL(request.url()).pathname); });
+  const entry = entreeDashboard(DASHBOARD_ID, pageDe("Première", []));
+  entry.revisions.push(pageDe("Deuxième", []), pageDe("Troisième", []));
+  const serveur = await servir(page, { role: "creator", masquerPremiere: true, dashboards: [entry] }, []);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await ajouter(page, "Ajouter une section");
+  await page.getByRole("link", { name: "Historique des révisions" }).click();
+  const garde = page.getByRole("dialog", { name: "Quitter sans enregistrer ?" });
+  await expect(garde).toBeVisible();
+  await garde.getByRole("button", { name: "Quitter sans enregistrer" }).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboards/${DASHBOARD_ID}/historique$`));
+  const histoire = page.getByRole("list", { name: "Historique des révisions" });
+  await expect(histoire).toContainText("r1 · révision non disponible");
+  await expect(histoire.getByRole("link", { name: "Lire la révision 1" })).toHaveCount(0);
+  for (const theme of THEMES) { await choisirTheme(page, theme); await axe(page); }
+  await histoire.getByRole("link", { name: "Lire la révision 2" }).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboards/${DASHBOARD_ID}/revisions/2$`));
+  await expect(page.getByText("Révision historique en lecture seule.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enregistrer", exact: true })).toHaveCount(0);
+  expect(serveur.journal.appels).toContain("GET /dashboards/:id/revisions/:n");
+  expect(chemins).toContain(`/api/spaces/finance/dashboards/${DASHBOARD_ID}/revisions`);
+  expect(chemins).toContain(`/api/spaces/finance/dashboards/${DASHBOARD_ID}/revisions/2`);
+  await page.getByRole("link", { name: "Historique des révisions" }).click();
+  await page.getByRole("button", { name: "Comparer", exact: true }).click();
+  const tableau = page.getByRole("table", { name: "Écart entre r2 et r3" });
+  for (const nature of ["Ajouté", "Retiré", "Modifié", "Déplacé"]) await expect(tableau.getByText(nature, { exact: true }).first()).toBeVisible();
+  expect(serveur.journal.ecarts).toEqual([{ id: DASHBOARD_ID, base: 2, other: 3 }]);
+  await aller(page, `dashboards/${DASHBOARD_ID}/historique/2/3`);
+  await expect(page.getByRole("table", { name: "Écart entre r2 et r3" })).toBeVisible();
+  expect(serveur.journal.ecarts).toEqual([{ id: DASHBOARD_ID, base: 2, other: 3 }, { id: DASHBOARD_ID, base: 2, other: 3 }]);
+});
+
+test("aperçu lecteur : largeurs, empilement et requêtes inchangées", async ({ page }) => {
+  const document = pageDe("Aperçu", [], { layout: { sections: [{ id: uuid(1), title: "Ventes", rows: [{ id: uuid(2), columns: [
+    { id: uuid(3), span: 6, children: [visuel(uuid(31), ANALYSE, { title: "Graphique" }), texte(uuid(32), "Premier contenu")] },
+    { id: uuid(4), span: 6, children: [texte(uuid(33), "Deuxième contenu")] },
+  ] }] }] } });
+  const serveur = await servir(page, { role: "creator", analyses: ANALYSES, dashboards: [entreeDashboard(DASHBOARD_ID, document)] }, []);
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await expect(tuile(page, "Graphique")).toBeVisible();
+  await expect.poll(() => serveur.journal.executions.length).toBe(1);
+  const requetes = structuredClone(serveur.journal.executions);
+  await page.getByRole("button", { name: "Aperçu lecteur" }).click();
+  await expect(page.getByText("Aperçu lecteur : les données restent celles de l'éditeur.")).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Actions de l'éditeur" })).toHaveCount(0);
+  const apercu = page.getByRole("region", { name: "Aperçu lecteur" });
+  const colonnes = apercu.locator(".sb-preview__column");
+  for (const [label, width, stacked] of [["Bureau · 1 280 px", 1280, false], ["Tablette · 768 px", 768, false], ["Téléphone · 390 px", 390, true]] as const) {
+    await apercu.getByRole("radio", { name: label }).check();
+    await expect(apercu.locator(".sb-preview__viewport")).toHaveCSS("width", `${String(width)}px`);
+    await expect(apercu.locator(".sb-preview__row")).toHaveAttribute("data-stacked", String(stacked));
+    await expect(apercu.locator("[data-narrow]")).toHaveAttribute("data-narrow", String(width <= 768));
+    const nord = apercu.locator("svg text").filter({ hasText: "Nord" }).first();
+    await expect(nord).toBeVisible();
+    if (width <= 768) await expect(nord).toHaveAttribute("transform", /matrix\(0\.707,-0\.707/);
+    else await expect(nord).not.toHaveAttribute("transform", /matrix\(0\.707,-0\.707/);
+    const boxes = await Promise.all([colonnes.nth(0).boundingBox(), colonnes.nth(1).boundingBox()]);
+    expect(boxes[0]).not.toBeNull(); expect(boxes[1]).not.toBeNull();
+    if (boxes[0] === null || boxes[1] === null) throw new Error("Colonnes absentes de l'aperçu");
+    if (stacked) expect(boxes[1].y).toBeGreaterThan(boxes[0].y);
+    else expect(Math.abs(boxes[1].y - boxes[0].y)).toBeLessThan(1);
+    await sansDebordement(page);
+    expect(serveur.journal.executions).toEqual(requetes);
+  }
+  for (const theme of THEMES) { await page.getByRole("button", { name: "Retour à l'éditeur" }).click(); await choisirTheme(page, theme); await page.getByRole("button", { name: "Aperçu lecteur" }).click(); await axe(page); }
+});
+
+test("depuis une analyse : épingler dans un dashboard avec la révision attendue", async ({ page }) => {
+  const document = pageDe("Dashboard cible", []);
+  const serveur = await servir(page, { role: "creator", analyses: { [ANALYSE]: { nom: "Ventes", contenu: { query: { connection: "finance", model: "sales", metrics: ["revenue"], dimensions: [], filters: [] }, presentation: { chart: "value" } } } }, dashboards: [entreeDashboard(DASHBOARD_ID, document)] }, ["POST /analyses/:id/opened", "POST /dashboards/:id/revisions"]);
+  await aller(page, `analyses/${ANALYSE}`);
+  for (const theme of THEMES) {
+    await choisirTheme(page, theme);
+    await page.getByRole("button", { name: "Épingler à un dashboard" }).click();
+    const dialog = page.getByRole("dialog", { name: "Épingler à un dashboard" });
+    await dialog.getByRole("combobox", { name: "Dashboard" }).selectOption(DASHBOARD_ID);
+    await expect(dialog.getByRole("radio", { name: "KPI" })).toBeVisible();
+    await axe(page);
+    if (theme === THEMES[0]) await dialog.getByRole("button", { name: "Fermer" }).click();
+  }
+  const dialog = page.getByRole("dialog", { name: "Épingler à un dashboard" });
+  await dialog.getByRole("radio", { name: "KPI" }).check();
+  await dialog.getByRole("button", { name: "Épingler", exact: true }).click();
+  await expect(dialog.getByRole("link", { name: "Ouvrir le dashboard" })).toHaveAttribute("href", `#/espaces/finance/dashboards/${DASHBOARD_ID}`);
+  expect(serveur.journal.revisions).toHaveLength(1);
+  const corps = serveur.journal.revisions[0]?.corps as { expected_revision: number; layout: { sections: { rows: { columns: { children: object[] }[] }[] }[] } };
+  expect(corps.expected_revision).toBe(1);
+  expect(corps.layout.sections[0]?.rows.at(-1)?.columns[0]?.children[0]).toEqual({ id: expect.any(String), type: "kpi", reference: { analysis_id: ANALYSE, revision: 1 }, presentation: {} });
+});
+
+test("épinglage en conflit : aucune réécriture et deux issues", async ({ page }) => {
+  const document = pageDe("Dashboard cible", []);
+  const serveur = await servir(page, { role: "creator", analyses: { [ANALYSE]: { nom: "Ventes" } }, dashboards: [entreeDashboard(DASHBOARD_ID, document)] }, ["POST /analyses/:id/opened", "POST /dashboards/:id/revisions"]);
+  await aller(page, `analyses/${ANALYSE}`);
+  await page.getByRole("button", { name: "Épingler à un dashboard" }).click();
+  const dialog = page.getByRole("dialog", { name: "Épingler à un dashboard" });
+  await dialog.getByRole("combobox", { name: "Dashboard" }).selectOption(DASHBOARD_ID);
+  await expect(dialog.getByRole("button", { name: "Épingler", exact: true })).toBeEnabled();
+  serveur.entree(DASHBOARD_ID).revisions.push(pageDe("Concurrent", []));
+  await dialog.getByRole("button", { name: "Épingler", exact: true }).click();
+  const conflit = dialog.getByRole("region", { name: "Conflit de révision" });
+  await expect(conflit.getByRole("button", { name: "Copie indépendante" })).toBeVisible();
+  await expect(conflit.getByRole("button", { name: "Rouvrir la révision courante" })).toBeVisible();
+  expect(serveur.journal.revisions).toHaveLength(1);
+  expect(serveur.entree(DASHBOARD_ID).revisions).toHaveLength(2);
+});
+
+test("consommateurs visibles et masqués : suppression refusée puis acceptée après retrait", async ({ page }) => {
+  const visible = entreeDashboard(DASHBOARD_ID, pageDe("Visible", [visuel(uuid(31), ANALYSE, { title: "Tuile à retirer" })]));
+  const cache = entreeDashboard(AUTRE_DASHBOARD_ID, pageDe("Secret", [visuel(uuid(32), ANALYSE)], { visibility: "personal" }), { proprietaire: "autre" });
+  const serveur = await servir(page, { role: "creator", analyses: { [ANALYSE]: { nom: "Ventes", droits: { owner: true, revise: true, delete: true, duplicate: true } } }, dashboards: [visible, cache] }, ["POST /analyses/:id/opened", "DELETE /analyses/:id", "POST /dashboards/:id/revisions", "POST /analyses/:id/opened", "DELETE /analyses/:id"]);
+  await aller(page, `analyses/${ANALYSE}`);
+  await page.getByRole("tab", { name: "Consommateurs" }).click();
+  const panel = page.getByRole("tabpanel", { name: "Consommateurs" });
+  await expect(panel.getByRole("link", { name: `Dashboard ${DASHBOARD_ID}` })).toBeVisible();
+  await expect(panel).toContainText("Autres dépendants que vous ne voyez pas : 1");
+  await expect(panel).not.toContainText(AUTRE_DASHBOARD_ID);
+  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await page.getByRole("button", { name: "Confirmer la suppression" }).click();
+  await expect(page.getByRole("alert")).toContainText("Cette analyse est encore utilisée");
+  await expect(page.getByRole("link", { name: `Dashboard ${DASHBOARD_ID}` }).first()).toBeVisible();
+  await aller(page, `dashboards/${DASHBOARD_ID}`);
+  await noeud(page, /Visuel/).focus();
+  await page.keyboard.press("Delete");
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(page.getByText("Révision 2 enregistrée.")).toBeVisible();
+  // Le dépendant masqué est retiré par son auteur, hors du navigateur du demandeur.
+  serveur.entree(AUTRE_DASHBOARD_ID).revisions.push(pageDe("Secret", [], { visibility: "personal" }));
+  await aller(page, `analyses/${ANALYSE}`);
+  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await page.getByRole("button", { name: "Confirmer la suppression" }).click();
+  await expect(page.getByText(/Analyse supprimée/)).toBeVisible();
+});
+
+for (const width of LARGEURS) {
+  test(`historique, conflit et dialogues sans débordement à ${String(width)} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const entry = entreeDashboard(DASHBOARD_ID, pageDe("Mesure des écrans", []));
+    const serveur = await servir(page, { role: "creator", analyses: { [ANALYSE]: { nom: "Analyse visuelle" } }, dashboards: [entry] }, ["POST /dashboards/:id/revisions", "POST /analyses/:id/opened"]);
+    await aller(page, `dashboards/${DASHBOARD_ID}`);
+    await page.getByRole("button", { name: "Ajouter une analyse" }).click();
+    await expect(page.getByRole("dialog", { name: "Ajouter une analyse" })).toBeVisible();
+    await sansDebordement(page);
+    await page.keyboard.press("Escape");
+    await page.getByRole("link", { name: "Historique des révisions" }).click();
+    await expect(page.getByRole("heading", { name: "Historique du dashboard" })).toBeVisible();
+    await sansDebordement(page);
+    await page.getByRole("link", { name: "Retour au dashboard" }).click();
+    await page.getByRole("button", { name: "Ajouter une section" }).click();
+    serveur.entree(DASHBOARD_ID).revisions.push(pageDe("Concurrent", []));
+    await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Conflit de révision" })).toBeVisible();
+    await sansDebordement(page);
+    await page.getByRole("button", { name: "Rouvrir la révision courante" }).click();
+    await page.getByRole("button", { name: "Abandonner et rouvrir" }).click();
+    await aller(page, `analyses/${ANALYSE}`);
+    await page.getByRole("button", { name: "Épingler à un dashboard" }).click();
+    await page.getByRole("dialog", { name: "Épingler à un dashboard" }).getByRole("combobox", { name: "Dashboard" }).selectOption(DASHBOARD_ID);
+    await expect(page.getByRole("button", { name: "Épingler", exact: true })).toBeVisible();
+    await sansDebordement(page);
+  });
+}

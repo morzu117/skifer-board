@@ -1,6 +1,6 @@
 # Plan 19 — Composition des dashboards (lot 07a)
 
-Date : 6 novembre 2026 · Statut : **19.1 à 19.5a réalisées**, 19.5b et 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
+Date : 6 novembre 2026 · Statut : **19.1 à 19.5b réalisées**, 19.5c à réaliser. Premier plan du lot 07, ouvert sur les analyses versionnées du [plan 18](18_analyses_versionnees_plan.md). Choix du porteur du 6 novembre, qui suivent les recommandations : **composition seulement**, thèmes, modèles de page et composants approuvés au plan 20 (lot 07b) ; **personnalisation graphique sémantique resserrée**, ce qui ferme pour la V1 l'arbitrage « profondeur de personnalisation » du §15 des écrans ; **tuiles exécutées avec les données de l'éditeur**. Pour chaque commit, le développement est confié à un agent tiré au sort entre Codex (gpt-6.1-terra) et Claude Sonnet 5.5, puis relu par l'autre avant commit ; l'orchestrateur commite, ouvre la demande de fusion et la fusionne.
 
 Sources : [plan de développement](../plan-de-developpement.md), §4.1, §6.2, §8 lot 07 et §10.2 (D-3, D-4, D-5) ; [écrans](../ecrans-et-fonctionnalites.md), §0.2–0.5, §5 et §14 ; [maquette de l'éditeur](../design/mockups/03-editeur-dashboard.html) ; [décision 0001](../decisions/0001_bibliotheque_graphique.md) ; plans [02](02_socle_web_et_prototype_graphique_plan.md), [17](17_explorateur_plan.md) et [18](18_analyses_versionnees_plan.md).
 
@@ -314,3 +314,71 @@ Un clic modifié (Ctrl, Cmd, Maj, bouton du milieu) n'est pas intercepté. *Dett
 - La relecture finale a prouvé la force des tests par environ 85 mutations, sur quatre passes, jusqu'à son « OK pour commit ». Les mutations survivantes sont des gardes redondantes, sans effet observable.
 
 *Dette relevée.* Le test `App.espace.test` « changer d'analyse relit la fiche », étranger à la tranche, a échoué une fois sous charge, puis passé à chaque nouvel essai. Il est à surveiller comme test intermittent.
+
+### 19.5b — Filtres, ajout, conflit, historique, aperçus et consommateurs
+
+Développé par Codex (gpt-6.1-terra) en cinq sous-étapes, à la demande du porteur du 11 novembre. Relu par Claude Sonnet 5.5 : une première revue a demandé des tests sur neuf mutations survivantes et quelques corrections mineures, puis une contre-revue a validé les corrections.
+
+*Filtres communs (B7).*
+- `edition/Filtres.tsx`, dans le panneau bas et les propriétés, crée, modifie et supprime les filtres communs. Il sert à choisir la dimension, l'opérateur, les valeurs autorisées, la valeur par défaut, les cibles et la valeur de travail.
+- Les cibles proposées et le problème `incompatibleTargets` viennent d'une seule règle, de nom et de type. Changer de dimension retire les cibles cochées.
+- Les lignes vides ne deviennent jamais une valeur.
+- La valeur de travail passe par `composeExecution` et `validateExecutionFilters` (19.4) : `null` efface le filtre, et une valeur invalide rend la tuile indisponible sans exécution. Les tuiles signalent un recouvrement avec un filtre de l'analyse.
+- Les lectures d'analyses épinglées sont bornées à 40 en parallèle.
+
+*Ajout d'analyse.*
+- Le dialogue « Ajouter une analyse » sert à rechercher, prévisualiser, choisir la révision, puis un visuel compatible (`compatibleCharts`) ou un KPI (`kpiCompatible`, miroir unique de `kpi_compatible`).
+- Seules la référence `{analysis_id, revision}` et une présentation vide sont écrites.
+- L'insertion, avec la création éventuelle de sa rangée et de sa colonne, s'annule en une étape (`batch`).
+- Une analyse personnelle est signalée dans un dashboard partagé, et le refus `personal_reference` du serveur est rendu tel quel.
+
+*Révisions d'analyse (B5).* Quand une révision plus récente existe, l'éditeur propose trois actions :
+- la comparer, par l'écart du serveur ;
+- l'adopter (`adopt_revision`, annulable) ;
+- garder l'épingle, ce qui ne lit pas la nouvelle révision et laisse le document inchangé.
+
+*Conflit (B10).* Un 409 bloque toute nouvelle écriture sur l'original et ne propose que deux issues.
+- **Copie personnelle.** Elle est créée une seule fois, avec un verrou. Une fois enregistrée, elle est annoncée avec un lien, et la garde de sortie ne signale plus de perte.
+- **Réouverture de la révision courante.** Elle passe par une confirmation, et l'enregistrement suivant envoie la nouvelle `expected_revision`.
+
+*Historique.*
+- **Révisions.** `dashboards/Historique.tsx` liste les révisions et signale les éléments masqués. Une révision numérotée s'ouvre en lecture seule : le canevas refuse aussi les commandes au clavier.
+- **Diff.** Le diff structurel vient de la route du serveur, sans recalcul local. « Comparaison indisponible » est rendu avec son motif.
+- **Routes.** Les routes `…/dashboards/<id>/revisions/<n>` et `…/dashboards/<id>/historique[/<a>/<b>]` sont validées, et une route hors format ne produit aucun appel.
+- **Garde de sortie.** Elle couvre l'historique.
+
+*Aperçus.*
+- **Lecteur.** L'aperçu lecteur reprend les états, les résultats et la provenance des tuiles de l'éditeur, sans nouvelle soumission. Un bandeau rappelle qu'il montre les données de l'éditeur.
+- **Responsive.** L'aperçu responsive applique la disposition du document à 390, 768 et 1 280 px. Les colonnes y sont proportionnelles à `LIMITS.grid`, avec le zoom, l'empilement et la forme étroite jugée sur la largeur effective.
+- **Saisies.** Les saisies en cours restent montées et inertes pendant l'aperçu, et sont retrouvées au retour.
+
+*Depuis la fiche d'analyse.*
+- **Épingler.** « Épingler dans un dashboard » (`analyses/EpinglerDashboard.tsx`) écrit la référence de la révision choisie, avec la révision attendue du dashboard. Un conflit n'entraîne aucune réécriture et offre deux issues, et les refus sont rendus tels quels. Le bouton est absent pour une analyse supprimée.
+- **Consommateurs.** L'onglet « Consommateurs » (`analyses/Consommateurs.tsx`) liste les dashboards visibles. Les autres n'apparaissent que comme un décompte, y compris dans le DOM. Le refus `analysis_in_use` d'une suppression s'affiche sans doublon.
+
+*Tests.*
+- Vitest, Testing Library et Axe dans les deux thèmes. Chaque mutation survivante de la première revue a son test.
+- `e2e/dashboards.spec.ts` ajoute, sur ordinateur et téléphone, les parcours suivants :
+  - filtre commun ;
+  - ajout d'un visuel et d'un KPI ;
+  - référence personnelle refusée ;
+  - conflit entre deux éditeurs ;
+  - révision d'analyse comparée, adoptée ou gardée ;
+  - historique et écart ;
+  - aperçus ;
+  - épinglage et son conflit ;
+  - consommateurs ;
+  - absence de débordement à 390, 768 et 1 280 px pour l'historique, le conflit et les dialogues.
+- Les quatre captures de référence de la fiche d'analyse sur téléphone (`analyses.spec.ts`, fiche et preuves, clair et ardoise) sont mises à jour pour le bouton d'épinglage et l'onglet Consommateurs. L'orchestrateur les a vérifiées.
+
+*Vérifications.*
+- `pnpm run check:web` : 168 fichiers, 3 871 tests, couverture 100 %, build. La gate a été relancée sans cache par l'orchestrateur.
+- `pnpm run check:e2e` complet : 731 tests passés et 1 ignoré (`telemetrie.spec.ts`, sur téléphone, par conception). La suite a été lancée seule par l'orchestrateur.
+- `check:docs` et `git diff --check` sont au vert.
+
+*Dette relevée.*
+- Deux tests d'`AjouterAnalyse.test.tsx` ont échoué une fois sous la charge d'une gate parallèle, puis passé à chaque nouvel essai. Ils sont à surveiller comme tests intermittents, avec celui de 19.5a.
+- La contre-revue signale trois gardes mineures que les tests unitaires ne verrouillent pas :
+  - la saisie en cours qui réarme la garde après une copie ;
+  - des valeurs autorisées réduites à des espaces ;
+  - la règle CSS qui masque l'éditeur pendant l'aperçu. Celle-ci est gardée par le parcours Playwright.

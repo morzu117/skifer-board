@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
@@ -57,4 +57,31 @@ it("une autre identité relit le dashboard : l'éditeur et ses modifications de 
   await screen.findByRole("heading", { name: "Pilotage", level: 1 });
   expect(reads()).toBe(2);
   expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
+});
+
+it("ouvre une révision numérotée en lecture seule même si le serveur permet la révision courante", async () => {
+  const body = { ...dashboardBody(sampleDraft()), current_revision: 2 };
+  const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(url === `${ROOT}/dashboards/${ID}/revisions/1` ? Response.json(body) : Response.json({}, { status: 500 })));
+  render(<DashboardEditorPage space={space} id={ID} revision={1} fetcher={fetcher} environment="DEV" identity="cora" />);
+  expect(await screen.findByText("Révision historique en lecture seule.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Enregistrer" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Ajouter une section" })).not.toBeInTheDocument();
+  const node = screen.getByRole("button", { name: "Section 2" });
+  fireEvent.keyDown(node, { key: "Delete" });
+  expect(screen.getByText("Le serveur n'accorde pas la modification de ce dashboard à votre compte.")).toBeInTheDocument();
+  fireEvent.keyDown(node, { key: "A", ctrlKey: true, shiftKey: true });
+  expect(screen.queryByRole("dialog", { name: "Ajouter une analyse" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Section 2" })).toBeInTheDocument();
+  expect(fetcher.mock.calls.filter(([url]) => url.includes("/dashboards/"))).toHaveLength(1);
+});
+
+it("ne lit aucune révision pour un identifiant ou numéro invalide", async () => {
+  const fetcher = vi.fn<Fetch>();
+  const view = render(<DashboardEditorPage space={space} id="invalide" revision={1} fetcher={fetcher} environment="DEV" identity="cora" />);
+  expect(await screen.findByText(/Dashboard indisponible/)).toBeInTheDocument();
+  expect(fetcher).not.toHaveBeenCalled();
+  view.unmount();
+  render(<DashboardEditorPage space={space} id={ID} revision={0} fetcher={fetcher} environment="DEV" identity="cora" />);
+  expect(await screen.findByText(/Dashboard indisponible/)).toBeInTheDocument();
+  expect(fetcher).not.toHaveBeenCalled();
 });

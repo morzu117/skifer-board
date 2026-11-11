@@ -342,6 +342,7 @@ export async function servirAnalyses(page: Page, reglages: Reglages): Promise<Se
       const suite = analyse[2] ?? "";
       const nombre = courante.revisions.length;
       if (suite === "" && reconnu("GET", "/analyses/:id")) return route.fulfill({ json: revisionJson(courante, nombre) });
+      if (suite === "/consumers" && reconnu("GET", "/analyses/:id/consumers")) return route.fulfill({ json: { id: courante.id, consumers: [], others: 0 } });
       const numero = /^\/revisions\/([1-9]\d{0,8})$/.exec(suite);
       if (numero?.[1] !== undefined && reconnu("GET", "/analyses/:id/revisions/:n")) {
         const n = Number(numero[1]);

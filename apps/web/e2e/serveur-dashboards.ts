@@ -2,6 +2,12 @@ import type { Page, Route } from "@playwright/test";
 import creer from "../../../contracts/dashboards/routes/creer.json" with { type: "json" };
 import lire from "../../../contracts/dashboards/routes/lire.json" with { type: "json" };
 import lister from "../../../contracts/dashboards/routes/lister.json" with { type: "json" };
+import listeAnalyses from "../../../contracts/analyses/routes/lister.json" with { type: "json" };
+import historiqueAnalyses from "../../../contracts/analyses/routes/historique.json" with { type: "json" };
+import personnel from "../../../contracts/dashboards/routes/refus-reference-personnelle.json" with { type: "json" };
+import historiqueDashboard from "../../../contracts/dashboards/routes/historique.json" with { type: "json" };
+import ecartReel from "../src/dashboards/ecart-reel.json" with { type: "json" };
+import ecartDashboard from "../../../contracts/dashboards/routes/ecart.json" with { type: "json" };
 import conflit from "../../../contracts/dashboards/routes/refus-revision-conflit.json" with { type: "json" };
 import espace from "../../../contracts/espaces/espace.json" with { type: "json" };
 import liste from "../../../contracts/espaces/liste.json" with { type: "json" };
@@ -40,7 +46,9 @@ export interface EntreeDashboard {
 /** Analyse épinglée : son contenu, l'issue de ses exécutions, et ce que le serveur dit de sa tuile. */
 export interface AnalysePinglee {
   nom: string;
+  droits?: Droits;
   contenu?: Partial<Brouillon>;
+  revisions?: Partial<Brouillon>[];
   /** `tronque` : le résultat est partiel (limite atteinte) ; `resultat_perdu` : l'exécution réussit mais son résultat ne peut pas être lu. */
   issue?: Mode | "tronque" | "resultat_perdu" | "annulee";
   /** `indisponible` : la tuile est indisponible (raison `analysis_unavailable`) ; `non_verifie` : le catalogue n'a pas été lu. */
@@ -51,6 +59,7 @@ export interface ReglagesDashboards {
   dashboards?: EntreeDashboard[];
   analyses?: Record<string, AnalysePinglee>;
   identifiants?: string[];
+  masquerPremiere?: boolean;
   /** Les exécutions restent en cours tant que `liberer()` n'a pas été appelé. */
   retenir?: boolean;
 }
@@ -61,6 +70,7 @@ export interface JournalDashboards {
   executions: Record<string, unknown>[];
   resultats: string[];
   annulations: string[];
+  ecarts: { id: string; base: number; other: number }[];
   appels: string[];
   inattendues: string[];
 }
@@ -112,9 +122,10 @@ const memeContenu = (a: Document, b: Document) => JSON.stringify(a) === JSON.str
 export async function servirDashboards(page: Page, reglages: ReglagesDashboards): Promise<ServeurDashboards> {
   const dashboards = new Map((reglages.dashboards ?? []).map((e) => [e.id, e]));
   const analyses = reglages.analyses ?? {};
-  const entreesAnalyses = new Map(Object.entries(analyses).map(([id, a]) => [id, entree(id, [brouillon(a.nom, a.contenu ?? {})], { proprietaire: "cora", droits: AUCUN })]));
+  const entreesAnalyses = new Map(Object.entries(analyses).map(([id, a]) => [id, entree(id, (a.revisions ?? [a.contenu ?? {}]).map((revision) => brouillon(a.nom, revision)), { proprietaire: "cora", droits: a.droits ?? (a.contenu?.visibility === "personal" ? TOUS : AUCUN) })]));
+  const supprimees = new Set<string>();
   const identifiants = (reglages.identifiants ?? [DASHBOARD_ID, AUTRE_DASHBOARD_ID]).filter((id) => !dashboards.has(id));
-  const journal: JournalDashboards = { creations: [], revisions: [], executions: [], resultats: [], annulations: [], appels: [], inattendues: [] };
+  const journal: JournalDashboards = { creations: [], revisions: [], executions: [], resultats: [], annulations: [], ecarts: [], appels: [], inattendues: [] };
   const lancees = new Map<string, { requete: Requete; issue: NonNullable<AnalysePinglee["issue"]> }>();
   const actives = new Set<string>();
   let maximum = 0;
@@ -201,6 +212,35 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
         return route.fulfill({ contentType: "application/vnd.apache.arrow.stream", body: Buffer.from(resultat(connue.requete).octets) });
       }
     }
+    if (chemin === "/analyses" && reconnu("GET", "/analyses")) {
+      return route.fulfill({ json: { analyses: [...entreesAnalyses.values()].map((entry) => {
+        const last = entry.revisions.at(-1) as Brouillon;
+        return { ...fixe(listeAnalyses, entry.id).body.analyses[0], id: entry.id, name: last.name, visibility: last.visibility, is_owner: last.visibility === "personal", revision: entry.revisions.length, model: last.query.model, metrics: last.query.metrics };
+      }), unreadable: 0 } });
+    }
+    const ficheAnalyse = /^\/analyses\/([^/]+)(?:\/(opened|consumers))?$/.exec(chemin);
+    const fiche = ficheAnalyse?.[1] === undefined ? undefined : entreesAnalyses.get(ficheAnalyse[1]);
+    if (fiche !== undefined && ficheAnalyse?.[1] !== undefined) {
+      const id = ficheAnalyse[1];
+      const dependants = [...dashboards.values()].filter((entry) => executables(entry.revisions.at(-1) as Document).some((one) => one.analyse === id));
+      const visibles = dependants.filter((entry) => entry.proprietaire === MOI || (entry.revisions.at(-1) as Document).visibility === "shared");
+      const consumers = visibles.map((entry) => ({ kind: "dashboard", id: entry.id }));
+      const others = dependants.length - visibles.length;
+      if (ficheAnalyse[2] === "consumers" && reconnu("GET", "/analyses/:id/consumers")) return route.fulfill({ json: { id, consumers, others } });
+      if (ficheAnalyse[2] === "opened" && reconnu("POST", "/analyses/:id/opened")) return route.fulfill({ status: 202, json: { recorded: true } });
+      if (ficheAnalyse[2] === undefined && methode === "DELETE" && cles === "expected_revision") {
+        journal.appels.push("DELETE /analyses/:id");
+        if (dependants.length > 0) return route.fulfill({ status: 409, json: { error: { code: "analysis_in_use", consumers, others } } });
+        supprimees.add(id); return route.fulfill({ status: 204 });
+      }
+      if (ficheAnalyse[2] === undefined && reconnu("GET", "/analyses/:id")) return supprimees.has(id) ? route.fulfill({ status: 404, json: { error: { code: "analysis_not_found", reason: "not_visible" } } }) : route.fulfill({ json: revisionJson(fiche, fiche.revisions.length) });
+    }
+    const historique = /^\/analyses\/([^/]+)\/revisions$/.exec(chemin);
+    const trouvee = historique?.[1] === undefined ? undefined : entreesAnalyses.get(historique[1]);
+    if (historique?.[1] !== undefined && trouvee !== undefined && reconnu("GET", "/analyses/:id/revisions")) {
+      const example = fixe(historiqueAnalyses, historique[1]).body;
+      return route.fulfill({ json: { ...example, current_revision: trouvee.revisions.length, revisions: trouvee.revisions.map((_, i) => ({ ...example.revisions[0], revision: i + 1 })) } });
+    }
     if (chemin === "/dashboards" && reconnu("GET", "/dashboards")) {
       const visibles = [...dashboards.values()].filter((e) => e.proprietaire === MOI || (e.revisions.at(-1) as Document).visibility === "shared");
       return route.fulfill({ json: {
@@ -219,6 +259,35 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
       dashboards.set(id, cree);
       return route.fulfill({ status: creer.status, json: revisionDe(cree, 1) });
     }
+    const copie = /^\/dashboards\/([^/]+)\/duplicate$/.exec(chemin);
+    const source = copie?.[1] === undefined ? undefined : dashboards.get(copie[1]);
+    if (copie?.[1] !== undefined && source !== undefined && reconnu("POST", "/dashboards/:id/duplicate")) {
+      const original = source.revisions.at(-1) as Document;
+      const id = identifiants.shift() as string;
+      const clone = entreeDashboard(id, { ...structuredClone(original), name: `Copie de ${original.name}`, visibility: "personal" });
+      dashboards.set(id, clone);
+      return route.fulfill({ status: 201, json: revisionDe(clone, 1) });
+    }
+    const diff = /^\/dashboards\/([^/]+)\/diff$/.exec(chemin);
+    if (diff?.[1] !== undefined && dashboards.has(diff[1]) && methode === "GET" && cles === "base,other") {
+      journal.appels.push("GET /dashboards/:id/diff");
+      const base = Number(url.searchParams.get("base"));
+      const other = Number(url.searchParams.get("other"));
+      journal.ecarts.push({ id: diff[1], base, other });
+      return route.fulfill({ json: { ...fixe(ecartDashboard, diff[1]).body, base, other, changes: reglages.masquerPremiere ? ecartReel : fixe(ecartDashboard, diff[1]).body.changes } });
+    }
+    const historiqueDash = /^\/dashboards\/([^/]+)\/revisions(?:\/([1-9]\d{0,8}))?$/.exec(chemin);
+    const entry = historiqueDash?.[1] === undefined ? undefined : dashboards.get(historiqueDash[1]);
+    if (historiqueDash?.[1] !== undefined && entry !== undefined && methode === "GET" && cles === "") {
+      if (historiqueDash[2] !== undefined) {
+        journal.appels.push("GET /dashboards/:id/revisions/:n");
+        const n = Number(historiqueDash[2]);
+        return route.fulfill({ json: revisionDe(entry, n) });
+      }
+      journal.appels.push("GET /dashboards/:id/revisions");
+      const example = fixe(historiqueDashboard, historiqueDash[1]).body;
+      return route.fulfill({ json: { ...example, current_revision: entry.revisions.length, revisions: entry.revisions.map((_, i) => reglages.masquerPremiere && i === 0 ? { revision: 1, available: false } : { ...example.revisions[0], revision: i + 1 }) } });
+    }
     const lu = /^\/dashboards\/([^/]+)(\/revisions)?$/.exec(chemin);
     const courant = lu?.[1] === undefined ? undefined : dashboards.get(lu[1]);
     if (lu?.[1] !== undefined && courant !== undefined) {
@@ -229,6 +298,8 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
         journal.revisions.push({ id: courant.id, corps: recu });
         const { expected_revision: attendue, ...contenu } = recu;
         if (attendue !== nombre) return route.fulfill({ status: conflit.status, json: conflit.body });
+        const references = executables(contenu as unknown as Document).filter((one) => analyses[one.analyse]?.contenu?.visibility === "personal");
+        if ((contenu as unknown as Document).visibility === "shared" && references.length > 0) return route.fulfill({ status: personnel.status, json: { error: { ...personnel.body.error, components: references.map((one) => one.id) } } });
         if (memeContenu(contenu as unknown as Document, courant.revisions.at(-1) as Document)) return route.fulfill({ status: 200, json: revisionDe(courant, nombre) });
         courant.revisions.push(contenu as unknown as Document);
         return route.fulfill({ status: 201, json: revisionDe(courant, nombre + 1) });
@@ -237,7 +308,7 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
     const analyse = /^\/analyses\/([^/]+)\/revisions\/([^/]+)$/.exec(chemin);
     const epinglee = analyse?.[1] === undefined ? undefined : entreesAnalyses.get(analyse[1]);
     if (analyse?.[2] !== undefined && epinglee !== undefined && ENTIER.test(analyse[2]) && reconnu("GET", "/analyses/:id/revisions/:n")) {
-      return Number(analyse[2]) > epinglee.revisions.length
+      return supprimees.has(analyse[1] as string) || Number(analyse[2]) > epinglee.revisions.length
         ? route.fulfill({ status: 404, json: { error: { code: "analysis_not_found", reason: "unknown_revision" } } })
         : route.fulfill({ json: revisionJson(epinglee, Number(analyse[2])) });
     }
