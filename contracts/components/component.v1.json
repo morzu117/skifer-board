@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skifer-board.dev/schema/component.v1.json",
+  "title": "board.component/v1",
+  "description": "Visuel ou KPI référant une révision d’analyse ; la référence est vérifiée en 20.2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "id",
+    "name",
+    "description",
+    "owner",
+    "kind",
+    "analysis",
+    "presentation"
+  ],
+  "properties": {
+    "api_version": {
+      "const": "board.component/v1"
+    },
+    "id": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/uuid"
+    },
+    "name": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/name"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]*$(?!\\n)"
+    },
+    "owner": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/person"
+    },
+    "kind": {
+      "enum": [
+        "visual",
+        "kpi"
+      ]
+    },
+    "analysis": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/reference"
+    },
+    "presentation": {}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "visual"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "presentation": {
+            "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/visual_presentation"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "kpi"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "presentation": {
+            "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/kpi_presentation"
+          }
+        }
+      }
+    }
+  ]
+}

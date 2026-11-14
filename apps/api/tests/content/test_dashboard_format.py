@@ -98,20 +98,27 @@ def test_le_schema_est_un_draft_2020_12_valide_et_ferme() -> None:
     assert all(set(a["properties"]) == {"type"} and "allOf" in a for a in aiguillages)
 
 
-def test_aucun_champ_du_schema_ne_porte_du_sql_une_requete_une_donnee_ou_un_style() -> None:
-    def noms(noeud: Any) -> set[str]:
-        if isinstance(noeud, dict):
-            propres = set(noeud.get("properties", {}))
-            return propres | {n for valeur in noeud.values() for n in noms(valeur)}
-        if isinstance(noeud, list):
-            return {n for valeur in noeud for n in noms(valeur)}
+def champs_interdits_schema(noeud: Any) -> set[str]:
+    def noms(value: Any) -> set[str]:
+        if isinstance(value, dict):
+            return set(value.get("properties", {})) | {n for v in value.values() for n in noms(v)}
+        if isinstance(value, list):
+            return {n for v in value for n in noms(v)}
         return set()
 
     interdits = re.compile(
         r"sql|statement|table|from|data|secret|token|password|select|limit|query"
-        r"|environment|theme|color|colour|style|html|href|url|src|image|option"
+        r"|environment|theme|template|color|colour|style|html|href|url|src|image|option"
     )
-    assert not [nom for nom in noms(schema()) if interdits.search(nom)]
+    permis = {"theme", "theme_id", "template", "template_id"}
+    return {nom for nom in noms(noeud) if nom not in permis and interdits.search(nom)}
+
+
+def test_aucun_champ_du_schema_ne_porte_du_sql_une_requete_une_donnee_ou_un_style() -> None:
+    assert not champs_interdits_schema(schema())
+    copie = copy.deepcopy(schema())
+    copie["properties"]["theme_color"] = {"type": "string"}
+    assert champs_interdits_schema(copie) == {"theme_color"}
 
 
 def test_les_motifs_du_schema_suivent_ceux_des_analyses() -> None:

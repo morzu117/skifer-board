@@ -11,8 +11,11 @@ from typing import Any
 import pytest
 from skifer_board.content import (
     ANALYSIS_KIND,
+    COMPONENT_KIND,
     DASHBOARD_KIND,
     KINDS,
+    PAGE_TEMPLATE_KIND,
+    THEME_KIND,
     ContentError,
     ContentRepository,
     Kind,
@@ -90,14 +93,20 @@ def ecrire_dashboard(depot: ContentRepository, espace: str, ident: str, **change
 
 
 def test_les_genres_sont_fermes_et_distincts() -> None:
-    assert KINDS == (ANALYSIS_KIND, DASHBOARD_KIND)
+    assert KINDS == (ANALYSIS_KIND, DASHBOARD_KIND, THEME_KIND, PAGE_TEMPLATE_KIND, COMPONENT_KIND)
     assert [(k.name, k.directory, k.reflog) for k in KINDS] == [
         ("analysis", "analyses", "board:"),
         ("dashboard", "dashboards", "board: dashboard"),
+        ("theme", "themes", "board: theme"),
+        ("page_template", "templates", "board: page_template"),
+        ("component", "components", "board: component"),
     ]
     assert [(k.invalid, k.not_found) for k in KINDS] == [
         ("invalid_analysis", "analysis_not_found"),
         ("invalid_dashboard", "dashboard_not_found"),
+        ("invalid_theme", "theme_not_found"),
+        ("invalid_page_template", "page_template_not_found"),
+        ("invalid_component", "component_not_found"),
     ]
 
 

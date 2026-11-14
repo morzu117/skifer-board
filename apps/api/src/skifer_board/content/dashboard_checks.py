@@ -135,7 +135,7 @@ def _filter_checks(
     for index, item in enumerate(document["filters"]):
         first: str | None = None
         for position, target in enumerate(item["targets"]):
-            analysis = pins[target]
+            analysis = pins.get(target)
             if analysis is None:
                 continue
             model = model_of(catalog, analysis["query"]["model"])

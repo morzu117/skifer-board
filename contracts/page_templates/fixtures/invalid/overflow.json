@@ -1,0 +1,55 @@
+{
+  "api_version": "board.page_template/v1",
+  "id": "00000000-0000-0000-0000-000000000001",
+  "name": "Exemple",
+  "description": "",
+  "owner": {
+    "issuer": "https://idp.example.test",
+    "subject": "user-0001"
+  },
+  "defaults": {},
+  "filters": [
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "label": "Région",
+      "dimension": "region",
+      "operator": "eq",
+      "default": "ouest"
+    }
+  ],
+  "layout": {
+    "sections": [
+      {
+        "id": "00000000-0000-0000-0000-000000000003",
+        "rows": [
+          {
+            "id": "00000000-0000-0000-0000-000000000004",
+            "columns": [
+              {
+                "id": "00000000-0000-0000-0000-000000000005",
+                "span": 12,
+                "children": [
+                  {
+                    "id": "00000000-0000-0000-0000-000000000006",
+                    "type": "slot",
+                    "expected": "visual",
+                    "label": "Ventes"
+                  },
+                  {
+                    "id": "00000000-0000-0000-0000-000000000007",
+                    "type": "separator"
+                  }
+                ]
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000009",
+                "span": 1,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

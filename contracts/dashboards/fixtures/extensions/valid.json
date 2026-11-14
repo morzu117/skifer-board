@@ -1,0 +1,59 @@
+{
+  "api_version": "board.dashboard/v1",
+  "id": "1b66755a-56fa-5bd2-bd95-5515ae30ba3d",
+  "name": "Minimal",
+  "description": "",
+  "visibility": "personal",
+  "owner": {
+    "issuer": "https://idp.example.test",
+    "subject": "user-0001"
+  },
+  "defaults": {},
+  "filters": [
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "label": "Région",
+      "dimension": "region",
+      "operator": "eq",
+      "targets": [
+        "00000000-0000-0000-0000-000000000004"
+      ]
+    }
+  ],
+  "layout": {
+    "sections": [
+      {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "rows": [
+          {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "columns": [
+              {
+                "id": "00000000-0000-0000-0000-000000000003",
+                "span": 12,
+                "children": [
+                  {
+                    "id": "00000000-0000-0000-0000-000000000004",
+                    "component": {
+                      "component_id": "12345678-1234-1234-1234-123456789abc",
+                      "revision": 1
+                    },
+                    "type": "component"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "theme": {
+    "theme_id": "12345678-1234-1234-1234-123456789abc",
+    "revision": 1
+  },
+  "template": {
+    "template_id": "12345678-1234-1234-1234-123456789abc",
+    "revision": 1
+  }
+}

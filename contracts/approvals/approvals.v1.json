@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skifer-board.dev/schema/approvals.v1.json",
+  "title": "board.approvals/v1",
+  "description": "Approbations d’un objet ; révisions strictement croissantes et instants UTC valides vérifiés par le serveur. Chemin git : approvals/<genre>/<espace>/<id>.yaml. La révision attendue est celle de l’objet courant ; approbation répétée : already_approved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "id",
+    "approvals"
+  ],
+  "properties": {
+    "api_version": {
+      "const": "board.approvals/v1"
+    },
+    "kind": {
+      "enum": [
+        "theme",
+        "page_template",
+        "component"
+      ]
+    },
+    "id": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/uuid"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "approver",
+          "approved_at"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 999999999
+          },
+          "approver": {
+            "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/person"
+          },
+          "approved_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?Z$"
+          }
+        }
+      }
+    }
+  }
+}

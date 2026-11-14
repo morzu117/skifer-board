@@ -153,13 +153,14 @@ describe("corpus de fixtures de contracts/dashboards/", () => {
     expect(defs.number_format.enum).toEqual([...NUMBER_FORMATS]);
     expect(defs.tooltip.enum).toEqual([...TOOLTIPS]);
     expect(defs.common_filter.properties.operator.enum).toEqual([...COMMON_OPERATORS]);
-    expect(defs.node.properties.type.enum).toEqual([...NODE_TYPES]);
+    expect(defs.node.properties.type.enum).toEqual([...NODE_TYPES, "component"]);
     expect(defs.block.properties.type.enum).toEqual([...BLOCK_TYPES]);
     expect(defs.heading_block.properties.level.enum).toEqual([...HEADING_LEVELS]);
     expect(defs.visual_presentation.properties.chart.enum).toEqual([...CHART_KINDS]);
     expect(Object.keys(defs.visual_presentation.properties).sort()).toEqual(["chart", "legend", "number_format", "threshold", "title", "tooltip"]);
     expect(Object.keys(defs.kpi_presentation.properties).sort()).toEqual(["number_format", "threshold", "title", "tooltip"]);
-    expect(Object.keys(schema.properties).sort()).toEqual(Object.keys(complete).sort());
+    // Les deux références facultatives seront décodées en 20.3.
+    expect(Object.keys(schema.properties).sort()).toEqual([...Object.keys(complete), "theme", "template"].sort());
     expect(schema.required.sort()).toEqual(Object.keys(complete).sort());
     expect(EXECUTABLE_TYPES.every((type) => (NODE_TYPES as readonly string[]).includes(type))).toBe(true);
     expect(defs.analysis_component.required).toEqual(["id", "type", "reference", "presentation"]);

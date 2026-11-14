@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **à réaliser**. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 réalisée**, 20.2 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -122,3 +122,66 @@ Hors périmètre :
 - consultation, partage et exports (lot 08) ;
 - dépendances entre filtres et interactions entre visuels (lot 08) ;
 - métriques adhoc (SK-11).
+
+## Réalisation
+
+### 20.1 — Genres, formats et catalogue des tokens
+
+Développé par Codex (gpt-6.1-terra), en petites étapes successives, puis relu par Claude Sonnet 5.5 : une revue, puis une contre-revue. Cette tranche couvre le serveur et les contrats, sans route ni migration.
+
+*Genres (C1).* Le dépôt de contenus (`content/repository.py`) ajoute les genres fermés `theme`, `page_template` et `component`, chacun dans son répertoire (`themes/`, `templates/`, `components/`), avec son message de commit, son historique et son diff structurel. Les garanties du plan 19 sont inchangées. Des tests croisés vérifient l'isolation des cinq genres, à la création comme à la révision.
+
+*Catalogue des tokens (C2).*
+- `content/token_catalog.py` calcule, depuis `docs/design/tokens.json`, les tokens admissibles par base, avec leur luminance et leur contraste sur la surface. La base `skifer-clair` a pour surface `surface`, et la base `skifer-ardoise` le token `slate900`.
+- Les seuils sont inclusifs : 3:1 pour une marque, 4,5:1 pour un texte. La formule est celle de `charts/theme.ts`.
+- Le résultat est publié dans `contracts/themes/tokens.v1.json` et se régénère par `uv run python -m skifer_board.content.token_catalog`.
+- Un test échoue si le contrat est périmé, quel que soit l'ordre des tests. Le test du point d'entrée intercepte ses écritures et n'écrit jamais dans le dépôt.
+
+*Format `board.theme/v1` (C2).* Le schéma `contracts/themes/theme.v1.json` est fermé. Chaque couleur est un nom de token, et toute valeur `#RRGGBB` est refusée par une sentinelle. Les textes libres, nom et description, restent du texte. Les énumérations de légende, de format des nombres et d'infobulle référencent celles du dashboard (`$ref`). Les valeurs d'énumération sont en anglais, comme dans le reste du dépôt : `compact`, `normal`, `large`, `airy`.
+
+La validation serveur (`content/theme.py`) contrôle :
+- **l'admissibilité** de chaque token pour sa base et son rôle (`token_not_admissible`) ;
+- **la palette catégorielle** : de 2 à 8 couleurs, sans deux tokens de même valeur (`duplicate_color`) ;
+- **la palette séquentielle** : de 3 à 7 paliers de luminance strictement monotone (`not_monotone`) ;
+- **la palette divergente** : un nombre impair de paliers, de 3 à 7 (`even_diverging`). Son centre est `neutral.fg` ou `neutral.bg`, les deux tokens que le design nomme neutres, à condition d'être admissibles sur la base (`non_neutral`). Les deux extrémités sont du même côté du centre, avec une monotonie stricte vers lui (`diverging_sides`).
+
+*Modèle et composant (C5, C6).*
+- `board.page_template/v1` réutilise les définitions du dashboard. Il ajoute l'emplacement `slot` (genre attendu et libellé) et des filtres sans cibles. Il n'admet aucun composant d'analyse, de KPI ou de composant approuvé, et les règles de structure et de bornes du dashboard s'y appliquent.
+- `board.component/v1` porte un visuel ou un KPI, une référence `{analysis_id, revision}` et sa présentation. Le contrôle de l'analyse vient en 20.2.
+- Les deux formats ont une sérialisation canonique, un diff et des sentinelles contre tout champ SQL, de requête ou de couleur. Leur validation est dans `content/structured_format.py`.
+
+*Approbations (C4).*
+- **Format.** Il est défini dans `contracts/approvals/approvals.v1.json`. Le fichier `approvals/<genre>/<espace>/<id>.yaml` liste les révisions approuvées, chacune avec son approbateur et son instant, en ordre strictement croissant.
+- **Écriture.** `content/approvals.py` et le dépôt ajoutent une approbation sous verrou, avec la révision attendue de l'objet. Ils refusent une révision inexistante, un genre hors des trois et une révision déjà approuvée (`already_approved`). La concurrence est testée.
+
+*Extension de `board.dashboard/v1` (C3, C6).*
+- Le format reçoit deux champs facultatifs, `theme` `{theme_id, revision}` et `template` `{template_id, revision}`, ainsi que le nœud `{type: "component", component: {component_id, revision}}`. Ce nœud compte dans les 40 composants exécutables et peut être ciblé par un filtre commun.
+- Toutes les fixtures du plan 19 restent valides. Une valeur de `theme` non structurée garde le refus `unknown_field`.
+- La sentinelle « aucun champ SQL, requête ou style » interdit de nouveau tout nom contenant `theme` ou `template`, sauf les quatre noms exacts admis.
+- Le test web qui compare les champs du schéma reconnaît les deux références facultatives. Le décodeur web vient en 20.3.
+
+*Fonctions pures (C5, C8)*, dans `content/composition.py`.
+- **Extraction d'un modèle.** Les visuels, KPI et composants deviennent des emplacements, dont le libellé est borné à 80 caractères. Les composants résolus sont fournis en paramètre. Les filtres perdent leurs cibles, et aucun identifiant d'analyse ni de composant ne subsiste.
+- **Fermeture des dépendances.** Elle rend les analyses (directes et via les composants), le thème et les composants, triés et dédoublonnés. Un composant absent est refusé (`unresolved_component`).
+
+*Codes.* Les nouveaux codes sont déclarés comme constantes dans `content/errors.py`, en ensembles fermés testés : `THEME_CODES`, `PAGE_TEMPLATE_CODES`, `COMPONENT_CODES`, `THEME_RULES` et `APPROVAL_CODES`.
+
+*État transitoire assumé.* Jusqu'à 20.2, les routes de dashboard existantes acceptent les nouveaux champs sans vérifier l'existence, l'approbation ni les droits. Les nœuds composant n'entrent pas encore dans l'index des consommateurs, et le décodeur web ne les connaît pas. La branche n'est fusionnée qu'en fin de plan. Le rôle `unselectedEdge` du web sera dérivé en 20.4.
+
+*Vérification.*
+- **Revue.** La première revue a relevé huit points, tous corrigés :
+  - un test du point d'entrée qui réécrivait le contrat ;
+  - les côtés de la palette divergente ;
+  - les couleurs dupliquées ;
+  - des mutations survivantes ;
+  - une sentinelle trop large ;
+  - le discriminant `type` ;
+  - les `$ref` ;
+  - les codes fermés.
+- **Contre-revue.** Elle a rendu fiable le test de tri de la fermeture, dont la mutation survivait selon `PYTHONHASHSEED`. Elle a aussi ajouté trois tests : une révision attendue mal formée, une révision approuvée illisible et la casse hexadécimale des doublons.
+- **Mutations.** Deux survivantes restent justifiées : la borne des textes libres, choix acté, et un mutant équivalent sur l'égalité de luminance.
+- **Gate complet.**
+  - Python : 7 252 tests, couverture de 100 %.
+  - Web : 3 882 tests, couverture de 100 %, build compris.
+  - Bout en bout : 745 parcours passés, 1 ignoré.
+  - Le contrat `tokens.v1.json` est inchangé après la suite.

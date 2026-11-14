@@ -60,19 +60,31 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..spaces.model import SPACE_ID, PersonRef
+from . import approvals as approvals_format
 from . import dashboard as dashboard_format
+from . import theme as theme_format
 from .analysis import Document, brief, diff, dumps, loads, validate
 from .common import Change
 from .errors import (
+    ALREADY_APPROVED,
     ANALYSIS_NOT_FOUND,
+    APPROVALS_NOT_FOUND,
+    COMPONENT_NOT_FOUND,
     CONTENT_UNAVAILABLE,
     DASHBOARD_NOT_FOUND,
     INVALID_ANALYSIS,
+    INVALID_APPROVALS,
+    INVALID_COMPONENT,
     INVALID_DASHBOARD,
+    INVALID_PAGE_TEMPLATE,
+    INVALID_THEME,
+    PAGE_TEMPLATE_NOT_FOUND,
     REVISION_CONFLICT,
+    THEME_NOT_FOUND,
     ContentError,
     Violation,
 )
+from .structured_format import COMPONENT, PAGE_TEMPLATE
 
 REPOSITORY_VARIABLE = "SKIFER_BOARD_CONTENT_REPOSITORY"
 AUTHOR_NAME_VARIABLE = "SKIFER_BOARD_CONTENT_AUTHOR_NAME"
@@ -155,8 +167,8 @@ class Kind:
     Les fonctions du format sont des enveloppes qui cherchent leur cible à l'appel, dans ce module
     pour les analyses : un test qui remplace `loads` ou `brief` ici les remplace pour le dépôt.
 
-    L'ensemble des genres est fermé : les méthodes du dépôt n'acceptent que `ANALYSIS_KIND` et
-    `DASHBOARD_KIND` eux-mêmes (test d'identité), jamais une copie, même égale.
+    L'ensemble des genres est fermé : seules les constantes de `KINDS` sont admises par
+    identité, jamais une copie, même égale.
     """
 
     name: str
@@ -195,7 +207,82 @@ DASHBOARD_KIND = Kind(
     brief=lambda raw: dashboard_format.brief(raw),
     diff=lambda before, after: dashboard_format.diff(before, after),
 )
-KINDS = (ANALYSIS_KIND, DASHBOARD_KIND)
+
+
+THEME_KIND = Kind(
+    "theme",
+    "themes",
+    "board: theme",
+    INVALID_THEME,
+    THEME_NOT_FOUND,
+    theme_format.validate,
+    theme_format.loads,
+    theme_format.dumps,
+    theme_format.brief,
+    theme_format.diff,
+)
+PAGE_TEMPLATE_KIND = Kind(
+    "page_template",
+    "templates",
+    "board: page_template",
+    INVALID_PAGE_TEMPLATE,
+    PAGE_TEMPLATE_NOT_FOUND,
+    PAGE_TEMPLATE.validate,
+    PAGE_TEMPLATE.loads,
+    PAGE_TEMPLATE.dumps,
+    PAGE_TEMPLATE.brief,
+    PAGE_TEMPLATE.diff,
+)
+COMPONENT_KIND = Kind(
+    "component",
+    "components",
+    "board: component",
+    INVALID_COMPONENT,
+    COMPONENT_NOT_FOUND,
+    COMPONENT.validate,
+    COMPONENT.loads,
+    COMPONENT.dumps,
+    COMPONENT.brief,
+    COMPONENT.diff,
+)
+KINDS = (ANALYSIS_KIND, DASHBOARD_KIND, THEME_KIND, PAGE_TEMPLATE_KIND, COMPONENT_KIND)
+
+
+# Genres internes, choisis seulement par identité parmi les genres approuvables.
+def _approval_kind(kind: Kind) -> Kind:
+    if kind is THEME_KIND:
+        return _THEME_APPROVAL
+    if kind is PAGE_TEMPLATE_KIND:
+        return _TEMPLATE_APPROVAL
+    if kind is COMPONENT_KIND:
+        return _COMPONENT_APPROVAL
+    raise TypeError("Seuls theme, page_template et component sont approuvables")
+
+
+def _approval_storage(name: str) -> Kind:
+    def load(raw: bytes) -> Document:
+        document = approvals_format.loads(raw)
+        if document["kind"] != name:
+            raise ContentError(INVALID_APPROVALS, "kind_mismatch")
+        return document
+
+    return Kind(
+        f"approval-{name}",
+        f"approvals/{name}",
+        f"board: approval {name}",
+        INVALID_APPROVALS,
+        APPROVALS_NOT_FOUND,
+        approvals_format.validate,
+        load,
+        approvals_format.dumps,
+        lambda raw: ("", "", "personal", ""),
+        approvals_format.diff,
+    )
+
+
+_THEME_APPROVAL = _approval_storage("theme")
+_TEMPLATE_APPROVAL = _approval_storage("page_template")
+_COMPONENT_APPROVAL = _approval_storage("component")
 
 
 @functools.cache
@@ -310,10 +397,12 @@ DAMAGED_REASONS = ANALYSIS_REASONS | {"history_inconsistent"}
 
 
 def _closed(kind: object) -> None:
-    """Le genre est fermé : seules les deux constantes, par identité (ni copie, ni genre forgé,
-    ni genre égal d'une autre instance), sinon c'est une erreur du programme appelant."""
-    if kind is not ANALYSIS_KIND and kind is not DASHBOARD_KIND:
-        raise TypeError("kind doit être ANALYSIS_KIND ou DASHBOARD_KIND")
+    """Seules les constantes de KINDS sont admises par identité, jamais une copie."""
+    if not any(kind is permitted for permitted in KINDS):
+        raise TypeError(
+            "kind doit être ANALYSIS_KIND ou DASHBOARD_KIND, THEME_KIND, "
+            "PAGE_TEMPLATE_KIND ou COMPONENT_KIND"
+        )
 
 
 def _unavailable(reason: str) -> ContentError:
@@ -763,6 +852,107 @@ class ContentRepository:
             self.read(space_id, content_id, before, at=at, kind=kind).document,
             self.read(space_id, content_id, after, at=at, kind=kind).document,
         )
+
+    @_guarded
+    def approval_history(
+        self, space_id: str, content_id: str, *, kind: Kind
+    ) -> tuple[Revision, ...]:
+        """Historique git du fichier d'approbations, de la première à la dernière écriture."""
+        internal = _approval_kind(kind)
+        _relative(internal, space_id, content_id)
+        place = self._locate()
+        found = self._history(internal, place, self._commit(place, "HEAD"), space_id, content_id)
+        if not found:
+            raise ContentError(APPROVALS_NOT_FOUND, "missing")
+        return found
+
+    @_guarded
+    def read_approvals(
+        self, space_id: str, content_id: str, revision: int | None = None, *, kind: Kind
+    ) -> StoredRevision:
+        """Relit une révision du fichier des approbations depuis git."""
+        internal = _approval_kind(kind)
+        _relative(internal, space_id, content_id)
+        if revision is not None:
+            _check_revision(internal, revision)
+        place = self._locate()
+        history = self._history(internal, place, self._commit(place, "HEAD"), space_id, content_id)
+        if not history or history[-1].action != "save":
+            raise ContentError(APPROVALS_NOT_FOUND, "missing")
+        if revision is not None and revision > len(history):
+            raise ContentError(APPROVALS_NOT_FOUND, "missing_revision")
+        target = history[-1] if revision is None else history[revision - 1]
+        return StoredRevision(target, self._load(internal, place, target, space_id, content_id))
+
+    @_guarded
+    def approve(
+        self,
+        space_id: str,
+        content_id: str,
+        revision: int,
+        *,
+        expected_revision: int,
+        actor: PersonRef,
+        kind: Kind,
+    ) -> StoredRevision:
+        """Ajoute une approbation sous verrou ; `expected_revision` est celle de l'objet courant.
+
+        Le contenu approuvé peut être une révision antérieure ; le fichier est trié par
+        révision. Aucun droit n'est jugé ici.
+        """
+        internal = _approval_kind(kind)
+        relative = _relative(internal, space_id, content_id)
+        _check_revision(kind, revision)
+        _check_revision(kind, expected_revision)
+        if not _person_ok(actor.issuer, actor.subject):
+            raise _invalid(kind, "/actor", "bad_actor")
+        place = self._locate()
+        scratch = _scratch_parent(place.root)
+        with self._locked(place):
+            head = self._ready(place)
+            objects = self._history(kind, place, head.base, space_id, content_id)
+            self._current(kind, objects, expected_revision)
+            saves = [entry for entry in objects if entry.action == "save"]
+            if revision > len(saves):
+                raise ContentError(kind.not_found, "missing_revision")
+            self._load(kind, place, saves[revision - 1], space_id, content_id)
+            history = self._history(internal, place, head.base, space_id, content_id)
+            if history:
+                document = self._load(internal, place, history[-1], space_id, content_id)
+            else:
+                document = {
+                    "api_version": "board.approvals/v1",
+                    "kind": kind.name,
+                    "id": content_id,
+                    "approvals": [],
+                }
+            approved = document["approvals"]
+            if any(item["revision"] == revision for item in approved):
+                raise ContentError(ALREADY_APPROVED, ALREADY_APPROVED)
+            approved.append(
+                {
+                    "revision": revision,
+                    "approver": {"issuer": actor.issuer, "subject": actor.subject},
+                    "approved_at": self._now().isoformat().replace("+00:00", "Z"),
+                }
+            )
+            approved.sort(key=lambda item: item["revision"])
+            payload = approvals_format.dumps(document)
+            if len(payload) > MAX_DOCUMENT_BYTES:
+                raise _invalid(internal, "", "out_of_bounds")
+            saved = self._publish(
+                internal,
+                place,
+                head,
+                relative,
+                (space_id, content_id),
+                len(history) + 1,
+                "save",
+                payload,
+                actor,
+                scratch,
+            )
+        return StoredRevision(saved, document)
 
     # -- écriture ----------------------------------------------------------------------------
 
