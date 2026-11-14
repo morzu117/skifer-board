@@ -868,7 +868,13 @@ class ContentRepository:
 
     @_guarded
     def read_approvals(
-        self, space_id: str, content_id: str, revision: int | None = None, *, kind: Kind
+        self,
+        space_id: str,
+        content_id: str,
+        revision: int | None = None,
+        *,
+        kind: Kind,
+        at: str | None = None,
     ) -> StoredRevision:
         """Relit une révision du fichier des approbations depuis git."""
         internal = _approval_kind(kind)
@@ -876,7 +882,9 @@ class ContentRepository:
         if revision is not None:
             _check_revision(internal, revision)
         place = self._locate()
-        history = self._history(internal, place, self._commit(place, "HEAD"), space_id, content_id)
+        history = self._history(
+            internal, place, self._tip(internal, place, at), space_id, content_id
+        )
         if not history or history[-1].action != "save":
             raise ContentError(APPROVALS_NOT_FOUND, "missing")
         if revision is not None and revision > len(history):
@@ -966,6 +974,7 @@ class ContentRepository:
         expected_revision: int | None,
         actor: PersonRef,
         kind: Kind = ANALYSIS_KIND,
+        expected_head: str | None = None,
     ) -> StoredRevision:
         """Crée la révision 1 (`expected_revision=None`) ou la suivante de la révision attendue.
 
@@ -996,6 +1005,8 @@ class ContentRepository:
         scratch = _scratch_parent(place.root)
         with self._locked(place):
             head = self._ready(place)
+            if expected_head is not None and head.base != expected_head:
+                raise ContentError(REVISION_CONFLICT, "head_changed")
             history = self._history(kind, place, head.base, space_id, content_id)
             if expected_revision is None:
                 if history:

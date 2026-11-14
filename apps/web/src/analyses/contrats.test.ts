@@ -49,7 +49,7 @@ const DECODERS: Readonly<Record<string, () => unknown>> = {
 describe("exemples du serveur réel", () => {
   it("a un décodeur ou un refus fermé pour chacun des exemples", () => {
     const refusals = ROUTE_NAMES.filter((name) => name.startsWith("refus-"));
-    expect(refusals).toHaveLength(24);
+    expect(refusals).toHaveLength(25);
     expect([...Object.keys(DECODERS), ...refusals].sort()).toEqual(ROUTE_NAMES);
     for (const name of Object.keys(DECODERS)) expect(DECODERS[name], name).not.toThrow();
     for (const name of refusals) refusal(name);

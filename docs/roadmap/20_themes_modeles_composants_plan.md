@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 réalisée**, 20.2 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 et 20.2 réalisées**, 20.3 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -185,3 +185,85 @@ La validation serveur (`content/theme.py`) contrôle :
   - Web : 3 882 tests, couverture de 100 %, build compris.
   - Bout en bout : 745 parcours passés, 1 ignoré.
   - Le contrat `tokens.v1.json` est inchangé après la suite.
+
+### 20.2 — Index, droits, routes et approbation
+
+Développé par Codex (gpt-6.1-terra) en petites étapes successives, de a à e, puis relu par Claude Sonnet 5.5 : une revue, puis une contre-revue.
+
+*Index (C1, C4, C8).*
+- La migration `0017_shared_content_index` crée :
+  - une table commune `shared_content_index` pour les trois genres, avec une colonne `kind` contrainte ;
+  - `content_approvals` ;
+  - `dashboard_theme_references` et `dashboard_component_references`, supprimées en cascade avec la ligne du dashboard.
+- Les colonnes propres au composant (genre attendu, analyse épinglée) sont contraintes à n'exister que pour lui.
+- La provenance `template` n'est pas indexée comme une consommation : un modèle de page n'a jamais de consommateur.
+- La réindexation reconstruit, dans une seule transaction, les analyses, les dashboards, les trois genres, les approbations et les références. Elle est idempotente.
+
+*Routes (C4, C7).*
+- `content/shared_web.py` est un seul module paramétré par genre, sous `/api/spaces/{space_id}/themes`, `…/page-templates` et `…/components`. Ses routes : créer, lister, lire, réviser, supprimer, historique, diff, approuver et lire les approbations. Les formes, codes et en-têtes sont ceux des dashboards.
+- Les règles d'accès sont dans `content/shared_access.py`.
+  - **Brouillons.** L'auteur et les administrateurs voient tous les brouillons. Un autre créateur ne voit que les révisions approuvées, et sa « révision courante » est la dernière qui lui est visible.
+  - **Inexistence.** Un brouillon d'autrui et un objet inexistant donnent la même réponse, corps et en-têtes compris.
+  - **Refus.** Un lecteur reçoit `forbidden`, un non-membre un 404, et le mode local `local_mode`.
+  - **Approbation.** Elle est réservée à `admin`. La révision attendue est contrôlée sous verrou, et `already_approved` renvoie un 409. La réponse porte le diff avec la plus grande révision approuvée inférieure.
+- **Source des approbations.** Git fait foi : les décisions ne lisent que git, et l'index ne sert qu'à la liste et à `index_stale`.
+- **Historique.** Il garde les numéros réels, qui sont publics. Un trou dans la suite des numéros est donc assumé.
+
+*Références des dashboards (C3, C4, C6).*
+- **Contrôle à l'écriture.** `content/dashboard_shared.py` refuse un thème ou un composant introuvable, avec `theme_not_found` ou `component_not_found` au pointeur.
+- **Approbation exigée.** Un dashboard partagé n'accepte que la révision approuvée exacte, sinon `unapproved_reference`. Un dashboard personnel accepte aussi les brouillons de son propriétaire, et un brouillon d'autrui y est traité comme introuvable.
+- **Lecture.** Elle embarque les documents épinglés du thème et des composants (`resolved`), passés au même filtre. Les lecteurs n'ont pas accès aux routes des thèmes.
+- **Composant.**
+  - Son analyse doit être partagée.
+  - Le nœud se résout vers l'analyse et la présentation du composant, compte dans la borne de 40 et peut être ciblé par un filtre.
+  - Une référence non résolue rend la tuile indisponible, sans jamais l'exécuter.
+- **Écritures concurrentes.** Une écriture qui dépend de références exige la tête git de sa validation. Si cette tête a bougé, la validation et l'écriture sont relancées une fois, puis la réponse est `revision_conflict` (`stale`). La raison interne `head_changed` n'est jamais exposée.
+
+*Consommateurs.*
+- **`content_in_use`.** La suppression d'un thème ou d'un composant dont la révision courante est consommée est refusée avec ce code, au format de `analysis_in_use` : les consommateurs visibles sont listés, les autres seulement comptés.
+- **`analysis_in_use`.** Il compte aussi les composants et les dashboards qui consomment l'analyse à travers eux.
+- **Index illisible.** Le refus reste fail-closed : un 503 `content_unavailable`, selon la règle de la Réalisation 19.2.
+- **Liste.** Elle compte les contenus illisibles au lieu d'échouer.
+
+*Contrats, confidentialité et télémétrie.*
+- Les exemples sont produits par le serveur réel : 20 pour les thèmes, 18 pour les modèles et 20 pour les composants, plus trois exemples de dashboard et d'analyse. Leur mise à jour est testée.
+- Une sentinelle vérifie l'absence de valeur hexadécimale, de SQL et de jeton dans les contrats, les réponses et les journaux.
+- Les nouveaux codes et opérations entrent dans les ensembles fermés de la télémétrie.
+- Une matrice récapitulative croise rôle, état, propriétaire, visibilité du dashboard et action.
+
+*Alignement web.*
+- Le commit doit garder le gate web vert. Les modules web existants décodent donc déjà strictement :
+  - `theme`, `template` et le nœud `component` ;
+  - `resolved`, avec les documents de thème (`src/themes/document.ts`) et de composant (`src/components-lib/document.ts`) ;
+  - les refus `unapproved_reference` et `content_in_use`, et le consommateur `component` ;
+  - les diffs de thème, de modèle et de composant ;
+  - les règles `theme_not_found` et `component_not_found`.
+- Un inventaire figé des codes du serveur est comparé à ceux du web.
+- Un composant s'affiche pour l'instant indisponible, avec sa raison. Son rendu viendra en 20.4 et 20.5.
+
+*Reporté à 20.3 et 20.4.*
+- Avec B8, c'est le web qui exécute les tuiles. Restent donc à faire côté web :
+  - la composition de la requête d'une tuile composant, identique octet pour octet à celle du visuel équivalent, y compris avec un filtre commun ;
+  - la requête inchangée par un changement de thème ;
+  - les refus `DENY` et `REQUIRE_HUMAN` d'une tuile composant, rendus tels quels.
+- La raison fermée `component_unavailable`, au lieu de `analysis_unavailable`, est prévue en 20.3.
+
+*Vérification.*
+- **Arbitrage en cours de tranche.** Une première version relisait git quand l'index était en panne et changeait une attente du plan 19. Elle a été ramenée au fail-closed, avec le test d'origine restauré.
+- **Revue Sonnet.** Elle n'a trouvé aucune fuite. Sur 33 mutations, 28 étaient tuées. Elle a relevé :
+  - un 500 à l'approbation d'un identifiant mal formé ;
+  - deux règles sans test : la révision approuvée exacte et l'épinglage de `resolved` ;
+  - la lecture courante d'un autre créateur ;
+  - la double source des approbations ;
+  - la base du diff d'approbation ;
+  - du code dupliqué.
+
+  S'y ajoute l'exposition de `head_changed`, que j'ai relevée moi-même. Tout a été corrigé.
+- **Contre-revue.** Elle a repéré une liste qui avalait une panne de git, ce qui était une approximation silencieuse. Désormais, seuls les contenus abîmés sont comptés, et une panne de git rend un 503. Un test sans effet a été renforcé. Sur 20 mutations, 18 sont tuées. Les 2 survivantes sont :
+  - un mutant équivalent, une condition de tête redondante et justifiée ;
+  - la mutation que ce test renforcé tue désormais.
+- **Gate complet.**
+  - Python : 7 490 tests, couverture de 100 %.
+  - Web : 3 898 tests, couverture de 100 %, build compris.
+  - Bout en bout : 745 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle.

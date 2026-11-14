@@ -35,11 +35,19 @@ from ..spaces.web import Invalid, Refused, _body, _object, viewer
 from .analysis import API_VERSION, Document, diff, validate
 from .errors import (
     ANALYSIS_NOT_FOUND,
+    APPROVALS_NOT_FOUND,
+    COMPONENT_NOT_FOUND,
     CONTENT_UNAVAILABLE,
     DASHBOARD_NOT_FOUND,
     INVALID_ANALYSIS,
+    INVALID_APPROVALS,
+    INVALID_COMPONENT,
     INVALID_DASHBOARD,
+    INVALID_PAGE_TEMPLATE,
+    INVALID_THEME,
+    PAGE_TEMPLATE_NOT_FOUND,
     REVISION_CONFLICT,
+    THEME_NOT_FOUND,
     ContentError,
     Violation,
 )
@@ -74,13 +82,37 @@ REVISION_PARAMETER = "Numéro de révision : entier strictement positif."
 
 # Statut HTTP de chaque refus du dépôt de contenus.
 _STATUS = {
+    "already_approved": 409,
+    APPROVALS_NOT_FOUND: 404,
     CONTENT_UNAVAILABLE: 503,
     REVISION_CONFLICT: 409,
     INVALID_ANALYSIS: 422,
+    INVALID_APPROVALS: 422,
     ANALYSIS_NOT_FOUND: 404,
     INVALID_DASHBOARD: 422,
     DASHBOARD_NOT_FOUND: 404,
+    INVALID_THEME: 422,
+    INVALID_PAGE_TEMPLATE: 422,
+    INVALID_COMPONENT: 422,
+    THEME_NOT_FOUND: 404,
+    PAGE_TEMPLATE_NOT_FOUND: 404,
+    COMPONENT_NOT_FOUND: 404,
 }
+
+
+def retry_head[T](work: Callable[[], T]) -> T:
+    """Revalide une publication après une concurrence sur la tête, une seule fois."""
+    for _ in range(2):
+        try:
+            return work()
+        except ContentError as error:
+            if error.reason != "head_changed" or error.code not in {
+                REVISION_CONFLICT,
+                CONTENT_UNAVAILABLE,
+            }:
+                raise
+    raise ContentError(REVISION_CONFLICT, "stale") from None
+
 
 Catalog = Callable[[], dict[str, Any]]
 
@@ -115,7 +147,7 @@ class Dependents:
 # session, tête). Git fait foi : l'index des références n'est cru que là où il dit ce que dit git ;
 # quand l'exhaustivité ne peut pas être établie, l'appel lève (`content_unavailable`), et l'appelant
 # ne supprime rien.
-Consumers = Callable[[str, str, PersonRef, str | None], Dependents]
+Consumers = Callable[[str, str, PersonRef, str | None, Role | None], Dependents]
 # Dernière exécution d'une personne qui référençait une analyse (plan 18.3b) : la révision
 # référencée et le résumé de l'exécution, ou `None`. Cette personne seule, jamais une autre.
 LastExecution = Callable[[str, str, PersonRef], tuple[int, dict[str, Any]] | None]
@@ -381,7 +413,13 @@ def install_analysis_routes(
     @app.exception_handler(ContentError)
     async def content_error(request: Request, error: ContentError) -> JSONResponse:
         status = _STATUS[error.code]
-        if error.code in {INVALID_ANALYSIS, INVALID_DASHBOARD}:
+        if error.code in {
+            INVALID_ANALYSIS,
+            INVALID_DASHBOARD,
+            INVALID_THEME,
+            INVALID_PAGE_TEMPLATE,
+            INVALID_COMPONENT,
+        }:
             return _error(
                 status, error.code, reason=error.reason, violations=_violations(error.violations)
             )
@@ -771,10 +809,10 @@ def install_analysis_routes(
         """Onglet Consommateurs de la fiche (plan 19, B5) : les dashboards dont la révision
         courante épingle l'analyse. Mêmes droits que la lecture de l'analyse ; genre et
         identifiant pour ceux que la session peut voir, un simple nombre pour les autres."""
-        _, actor = active(request, space_id)
+        access, actor = active(request, space_id)
         current(space_id, analysis_id, actor)
         assert consumers is not None
-        dependents = consumers(space_id, analysis_id, actor, depot().head())
+        dependents = consumers(space_id, analysis_id, actor, depot().head(), access.role)
         return JSONResponse({"id": analysis_id, **dependents.json()})
 
     @app.post(path + "/{analysis_id}/revisions")
@@ -870,7 +908,7 @@ def install_analysis_routes(
             (contrôle sous le verrou) : aucun dashboard n'a pu épingler l'analyse entre les
             deux. `None` : la tête a bougé entre les deux."""
             tip = depot_.head()
-            dependents = consumers(space_id, analysis_id, actor, tip)
+            dependents = consumers(space_id, analysis_id, actor, tip, access.role)
             if dependents:
                 return dependents
             try:

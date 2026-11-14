@@ -93,7 +93,10 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
           if (child.type === "container") rows(child.rows, `${childPath}/rows`, child.id);
           else {
             count += 1;
-            if (child.type === "analysis" || child.type === "kpi") {
+            if (child.type === "component") {
+              executable += 1;
+              add("analysis_unavailable", "blocking", child.id, `${childPath}/component`);
+            } else if (child.type === "analysis" || child.type === "kpi") {
               executable += 1;
               components.set(child.id, { node: child, path: childPath });
             }

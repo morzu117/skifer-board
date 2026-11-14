@@ -221,6 +221,7 @@ describe("refus", () => {
     ["refus-mode-local", 409, "local_mode", noExtra],
     ["refus-moteur-indisponible", 503, "engine_unavailable", noExtra],
     ["refus-pas-proprietaire", 403, "forbidden", { field: null, required: "owner" }],
+    ["refus-reference-non-approuvee", 422, "unapproved_reference", { field: null, paths: ["/theme", "/layout/sections/0/rows/0/columns/0/children/0"] }],
     ["refus-reference-personnelle", 422, "personal_reference", personal],
     ["refus-revision-conflit", 409, "revision_conflict", stale],
   ];
@@ -247,7 +248,7 @@ describe("refus", () => {
   it("n'emploie que des codes de l'union fermée, et tous ceux que les contrats emploient", () => {
     const used = new Set(REFUSALS.map(([, , code]) => code));
     // `invalid_parameter`, `invalid_request` et `space_not_found` sont ceux de la garde de lecture et des paramètres, sans exemple propre.
-    expect([...used].sort()).toEqual(DASHBOARD_REFUSALS.filter((code) => !["space_not_found", "invalid_parameter", "invalid_request"].includes(code)).sort());
+    expect([...used].sort()).toEqual(DASHBOARD_REFUSALS.filter((code) => !["space_not_found", "invalid_parameter", "invalid_request", "content_in_use"].includes(code)).sort());
     expect(nonMembre.body.error.code).toBe("space_not_found");
   });
 

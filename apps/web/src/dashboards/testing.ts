@@ -24,7 +24,7 @@ function executableIds(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap(executableIds);
   if (typeof value !== "object" || value === null) return [];
   const found = value as Json;
-  const own = found.type === "analysis" || found.type === "kpi" ? [found.id as string] : [];
+  const own = found.type === "analysis" || found.type === "kpi" || found.type === "component" ? [found.id as string] : [];
   return [...own, ...Object.values(found).flatMap(executableIds)];
 }
 

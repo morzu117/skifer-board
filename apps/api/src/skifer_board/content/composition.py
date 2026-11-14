@@ -14,6 +14,12 @@ Pin = tuple[str, int]
 Components = Mapping[Pin, dict[str, Any]]
 
 
+def component_analysis(document: dict[str, Any]) -> Pin:
+    """Épingle d'analyse d'un composant déjà validé."""
+    reference = document["analysis"]
+    return (reference["analysis_id"], reference["revision"])
+
+
 def _component(reference: dict[str, Any], components: Components) -> dict[str, Any]:
     pin = (reference["component_id"], reference["revision"])
     if pin not in components:
@@ -102,6 +108,5 @@ def dependency_closure(document: dict[str, Any], components: Components) -> Depe
             elif kind == "component":
                 ref = node["component"]
                 referenced.add((ref["component_id"], ref["revision"]))
-                analysis = _component(ref, components)["analysis"]
-                analyses.add((analysis["analysis_id"], analysis["revision"]))
+                analyses.add(component_analysis(_component(ref, components)))
     return Dependencies(tuple(sorted(analyses)), tuple(sorted(themes)), tuple(sorted(referenced)))

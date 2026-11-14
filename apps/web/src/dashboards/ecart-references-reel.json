@@ -1,0 +1,130 @@
+{
+  "added": [
+    {
+      "path": "/theme",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "theme_id": "00000000-0000-4000-8000-00000000000a",
+        "revision": 1
+      },
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/template",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "template_id": "00000000-0000-4000-8000-00000000000b",
+        "revision": 1
+      },
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0",
+      "kind": "added",
+      "before": null,
+      "after": {
+        "type": "component",
+        "component": {
+          "component_id": "00000000-0000-4000-8000-000000000005",
+          "revision": 1
+        }
+      },
+      "node": "component",
+      "id": "00000000-0000-4000-8000-000000000004"
+    }
+  ],
+  "modified": [
+    {
+      "path": "/theme/theme_id",
+      "kind": "modified",
+      "before": "00000000-0000-4000-8000-00000000000a",
+      "after": "00000000-0000-4000-8000-00000000000c",
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/theme/revision",
+      "kind": "modified",
+      "before": 1,
+      "after": 2,
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/template/template_id",
+      "kind": "modified",
+      "before": "00000000-0000-4000-8000-00000000000b",
+      "after": "00000000-0000-4000-8000-00000000000d",
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/template/revision",
+      "kind": "modified",
+      "before": 1,
+      "after": 2,
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0",
+      "kind": "modified",
+      "before": {
+        "component": {
+          "component_id": "00000000-0000-4000-8000-000000000005",
+          "revision": 1
+        }
+      },
+      "after": {
+        "component": {
+          "component_id": "00000000-0000-4000-8000-000000000005",
+          "revision": 2
+        }
+      },
+      "node": "component",
+      "id": "00000000-0000-4000-8000-000000000004"
+    }
+  ],
+  "removed": [
+    {
+      "path": "/theme",
+      "kind": "removed",
+      "before": {
+        "theme_id": "00000000-0000-4000-8000-00000000000a",
+        "revision": 1
+      },
+      "after": null,
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/template",
+      "kind": "removed",
+      "before": {
+        "template_id": "00000000-0000-4000-8000-00000000000b",
+        "revision": 1
+      },
+      "after": null,
+      "node": "dashboard",
+      "id": null
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0",
+      "kind": "removed",
+      "before": {
+        "type": "component",
+        "component": {
+          "component_id": "00000000-0000-4000-8000-000000000005",
+          "revision": 1
+        }
+      },
+      "after": null,
+      "node": "component",
+      "id": "00000000-0000-4000-8000-000000000004"
+    }
+  ]
+}

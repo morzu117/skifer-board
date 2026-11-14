@@ -32,9 +32,9 @@ describe("refus des dashboards", () => {
   });
 
   it("a une union fermée : trois codes propres, ceux des analyses que les routes rendent, aucun autre", () => {
-    expect([...DASHBOARD_CODES]).toEqual(["dashboard_not_found", "invalid_dashboard", "personal_reference"]);
+    expect([...DASHBOARD_CODES]).toEqual(["dashboard_not_found", "invalid_dashboard", "personal_reference", "unapproved_reference", "content_in_use"]);
     expect([...DASHBOARD_REFUSALS].sort()).toEqual([
-      "content_unavailable", "dashboard_not_found", "engine_unavailable", "forbidden", "invalid_dashboard", "invalid_parameter", "invalid_request", "local_mode", "personal_reference", "revision_conflict", "space_not_found",
+      "content_in_use", "content_unavailable", "dashboard_not_found", "engine_unavailable", "forbidden", "invalid_dashboard", "invalid_parameter", "invalid_request", "local_mode", "personal_reference", "revision_conflict", "space_not_found", "unapproved_reference",
     ]);
     expect(new Set(DASHBOARD_REFUSALS).size).toBe(DASHBOARD_REFUSALS.length);
     for (const code of DASHBOARD_REFUSALS) {

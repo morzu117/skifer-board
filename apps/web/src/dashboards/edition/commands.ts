@@ -4,7 +4,7 @@ import { decodeDashboard, decodeDashboardDraft, type DashboardDocument, type Das
 /** Document complet ou brouillon décodé. */
 export type Document = DashboardDocument | DashboardDraft;
 /** Genres de nœuds de la mise en page. */
-export type Kind = "section" | "row" | "column" | "container" | "analysis" | "kpi" | "text" | "separator";
+export type Kind = "section" | "row" | "column" | "container" | "analysis" | "kpi" | "text" | "separator" | "component";
 /** Une commande modifie une copie, jamais le document fourni. */
 export type SimpleCommand =
   | { type: "add"; kind: Kind; parent: string | null; index: number; value?: object }

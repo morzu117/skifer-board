@@ -35,3 +35,10 @@ it("respecte la largeur proportionnelle et réduit le zoom à la largeur disponi
   expect(view.container.querySelector(".sb-preview__viewport")).toHaveStyle({ zoom: "0.5" });
   view.unmount(); width.mockRestore();
 });
+
+it("signale un composant référencé indisponible dans l'aperçu", () => {
+  const draft = sampleDraft();
+  mock.editor = { document: { ...draft, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } }, states: new Map(), analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile: vi.fn(), retryTile: vi.fn(), restartTile: vi.fn() } as unknown as Editor;
+  render(<Apercu onClose={vi.fn()} />);
+  expect(screen.getByText("Composant indisponible : rendu non pris en charge.")).toBeInTheDocument();
+});

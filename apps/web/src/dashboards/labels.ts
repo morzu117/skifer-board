@@ -39,10 +39,10 @@ export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
 };
 
 export const KIND_LABELS: Readonly<Record<Kind, string>> = {
-  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur",
+  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", component: "Composant", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur",
 };
 export const GENDERS = {
-  kind: { section: "f", row: "f", column: "f", container: "m", analysis: "m", kpi: "m", text: "m", separator: "m" } satisfies Record<Kind, "f" | "m">,
+  kind: { section: "f", row: "f", column: "f", container: "m", component: "m", analysis: "m", kpi: "m", text: "m", separator: "m" } satisfies Record<Kind, "f" | "m">,
   presentation: { title: "m", chart: "m", legend: "f", number_format: "m", threshold: "m", tooltip: "f" } satisfies Record<keyof VisualPresentation, "f" | "m">,
   block: { paragraph: "m", heading: "m", list: "f" } satisfies Record<Block["type"], "f" | "m">,
 } as const;
@@ -91,6 +91,7 @@ export const DASHBOARD_RULE_LABELS: Readonly<Record<DashboardRule, string>> = {
   bad_revision: "numéro de révision incorrect", bad_actor: "auteur incorrect", duplicate_id: "identifiant répété", row_overflow: "rangée de plus de 12 douzièmes",
   too_deep: "plus de trois niveaux de rangées", container_not_alone: "un conteneur occupe seul sa colonne", filter_without_target: "filtre sans cible",
   unknown_target: "cible absente du document", target_not_executable: "cible qui ne s'exécute pas", default_not_allowed: "valeur par défaut hors des valeurs autorisées",
+  theme_not_found: "thème épinglé introuvable ou inaccessible", component_not_found: "composant épinglé introuvable ou inaccessible",
   analysis_unavailable: "analyse épinglée indisponible", kpi_requires_value: "un KPI demande une valeur unique", chart_incompatible: "type de graphique incompatible",
   dimension_not_exposed: "dimension non exposée par le modèle", filter_type_mismatch: "type de filtre incompatible", operator_not_allowed: "opérateur non permis",
   filter_value_incompatible: "valeur de filtre incompatible", too_many_filters: "trop de filtres sur une tuile",

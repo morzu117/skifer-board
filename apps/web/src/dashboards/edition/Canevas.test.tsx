@@ -28,6 +28,11 @@ const dragAt = (target: Element, type: "dragOver" | "drop", at: { clientX?: numb
 };
 
 describe("sélection et rendu", () => {
+  it("affiche un composant référencé comme indisponible", async () => {
+    const draft = decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } });
+    await ready({ draft, tiles: [{ id: N.visual, state: "ready" }] });
+    expect(screen.getByText("Composant indisponible : rendu non pris en charge.")).toBeInTheDocument();
+  });
   it("dessine la mise en page, sélectionne un nœud et ouvre ses propriétés", async () => {
     await ready();
     await screen.findByRole("button", { name: "Visuel · Chiffre d'affaires par région" });

@@ -33,7 +33,7 @@ export interface Violation<R extends string = ViolationRule> {
   path: string;
   rule: R;
 }
-export const CONSUMER_KINDS = ["dashboard"] as const;
+export const CONSUMER_KINDS = ["dashboard", "component"] as const;
 export interface Consumer {
   kind: (typeof CONSUMER_KINDS)[number];
   id: string;
@@ -50,6 +50,7 @@ export interface RefusalDetails {
   dashboardViolations?: readonly Violation<DashboardRule>[] | undefined;
   /** Composants d'un dashboard partagé dont l'analyse épinglée ne l'est pas (`personal_reference`). */
   components?: readonly string[] | undefined;
+  paths?: readonly string[] | undefined;
   consumers?: readonly Consumer[] | undefined;
   /** Dépendants que le demandeur ne voit pas : un décompte, jamais leur identité. */
   others?: number | undefined;
@@ -76,7 +77,7 @@ export function decodeConsumerList(found: Readonly<Record<string, unknown>>, pat
     const entry = exact(item, ["kind", "id"], `${path}.consumers[${String(index)}]`);
     return { kind: pick(entry.kind, CONSUMER_KINDS, `${path}.consumers.kind`), id: uuid(entry.id, `${path}.consumers.id`) };
   });
-  distinct(consumers.map((consumer) => consumer.id), `${path}.consumers`);
+  distinct(consumers.map((consumer) => `${consumer.kind}:${consumer.id}`), `${path}.consumers`);
   return { consumers, others: count(found.others, `${path}.others`) };
 }
 

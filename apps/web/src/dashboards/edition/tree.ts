@@ -30,6 +30,7 @@ export type Titles = Readonly<Record<string, string | undefined>>;
 
 const NODE_LABELS: Readonly<Record<Exclude<Kind, "section" | "row" | "column" | "analysis" | "kpi">, string>> = {
   container: "Conteneur",
+  component: "Composant",
   text: "Texte",
   separator: "Séparateur",
 };
@@ -119,6 +120,7 @@ const PARENT_KINDS: Readonly<Record<Kind, readonly Kind[] | null>> = {
   row: ["section", "container"],
   column: ["row"],
   container: IN_COLUMN,
+  component: IN_COLUMN,
   analysis: IN_COLUMN,
   kpi: IN_COLUMN,
   text: IN_COLUMN,

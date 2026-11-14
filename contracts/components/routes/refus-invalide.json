@@ -1,0 +1,1 @@
+{"status":422,"body":{"error":{"code":"invalid_component","reason":"missing_field","violations":[{"path":"/analysis","rule":"missing_field"},{"path":"/description","rule":"missing_field"},{"path":"/kind","rule":"missing_field"},{"path":"/name","rule":"wrong_type"},{"path":"/presentation","rule":"missing_field"}]}}}

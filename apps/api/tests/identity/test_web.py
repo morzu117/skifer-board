@@ -263,6 +263,23 @@ def test_toutes_les_routes_api_exigent_une_session(
         ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}/revisions/{revision}"),
         ("GET", "/api/spaces/{space_id}/dashboards/{dashboard_id}/diff"),
         ("POST", "/api/spaces/{space_id}/dashboards/{dashboard_id}/duplicate"),
+        # Genres partagés (plan 20.2) : mêmes contrôles de session sur chaque route.
+        *{
+            (method, f"/api/spaces/{{space_id}}/{segment}{suffix}")
+            for segment in ("themes", "page-templates", "components")
+            for method, suffix in (
+                ("POST", ""),
+                ("GET", ""),
+                ("GET", "/{content_id}"),
+                ("PUT", "/{content_id}"),
+                ("DELETE", "/{content_id}"),
+                ("GET", "/{content_id}/history"),
+                ("GET", "/{content_id}/diff"),
+                ("GET", "/{content_id}/consumers"),
+                ("GET", "/{content_id}/approvals"),
+                ("POST", "/{content_id}/approvals"),
+            )
+        },
     }
     with TestClient(app, base_url=ORIGINE, follow_redirects=False) as client:
         if expiration is not None:
@@ -286,6 +303,7 @@ def test_toutes_les_routes_api_exigent_une_session(
                     .replace("{environment}", "PROD")
                     .replace("{execution_id}", "11111111-1111-1111-1111-111111111111")
                     .replace("{analysis_id}", "11111111-1111-4111-8111-111111111111")
+                    .replace("{content_id}", "11111111-1111-4111-8111-111111111111")
                     .replace("{revision}", "1")
                 )
                 reponse = client.request(methode, chemin, headers={"Origin": ORIGINE})
