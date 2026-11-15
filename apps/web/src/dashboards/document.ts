@@ -125,9 +125,11 @@ export interface Container {
   rows: readonly Row[];
 }
 export interface SharedComponent { id: string; type: "component"; component: { component_id: string; revision: number } }
+/** Emplacement de travail, jamais publié dans un dashboard serveur. */
+export interface DraftSlot { id: string; type: "slot"; slot: { expected: "visual" | "kpi"; label: string } }
 export type Component = AnalysisComponent | KpiComponent | SharedComponent | TextComponent | SeparatorComponent;
 export type ExecutableComponent = AnalysisComponent | KpiComponent;
-export type LayoutNode = Container | Component;
+export type LayoutNode = Container | Component | DraftSlot;
 export interface Column {
   id: string;
   span: number;
@@ -165,10 +167,16 @@ export interface DashboardDraft {
   filters: readonly CommonFilter[];
   layout: { sections: readonly Section[] };
 }
+/** Mise en page publiée : elle exclut les emplacements, même dans les conteneurs. */
+export interface PublishedColumn { id: string; span: number; children: readonly (Component | PublishedContainer)[] }
+export interface PublishedRow { id: string; columns: readonly PublishedColumn[] }
+export interface PublishedContainer { id: string; type: "container"; rows: readonly PublishedRow[] }
+export interface PublishedSection { id: string; title?: string; rows: readonly PublishedRow[] }
 export interface DashboardDocument extends DashboardDraft {
   api_version: typeof API_VERSION;
   id: string;
   owner: Person;
+  layout: { sections: readonly PublishedSection[] };
 }
 
 const DRAFT_KEYS = ["name", "description", "visibility", "defaults", "filters", "layout"] as const;
@@ -292,6 +300,8 @@ function blocksOf(value: unknown, path: string): readonly Block[] {
 
 /** Ce que le parcours de la mise en page apprend : identifiants et genres, comptes (règles inter-champs). */
 interface Scan {
+  draft: boolean;
+  template: boolean;
   kinds: Map<string, string>;
   nodes: number;
   components: number;
@@ -332,6 +342,15 @@ function component(found: Readonly<Record<string, unknown>>, type: Exclude<NodeT
 function node(value: unknown, path: string, level: number, scan: Scan): LayoutNode {
   const found = record(value, path);
   if (!has(found, "type")) return fail(path, "champs type");
+  if (found.type === "slot" && scan.draft) {
+    const own = fields(found, ["id", "type", "slot"], ["id", "type", "slot"], path);
+    const slot = fields(own.slot, ["expected", "label"], ["expected", "label"], `${path}.slot`);
+    const id = claim(scan, uuid(own.id, `${path}.id`), "slot", `${path}.id`);
+    count(scan, path);
+    scan.components += 1;
+    if (scan.components > LIMITS.components) fail(path, `au plus ${String(LIMITS.components)} composants`);
+    return { id, type: "slot", slot: { expected: pick(slot.expected, ["visual", "kpi"] as const, `${path}.slot.expected`), label: bounded(slot.label, `${path}.slot.label`, 1, LIMITS.label, false) } };
+  }
   const type = pick(found.type, ALL_NODE_TYPES, `${path}.type`);
   if (type !== "container") return component(found, type, path, scan);
   const own = fields(found, ["id", "type", "rows"], ["id", "type", "rows"], path);
@@ -426,13 +445,13 @@ export function decodeCommonValues(operator: CommonOperator, found: Readonly<Rec
  * selon l'opérateur, bornes de `between`, `default` parmi `allowed`, au moins une cible. L'existence des cibles dans la
  * mise en page ne se juge qu'avec le document entier.
  */
-export function filterValues(found: Readonly<Record<string, unknown>>, path: string): Omit<CommonFilter, "id"> {
+export function filterValues(found: Readonly<Record<string, unknown>>, path: string, allowEmpty = false): Omit<CommonFilter, "id"> {
   const label = bounded(found.label, `${path}.label`, 1, LIMITS.label, false);
   const dimension = identifier(found.dimension, `${path}.dimension`);
   const operator = pick(found.operator, COMMON_OPERATORS, `${path}.operator`);
   const targets = distinct(items(found.targets, `${path}.targets`, LIMITS.targets).map((item, index) => uuid(item, `${path}.targets[${String(index)}]`)), `${path}.targets`);
   commonValueShapes(operator, found, path);
-  if (targets.length === 0) return fail(`${path}.targets`, "au moins une cible");
+  if (targets.length === 0 && !allowEmpty) return fail(`${path}.targets`, "au moins une cible");
   const { preferred, allowed } = commonValueContents(operator, found, path);
   return { label, dimension, operator, ...(preferred === undefined ? {} : { default: preferred }), ...(allowed === undefined ? {} : { allowed }), targets };
 }
@@ -440,7 +459,7 @@ export function filterValues(found: Readonly<Record<string, unknown>>, path: str
 function commonFilter(value: unknown, path: string, scan: Scan): CommonFilter {
   const found = fields(value, FILTER_KEYS, ["id", "label", "dimension", "operator", "targets"], path);
   const id = claim(scan, uuid(found.id, `${path}.id`), "filter", `${path}.id`);
-  const filter = filterValues(found, path);
+  const filter = filterValues(found, path, scan.draft && scan.template);
   // Règles inter-champs : les cibles sont des tuiles du document, les valeurs passent par la soumission d'exécution.
   filter.targets.forEach((target, index) => {
     const kind = scan.kinds.get(target);
@@ -458,8 +477,8 @@ export function pinnedObject<K extends "theme_id" | "template_id" | "component_i
   return { [key]: uuid(found[key], `${path}.${key}`), revision: integer(found.revision, `${path}.revision`, 1, MAX_REVISION) } as Record<K, string> & { revision: number };
 }
 
-function draftOf(found: Readonly<Record<string, unknown>>, path: string): DashboardDraft {
-  const scan: Scan = { kinds: new Map(), nodes: 0, components: 0, executable: 0 };
+function draftOf(found: Readonly<Record<string, unknown>>, path: string, draft = false): DashboardDraft {
+  const scan: Scan = { draft, template: has(found, "template"), kinds: new Map(), nodes: 0, components: 0, executable: 0 };
   const name = decodeName(found.name, `${path}.name`);
   const description = bounded(found.description, `${path}.description`, 0, 2000, true);
   const visibility = pick(found.visibility, VISIBILITIES, `${path}.visibility`);
@@ -473,14 +492,22 @@ function draftOf(found: Readonly<Record<string, unknown>>, path: string): Dashbo
 
 /** Corps d'une création ou d'une révision : `api_version`, `id` et `owner` n'y ont pas leur place. */
 export function decodeDashboardDraft(value: unknown, path = "dashboard"): DashboardDraft {
-  return draftOf(fields(value, [...DRAFT_KEYS, "theme", "template"], DRAFT_KEYS, path), path);
+  return draftOf(fields(value, [...DRAFT_KEYS, "theme", "template"], DRAFT_KEYS, path), path, true);
+}
+
+/** Un emplacement à n'importe quelle profondeur interdit la publication du brouillon. */
+export function hasSlots(document: DashboardDraft): boolean {
+  const inRows = (list: readonly Row[]): boolean => list.some((row) => row.columns.some((column) => column.children.some((child) => child.type === "slot" || (child.type === "container" && inRows(child.rows)))));
+  return document.layout.sections.some((section) => inRows(section.rows));
 }
 
 /** Document complet, tel que le serveur le lit dans le dépôt. */
 export function decodeDashboard(value: unknown, path = "dashboard"): DashboardDocument {
   const found = fields(value, ["api_version", "id", "owner", ...DRAFT_KEYS, "theme", "template"], ["api_version", "id", "owner", ...DRAFT_KEYS], path);
   if (found.api_version !== API_VERSION) return fail(`${path}.api_version`, API_VERSION);
-  return { api_version: API_VERSION, id: uuid(found.id, `${path}.id`), owner: decodePerson(found.owner, `${path}.owner`), ...draftOf(found, path) };
+  const decoded = draftOf(found, path);
+  const sections = decoded.layout.sections as unknown as readonly PublishedSection[];
+  return { api_version: API_VERSION, id: uuid(found.id, `${path}.id`), owner: decodePerson(found.owner, `${path}.owner`), ...decoded, layout: { sections } };
 }
 
 // -- champs propres d'un nœud, pour l'écart de révisions ----------------------------------------

@@ -152,6 +152,14 @@ describe("routes d'écriture", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("refuse un filtre de modèle sans cible même sans emplacement", async () => {
+    const fetcher = serving(route("creer"));
+    const bad = { ...draft, template: { template_id: ID, revision: 1 }, filters: [{ id: OTHER_ID, label: "Pays", dimension: "pays", operator: "eq" as const, targets: [] }] };
+    errorIncludes(await createDashboard("finance", bad, fetcher), "invalide");
+    errorIncludes(await reviseDashboard("finance", ID, bad, 1, fetcher), "invalide");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("révise avec la révision attendue : 201 pour une nouvelle révision, 200 pour un contenu identique", async () => {
     const created = serving(route("reviser"));
     const outcome = await reviseDashboard("finance", ID, { ...draft, name: "Révisé" }, 1, created);

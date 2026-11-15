@@ -6,6 +6,9 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 20, 20.4 : refus local `empty_slot` à l'envoi d'un dashboard dont un emplacement reste vide.
+- Plan 20, 20.4 : commandes pures d’édition des thèmes avec historique, contrôles de parité et choix admissibles ; commandes de thème et de composants dans le dashboard, instanciation de modèles et remplissage des emplacements, exécution des composants résolus et lecture des états des références dans l’éditeur ; construction pure des thèmes graphiques depuis les tokens, héritage des présentations par type et signalement du thème de repli pendant la lecture ou en cas d’indisponibilité ; palettes séquentielle et divergente ordonnées par contraste avec la surface, seules leurs extrémités les plus contrastées devant atteindre 3:1.
+
 - Plan 20, 20.3 : catalogue web des tokens, client des thèmes, décodeurs stricts des réponses et refus, vérification des contrats de routes, décodage des modèles de page et client complet des modèles de page avec écarts structurels et approbations, client des composants avec vérification de ses contrats et remplacement de la raison `analysis_unavailable` par `component_unavailable` pour les tuiles de composant indisponible, contrat de lecture correspondant et inventaire des codes des trois genres.
 
 - Plan 20, 20.2 : migration 0017, index reconstructibles des thèmes, modèles, composants et approbations, références versionnées des dashboards, consommateurs visibles ou masqués et réindexation atomique depuis git ; règle de visibilité des révisions par rôle et approbation et routes de création, lecture, liste, révision et suppression des trois genres, avec contrôle des analyses épinglées par les composants ; historique et diff filtrés, télémétrie des refus et tests de confidentialité ; routes d’approbation, validation des références et résolution embarquée des thèmes et composants des dashboards ; résolution des analyses des composants dans le calcul serveur des tuiles ; consommateurs directs et transitifs, refus de suppression et indisponibilité fermée si l’index ou le dépôt ne répond pas ; contrats de routes produits par le serveur, sentinelles de confidentialité et matrice des droits ; décodage web des références, écarts structurels et refus de dashboards et de leurs consommateurs, avec inventaire des codes serveur ; corrections de visibilité des approbations, de résolution épinglée et de concurrence sur la tête Git et de signalement des pannes Git dans les listes de contenus.
@@ -143,6 +146,7 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Changed
 
+- Plan 20, 20.4 : les palettes séquentielles et divergentes progressent vers les extrémités avec un contraste sur la surface d'au moins 1,10 fois celui du palier précédent ; les extrémités doivent atteindre 3:1 et les paliers intermédiaires peuvent être sous ce seuil. Un thème valide sous les règles 20.1 peut désormais être refusé.
 - Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
 
 ### Fixed

@@ -5,8 +5,9 @@ import type { Command } from "./commands";
 import type { Problem, KnownAnalyses } from "./problems";
 import type { TreeNode } from "./tree";
 import type { TileState } from "./useTiles";
-import type { DashboardDraft } from "../document";
+import type { DashboardDraft, ExecutableComponent } from "../document";
 import type { ExplorerModel } from "../../explorer/model";
+import type { ThemeDocument } from "../../themes/document";
 
 /** Ce que les panneaux de l'éditeur partagent : le document, la sélection et le seul chemin d'écriture, `run`. */
 export interface Editor {
@@ -25,6 +26,7 @@ export interface Editor {
   say: (text: string, refused?: boolean) => void;
   readOnly: boolean;
   states: ReadonlyMap<string, TileState>;
+  components?: ReadonlyMap<string, ExecutableComponent>;
   values: Readonly<Record<string, unknown>>;
   setValue: (id: string, value: unknown) => void;
   overlaps: ReadonlyMap<string, readonly string[]>;
@@ -37,6 +39,7 @@ export interface Editor {
   /** Les analyses épinglées sont-elles toutes lues ? Tant que non, des problèmes de tuile peuvent manquer. */
   settled: boolean;
   theme: ChartTheme;
+  themeDocument?: ThemeDocument | undefined;
   /** Mène à un nœud (de la mise en page, un filtre ou le dashboard) : sélection, onglet et focus. */
   reveal: (id: string) => void;
 }

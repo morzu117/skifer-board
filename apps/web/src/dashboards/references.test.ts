@@ -17,7 +17,7 @@ describe("références résolues", () => {
     expect(read.resolved?.components).toEqual(source.components);
     expect(read.dashboard.theme?.revision).toBe(1);
     expect(read.tiles).toHaveLength(1);
-    expect(read.resolved?.theme).toMatchObject({ api_version: "board.theme/v1", base: "skifer-clair", density: "normal", formats: { number: "auto", date: "short" }, categorical: ["blue", "copper"], sequential: ["ink", "blue", "seriesMuted"], diverging: ["blue", "neutral.fg", "copper"] });
+    expect(read.resolved?.theme).toMatchObject({ api_version: "board.theme/v1", base: "skifer-clair", density: "normal", formats: { number: "auto", date: "short" }, categorical: ["blue", "copper"], sequential: ["seriesMuted", "blue", "ink"], diverging: ["blue", "neutral.bg", "copper"] });
     expect(Object.values(read.resolved?.components ?? {})[0]).toMatchObject({ api_version: "board.component/v1", kind: "visual", presentation: { chart: "bars", legend: "auto" }, analysis: { revision: 1 } });
   });
   it("refuse les documents, couleurs et champs hors contrat", () => {

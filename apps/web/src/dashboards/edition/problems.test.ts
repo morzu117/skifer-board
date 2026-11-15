@@ -9,6 +9,20 @@ const model: ExplorerModel = { name: "sales", label: "Sales", description: "", m
 const doc: DashboardDraft = { name: "Test", description: "", visibility: "personal", defaults: {}, filters: [{ id: "f", label: "Pays", dimension: "country", operator: "eq", targets: ["k"], default: "FR" }], layout: { sections: [{ id: "s", rows: [{ id: "r", columns: [{ id: "c", span: 6, children: [{ id: "k", type: "kpi", reference: { analysis_id: "a", revision: 1 }, presentation: {} }] }] }] }] } };
 const known = { k: { pinned: analysis, current: 1 } };
 describe("problèmes du dashboard", () => {
+  it("juge les références partagées selon leur état et leur révision épinglée", () => {
+    const shared: DashboardDraft = { ...doc, visibility: "shared", theme: { theme_id: "theme", revision: 1 }, filters: [], layout: { sections: [{ id: "s", rows: [{ id: "r", columns: [{ id: "c", span: 12, children: [{ id: "x", type: "component", component: { component_id: "ref", revision: 1 } }] }] }] }] } };
+    const refs = { theme: { approved: false }, components: { x: { approved: false, current: 2, resolved: false } } };
+    const issues = dashboardProblems(shared, [], {}, null, refs);
+    expect(issues).toContainEqual(expect.objectContaining({ code: "unapproved_reference", path: "/theme", severity: "blocking" }));
+    expect(issues).toContainEqual(expect.objectContaining({ code: "unapproved_reference", nodeId: "x" }));
+    expect(issues).toContainEqual(expect.objectContaining({ code: "component_unavailable", nodeId: "x" }));
+    expect(issues).toContainEqual(expect.objectContaining({ code: "component_revision_behind", pinned: 1, current: 2, severity: "warning" }));
+    expect(dashboardProblems({ ...shared, visibility: "personal" }, [], {}, null, refs).some((p) => p.code === "unapproved_reference")).toBe(false);
+    const approved = { theme: { approved: true }, components: { x: { approved: true, current: null, resolved: true } } };
+    expect(dashboardProblems(shared, [], {}, null, approved)).toEqual([]);
+    expect(dashboardProblems(shared, [{ id: "x", state: "unavailable", reason: "analysis_unavailable" }], {}, null, approved)).toContainEqual(expect.objectContaining({ code: "analysis_unavailable" }));
+    expect(dashboardProblems(shared, [], {}, null, { ...approved, components: { x: { ...approved.components.x, current: 1 } } })).toEqual([]);
+  });
   it("signale un composant référencé indisponible", () => {
     const shared: DashboardDraft = { ...doc, filters: [], layout: { sections: [{ id: "s", rows: [{ id: "r", columns: [{ id: "c", span: 12, children: [{ id: "x", type: "component", component: { component_id: "ref", revision: 1 } }] }] }] }] } };
     expect(dashboardProblems(shared, [], {}, null)).toContainEqual({ code: "analysis_unavailable", severity: "blocking", nodeId: "x", path: "/layout/sections/0/rows/0/columns/0/children/0/component" });

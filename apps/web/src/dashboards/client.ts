@@ -4,7 +4,7 @@ import { isRevision, isUuid } from "../analyses/shape";
 import { ContractError } from "../catalogue/decode";
 import type { AdminOutcome, Call } from "../spaces/admin";
 import { spaceUrl, type Fetch } from "../spaces/api";
-import { decodeDashboardDraft, type DashboardDraft } from "./document";
+import { decodeDashboardDraft, hasSlots, type DashboardDraft } from "./document";
 import { decodeDashboardDiff, decodeDashboardHistory, decodeDashboardList, decodeDashboardRevision, type DashboardDiff, type DashboardHistory, type DashboardList, type DashboardRevision } from "./model";
 import { DASHBOARD_REFUSALS } from "./refusal";
 
@@ -30,7 +30,8 @@ function problem(space: string, id: string, ...numbers: readonly number[]): stri
 /** Corps d'une création ou d'une révision, ou la raison de son refus avant tout appel. */
 function body(draft: DashboardDraft): DashboardDraft | null {
   try {
-    return decodeDashboardDraft(draft);
+    const decoded = decodeDashboardDraft(draft);
+    return decoded.filters.some((filter) => filter.targets.length === 0) ? null : decoded;
   } catch {
     return null;
   }
@@ -51,6 +52,7 @@ export function createDashboard(space: string, draft: DashboardDraft, fetcher: F
   if (unknown !== null) return rejected(unknown);
   const sent = body(draft);
   if (sent === null) return rejected(INVALID);
+  if (hasSlots(sent)) return rejected(EMPTY_SLOT);
   return run({ url: base(space), method: "POST", body: sent, decode: (value, status) => {
     only(status, [201]);
     return first(decodeDashboardRevision(value, space));
@@ -110,12 +112,16 @@ export interface RevisedDashboard {
   unchanged: boolean;
 }
 
+/** Refus local fermé : le serveur ne connaît pas les emplacements du brouillon. */
+export const EMPTY_SLOT = "empty_slot";
+
 /** Crée la révision qui suit `expectedRevision` ; une autre révision entre-temps répond `revision_conflict`. */
 export function reviseDashboard(space: string, id: string, draft: DashboardDraft, expectedRevision: number, fetcher: Fetch = fetch): Promise<AdminOutcome<RevisedDashboard>> {
   const bad = problem(space, id, expectedRevision);
   if (bad !== null) return rejected(bad);
   const sent = body(draft);
   if (sent === null) return rejected(INVALID);
+  if (hasSlots(sent)) return rejected(EMPTY_SLOT);
   return run({ url: `${named(space, id)}/revisions`, method: "POST", body: { ...sent, expected_revision: expectedRevision }, decode: (value, status) => {
     only(status, [200, 201]);
     const found = decodeDashboardRevision(value, space);

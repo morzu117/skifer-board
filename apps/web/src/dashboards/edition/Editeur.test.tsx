@@ -7,6 +7,8 @@ import { expectAccessible } from "../../test/a11y";
 import { ID, route } from "../testing";
 import { decodeDashboardDraft } from "../document";
 import { ANALYSES, dashboardBody, echo, N, openEditor, ROOT, sampleDraft, type AnalysisSpec, type TileInfo } from "./testing";
+import componentRead from "../../../../../contracts/components/routes/lire.json";
+import themeRead from "../../../../../contracts/themes/routes/lire.json";
 
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
@@ -23,6 +25,42 @@ const unavailable = (reason: string): TileInfo[] => [{ id: N.visual, state: "una
 const refused = (name: string) => { const example = route(name); return Response.json(example.body, { status: example.status }); };
 
 describe("ouverture", () => {
+  it("utilise les références résolues lues avec le dashboard", async () => {
+    const draft = decodeDashboardDraft({ ...sampleDraft(), theme: { theme_id: N.text, revision: 1 }, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } });
+    const commit = "a".repeat(40);
+    const fixture = (value: unknown, id: string) => JSON.parse(JSON.stringify(value).replaceAll("<uuid>", id).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const component = fixture(componentRead.body.component, N.kpi);
+    const theme = fixture(themeRead.body.theme, N.text);
+    const response = { ...dashboardBody(draft, { tiles: [{ id: N.visual, state: "ready" }] }), resolved: { components: { [N.kpi]: component }, theme } };
+    await ready({ draft, overrides: { [`GET ${ROOT}/dashboards/${ID}`]: Response.json(response) } });
+    expect(await screen.findByRole("group", { name: /Visuel épinglé/ })).toBeInTheDocument();
+  });
+  it.each(["draft", "approved", "unresolved"] as const)("lit l'état %s du thème", async (state) => {
+    const draft = { ...sampleDraft(), theme: { theme_id: N.kpi, revision: 1 } };
+    const commit = "a".repeat(40);
+    const body = JSON.parse(JSON.stringify(themeRead.body).replaceAll("<uuid>", N.kpi).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const read = state === "approved" ? { ...body, state: "approved", approved_revision: 1 } : body;
+    const response = state === "unresolved" ? new Response("panne", { status: 500 }) : Response.json(read, { headers: { etag: `"${commit}"` } });
+    const { server } = await ready({ draft, overrides: { [`GET ${ROOT}/themes/${N.kpi}?revision=1`]: response, [`GET ${ROOT}/themes/${N.kpi}`]: response } });
+    await waitFor(() => { expect(server.fetcher).toHaveBeenCalledWith(`${ROOT}/themes/${N.kpi}?revision=1`, expect.anything()); });
+    if (state === "draft") expect(await screen.findByText("Référence non approuvée pour un dashboard partagé.")).toBeInTheDocument();
+    else await waitFor(() => { expect(screen.queryByText("Référence non approuvée pour un dashboard partagé.")).not.toBeInTheDocument(); });
+  });
+  it.each(["draft", "behind"] as const)("affiche l'état %s d'un composant épinglé", async (scenario) => {
+    const draft = decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } });
+    const commit = "a".repeat(40);
+    const body = JSON.parse(JSON.stringify(componentRead.body).replaceAll("<uuid>", N.kpi).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const pinned = scenario === "behind" ? { ...body, state: "approved", approved_revision: 1 } : body;
+    const current = scenario === "behind" ? { ...body, revision: 2, approved_revision: 1 } : body;
+    const reply = (value: object) => Response.json(value, { headers: { etag: `"${commit}"` } });
+    await ready({ draft, tiles: [{ id: N.visual, state: "ready" }], overrides: { [`GET ${ROOT}/components/${N.kpi}?revision=1`]: reply(pinned), [`GET ${ROOT}/components/${N.kpi}`]: reply(current) } });
+    const label = scenario === "draft" ? "Référence non approuvée pour un dashboard partagé." : "Révision de composant en retard sur la dernière.";
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    if (scenario === "draft") {
+      fireEvent.change(screen.getByRole("textbox", { name: "Nom du dashboard" }), { target: { value: "Modifié" } });
+      expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+    }
+  });
   it("annonce l'état, la révision, la visibilité et dit que tout est enregistré", async () => {
     await ready();
     expect(screen.getByText(/Éditeur de dashboard · Partagé · révision 1/)).toBeInTheDocument();

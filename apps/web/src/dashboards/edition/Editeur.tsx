@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent } from "react";
 
 import type { ChartTheme } from "../../charts/theme";
+import { TOKEN_CATALOG } from "../../themes/catalog";
+import { dashboardChartTheme } from "../../themes/chartTheme";
 import { fetchFields } from "../../explorer/client";
 import { ThemeSwitch } from "../../prototype/ThemeSwitch";
 import { routeHash } from "../../shell/route";
@@ -12,7 +14,7 @@ import { Banner } from "../../ui/Banner";
 import { Dialog } from "../../ui/Dialog";
 import { useOutcome } from "../../ui/useOutcome";
 import { reviseDashboard } from "../client";
-import { executables } from "../document";
+import { executableNodes, executables } from "../document";
 import { dashboardRefusalText } from "../Failure";
 import { EDIT_REFUSAL_LABELS, READ_STATE_LABELS, VISIBILITY_LABELS } from "../labels";
 import type { DashboardRevision } from "../model";
@@ -29,7 +31,8 @@ import { Palette } from "./Palette";
 import { dashboardProblems } from "./problems";
 import { PROPS_TITLE_ID, Proprietes } from "./Proprietes";
 import { buildTree } from "./tree";
-import { useTiles } from "./useTiles";
+import { useTiles, type TileSources } from "./useTiles";
+import { referenceKey, referencesOf, useReferenceStates } from "./useReferenceStates";
 import { effective, titleOf } from "./presentation";
 import type { DashboardDraft } from "../document";
 
@@ -54,9 +57,11 @@ interface Stored {
   tiles: DashboardRevision["tiles"];
   state: DashboardRevision["state"];
   permissions: DashboardRevision["permissions"];
+  dashboard: DashboardRevision["dashboard"];
+  resolved: DashboardRevision["resolved"];
 }
 
-const stored = (found: DashboardRevision): Stored => ({ revision: found.revision, tiles: found.tiles, state: found.state, permissions: found.permissions });
+const stored = (found: DashboardRevision): Stored => ({ revision: found.revision, tiles: found.tiles, state: found.state, permissions: found.permissions, dashboard: found.dashboard, resolved: found.resolved });
 
 /**
  * L'éditeur d'un dashboard (plan 19, 19.5a) : barre d'outils, palette, mise en page, propriétés et panneau du bas. Le brouillon est
@@ -103,15 +108,47 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
   if (work.context !== workContext) setWork({ context: workContext, values: {} });
   const values = work.context === workContext ? work.values : {};
   const fields = useOutcome(`${space}:${identity}:${environment}:champs`, (signal) => fetchFields(space, signal, fetcher));
-  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server.tiles, catalog: fields, fetcher, poll, values });
+  const references = referencesOf(document_);
+  const states = useReferenceStates(space, identity, id, references, fetcher);
+  const resolvedComponents = useMemo<NonNullable<TileSources["resolvedComponents"]>>(() => {
+    const result: Record<string, NonNullable<NonNullable<TileSources["resolvedComponents"]>[string]>> = {};
+    for (const node of executableNodes(document_)) {
+      if (node.type !== "component") continue;
+      const saved = executableNodes(server.dashboard).find((item) => item.type === "component" && item.component.component_id === node.component.component_id && item.component.revision === node.component.revision);
+      const found = saved ? server.resolved?.components[node.component.component_id] : undefined;
+      const state = states[referenceKey({ kind: "component", id: node.component.component_id, revision: node.component.revision })];
+      const component = found ?? (state && state.state !== "unresolved" ? state.component : undefined);
+      if (component) result[node.id] = { document: component, revision: node.component.revision };
+    }
+    return result;
+  }, [server.dashboard, server.resolved, document_, states]);
+  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server.tiles, catalog: fields, fetcher, poll, values, resolvedComponents });
   const catalog = fields.status === "ok" ? fields.value.models : null;
+  const themeState = document_.theme ? states[referenceKey({ kind: "theme", id: document_.theme.theme_id, revision: document_.theme.revision })] : undefined;
+  const localTheme = themeState && themeState.state !== "unresolved" ? themeState.theme : undefined;
+  const serverTheme = JSON.stringify(document_.theme) === JSON.stringify(server.dashboard.theme) ? server.resolved?.theme : undefined;
+  const resolvedTheme = serverTheme ?? localTheme;
+  const chart = document_.theme === undefined ? { theme } : dashboardChartTheme(document_, resolvedTheme ? { components: {}, theme: resolvedTheme } : undefined, TOKEN_CATALOG);
+  const themeDocument = chart.problem ? undefined : resolvedTheme;
 
   const titles = useMemo(() => Object.fromEntries(executables(document_).map((component) => {
     const known = tiles.analyses[component.id];
-    return [component.id, known === undefined ? component.presentation.title : titleOf(effective(component, known.pinned, document_.defaults))];
-  })), [document_, tiles.analyses]);
+    return [component.id, known === undefined ? component.presentation.title : titleOf(effective(component, known.pinned, document_.defaults, themeDocument))];
+  })), [document_, tiles.analyses, themeDocument]);
   const tree = useMemo(() => buildTree(document_, titles), [document_, titles]);
-  const problems = useMemo(() => dashboardProblems(document_, server.tiles, tiles.analyses, catalog), [document_, server.tiles, tiles.analyses, catalog]);
+  const shared = useMemo(() => {
+    const themeState = document_.theme ? states[referenceKey({ kind: "theme", id: document_.theme.theme_id, revision: document_.theme.revision })] : undefined;
+    const components = Object.fromEntries(executableNodes(document_).flatMap((node) => {
+      if (node.type !== "component") return [];
+      const found = states[referenceKey({ kind: "component", id: node.component.component_id, revision: node.component.revision })];
+      return [[node.id, found && found.state !== "unresolved" ? { approved: found.state === "approved", resolved: true, current: found.current_revision } : { approved: null, resolved: false, current: null }]];
+    }));
+    return { components, ...(themeState && themeState.state !== "unresolved" ? { theme: { approved: themeState.state === "approved" } } : {}) };
+  }, [document_, states]);
+  const problems = useMemo(() => {
+    const found = dashboardProblems(document_, server.tiles, tiles.analyses, catalog, shared);
+    return chart.problem ? [...found, { code: "theme_unavailable" as const, severity: "warning" as const, nodeId: "dashboard", path: "/theme" }] : found;
+  }, [document_, server.tiles, tiles.analyses, catalog, shared, chart.problem]);
   const blocking = problems.filter((problem) => problem.severity === "blocking");
 
   // Le focus demandé par une commande est posé après le rendu : un nœud déplacé ou remonté a été remplacé dans le DOM.
@@ -204,7 +241,7 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     say("Modification rétablie.");
   };
 
-  const editor: Editor = { document: document_, space, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, values, setValue: (filterId, value) => { setWork((previous) => ({ context: workContext, values: { ...previous.values, [filterId]: value } })); }, overlaps: tiles.overlaps, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme, reveal };
+  const editor: Editor = { document: document_, space, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, components: tiles.components, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, values, setValue: (filterId, value) => { setWork((previous) => ({ context: workContext, values: { ...previous.values, [filterId]: value } })); }, overlaps: tiles.overlaps, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme: chart.theme, themeDocument, reveal };
   const read = READ_STATE_LABELS[server.state];
   const reason = blocking.length > 0 ? `${String(blocking.length)} problème${blocking.length > 1 ? "s" : ""} bloquant${blocking.length > 1 ? "s" : ""}` : null;
   return <EditorContext value={editor}><PendingInputs value={report}>

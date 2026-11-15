@@ -33,6 +33,7 @@ const NODE_LABELS: Readonly<Record<Exclude<Kind, "section" | "row" | "column" | 
   component: "Composant",
   text: "Texte",
   separator: "Séparateur",
+  slot: "Emplacement",
 };
 
 function layoutNode(node: LayoutNode, parent: string, index: number, siblings: number, level: number, titles: Titles): TreeNode {
@@ -44,6 +45,7 @@ function layoutNode(node: LayoutNode, parent: string, index: number, siblings: n
     const kind = node.type === "kpi" ? "KPI" : "Visuel";
     return { id: node.id, kind: node.type, parent, index, siblings, level, label: name === undefined ? kind : `${kind} · ${name}`, name: kind, children: [] };
   }
+  if (node.type === "slot") return { id: node.id, kind: "slot", parent, index, siblings, level, label: `Emplacement : ${node.slot.label}`, name: "Emplacement", children: [] };
   return { id: node.id, kind: node.type, parent, index, siblings, level, label: NODE_LABELS[node.type], name: NODE_LABELS[node.type], children: [] };
 }
 
@@ -125,6 +127,7 @@ const PARENT_KINDS: Readonly<Record<Kind, readonly Kind[] | null>> = {
   kpi: IN_COLUMN,
   text: IN_COLUMN,
   separator: IN_COLUMN,
+  slot: IN_COLUMN,
 };
 
 /**

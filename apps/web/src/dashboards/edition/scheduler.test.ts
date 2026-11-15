@@ -12,6 +12,22 @@ const table = (numRows: number) => ({ numRows }) as Table;
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 
 describe("planificateur des tuiles", () => {
+  it("compte le composant résolu dans la borne et ignore le composant indisponible", async () => {
+    const clients: SchedulerClients = { submit: vi.fn(() => new Promise<Execution>(() => undefined)), read: vi.fn(), result: vi.fn(), cancel: vi.fn(), wait: vi.fn() };
+    const scheduler = schedule([ready("component"), ready("a"), ready("b"), ready("c"), ready("d"), { id: "absent", composed: { status: "unavailable", reason: "component_unavailable" } }], context, clients, () => undefined);
+    expect(clients.submit).toHaveBeenCalledTimes(4);
+    expect(scheduler.snapshot().get("d")).toEqual({ status: "waiting" });
+    expect(scheduler.snapshot().get("absent")).toEqual({ status: "unavailable", reason: "component_unavailable" });
+    scheduler.cancel();
+    await flush();
+  });
+  it.each(["space", "identity", "environment", "dashboard"] as const)("annule le composant au changement de %s", async (field) => {
+    const clients: SchedulerClients = { submit: vi.fn(() => new Promise<Execution>(() => undefined)), read: vi.fn(), result: vi.fn(), cancel: vi.fn(), wait: vi.fn() };
+    const scheduler = schedule([ready("component")], context, clients, () => undefined);
+    scheduler.changeContext({ ...context, [field]: "other" });
+    await flush();
+    expect(scheduler.snapshot().get("component")?.status).toBe("cancelled");
+  });
   it("borne à quatre et lance les tuiles dans l'ordre, sans soumettre les indisponibles", async () => {
     const submitted: string[] = [];
     const releases: ((run: Execution) => void)[] = [];

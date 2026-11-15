@@ -41,7 +41,7 @@
   ],
   "diverging": [
     "blue",
-    "neutral.fg",
+    "neutral.bg",
     "copper"
   ],
   "typography": {

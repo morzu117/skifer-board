@@ -2,6 +2,7 @@ import type { ChartKind } from "../../analyses/document";
 import type { AnalysisRevision } from "../../analyses/model";
 import type { Defaults, ExecutableComponent, KpiPresentation, Legend, NumberFormat, Tooltip, VisualPresentation } from "../document";
 import { resolveKpi, resolveVisual, type Resolved } from "./commands";
+import type { ThemeDocument } from "../../themes/document";
 import type { Style } from "./tileChart";
 
 /**
@@ -13,12 +14,20 @@ export const THEME_VISUAL: VisualPresentation = { legend: "auto", number_format:
 export const THEME_KPI: KpiPresentation = { number_format: "auto", tooltip: "value" };
 
 /** Le résultat est celui de `resolveVisual` pour un visuel et de `resolveKpi` pour un KPI, que le type de `component` désigne. */
-export type Effective = { type: "analysis"; fields: Resolved<VisualPresentation> } | { type: "kpi"; fields: Resolved<KpiPresentation> };
+export type Effective = ({ type: "analysis"; fields: Resolved<VisualPresentation> } | { type: "kpi"; fields: Resolved<KpiPresentation> }) & { themeName?: string };
 
-export function effective(component: ExecutableComponent, pinned: AnalysisRevision, defaults: Defaults): Effective {
+/** Défauts du type de graphique, complétés par les valeurs historiques de B9. */
+export function themePresentation(theme: ThemeDocument | undefined, chart: ChartKind): VisualPresentation {
+  const selected = theme?.chart_defaults[chart];
+  return { ...THEME_VISUAL, ...(theme === undefined ? {} : { number_format: theme.formats.number }), ...selected };
+}
+
+export function effective(component: ExecutableComponent, pinned: AnalysisRevision, defaults: Defaults, theme?: ThemeDocument): Effective {
   const analysis = { chart: pinned.analysis.presentation.chart, title: pinned.analysis.name };
-  if (component.type === "kpi") return { type: "kpi", fields: resolveKpi(THEME_KPI, { title: analysis.title }, defaults, component.presentation) };
-  return { type: "analysis", fields: resolveVisual(THEME_VISUAL, analysis, defaults, component.presentation) };
+  const name = theme === undefined ? {} : { themeName: theme.name };
+  if (component.type === "kpi") return { type: "kpi", fields: resolveKpi(theme === undefined ? THEME_KPI : themePresentation(theme, "value"), { title: analysis.title }, defaults, component.presentation), ...name };
+  const chart = component.presentation.chart ?? analysis.chart;
+  return { type: "analysis", fields: resolveVisual(themePresentation(theme, chart), analysis, defaults, component.presentation), ...name };
 }
 
 /** Titre effectif d'une tuile (surcharge du composant, sinon nom de l'analyse épinglée). */

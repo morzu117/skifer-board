@@ -37,13 +37,13 @@
     "neutral.fg"
   ],
   "sequential": [
-    "ink",
+    "seriesMuted",
     "blue",
-    "seriesMuted"
+    "ink"
   ],
   "diverging": [
     "blue",
-    "neutral.fg",
+    "neutral.bg",
     "copper"
   ],
   "typography": {

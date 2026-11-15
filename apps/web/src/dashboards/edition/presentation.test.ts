@@ -1,7 +1,9 @@
+import rawTheme from "../../../../../contracts/themes/fixtures/valid/clair.json";
+import { decodeTheme } from "../../themes/document";
 import { expect, it } from "vitest";
 import { analysisBody, ANALYSES, N } from "./testing";
 import { decodeRevision } from "../../analyses/model";
-import { effective, styleOf, THEME_KPI, THEME_VISUAL, titleOf, withField, withoutField } from "./presentation";
+import { effective, styleOf, themePresentation, THEME_KPI, THEME_VISUAL, titleOf, withField, withoutField } from "./presentation";
 import type { AnalysisComponent, KpiComponent } from "../document";
 
 const pinned = (id: string) => decodeRevision(analysisBody(id, ANALYSES[id] as never), "finance");
@@ -36,4 +38,27 @@ it("pose ou retire une surcharge sans toucher aux autres, et sans clé indéfini
   expect(removed).toEqual({ tooltip: "value" });
   expect("legend" in removed).toBe(false);
   expect(withoutField(base, "title")).toEqual(base);
+});
+
+
+it("applique les défauts par graphique et garde le nom du thème", () => {
+  const theme = decodeTheme(rawTheme);
+  expect(themePresentation(undefined, "bars")).toEqual(THEME_VISUAL);
+  expect(themePresentation(theme, "bars")).toEqual({ legend: "auto", number_format: "integer", tooltip: "value" });
+  expect(themePresentation(theme, "line")).toEqual({ legend: "auto", number_format: "auto", tooltip: "value" });
+  const baseline = effective(visual(), pinned(N.bars), {}, theme);
+  expect(baseline.themeName).toBe("Clair");
+  if (baseline.type !== "analysis") throw new Error("visuel attendu");
+  expect(baseline.fields.chart).toEqual({ value: "bars", origin: "analysis" });
+  expect(baseline.fields.title.origin).toBe("analysis");
+  expect(baseline.fields.number_format).toEqual({ value: "integer", origin: "theme" });
+  const dashboard = effective(visual(), pinned(N.bars), { number_format: "percent" }, theme);
+  expect(dashboard.fields.number_format).toEqual({ value: "percent", origin: "dashboard" });
+  const overridden = effective(visual({ chart: "line", number_format: "decimal_2" }), pinned(N.bars), { number_format: "percent" }, theme);
+  if (overridden.type !== "analysis") throw new Error("visuel attendu");
+  expect(overridden.fields.chart).toEqual({ value: "line", origin: "component" });
+  expect(overridden.fields.number_format).toEqual({ value: "decimal_2", origin: "component" });
+  const total = effective(kpi(), pinned(N.total), {}, theme);
+  expect(total.themeName).toBe("Clair");
+  expect(total.fields.number_format).toEqual({ value: "auto", origin: "theme" });
 });

@@ -40,10 +40,10 @@ export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
 };
 
 export const KIND_LABELS: Readonly<Record<Kind, string>> = {
-  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", component: "Composant", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur",
+  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", component: "Composant", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur", slot: "Emplacement",
 };
 export const GENDERS = {
-  kind: { section: "f", row: "f", column: "f", container: "m", component: "m", analysis: "m", kpi: "m", text: "m", separator: "m" } satisfies Record<Kind, "f" | "m">,
+  kind: { section: "f", row: "f", column: "f", container: "m", component: "m", analysis: "m", kpi: "m", text: "m", separator: "m", slot: "m" } satisfies Record<Kind, "f" | "m">,
   presentation: { title: "m", chart: "m", legend: "f", number_format: "m", threshold: "m", tooltip: "f" } satisfies Record<keyof VisualPresentation, "f" | "m">,
   block: { paragraph: "m", heading: "m", list: "f" } satisfies Record<Block["type"], "f" | "m">,
 } as const;
@@ -51,6 +51,8 @@ export const accord = (word: string, gender: "f" | "m"): string => `${word}${gen
 
 /** Refus fermés du modèle d'édition, tels qu'une commande les rend. */
 export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {
+  component_unavailable: "Le composant épinglé n'est pas disponible.",
+  incompatible_slot: "Le genre ne correspond pas à cet emplacement.",
   not_found: "Élément introuvable.",
   incompatible_parent: "Cet élément ne peut pas être placé là : son parent n'est pas compatible.",
   invalid_index: "Position hors limites.",
@@ -59,6 +61,10 @@ export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {
 };
 
 export const PROBLEM_LABELS: Readonly<Record<ProblemCode, string>> = {
+  theme_unavailable: "Thème en cours de lecture ou indisponible : le thème de repli est affiché.",
+  empty_slot: "Emplacement à remplir avant l’enregistrement.",
+  unapproved_reference: "Référence non approuvée pour un dashboard partagé.",
+  component_revision_behind: "Révision de composant en retard sur la dernière.",
   component_unavailable: "Composant indisponible : la tuile ne s’exécute pas.",
   analysis_unavailable: "Analyse indisponible : la tuile ne s'exécute pas.",
   unresolved_reference: "Référence non résolue : la tuile reste indisponible.",

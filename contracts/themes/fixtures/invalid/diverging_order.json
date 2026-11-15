@@ -30,16 +30,16 @@
     "copper"
   ],
   "sequential": [
-    "ink",
+    "seriesMuted",
     "blue",
-    "seriesMuted"
+    "ink"
   ],
   "diverging": [
-    "blue",
     "ink",
-    "neutral.fg",
-    "copper",
-    "seriesMuted"
+    "blue",
+    "neutral.bg",
+    "ink",
+    "copper"
   ],
   "typography": {
     "sans": "sans",

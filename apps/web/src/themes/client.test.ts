@@ -140,3 +140,17 @@ it("refuse une création approuvée ou attribuée à une autre personne", async 
     expect(await createTheme("finance", draft, fetcher)).toMatchObject({ status: "error" });
   }
 });
+
+
+it("refuse un identifiant de réponse différent à la lecture et à la révision", async () => {
+  const other = "00000000-0000-4000-8000-000000000002";
+  const source = body("lire") as { theme: Record<string, unknown> };
+  const draft = Object.fromEntries(Object.entries(source.theme).filter(([key]) => !["api_version", "id", "owner"].includes(key))) as unknown as ThemeDraft;
+  for (const action of ["read", "revise"] as const) {
+    const example = body(action === "read" ? "lire" : "reviser") as { theme: Record<string, unknown> };
+    const forged = { ...example, id: other, theme: { ...example.theme, id: other } };
+    const fetcher = vi.fn<Fetch>().mockResolvedValue(Response.json(forged, { status: 200, headers: { etag: `"${COMMIT}"` } }));
+    const result = action === "read" ? await fetchTheme("finance", ID, signal(), fetcher) : await reviseTheme("finance", ID, draft, 2, fetcher);
+    expect(result).toMatchObject({ status: "error" });
+  }
+});

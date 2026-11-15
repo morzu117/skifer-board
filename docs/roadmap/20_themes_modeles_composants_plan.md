@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 à 20.3 réalisées**, 20.4 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 à 20.4 réalisées**, 20.5a à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -307,5 +307,87 @@ Développé par Codex (gpt-6.1-terra) en sous-étapes, de a à b3, puis relu par
 - **Gate complet.**
   - Python : 7 492 tests, couverture de 100 %.
   - Web : 3 971 tests, couverture de 100 %, build compris.
+  - Bout en bout : 745 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle.
+
+### 20.4 — Modèle d'édition
+
+Développé par Codex (gpt-6.1-terra) en sous-étapes, de a à c3e, puis corrigé en deux temps. Relu par Claude Sonnet 5.5 : une revue, puis une contre-revue. La tranche reste un module pur, sans écran nouveau. Les deux tests mineurs reportés de 20.3 sont faits en tête : l'identifiant de la réponse est contrôlé, et `expected` vaut `text` dans un diff de modèle.
+
+*Thème graphique (C2, C3).*
+- `src/themes/chartTheme.ts` construit un `ChartTheme` depuis un thème et le catalogue des tokens, sans aucune couleur écrite. Les rôles des marques et ceux du texte sont appliqués, avec leurs contrastes vérifiés.
+- Les rôles `unselectedFill` et `unselectedEdge` n'existent pas dans le format. Leur valeur est donc dérivée, dans cet ordre :
+  1. celle de la base ;
+  2. sinon la grille ou la série, si elle atteint 3:1 ;
+  3. sinon le bord de la base.
+- Un token inconnu ou une palette invalide donne une erreur fermée.
+- **Dashboard.** `dashboardChartTheme` rend le thème du dashboard. Si ce thème n'est pas lu, est illisible ou est refusé, le dashboard est rendu en Skifer clair avec l'avertissement `theme_unavailable` au pointeur `/theme`. Le repli n'est jamais silencieux, et l'éditeur ne plante pas.
+- **Champs pas encore rendus.** Les palettes catégorielle et divergente, l'échelle typographique et la densité n'ont pas d'équivalent dans `ChartTheme` : aucun graphique actuel ne les utilise. Ils sont validés et enregistrés. L'éditeur de 20.5a le dira sur chaque champ, et `id` et `label` restent ceux de la base.
+
+*Héritage (C3).*
+- Les défauts du thème par type de graphique, ainsi que ses formats, entrent dans `resolveVisual` et `resolveKpi` au niveau « thème » de B9.
+- Ils s'appliquent aux tuiles, aux propriétés et à l'aperçu de l'éditeur, avec l'origine « Thème : nom ».
+
+*Règle des palettes : amendement de la règle serveur de 20.1.*
+- **Ce qui change.** 20.1 exigeait 3:1 de chaque palier séquentiel et divergent. C'était contraire au design du plan 02 : `SKIFER_CLAIR.sequential` commence par un palier pâle, et l'échelle y est ordonnée par contraste croissant.
+- **Règle retenue, identique au serveur et au web :**
+  - **catégorielle** : inchangée, 3:1 et couleurs distinctes ;
+  - **séquentielle** : des tokens du catalogue, chaque contraste avec la surface au moins **1,10 fois** celui du palier précédent, et un dernier palier à au moins 3:1 ;
+  - **divergente** : un nombre impair de paliers, un centre neutre (`neutral.fg` ou `neutral.bg`) sans exigence de contraste, et la même progression d'au moins 1,10 sur chaque aile vers des extrémités à au moins 3:1.
+- **Pourquoi le facteur 1,10.** Sans lui, des paliers presque indiscernables étaient admis. Les palettes Skifer passent, avec un rapport minimal de 1,134.
+- **Parité.** La constante est vérifiée des deux côtés. Les fixtures reproduisent exactement Skifer clair et Skifer ardoise et sont acceptées par le serveur. Les fixtures invalides couvrent l'égalité de contraste, l'écart insuffisant et les bords.
+- Un thème valide en 20.1 peut donc être refusé, ce que le CHANGELOG dit.
+
+*Éditeur de thème.* `src/themes/edition.ts` fournit :
+- un réducteur pur avec annuler et rétablir sur 100 états ;
+- `themeProblems`, à parité avec les fixtures invalides du serveur ;
+- `choicesFor`, qui ne propose que les tokens admissibles.
+
+*Commandes du dashboard (C3, C5, C6).*
+- `set_theme`, `insert_component` et `adopt_component_revision`.
+- `detach_component` garde l'identifiant du nœud et les cibles des filtres, et s'annule en une étape.
+- `fill_slot` contrôle le genre de l'emplacement, et le genre réel d'un composant résolu. Il garde l'identifiant du nœud.
+- `instantiateTemplate` copie un modèle avec de nouveaux identifiants : aucun identifiant de la source ne subsiste.
+- **Emplacements.** Le nœud `slot` n'existe que dans le brouillon web. La création et la révision sont refusées localement tant qu'il en reste un (`empty_slot`). Le serveur, lui, refuse le nœud.
+
+*Problèmes.*
+- `empty_slot`, bloquant.
+- `unapproved_reference` pour un dashboard partagé.
+- `component_revision_behind`, avec comparaison et adoption.
+- `component_unavailable`.
+- `theme_unavailable`, non bloquant.
+
+*Références.*
+- `useReferenceStates` lit les états et les documents des thèmes et des composants, y compris ceux ajoutés localement.
+- **Changement de contexte.** Aucun état n'est réutilisé entre deux contextes : un aller-retour A → B → A attend la nouvelle réponse. `useOutcome` accepte pour cela une clé objet, sans effet sur ses autres usages.
+- Une erreur de lecture laisse la référence non résolue.
+- Pour une référence inchangée, l'éditeur prend d'abord ce que le serveur a résolu, puis les documents lus.
+
+*Exécution des composants (C6, B8).*
+- Une tuile composant soumet la même requête que le visuel équivalent, et partage son refus : `DENY` ou `REQUIRE_HUMAN` avec une seule soumission.
+- Un composant non résolu n'est jamais soumis.
+- Un changement de thème laisse les corps de requête soumis identiques octet pour octet, ainsi que les valeurs des options une fois retirées les seules clés de couleur et de police. C'est vérifié sur `value`, `bars`, `line` et `grouped_bars`.
+
+*Vérification.*
+- **Revue.** Sonnet a appliqué 47 mutations : 36 tuées, 11 survivantes. Elle a relevé :
+  - **bloquant** : des rôles de texte ignorés en silence ;
+  - **importants** :
+    - une exception de rendu sur un thème refusé ;
+    - un test d'invariance qui comparait un objet à lui-même ;
+    - la monotonie stricte non testée ;
+    - les identifiants du gabarit peu contrôlés ;
+    - les défauts du thème non branchés sur les tuiles ;
+  - quelques mineurs.
+
+  Tout a été corrigé, et le facteur 1,10 a été ajouté sur sa recommandation.
+- **Contre-revue.** Toutes les corrections sont vérifiées : 40 des 47 nouvelles mutations sont tuées, dont toutes celles du facteur 1,10 au serveur et au web. Les survivantes étaient des trous de test, désormais comblés :
+  - les défauts du thème dans les propriétés, le canevas et l'aperçu ;
+  - l'identifiant conservé par `fill_slot` ;
+  - un composant local illisible, bloquant et jamais soumis ;
+  - l'absence de défauts d'un thème refusé pendant le repli.
+- **Limite connue.** Un thème non résolu dans un dashboard partagé n'est qu'un avertissement dans l'éditeur. Le serveur reste juge du refus à l'enregistrement.
+- **Gate complet.**
+  - Python : 7 505 tests, couverture de 100 %.
+  - Web : 4 041 tests, couverture de 100 %, build compris.
   - Bout en bout : 745 parcours passés et 1 ignoré.
   - Aucune exclusion de couverture nouvelle.

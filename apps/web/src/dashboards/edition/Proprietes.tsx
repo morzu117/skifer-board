@@ -88,7 +88,7 @@ function SectionFields({ section }: { section: Section }) {
 
 function OriginNote({ origin, label, onRemove }: { origin: Origin; label: string; onRemove: () => void }) {
   const editor = useEditor();
-  return <span className="sb-props__origin"><Badge tone="neutral">Origine : {ORIGIN_LABELS[origin]}</Badge>
+  return <span className="sb-props__origin"><Badge tone="neutral">Origine : {ORIGIN_LABELS[origin]}{origin === "theme" && editor.themeDocument ? ` : ${editor.themeDocument.name}` : ""}</Badge>
     {origin === "component" ? <button type="button" className="sb-button" disabled={editor.readOnly} onClick={onRemove}>Retirer la surcharge : {label}</button> : null}
   </span>;
 }
@@ -117,7 +117,7 @@ function PresentationFields({ component }: { component: ExecutableComponent }) {
   if (pinned === undefined) {
     return <Banner tone="warning">L'analyse épinglée n'est pas lue : sa présentation ne se modifie pas tant qu'elle n'est pas connue. Aucune valeur n'est devinée.</Banner>;
   }
-  const found = effective(component, pinned, editor.document.defaults);
+  const found = effective(component, pinned, editor.document.defaults, editor.themeDocument);
   const dimensions = pinned.analysis.query.dimensions.length;
   const presentation = component.presentation;
   const write = (next: typeof presentation, done: string): void => { editor.run({ type: "update", id: component.id, property: "presentation", value: next }, done); };

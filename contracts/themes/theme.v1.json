@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://skifer-board.dev/schema/theme.v1.json",
   "title": "board.theme/v1",
-  "description": "Thème en noms de tokens. Le serveur vérifie les contrastes par base et rôle, la monotonie stricte de la palette séquentielle et des deux ailes divergentes, le nombre impair de paliers divergents, et interdit toute valeur hexadécimale dans tous les champs. Le centre divergent est un token explicitement nommé neutral.fg ou neutral.bg dans les tokens de design, admissible en marque sur la base. Les deux extrémités divergentes sont du même côté du centre et les couleurs catégorielles diffèrent par valeur.",
+  "description": "Les palettes utilisent des tokens connus. La catégorielle exige 3:1 et des couleurs distinctes. Chaque palier séquentiel et chaque palier des ailes divergentes présente un contraste sur la surface au moins 1,10 fois celui du palier précédent vers l’extrémité. La séquentielle atteint 3:1 à son dernier palier ; la divergente possède un nombre impair de paliers, un centre neutral.fg ou neutral.bg et deux extrémités à 3:1. Les rôles de texte atteignent 4,5:1 ; aucune valeur hexadécimale brute n’est admise.",
   "type": "object",
   "additionalProperties": false,
   "required": [

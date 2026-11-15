@@ -9,7 +9,8 @@ import { validateExecutionFilters } from "../../explorer/filters";
 import type { Environment } from "../../shell/sections";
 import type { AdminOutcome } from "../../spaces/admin";
 import type { Fetch } from "../../spaces/api";
-import { executables, type DashboardDraft } from "../document";
+import { executableNodes, type DashboardDraft, type ExecutableComponent } from "../document";
+import type { ComponentDocument } from "../../components-lib/document";
 import type { Tile } from "../model";
 import { composeExecution, type ComposedExecution } from "./execution";
 import { incompatibleTargets, type KnownAnalyses } from "./problems";
@@ -88,10 +89,13 @@ export interface TileSources {
   poll: number;
   /** Valeurs de travail, absentes du document enregistré ; null désactive le filtre. */
   values?: Readonly<Record<string, unknown>>;
+  /** Documents lus à leurs révisions épinglées, indexés par identifiant de nœud. */
+  resolvedComponents?: Readonly<Record<string, { document: ComponentDocument; revision: number } | undefined>>;
 }
 
 export interface Tiles {
   states: ReadonlyMap<string, TileState>;
+  components: ReadonlyMap<string, ExecutableComponent>;
   /** Analyses épinglées lues, par composant, pour les problèmes et les propriétés. */
   analyses: KnownAnalyses;
   /** Les lectures d'analyses épinglées sont-elles toutes terminées ? */
@@ -108,6 +112,7 @@ const keyOf = (reference: { analysis_id: string; revision: number }): string => 
 interface Scoped<T> { context: string; value: T }
 const NO_READS: ReadonlyMap<string, AdminOutcome<AnalysisRevision>> = new Map();
 const NO_VALUES: Readonly<Record<string, unknown>> = {};
+const NO_COMPONENTS: NonNullable<TileSources["resolvedComponents"]> = {};
 const NO_RESULTS: ReadonlyMap<string, ScheduledState> = new Map();
 /** Les états dont la requête est tranchée : un résultat, une table vide ou la décision du moteur. */
 const KEPT = new Set<ScheduledState["status"]>(["success", "empty", "denied"]);
@@ -116,9 +121,15 @@ type ReadyComposed = Extract<ComposedExecution, { status: "ready" }>;
 /** Une tuile : sa composition, ou l'état qui en tient lieu tant qu'elle ne peut pas être composée. */
 interface Composed { id: string; composed: ComposedExecution | null; waiting?: TileState; signature?: string }
 
-export function useTiles({ space, dashboard, identity, environment, document, tiles, catalog, fetcher, poll, values = NO_VALUES }: TileSources): Tiles {
+export function useTiles({ space, dashboard, identity, environment, document, tiles, catalog, fetcher, poll, values = NO_VALUES, resolvedComponents = NO_COMPONENTS }: TileSources): Tiles {
   const context = JSON.stringify([space, identity, environment, dashboard]);
-  const components = useMemo(() => executables(document), [document]);
+  const nodes = useMemo(() => executableNodes(document), [document]);
+  const components = useMemo(() => nodes.flatMap((node): ExecutableComponent[] => {
+    if (node.type !== "component") return [node];
+    const found = resolvedComponents[node.id];
+    if (!found || found.document.id !== node.component.component_id || found.revision !== node.component.revision) return [];
+    return found.document.kind === "visual" ? [{ id: node.id, type: "analysis", reference: found.document.analysis, presentation: found.document.presentation }] : [{ id: node.id, type: "kpi", reference: found.document.analysis, presentation: found.document.presentation }];
+  }), [nodes, resolvedComponents]);
   // Un composant que la réponse du serveur ne connaît pas (retiré puis rétabli par « Annuler » après un enregistrement, ou ajouté
   // depuis) n'a pas d'état de tuile : sa lecture est la seule vérification, et l'analyse épinglée dit ce qu'elle vaut
   // (`composeExecution` refuse une analyse non vérifiée ou à référence non résolue). Rien n'est exécuté avant cette lecture.
@@ -188,7 +199,8 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
     const read = reads.get(keyOf(component.reference));
     if (read === undefined) return { id: component.id, composed: null, waiting: { status: "reading" } };
     if (read.status !== "ok") return { id: component.id, composed: null, waiting: { status: "unreadable", outcome: read } };
-    const one = composeExecution(component, read.value, document.filters, values, tile, environment);
+    const original = nodes.find((node) => node.id === component.id);
+    const one = original?.type === "component" ? composeExecution(original, read.value, document.filters, values, tile, environment, resolvedComponents[component.id]) : composeExecution(component, read.value, document.filters, values, tile, environment);
     if (one.status !== "ready") return { id: component.id, composed: one };
     // Une tuile ciblée par un filtre n'est ni soumise ni montrée prête avant d'avoir établi que le filtre lui convient.
     if (document.filters.some((filter) => filter.targets.includes(component.id))) {
@@ -205,7 +217,7 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
     }
     return { id: component.id, composed: one, signature: JSON.stringify(one.input) };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `tileOf` ne dépend que de `tiles`
-  }), [components, reads, tiles, document.filters, environment, catalog, incompatible, values]);
+  }), [components, nodes, resolvedComponents, reads, tiles, document.filters, environment, catalog, incompatible, values]);
   // Une tâche par requête distincte, dans l'ordre du document : les tuiles de même signature partagent sa soumission et sa décision.
   const requests = new Map<string, ReadyComposed>();
   for (const item of composed) {
@@ -241,6 +253,7 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
   }, [planKey, settled, space, identity, environment, dashboard, context, fetcher, poll]);
   const current = running?.context === context ? running.value : null;
   const states = new Map<string, TileState>();
+  for (const node of nodes) if (node.type === "component" && !components.some((item) => item.id === node.id)) states.set(node.id, { status: "unavailable", reason: "component_unavailable" });
   for (const item of composed) {
     if (cancelled.has(item.id)) states.set(item.id, { status: "cancelled" });
     else if (item.composed?.status === "unavailable") states.set(item.id, { status: "unavailable", reason: item.composed.reason });
@@ -265,5 +278,5 @@ export function useTiles({ space, dashboard, identity, environment, document, ti
     setRetryCount((value) => value + 1);
   };
   const overlaps = new Map(composed.flatMap((item) => item.composed?.status === "ready" ? [[item.id, item.composed.overlaps] as const] : []));
-  return { states, analyses, settled, cancel, retry, restart, overlaps };
+  return { states, components: new Map(components.map((component) => [component.id, component])), analyses, settled, cancel, retry, restart, overlaps };
 }

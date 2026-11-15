@@ -116,12 +116,20 @@ def test_bornes_et_bases() -> None:
         data["categorical"] = names[:n]
         theme.validate(data)
     for n in (3, 7):
-        data["sequential"] = names[:n]
+        data["sequential"] = [
+            "seriesMuted",
+            "seriesEdge",
+            "copper",
+            "blue",
+            "link",
+            "danger.fg",
+            "slate900",
+        ][:n]
         theme.validate(data)
     for palette in (
-        ["blue", "neutral.fg", "copper"],
-        ["copper", "blue", "neutral.fg", "blue", "copper"],
-        ["seriesMuted", "copper", "blue", "neutral.fg", "copperInk", "blue", "copper"],
+        ["blue", "neutral.bg", "copper"],
+        ["ink", "blue", "neutral.bg", "blue", "ink"],
+        ["ink", "blue", "seriesMuted", "neutral.bg", "copper", "blue", "ink"],
     ):
         data["diverging"] = palette
         theme.validate(data)
@@ -131,10 +139,12 @@ def test_bornes_et_bases() -> None:
     data["roles"]["text"] = dict.fromkeys(data["roles"]["text"], "onSlate")
     data["categorical"] = ["onSlate", "surface"]
     data["sequential"] = ["seriesEdge", "onSlate", "surface"]
-    data["diverging"] = ["onSlate", "neutral.bg", "line"]
+    data["diverging"] = ["onSlate", "neutral.fg", "line"]
     theme.validate(data)
     data["sequential"] = list(reversed(data["sequential"]))
-    theme.validate(data)
+    with pytest.raises(ContentError) as error:
+        theme.validate(data)
+    assert any(v.rule == "not_monotone" and v.path == "/sequential" for v in error.value.violations)
 
 
 def test_canonique_diff_et_depot(tmp_path: Path) -> None:
@@ -174,6 +184,20 @@ def test_neutres_et_couleurs_par_valeur() -> None:
         assert (path, rule) in {(v.path, v.rule) for v in error.value.violations}
 
 
+def test_contraste_pas_minimum_partage() -> None:
+    import re
+
+    root = ROOT.parents[1]
+    web = (root / "apps/web/src/themes/chartTheme.ts").read_text()
+    match = re.search(r"export const MIN_STEP_RATIO = ([0-9.]+);", web)
+    assert match is not None
+    assert float(match.group(1)) == theme.MIN_STEP_RATIO == 1.1
+    assert theme._increasing([1, 1.1])
+    assert theme._increasing([1, 1.100001])
+    assert not theme._increasing([1, 1.099999])
+    assert not theme._increasing([1, 1])
+
+
 def test_enumerations_reference_dashboard() -> None:
     for key in ("legend", "number_format", "tooltip"):
         assert theme.schema()["$defs"][key] == {
@@ -199,3 +223,49 @@ def test_couleur_categorielle_ignore_la_casse_hex(monkeypatch: pytest.MonkeyPatc
     assert [(v.path, v.rule) for v in error.value.violations] == [
         ("/categorical", "duplicate_color")
     ]
+
+
+@pytest.mark.parametrize(
+    "name,path,rule",
+    [
+        ("sequential_last_under", "/sequential/2", "token_not_admissible"),
+        ("sequential_contrast_order", "/sequential", "not_monotone"),
+        ("diverging_endpoint_under", "/diverging/0", "token_not_admissible"),
+        ("palette_unknown", "/sequential/1", "token_not_admissible"),
+        ("diverging_unknown", "/diverging/0", "token_not_admissible"),
+        ("sequential_equal", "/sequential", "not_monotone"),
+        ("sequential_small_step", "/sequential", "not_monotone"),
+        ("diverging_wing_equal", "/diverging", "not_monotone"),
+        ("diverging_center_equal", "/diverging", "diverging_sides"),
+    ],
+)
+def test_regles_contraste_palette(name: str, path: str, rule: str) -> None:
+    data = json.loads((ROOT / f"fixtures/invalid/{name}.json").read_text())
+    with pytest.raises(ContentError) as error:
+        theme.validate(data)
+    assert (path, rule) in {
+        (violation.path, violation.rule) for violation in error.value.violations
+    }
+
+
+@pytest.mark.parametrize("palette,index", [("sequential", 1), ("diverging", 0)])
+def test_semantique_ignore_la_monotonie_si_token_inconnu(palette: str, index: int) -> None:
+    data = sample()
+    data[palette][index] = "token_inconnu"
+
+    violations = theme._semantic(data)
+
+    assert [(item.path, item.rule) for item in violations] == [
+        (f"/{palette}/{index}", "token_not_admissible")
+    ]
+    assert not {"not_monotone", "diverging_sides"} & {item.rule for item in violations}
+
+
+def test_parite_web_palettes_a_jour() -> None:
+    published = json.loads((ROOT / "fixtures/palette-parity.json").read_text())
+    assert set(published) == {path.stem for path in (ROOT / "fixtures/invalid").glob("*.json")}
+    for name, expected in published.items():
+        data = json.loads((ROOT / f"fixtures/invalid/{name}.json").read_text())
+        with pytest.raises(ContentError) as error:
+            theme.validate(data)
+        assert [{"path": v.path, "rule": v.rule} for v in error.value.violations] == expected, name

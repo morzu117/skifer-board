@@ -186,10 +186,15 @@ export function Canevas() {
   const leaf = (child: LayoutNode): ReactNode => {
     if (child.type === "container") return frame(child.id, rows(child.rows, "Conteneur vide : ajoutez-y une rangée."));
     if (child.type === "text") return frame(child.id, <BlocksView blocks={child.blocks} />);
-    if (child.type === "component") return frame(child.id, <p role="status">Composant indisponible : rendu non pris en charge.</p>);
+    if (child.type === "slot") return frame(child.id, <p>Emplacement : {child.slot.label}</p>);
+    if (child.type === "component") {
+      const component = editor.components?.get(child.id);
+      if (!component) return frame(child.id, <p role="status">Composant indisponible : rendu non pris en charge.</p>);
+      return frame(child.id, <Tuile component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} themeDocument={editor.themeDocument} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} onRestart={() => { editor.restartTile(child.id); }} />);
+    }
     if (child.type === "separator") return frame(child.id, <hr className="sb-node__rule" />);
     const component = components.get(child.id) as ExecutableComponent;
-    return frame(child.id, <><Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} /><RevisionAnalyse id={child.id} />{(editor.overlaps.get(child.id) ?? []).length === 0 ? null : <p className="sb-tile__state">Filtres de l’analyse et du dashboard appliqués ensemble : {editor.overlaps.get(child.id)?.join(", ")}.</p>}</>);
+    return frame(child.id, <><Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} themeDocument={editor.themeDocument} /><RevisionAnalyse id={child.id} />{(editor.overlaps.get(child.id) ?? []).length === 0 ? null : <p className="sb-tile__state">Filtres de l’analyse et du dashboard appliqués ensemble : {editor.overlaps.get(child.id)?.join(", ")}.</p>}</>);
   };
 
   const column = (item: Column): ReactNode => frame(item.id, item.children.length === 0 ? <p className="sb-node__empty">Colonne vide : ajoutez-y un texte, un séparateur ou un conteneur.</p> : item.children.map(leaf));

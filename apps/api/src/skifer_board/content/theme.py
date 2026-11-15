@@ -1,7 +1,7 @@
 """Format `board.theme/v1` : validation, YAML canonique et diff structurel.
 
 Le centre divergent est explicitement un des tokens `neutral.fg` et `neutral.bg` du
-catalogue de design, sous réserve de contraste. Chaque aile est strictement monotone.
+catalogue de design. Le contraste augmente d'au moins 10 % à chaque pas vers une extrémité.
 Le dépôt utilise `personal` comme indication technique de coup d'œil : ce n'est pas une
 approbation ni une décision de visibilité, qui seront établies à l'étape 20.2.
 """
@@ -41,7 +41,7 @@ from .errors import (
     ContentError,
     Violation,
 )
-from .token_catalog import CONTRACT, TOKENS
+from .token_catalog import CONTRACT, TOKENS, contrast
 
 SCHEMA_PATH = Path(__file__).resolve().parents[5] / "contracts/themes/theme.v1.json"
 NEUTRAL = frozenset({"neutral.fg", "neutral.bg"})
@@ -91,6 +91,9 @@ _ORDER = (
 _RANK = {key: index for index, key in enumerate(_ORDER)}
 _HEX = re.compile(r"#[0-9a-fA-F]{6}")
 
+# Chaque palier doit augmenter le contraste d'au moins 10 % ; partagé avec chartTheme.ts.
+MIN_STEP_RATIO = 1.10
+
 
 @cache
 def _json(path: Path) -> dict[str, Any]:
@@ -128,24 +131,29 @@ def _hex_violations(data: Any, path: str = "") -> list[Violation]:
     return []
 
 
-def _monotone(values: list[float]) -> bool:
-    return all(a < b for a, b in zip(values, values[1:], strict=False)) or all(
-        a > b for a, b in zip(values, values[1:], strict=False)
-    )
+def _increasing(values: list[float]) -> bool:
+    return all(b >= a * MIN_STEP_RATIO for a, b in zip(values, values[1:], strict=False))
 
 
 def _semantic(data: dict[str, Any]) -> list[Violation]:
     tokens = _json(CONTRACT)
     base = tokens["bases"][data["base"]]
     lights = tokens["luminance"]
+    surface = lights[base["surface"]]
     violations: list[Violation] = []
     for role, category in (("marks", "mark"), ("text", "text")):
         for name, token in data["roles"][role].items():
             if token not in base[category]:
                 violations.append(Violation(f"/roles/{role}/{name}", "token_not_admissible"))
     for palette in ("categorical", "sequential", "diverging"):
-        for i, token in enumerate(data[palette]):
-            if token not in base["mark"]:
+        values = data[palette]
+        for i, token in enumerate(values):
+            must_contrast = (
+                palette == "categorical"
+                or (palette == "sequential" and i == len(values) - 1)
+                or (palette == "diverging" and i in (0, len(values) - 1))
+            )
+            if token not in lights or (must_contrast and token not in base["mark"]):
                 violations.append(Violation(f"/{palette}/{i}", "token_not_admissible"))
     colors: dict[str, str] = {}
 
@@ -158,12 +166,13 @@ def _semantic(data: dict[str, Any]) -> list[Violation]:
                 colors[name] = value.lower()
 
     collect(_json(TOKENS)["color"])
-    categorical = [colors[token] for token in data["categorical"]]
+    categorical = [colors[token] for token in data["categorical"] if token in colors]
     if len(set(categorical)) != len(categorical):
         violations.append(Violation("/categorical", DUPLICATE_COLOR))
-    sequential = [lights[name] for name in data["sequential"]]
-    if not _monotone(sequential):
-        violations.append(Violation("/sequential", "not_monotone"))
+    sequential = data["sequential"]
+    if all(name in lights for name in sequential):
+        if not _increasing([contrast(lights[name], surface) for name in sequential]):
+            violations.append(Violation("/sequential", "not_monotone"))
     divergent = data["diverging"]
     if len(divergent) % 2 == 0:
         violations.append(Violation("/diverging", "even_diverging"))
@@ -171,11 +180,12 @@ def _semantic(data: dict[str, Any]) -> list[Violation]:
         mid = len(divergent) // 2
         if divergent[mid] not in NEUTRAL:
             violations.append(Violation(f"/diverging/{mid}", "non_neutral"))
-        values = [lights[name] for name in divergent]
-        if (values[0] - values[mid]) * (values[-1] - values[mid]) <= 0:
-            violations.append(Violation("/diverging", DIVERGING_SIDES))
-        if not _monotone(values[: mid + 1]) or not _monotone(values[mid:]):
-            violations.append(Violation("/diverging", "not_monotone"))
+        if all(name in lights for name in divergent):
+            values = [contrast(lights[name], surface) for name in divergent]
+            if values[0] <= values[mid] or values[-1] <= values[mid]:
+                violations.append(Violation("/diverging", DIVERGING_SIDES))
+            if not _increasing(list(reversed(values[: mid + 1]))) or not _increasing(values[mid:]):
+                violations.append(Violation("/diverging", "not_monotone"))
     return violations
 
 
@@ -185,6 +195,15 @@ def validate(data: Any) -> dict[str, Any]:
         violations = _hex_violations(data)
     if not violations:
         violations = schema_violations(_validator(), data)
+        lights = _json(CONTRACT)["luminance"]
+        violations = [
+            Violation(item.path, "token_not_admissible")
+            if re.fullmatch(r"/(categorical|sequential|diverging)/[0-9]+", item.path)
+            and isinstance(data[item.path.split("/")[1]][int(item.path.split("/")[2])], str)
+            and data[item.path.split("/")[1]][int(item.path.split("/")[2])] not in lights
+            else item
+            for item in violations
+        ]
     if not violations:
         violations = _semantic(data)
     if violations:

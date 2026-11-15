@@ -6,11 +6,16 @@ import { LIMITS, type CommonFilter, type DashboardDraft, type ExecutableComponen
 import type { Tile } from "../model";
 
 /** Codes fermés des problèmes calculés sans appel au serveur. */
-export type ProblemCode = "component_unavailable" | "analysis_unavailable" | "unresolved_reference" | "unverified" | "filter_without_target" | "filter_incompatible" | "limit_reached" | "revision_behind" | "kpi_incompatible" | "chart_incompatible";
+export type ProblemCode = "theme_unavailable" | "empty_slot" | "unapproved_reference" | "component_revision_behind" | "component_unavailable" | "analysis_unavailable" | "unresolved_reference" | "unverified" | "filter_without_target" | "filter_incompatible" | "limit_reached" | "revision_behind" | "kpi_incompatible" | "chart_incompatible";
 /** Un avertissement ne bloque pas l'enregistrement ; un problème bloquant l'empêche. */
 export type Problem = { code: ProblemCode; severity: "blocking" | "warning"; nodeId: string; path: string; pinned?: number; current?: number; limit?: string };
 /** Révision épinglée connue et dernière révision connue, par identifiant de composant. */
 export type KnownAnalyses = Readonly<Record<string, { pinned: AnalysisRevision; current: number | null } | undefined>>;
+/** État connu de chaque référence épinglée, sans supposer qu'une révision récente est approuvée. */
+export interface KnownSharedReferences {
+  theme?: { approved: boolean | null };
+  components?: Readonly<Record<string, { approved: boolean | null; current: number | null; resolved: boolean } | undefined>>;
+}
 
 /** Types de graphiques compatibles avec le nombre de dimensions de la requête. */
 export function compatibleCharts(dimensions: number): readonly ChartKind[] {
@@ -65,7 +70,7 @@ export function incompatibleTargets(filter: CommonFilter, analyses: KnownAnalyse
  * Les révisions dépassées et états invérifiables sont des avertissements ; un catalogue ou une
  * analyse inconnus ne permettent pas de conclure à une incompatibilité.
  */
-export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile[], analyses: KnownAnalyses, catalog: readonly ExplorerModel[] | null): readonly Problem[] {
+export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile[], analyses: KnownAnalyses, catalog: readonly ExplorerModel[] | null, references?: KnownSharedReferences): readonly Problem[] {
   const problems: Problem[] = [];
   const components = new Map<string, { node: ExecutableComponent; path: string }>();
   let nodes = 0;
@@ -93,10 +98,16 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
           if (child.type === "container") rows(child.rows, `${childPath}/rows`, child.id);
           else {
             count += 1;
-            if (child.type === "component") {
+            if (child.type === "slot") add("empty_slot", "blocking", child.id, childPath);
+            else if (child.type === "component") {
               executable += 1;
               const tile = tiles.find((item) => item.id === child.id);
-              add(tile?.state === "unavailable" ? tile.reason : "analysis_unavailable", "blocking", child.id, `${childPath}/component`);
+              const known = references?.components?.[child.id];
+              if (known?.resolved === false) add("component_unavailable", "blocking", child.id, `${childPath}/component`);
+              else if (tile?.state === "unavailable") add(tile.reason, "blocking", child.id, `${childPath}/component`);
+              else if (!known) add("analysis_unavailable", "blocking", child.id, `${childPath}/component`);
+              if (known && document.visibility === "shared" && known.approved === false) add("unapproved_reference", "blocking", child.id, `${childPath}/component`);
+              if (known?.current !== null && known?.current !== undefined && known.current > child.component.revision) problems.push({ code: "component_revision_behind", severity: "warning", nodeId: child.id, path: `${childPath}/component`, pinned: child.component.revision, current: known.current });
             } else if (child.type === "analysis" || child.type === "kpi") {
               executable += 1;
               components.set(child.id, { node: child, path: childPath });
@@ -107,6 +118,7 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
     });
   }
   limit(document.layout.sections.length, LIMITS.sections, "dashboard", "/layout/sections");
+  if (document.visibility === "shared" && document.theme && references?.theme?.approved === false) add("unapproved_reference", "blocking", "dashboard", "/theme");
   limit(document.filters.length, LIMITS.filters, "dashboard", "/filters");
   document.layout.sections.forEach((section, index) => {
     nodes += 1;
