@@ -48,6 +48,7 @@ READY = "ready"
 UNAVAILABLE = "unavailable"
 UNVERIFIED = "unverified"
 ANALYSIS_UNAVAILABLE = "analysis_unavailable"
+COMPONENT_UNAVAILABLE = "component_unavailable"
 UNRESOLVED_REFERENCE = "unresolved_reference"
 FILTER_INCOMPATIBLE = "filter_incompatible"
 # Raisons d'indisponibilité d'une tuile, ensemble fermé.

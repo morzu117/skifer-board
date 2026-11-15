@@ -6,7 +6,7 @@ import { LIMITS, type CommonFilter, type DashboardDraft, type ExecutableComponen
 import type { Tile } from "../model";
 
 /** Codes fermés des problèmes calculés sans appel au serveur. */
-export type ProblemCode = "analysis_unavailable" | "unresolved_reference" | "unverified" | "filter_without_target" | "filter_incompatible" | "limit_reached" | "revision_behind" | "kpi_incompatible" | "chart_incompatible";
+export type ProblemCode = "component_unavailable" | "analysis_unavailable" | "unresolved_reference" | "unverified" | "filter_without_target" | "filter_incompatible" | "limit_reached" | "revision_behind" | "kpi_incompatible" | "chart_incompatible";
 /** Un avertissement ne bloque pas l'enregistrement ; un problème bloquant l'empêche. */
 export type Problem = { code: ProblemCode; severity: "blocking" | "warning"; nodeId: string; path: string; pinned?: number; current?: number; limit?: string };
 /** Révision épinglée connue et dernière révision connue, par identifiant de composant. */
@@ -95,7 +95,8 @@ export function dashboardProblems(document: DashboardDraft, tiles: readonly Tile
             count += 1;
             if (child.type === "component") {
               executable += 1;
-              add("analysis_unavailable", "blocking", child.id, `${childPath}/component`);
+              const tile = tiles.find((item) => item.id === child.id);
+              add(tile?.state === "unavailable" ? tile.reason : "analysis_unavailable", "blocking", child.id, `${childPath}/component`);
             } else if (child.type === "analysis" || child.type === "kpi") {
               executable += 1;
               components.set(child.id, { node: child, path: childPath });

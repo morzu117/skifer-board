@@ -12,6 +12,7 @@ describe("problèmes du dashboard", () => {
   it("signale un composant référencé indisponible", () => {
     const shared: DashboardDraft = { ...doc, filters: [], layout: { sections: [{ id: "s", rows: [{ id: "r", columns: [{ id: "c", span: 12, children: [{ id: "x", type: "component", component: { component_id: "ref", revision: 1 } }] }] }] }] } };
     expect(dashboardProblems(shared, [], {}, null)).toContainEqual({ code: "analysis_unavailable", severity: "blocking", nodeId: "x", path: "/layout/sections/0/rows/0/columns/0/children/0/component" });
+    expect(dashboardProblems(shared, [{ id: "x", state: "unavailable", reason: "component_unavailable" }], {}, null)).toContainEqual({ code: "component_unavailable", severity: "blocking", nodeId: "x", path: "/layout/sections/0/rows/0/columns/0/children/0/component" });
   });
   it("ne traite pas span 12 comme une borne atteinte", () => {
     const d: DashboardDraft = { ...doc, filters: [], layout: { sections: [{ id: "s", rows: [{ id: "r", columns: [{ id: "c", span: 12, children: [] }] }] }] } };

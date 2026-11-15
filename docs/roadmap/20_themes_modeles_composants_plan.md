@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 et 20.2 réalisées**, 20.3 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 à 20.3 réalisées**, 20.4 à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -265,5 +265,47 @@ Développé par Codex (gpt-6.1-terra) en petites étapes successives, de a à e,
 - **Gate complet.**
   - Python : 7 490 tests, couverture de 100 %.
   - Web : 3 898 tests, couverture de 100 %, build compris.
+  - Bout en bout : 745 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle.
+
+### 20.3 — Contrat web
+
+Développé par Codex (gpt-6.1-terra) en sous-étapes, de a à b3, puis relu par Claude Sonnet 5.5 : une revue, puis une contre-revue. Un redémarrage de la machine a interrompu la dernière sous-étape. Le travail conservé dans le worktree a été repris et vérifié.
+
+*Catalogue des tokens (C2).*
+- `src/themes/catalog.ts` importe statiquement le contrat `contracts/themes/tokens.v1.json` et le décode strictement. Le décodeur vérifie :
+  - les clés, les surfaces et les luminances ;
+  - la cohérence des contrastes ;
+  - l'ensemble exact des tokens admissibles par base et par rôle.
+- Les fonctions pures `admissible` et `contrastOf` refusent un nom hors catalogue, y compris un nom hérité de l'objet comme `constructor`.
+- Un test recalcule chaque contraste depuis les valeurs des tokens avec `contrastRatio` de `charts/theme.ts`. Il retrouve les mêmes ensembles admissibles que le serveur aux seuils inclusifs de 3:1 et 4,5:1. Un catalogue incohérent est refusé.
+
+*Clients et décodeurs.*
+- `src/themes/`, `src/page-templates/` et `src/components-lib/` contiennent les clients des routes 20.2 : créer, lister, lire, réviser, supprimer, historique, diff, approuver, approbations et consommateurs.
+- Les trois clients s'appuient sur une fabrique commune, `src/shared-content/`, qui reprend `call` de `spaces/admin.ts`. Elle porte l'ETag, l'annulation, la perte de session ou d'espace et la lecture exacte des entiers.
+- Les décodeurs de succès et de refus sont stricts. `head_changed` n'est jamais accepté, et `already_approved` est distingué.
+- Le diff accepte l'égalité JSON quand le serveur sépare `1` de `1.0`.
+- Les 20 exemples des thèmes, les 18 des modèles et les 20 des composants sont décodés et comptés exactement. L'écart réel d'un modèle est comparé à la réponse de la route réelle.
+
+*`component_unavailable`.*
+- La tuile d'un composant bloqué porte désormais cette raison fermée, au lieu de `analysis_unavailable` : composant non approuvé dans un dashboard partagé, introuvable ou illisible.
+- Une analyse indisponible derrière un composant résolu garde `analysis_unavailable`.
+- Le serveur, le contrat `lire-composant-indisponible.json`, le décodeur, les libellés, l'aperçu et les problèmes de l'éditeur sont alignés.
+- Un inventaire figé des codes du serveur pour les trois genres est comparé aux ensembles du web.
+
+*Vérification.*
+- **Revue.** Sonnet a appliqué 45 mutations : 27 ont été tuées. Elle a relevé :
+  - un diff de composant rejeté à tort à cause de `1.0` ;
+  - des effets de session et d'espace non testés ;
+  - la lecture exacte non testée ;
+  - le refus d'un catalogue incohérent non testé ;
+  - deux cas de `component_unavailable` sans test ;
+  - la duplication des clients et quelques points mineurs.
+
+  Tout a été corrigé.
+- **Contre-revue.** Les survivantes à corriger sont tuées, et la factorisation ne perd rien : 16 des 19 mutations de la fabrique commune sont tuées. Deux tests mineurs restent, sans régression : l'identifiant d'une réponse différent de celui demandé, et `expected` à `text` dans un diff de modèle. Ils sont ajoutés en tête de 20.4.
+- **Gate complet.**
+  - Python : 7 492 tests, couverture de 100 %.
+  - Web : 3 971 tests, couverture de 100 %, build compris.
   - Bout en bout : 745 parcours passés et 1 ignoré.
   - Aucune exclusion de couverture nouvelle.

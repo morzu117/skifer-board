@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { LIMITS, type Column, type LayoutNode, type Row } from "../document";
+import { PROBLEM_LABELS } from "../labels";
 import { BlocksView } from "./Blocs";
 import { useEditor } from "./EditorContext";
 import { PREVIEW_WIDTHS, responsiveLayout, type EffectiveColumn, type EffectiveRow } from "./responsive";
@@ -31,7 +32,10 @@ export function Apercu({ onClose }: { onClose: () => void }) {
   const leaf = (child: LayoutNode, effective: EffectiveColumn["children"][number]): ReactNode => {
     if (child.type === "container") return <div key={child.id} className="sb-preview__container">{rows(child.rows, effective.rows as readonly EffectiveRow[])}</div>;
     if (child.type === "text") return <BlocksView key={child.id} blocks={child.blocks} />;
-    if (child.type === "component") return <p key={child.id} role="status">Composant indisponible : rendu non pris en charge.</p>;
+    if (child.type === "component") {
+      const issue = editor.problems.find((problem) => problem.nodeId === child.id && problem.code === "component_unavailable");
+      return <p key={child.id} role="status">{issue ? PROBLEM_LABELS.component_unavailable : "Composant indisponible : rendu non pris en charge."}</p>;
+    }
     if (child.type === "separator") return <hr key={child.id} className="sb-node__rule" />;
     return <div key={child.id} data-narrow={effective.narrow} className="sb-preview__tile"><Tuile component={child} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} onRestart={() => { editor.restartTile(child.id); }} /></div>;
   };

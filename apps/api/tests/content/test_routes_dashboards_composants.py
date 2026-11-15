@@ -60,7 +60,7 @@ def test_composant_insere_analyse_et_filtre(banc: Banc) -> None:
     gone = banc.appel(LECTEUR_GROUPE, "GET", f"{root}/{response['id']}")
     assert gone.status_code == 200
     assert gone.json()["components"] == [
-        {"id": node_id, "state": "unavailable", "reason": "analysis_unavailable"}
+        {"id": node_id, "state": "unavailable", "reason": "component_unavailable"}
     ]
     assert node_id not in gone.json()["resolved"]["components"]
 
@@ -119,7 +119,7 @@ def test_brouillon_autrui_ne_resout_pas_la_tuile(
     read = banc.appel(CREATEUR_GROUPE, "GET", f"/api/spaces/{A}/dashboards/{document['id']}")
     assert read.status_code == 200
     assert read.json()["components"] == [
-        {"id": node_id, "state": "unavailable", "reason": "analysis_unavailable"}
+        {"id": node_id, "state": "unavailable", "reason": "component_unavailable"}
     ]
     assert node_id not in read.json()["resolved"]["components"]
 
@@ -166,3 +166,34 @@ def test_projection_imbrication_kpi_et_refus_ferme(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(dashboard_web, "validate_references", failure)
     pinned = Pinned(None, A, PersonRef("issuer", "subject"), "tip")  # type: ignore[arg-type]
     assert pinned.of(document)[node_id] is None
+
+
+def test_composant_non_approuve_dans_dashboard_partage(banc: Banc) -> None:
+    from skifer_board.content.index import DashboardRow
+    from skifer_board.content.repository import DASHBOARD_KIND
+
+    from .monde_dashboard import new_id
+
+    theme, component = creer_partages(banc)
+    content, node_id = dashboard(theme, component, "shared")
+    content.update(
+        {
+            "api_version": "board.dashboard/v1",
+            "id": new_id(),
+            "owner": {"issuer": CREATEUR_GROUPE.ref.issuer, "subject": CREATEUR_GROUPE.ref.subject},
+        }
+    )
+    stored = banc.depot.write(
+        A,
+        content["id"],
+        content,
+        expected_revision=None,
+        actor=CREATEUR_GROUPE.ref,
+        kind=DASHBOARD_KIND,
+    )
+    banc.tableaux.upsert(DashboardRow.of(A, stored))
+    read = banc.appel(LECTEUR_GROUPE, "GET", f"/api/spaces/{A}/dashboards/{content['id']}")
+    assert read.status_code == 200
+    assert read.json()["components"] == [
+        {"id": node_id, "state": "unavailable", "reason": "component_unavailable"}
+    ]

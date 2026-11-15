@@ -9,7 +9,7 @@ import { decodeDashboard, decodeOwn, DEFAULT_VALUES, executableNodes, HEADER_VAL
 /** Réponses des routes `/api/spaces/{space_id}/dashboards…` (plan 19, 19.2), décodées sans rien compléter. */
 
 /** Raisons fermées pour lesquelles une tuile est indisponible. */
-export const TILE_REASONS = ["analysis_unavailable", "unresolved_reference", "filter_incompatible"] as const;
+export const TILE_REASONS = ["analysis_unavailable", "unresolved_reference", "filter_incompatible", "component_unavailable"] as const;
 export type TileReason = (typeof TILE_REASONS)[number];
 
 /**
@@ -55,7 +55,7 @@ function tile(value: unknown, path: string): Tile {
  */
 function coherentState(state: ReadState, tiles: readonly Tile[]): boolean {
   const unverified = tiles.some((one) => one.state === "unverified");
-  const known = tiles.some((one) => one.state === "ready" || (one.state === "unavailable" && one.reason !== "analysis_unavailable"));
+  const known = tiles.some((one) => one.state === "ready" || (one.state === "unavailable" && one.reason !== "analysis_unavailable" && one.reason !== "component_unavailable"));
   if (unverified && known) return false;
   switch (state) {
     case "index_stale":
@@ -270,7 +270,7 @@ function change(value: unknown, path: string): DashboardChange {
     }
     const before = kind === "added" ? absent(found.before, `${path}.before`) : decoder(found.before, `${path}.before`);
     const after = kind === "removed" ? absent(found.after, `${path}.after`) : decoder(found.after, `${path}.after`);
-    if (kind === "modified" && same(before, after)) return fail(path, "valeurs différentes");
+    if (kind === "modified" && same(before, after) && !numeric(before)) return fail(path, "valeurs différentes");
     return { path: where, kind, node, id: null, before, after };
   }
   const id = uuid(found.id, `${path}.id`);

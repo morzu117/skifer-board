@@ -13,7 +13,7 @@ import { Apercu } from "./Apercu";
 it("transmet les actions des tuiles et gère une largeur indisponible avant mesure", async () => {
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(0);
   const cancelTile = vi.fn(); const retryTile = vi.fn(); const restartTile = vi.fn();
-  mock.editor = { document: sampleDraft(), states: new Map(), analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile, retryTile, restartTile } as unknown as Editor;
+  mock.editor = { document: sampleDraft(), states: new Map(), problems: [], analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile, retryTile, restartTile } as unknown as Editor;
   const view = render(<Apercu onClose={vi.fn()} />);
   const first = within(screen.getAllByRole("group", { name: "Actions de tuile" })[0] as HTMLElement);
   await userEvent.click(first.getByRole("button", { name: "Annuler" }));
@@ -29,7 +29,7 @@ it("transmet les actions des tuiles et gère une largeur indisponible avant mesu
 
 it("respecte la largeur proportionnelle et réduit le zoom à la largeur disponible", () => {
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(640);
-  mock.editor = { document: sampleDraft(), states: new Map(), analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile: vi.fn(), retryTile: vi.fn(), restartTile: vi.fn() } as unknown as Editor;
+  mock.editor = { document: sampleDraft(), states: new Map(), problems: [], analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile: vi.fn(), retryTile: vi.fn(), restartTile: vi.fn() } as unknown as Editor;
   const view = render(<Apercu onClose={vi.fn()} />);
   expect(view.container.querySelector(`[data-column="${N.c1}"]`)).toHaveStyle({ gridColumn: "span 4" });
   expect(view.container.querySelector(".sb-preview__viewport")).toHaveStyle({ zoom: "0.5" });
@@ -38,7 +38,15 @@ it("respecte la largeur proportionnelle et réduit le zoom à la largeur disponi
 
 it("signale un composant référencé indisponible dans l'aperçu", () => {
   const draft = sampleDraft();
-  mock.editor = { document: { ...draft, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } }, states: new Map(), analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile: vi.fn(), retryTile: vi.fn(), restartTile: vi.fn() } as unknown as Editor;
+  mock.editor = { document: { ...draft, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } }, states: new Map(), problems: [], analyses: {}, catalog: null, theme: SKIFER_CLAIR, cancelTile: vi.fn(), retryTile: vi.fn(), restartTile: vi.fn() } as unknown as Editor;
   render(<Apercu onClose={vi.fn()} />);
   expect(screen.getByText("Composant indisponible : rendu non pris en charge.")).toBeInTheDocument();
+});
+
+
+it("affiche la raison transmise pour un composant indisponible", () => {
+  const draft = sampleDraft();
+  mock.editor = { document: { ...draft, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } }, states: new Map(), problems: [{ code: "component_unavailable", nodeId: N.visual }], analyses: {}, catalog: null, theme: SKIFER_CLAIR } as unknown as Editor;
+  render(<Apercu onClose={vi.fn()} />);
+  expect(screen.getByText("Composant indisponible : la tuile ne s’exécute pas.")).toBeInTheDocument();
 });

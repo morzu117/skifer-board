@@ -37,7 +37,13 @@ from .common import changes_json
 from .composition import component_analysis
 from .consumer_rows import consumer_row
 from .dashboard import API_VERSION, Document, executables
-from .dashboard_checks import Tile, personal_components, save_violations, tiles
+from .dashboard_checks import (
+    COMPONENT_UNAVAILABLE,
+    Tile,
+    personal_components,
+    save_violations,
+    tiles,
+)
 from .dashboard_shared import execution_view, references, resolve_references, validate_references
 from .errors import (
     CONTENT_UNAVAILABLE,
@@ -452,7 +458,12 @@ def install_dashboard_routes(
         except SQLAlchemyError:
             log.warning("dashboard state not verified")
             found = None
-        states = tiles(projected, pins, found, names)
+        states = [
+            Tile(item.id, item.state, COMPONENT_UNAVAILABLE)
+            if item.id in pinned._unavailable
+            else item
+            for item in tiles(projected, pins, found, names)
+        ]
         if stale:
             return STALE, states
         if found is None:

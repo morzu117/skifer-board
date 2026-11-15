@@ -28,6 +28,7 @@ export const READ_STATE_LABELS: Readonly<Record<ReadState, StateLabel>> = {
 
 /** Pourquoi une tuile ne s'exécute pas : la raison est dite, jamais une approximation. */
 export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
+  component_unavailable: "Le composant épinglé n’est pas disponible pour vous.",
   analysis_unavailable: "L'analyse épinglée n'est pas disponible pour vous : elle est supprimée ou ne vous est pas ouverte.",
   unresolved_reference: "Une référence de l'analyse épinglée n'est pas résolue dans le catalogue.",
   filter_incompatible: "Un filtre commun ne s'applique pas à cette tuile : sa dimension, son opérateur ou ses valeurs ne conviennent pas.",
@@ -58,6 +59,7 @@ export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {
 };
 
 export const PROBLEM_LABELS: Readonly<Record<ProblemCode, string>> = {
+  component_unavailable: "Composant indisponible : la tuile ne s’exécute pas.",
   analysis_unavailable: "Analyse indisponible : la tuile ne s'exécute pas.",
   unresolved_reference: "Référence non résolue : la tuile reste indisponible.",
   unverified: "Tuile non vérifiée : le catalogue n'a pas pu être lu.",

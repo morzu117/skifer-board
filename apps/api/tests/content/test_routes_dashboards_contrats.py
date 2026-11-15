@@ -48,6 +48,7 @@ NOMS = frozenset(
     {
         "refus-reference-non-approuvee",
         "lire-references-resolues",
+        "lire-composant-indisponible",
         "creer",
         "lire",
         "lister",
@@ -343,6 +344,16 @@ def test_contrats_references_partagees(banc: Banc) -> None:
         CREATEUR_GROUPE, "DELETE", f"{CHEMIN}/{analyse}", params={"expected_revision": 1}
     )
     shared_exemple("analyses", "refus-analyse-utilisee-par-composant", refus, 409)
+    from skifer_board.content.repository import COMPONENT_KIND
+
+    banc.depot.delete(
+        A, component_id, expected_revision=1, actor=CREATEUR_GROUPE.ref, kind=COMPONENT_KIND
+    )
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN_TABLEAUX}/{cree.json()['id']}"),
+        "lire-composant-indisponible",
+        200,
+    )
 
 
 def test_zz_le_dossier_ne_contient_que_les_exemples_produits() -> None:
