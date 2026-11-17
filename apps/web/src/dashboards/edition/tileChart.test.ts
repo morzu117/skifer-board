@@ -103,3 +103,47 @@ it("une valeur de dimension absente du résultat se dit absente", () => {
   const drawn = drawChart([{ revenue: "1" }], { metrics: ["revenue"], dimensions: ["region"] }, style(), SKIFER_CLAIR, {});
   expect((drawn.option as { xAxis: { data: string[] } }).xAxis.data).toEqual(["—"]);
 });
+
+it("formate les axes temporels et infobulles sans changer les données", () => {
+  const temporal = [{ jour: "2026-01-15", revenue: "12.5" }, { jour: "2026-02-15", revenue: "9" }];
+  const shape = { metrics: ["revenue"], dimensions: ["jour"], temporalDimensions: ["jour"] };
+  const baseline = drawChart(temporal, shape, style(), SKIFER_CLAIR, {});
+  const defaultDate = drawChart(temporal, shape, style({ dateFormat: "short" }), SKIFER_CLAIR, {});
+  expect(JSON.stringify(defaultDate)).toBe(JSON.stringify(baseline));
+  const iso = drawChart(temporal, shape, style({ dateFormat: "iso" }), SKIFER_CLAIR, {});
+  expect(JSON.stringify(iso)).toBe(JSON.stringify(baseline));
+  const result = drawChart(temporal, shape, style({ chart: "line", dateFormat: "long" }), SKIFER_CLAIR, {});
+  const option = result.option as { xAxis: { data: string[]; axisLabel: { formatter: (value: string) => string } }; series: { data: unknown[] }[]; tooltip: { formatter: (params: object) => string } };
+  expect(option.xAxis.data).toEqual(["2026-01-15", "2026-02-15"]);
+  expect(option.series[0]?.data).toEqual(["12.5", "9"]);
+  expect(option.xAxis.axisLabel.formatter("2026-01-15")).toBe("15 janvier 2026");
+  expect(option.tooltip.formatter({ name: "2026-01-15", seriesName: "revenue", value: "12.5" })).toContain("15 janvier 2026");
+  expect(result.items[0]?.announcement).toContain("15 janvier 2026");
+  const defined = drawChart(temporal, shape, style({ dateFormat: "medium", tooltip: "value_and_definition" }), SKIFER_CLAIR, { revenue: "Fictif" });
+  const tooltip = (defined.option as { tooltip: { formatter: (params: object) => string } }).tooltip.formatter;
+  expect(tooltip({ name: "2026-01-15", seriesName: "revenue", value: "12.5" })).toContain("15 janv. 2026");
+  expect(tooltip({ name: "inconnue", seriesName: "revenue", value: "12.5" })).toContain("inconnue");
+});
+
+it("garde la précision des heures et les dates non représentables", async () => {
+  const { formatThemeDate } = await import("./tileChart");
+  for (const format of ["short", "iso"] as const) expect(formatThemeDate("2026-01-15", format)).toBe("2026-01-15");
+  expect(formatThemeDate("2026-01-15T12:30:00.123456Z", "long")).toBe("15 janvier 2026 12:30:00.123456Z");
+  expect(formatThemeDate("2026-01-15T12:30:00.123", "medium")).toBe("15 janv. 2026 12:30:00.123");
+  expect(formatThemeDate("hors plage", "long")).toBe("hors plage");
+  expect(formatThemeDate("2026-02-30", "medium")).toBe("2026-02-30");
+});
+
+it("formate les groupes temporels et les infobulles incomplètes", () => {
+  const rows = [{ region: "Nord", jour: "2026-01-15", revenue: "12" }, { region: "Nord", jour: "2026-02-15", revenue: "9" }];
+  const shape = { dimensions: ["region", "jour"], temporalDimensions: ["jour"], metrics: ["revenue"] };
+  const result = drawChart(rows, shape, style({ chart: "grouped_bars", dateFormat: "long" }), SKIFER_CLAIR, {});
+  const tooltip = (result.option as { tooltip: { formatter: (params: object) => string } }).tooltip.formatter;
+  expect(tooltip({ name: "Nord", seriesName: "2026-01-15 · revenue", value: 12 })).toContain("15 janvier 2026 · revenue");
+  expect(tooltip({})).toContain("—");
+  expect(result.items[0]?.announcement).toContain("15 janvier 2026");
+  const other = drawChart(rows, shape, style({ chart: "grouped_bars", dateFormat: "long", tooltip: "value_and_definition" }), SKIFER_CLAIR, {});
+  const formatter = (other.option as { tooltip: { formatter: (params: object) => string } }).tooltip.formatter;
+  expect(formatter({ name: "Nord", seriesName: "2026-01-15 · revenue", value: "12" })).toContain("15 janvier 2026");
+  expect(formatter({})).toContain("Définition indisponible");
+});

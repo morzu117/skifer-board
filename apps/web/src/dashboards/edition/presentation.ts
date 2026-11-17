@@ -14,7 +14,7 @@ export const THEME_VISUAL: VisualPresentation = { legend: "auto", number_format:
 export const THEME_KPI: KpiPresentation = { number_format: "auto", tooltip: "value" };
 
 /** Le résultat est celui de `resolveVisual` pour un visuel et de `resolveKpi` pour un KPI, que le type de `component` désigne. */
-export type Effective = ({ type: "analysis"; fields: Resolved<VisualPresentation> } | { type: "kpi"; fields: Resolved<KpiPresentation> }) & { themeName?: string };
+export type Effective = ({ type: "analysis"; fields: Resolved<VisualPresentation> } | { type: "kpi"; fields: Resolved<KpiPresentation> }) & { themeName?: string; dateFormat?: ThemeDocument["formats"]["date"] };
 
 /** Défauts du type de graphique, complétés par les valeurs historiques de B9. */
 export function themePresentation(theme: ThemeDocument | undefined, chart: ChartKind): VisualPresentation {
@@ -24,7 +24,7 @@ export function themePresentation(theme: ThemeDocument | undefined, chart: Chart
 
 export function effective(component: ExecutableComponent, pinned: AnalysisRevision, defaults: Defaults, theme?: ThemeDocument): Effective {
   const analysis = { chart: pinned.analysis.presentation.chart, title: pinned.analysis.name };
-  const name = theme === undefined ? {} : { themeName: theme.name };
+  const name = theme === undefined ? {} : { themeName: theme.name, ...(theme.formats.date === "short" ? {} : { dateFormat: theme.formats.date }) };
   if (component.type === "kpi") return { type: "kpi", fields: resolveKpi(theme === undefined ? THEME_KPI : themePresentation(theme, "value"), { title: analysis.title }, defaults, component.presentation), ...name };
   const chart = component.presentation.chart ?? analysis.chart;
   return { type: "analysis", fields: resolveVisual(themePresentation(theme, chart), analysis, defaults, component.presentation), ...name };
@@ -42,6 +42,7 @@ export function styleOf(found: Effective): Style {
     numberFormat: fields.number_format.value as NumberFormat,
     threshold: fields.threshold.value,
     tooltip: fields.tooltip.value as Tooltip,
+    ...(found.dateFormat === undefined ? {} : { dateFormat: found.dateFormat }),
   };
 }
 

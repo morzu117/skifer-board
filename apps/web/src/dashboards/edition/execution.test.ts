@@ -41,6 +41,18 @@ describe("composition des tuiles", () => {
     });
     expect(new Set(results).size).toBe(1);
   });
+  it("garde la requête et les données avec un format de date différent", () => {
+    const first = decodeTheme(light);
+    const second = { ...first, formats: { ...first.formats, date: "long" as const } };
+    const shape = { metrics: ["revenue"], dimensions: ["jour"], temporalDimensions: ["jour"] };
+    const rows = [{ jour: "2026-01-15", revenue: "12" }];
+    const style: Style = { chart: "line", legend: "auto", numberFormat: "auto", threshold: undefined, tooltip: "value" };
+    const option = (theme: typeof first) => drawChart(rows, shape, { ...style, dateFormat: theme.formats.date }, chartThemeOf(theme, TOKEN_CATALOG), {}).option as { xAxis: { data: unknown }; series: { data: unknown }[] };
+    const requests = [first, second].map((theme) => { option(theme); return compose(); });
+    expect(requests[0]).toEqual(requests[1]);
+    expect(option(first).xAxis.data).toEqual(option(second).xAxis.data);
+    expect(option(first).series.map((entry) => entry.data)).toEqual(option(second).series.map((entry) => entry.data));
+  });
   it("compose la même requête pour un composant résolu, avec ou sans filtre", () => {
     const node = { id: "tile", type: "component" as const, component: { component_id: "shared", revision: 1 } };
     const resolved = { revision: 1, document: { id: "shared", kind: "visual", analysis: component.reference, presentation: component.presentation } as ComponentDocument };

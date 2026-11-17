@@ -1,4 +1,4 @@
-import type { Table } from "apache-arrow";
+import { DataType, type Table } from "apache-arrow";
 import { useMemo, type ReactNode } from "react";
 
 import type { AnalysisRevision } from "../../analyses/model";
@@ -91,7 +91,8 @@ export function Tuile({ component, state, pinned, defaults, catalog, theme, them
   const partial = execution.truncated === true ? <ResultatPartiel dashboard /> : null;
   const style = styleOf(found as NonNullable<typeof found>);
   const query = (pinned as AnalysisRevision).analysis.query;
-  const shape: Shape = { metrics: query.metrics, dimensions: query.dimensions };
+  const temporalDimensions = result.schema.fields.filter((field) => query.dimensions.includes(field.name) && (DataType.isDate(field.type) || DataType.isTimestamp(field.type))).map((field) => field.name);
+  const shape: Shape = { metrics: query.metrics, dimensions: query.dimensions, temporalDimensions };
   if (state?.status === "empty") {
     return <div className="sb-tile" role="group" aria-label={title}>{head}
       {partial}

@@ -6,6 +6,9 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Added
 
+- Plan 20, 20.5a : éditeur de thème avec aperçu local, historique, approbation et suppression ; garde des modifications et navigation par clavier.
+
+- Plan 20, 20.5a : entrée Thèmes et liste des thèmes visibles, avec état d’approbation, index et nombre de dashboards consommateurs ; préparation des choix de tokens et des rôles de texte de l’éditeur.
 - Plan 20, 20.4 : refus local `empty_slot` à l'envoi d'un dashboard dont un emplacement reste vide.
 - Plan 20, 20.4 : commandes pures d’édition des thèmes avec historique, contrôles de parité et choix admissibles ; commandes de thème et de composants dans le dashboard, instanciation de modèles et remplissage des emplacements, exécution des composants résolus et lecture des états des références dans l’éditeur ; construction pure des thèmes graphiques depuis les tokens, héritage des présentations par type et signalement du thème de repli pendant la lecture ou en cas d’indisponibilité ; palettes séquentielle et divergente ordonnées par contraste avec la surface, seules leurs extrémités les plus contrastées devant atteindre 3:1.
 
@@ -146,10 +149,14 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Changed
 
+- Plan 20, 20.5a : un nom vide est accepté pendant la saisie puis signalé `name_required` ; le format de date du thème s’applique aux axes et infobulles des tuiles.
+
 - Plan 20, 20.4 : les palettes séquentielles et divergentes progressent vers les extrémités avec un contraste sur la surface d'au moins 1,10 fois celui du palier précédent ; les extrémités doivent atteindre 3:1 et les paliers intermédiaires peuvent être sous ce seuil. Un thème valide sous les règles 20.1 peut désormais être refusé.
 - Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
 
 ### Fixed
+
+- Plan 20, 20.5a : affichage des horodatages, refus des historiques vides et aperçu accessible sans export.
 
 - Plan 17, 17.3 : les défauts du résultat stocké sont distingués des erreurs de sélection ; les calculs contextuels indiquent leur effectif et la télémétrie ne compte plus les refus ni les indisponibilités comme des pannes.
 

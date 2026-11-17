@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { tableFromArrays, type Table } from "apache-arrow";
+import { DateDay, TimestampMicrosecond, makeData, makeVector, tableFromArrays, Table } from "apache-arrow";
 import { describe, expect, it, vi } from "vitest";
 
 import { decodeRevision, type AnalysisRevision } from "../../analyses/model";
+import { chartOf } from "../../charts/testing";
 import { SKIFER_ARDOISE, SKIFER_CLAIR } from "../../charts/theme";
 import rawTheme from "../../../../../contracts/themes/fixtures/valid/clair.json";
 import { decodeTheme, type ThemeDocument } from "../../themes/document";
@@ -279,4 +280,36 @@ it("une tuile annulée propose de relancer", async () => {
   render(<Tuile component={visual()} state={{ status: "cancelled" }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} onRestart={restart} />);
   await userEvent.click(screen.getByRole("button", { name: "Relancer" }));
   expect(restart).toHaveBeenCalledOnce();
+});
+
+it("formate les dates Arrow dans une tuile avec le thème", () => {
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "auto" as const, date: "long" as const } };
+  const region = makeVector(makeData({ type: new DateDay(), length: 1, data: new Int32Array([20468]) }));
+  const table = new Table({ region, revenue: makeVector(new Float64Array([12])) });
+  show({ state: success(table), themeDocument });
+  const image = screen.getByRole("img", { name: /^Barres de/ });
+  const option = chartOf(image).getOption() as { xAxis: { data: string[]; axisLabel: { formatter: (value: string) => string } }[] };
+  const axis = option.xAxis[0];
+  expect(axis?.axisLabel.formatter(axis.data[0] as string)).toMatch(/janvier 2026/);
+});
+
+it("garde le KPI automatique brut et applique un format explicite de thème", () => {
+  const result = tableFromArrays({ revenue: [1234.5] });
+  const first = show({ component: kpi(), pinned: pinned(N.total), state: success(result) });
+  expect(screen.getByText("1234.5")).toBeInTheDocument();
+  first.unmount();
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "decimal_2" as const, date: "short" as const }, chart_defaults: {} };
+  show({ component: kpi(), pinned: pinned(N.total), state: success(result), themeDocument });
+  expect(screen.getByText("1 234,50")).toBeInTheDocument();
+});
+
+it("reconnaît un horodatage Arrow et applique le format long du thème", () => {
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "auto" as const, date: "long" as const } };
+  const region = makeVector(makeData({ type: new TimestampMicrosecond("UTC"), length: 1, data: new BigInt64Array([1700000000123457n]) }));
+  const table = new Table({ region, revenue: makeVector(new Float64Array([12])) });
+  show({ state: success(table), themeDocument });
+  const option = chartOf(screen.getByRole("img", { name: /^Barres de/ })).getOption() as { xAxis: { data: string[]; axisLabel: { formatter: (value: string) => string } }[] };
+  const axis = option.xAxis[0];
+  expect(axis?.data[0]).toBe("2023-11-14T22:13:20.123457Z");
+  expect(axis?.axisLabel.formatter(axis.data[0] as string)).toBe("14 novembre 2023 22:13:20.123457Z");
 });

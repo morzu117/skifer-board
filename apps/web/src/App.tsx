@@ -6,6 +6,9 @@ import { CataloguePage } from "./catalogue/CataloguePage";
 import { HistoriqueDashboard } from "./dashboards/Historique";
 import { DashboardEditorPage } from "./dashboards/DashboardEditorPage";
 import { DashboardsPage } from "./dashboards/DashboardsPage";
+import { HistoriqueTheme } from "./themes/HistoriqueTheme";
+import { ThemesPage } from "./themes/ThemesPage";
+import { ThemeEditorPage } from "./themes/EditeurTheme";
 import { ExplorerPage } from "./explorer/ExplorerPage";
 import { ExecutionsPage } from "./executions/ExecutionsPage";
 import { logout, type Fetch } from "./identity/api";
@@ -35,7 +38,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" || route.page === "dashboards" || route.page === "dashboard" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" || route.page === "dashboards" || route.page === "dashboard" || route.page === "themes" || route.page === "theme" ? route.space : null;
 }
 
 interface Sections {
@@ -50,10 +53,13 @@ interface Sections {
  */
 export function sectionsFor(space: Space | null, platformAdmin: boolean): Sections {
   if (space === null) {
-    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", espace: "dans un espace" } };
+    return { available: new Set(), pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", themes: "dans un espace", espace: "dans un espace" } };
   }
   const available = new Set<SectionId>();
   const pending: Partial<Record<SectionId, string>> = {};
+  if (space.implicit) pending.themes = "mode local";
+  else if (space.role === "admin" || space.role === "creator") available.add("themes");
+  else pending.themes = "sans rôle";
   if (space.role === null) {
     pending.catalogue = "sans rôle";
     pending.explorer = "sans rôle";
@@ -196,7 +202,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "dashboards" || route.page === "dashboard" ? "dashboards" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
+  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "dashboards" || route.page === "dashboard" ? "dashboards" : route.page === "themes" || route.page === "theme" ? "themes" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -206,7 +212,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
       // Les entrées ne sont offertes que dans un espace confirmé : elles mènent à ses pages.
       onNavigate={(section) => {
         if (space !== null) {
-          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : section === "dashboards" ? { page: "dashboards", space: space.id } : { page: "catalogue", space: space.id });
+          navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : section === "dashboards" ? { page: "dashboards", space: space.id } : section === "themes" ? { page: "themes", space: space.id } : { page: "catalogue", space: space.id });
         }
       }}
       breadcrumb={breadcrumb(route, current)}
@@ -274,6 +280,8 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "analysis") return [current.value.name, "Analyses", "Fiche analyse"];
     if (route.page === "dashboards") return [current.value.name, "Dashboards"];
     if (route.page === "dashboard") return [current.value.name, "Dashboards", "Éditeur"];
+    if (route.page === "themes") return [current.value.name, "Thèmes"];
+    if (route.page === "theme") return [current.value.name, "Thèmes", "Éditeur"];
     if (route.page === "executions") {
       return [current.value.name, "Exécutions"];
     }
@@ -395,6 +403,11 @@ function Page({ route, current, listed, fetcher, environment, session, onWritten
   }
   if (route.page === "dashboards") {
     return <DashboardsPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
+  }
+  if (route.page === "themes" || route.page === "theme") {
+    if (current.value.implicit || (current.value.role !== "creator" && current.value.role !== "admin")) return <Banner tone="warning">Thèmes indisponibles : {current.value.implicit ? "mode local" : "sans rôle"}.</Banner>;
+    if (route.page === "theme") return route.view === "history" ? <HistoriqueTheme key={`${current.value.id}:${route.id}:${session}`} space={current.value.id} id={route.id} fetcher={fetcher} /> : <ThemeEditorPage key={`${current.value.id}:${route.id}:${session}:${String(route.revision)}`} space={current.value} id={route.id} identity={session} fetcher={fetcher} historical={route.revision} />;
+    return <ThemesPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
   }
   if (route.page === "dashboard") {
     if (route.view === "history") return <HistoriqueDashboard key={`${current.value.id}:${route.id}:${session}:${JSON.stringify(route.compare)}`} space={current.value.id} id={route.id} compare={route.compare} fetcher={fetcher} />;

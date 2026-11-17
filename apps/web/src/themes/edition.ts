@@ -1,4 +1,4 @@
-import { bounded, decodeName } from "../analyses/document";
+import { bounded } from "../analyses/document";
 import { ContractError } from "../catalogue/decode";
 import { LEGENDS, NUMBER_FORMATS, TOOLTIPS } from "../dashboards/document";
 import { themeProblems as problems, type PaletteProblem } from "./chartTheme";
@@ -9,10 +9,13 @@ import type { ThemeDocument } from "./document";
 export type Document = ThemeDocument | ThemeDraft;
 export type Palette = "categorical" | "sequential" | "diverging";
 export type Mark = "series" | "secondary" | "selected" | "threshold" | "positive" | "negative" | "total";
+export type TextRole = "text" | "textStrong" | "textMuted" | "thresholdLabel";
 export type Chart = "value" | "bars" | "line" | "grouped_bars";
 export type Command =
   | { type: "base"; value: Base }
   | { type: "mark"; role: Mark; token: string }
+  | { type: "text_role"; role: TextRole; token: string }
+  | { type: "palette_set"; palette: Palette; index: number; token: string }
   | { type: "palette_add"; palette: Palette; index: number; token: string }
   | { type: "palette_remove"; palette: Palette; index: number }
   | { type: "palette_move"; palette: Palette; from: number; to: number }
@@ -25,6 +28,7 @@ export type Refusal = "invalid_command" | "invalid_index" | "token_not_admissibl
 export type Result<T extends Document> = { ok: true; document: T } | { ok: false; reason: Refusal; document: T };
 const palettes: readonly Palette[] = ["categorical", "sequential", "diverging"];
 const marks: readonly Mark[] = ["series", "secondary", "selected", "threshold", "positive", "negative", "total"];
+const textRoles: readonly TextRole[] = ["text", "textStrong", "textMuted", "thresholdLabel"];
 const charts: readonly Chart[] = ["value", "bars", "line", "grouped_bars"];
 const options = { sans: ["sans"], mono: ["mono"], scale: ["compact", "normal", "large"], density: ["compact", "normal", "airy"], number: NUMBER_FORMATS, date: ["short", "medium", "long", "iso"], legend: LEGENDS, number_format: NUMBER_FORMATS, tooltip: TOOLTIPS } as const;
 const accepts = (values: readonly string[], value: unknown): value is string => typeof value === "string" && values.includes(value);
@@ -33,9 +37,9 @@ const indexWithin = (index: number, length: number, end: boolean): boolean => Nu
 export function choicesFor(catalog: TokenCatalog, base: Base, role: Role | "palette"): readonly string[] {
   return Object.keys(role === "palette" ? catalog.luminance : catalog.bases[base][role]);
 }
-/** Problèmes bloquants : mêmes chemins et codes que la validation serveur. */
-export function themeProblems(draft: Document, catalog: TokenCatalog): PaletteProblem[] {
-  return problems(draft as ThemeDocument, catalog);
+/** Problèmes bloquants, y compris le nom encore vide pendant la saisie. */
+export function themeProblems(draft: Document, catalog: TokenCatalog): (PaletteProblem | { path: "/name"; rule: "name_required" })[] {
+  return [...(draft.name.trim() === "" ? [{ path: "/name" as const, rule: "name_required" as const }] : []), ...problems(draft as ThemeDocument, catalog)];
 }
 export const canSave = (draft: Document, catalog: TokenCatalog): boolean => themeProblems(draft, catalog).length === 0;
 
@@ -51,6 +55,18 @@ export function applyCommand<T extends Document>(document: T, command: Command, 
       if (!marks.includes(command.role)) return refuse("invalid_command");
       if (!Object.hasOwn(catalog.bases[copy.base].mark, command.token)) return refuse("token_not_admissible");
       copy.roles.marks[command.role] = command.token; break;
+    case "text_role":
+      if (!textRoles.includes(command.role)) return refuse("invalid_command");
+      if (!Object.hasOwn(catalog.bases[copy.base].text, command.token)) return refuse("token_not_admissible");
+      copy.roles.text[command.role] = command.token; break;
+    case "palette_set": {
+      if (!palettes.includes(command.palette)) return refuse("invalid_command");
+      const values = copy[command.palette] as string[];
+      if (!indexWithin(command.index, values.length, false)) return refuse("invalid_index");
+      const required = command.palette === "categorical" || (command.palette === "sequential" && command.index === values.length - 1) || (command.palette === "diverging" && (command.index === 0 || command.index === values.length - 1));
+      if (!Object.hasOwn(catalog.luminance, command.token) || (required && !Object.hasOwn(catalog.bases[copy.base].mark, command.token))) return refuse("token_not_admissible");
+      values[command.index] = command.token; break;
+    }
     case "palette_add": {
       if (!palettes.includes(command.palette)) return refuse("invalid_command");
       const values = copy[command.palette] as string[];
@@ -93,7 +109,7 @@ export function applyCommand<T extends Document>(document: T, command: Command, 
       break;
     }
     case "name": case "description":
-      try { copy[command.type] = command.type === "name" ? decodeName(command.value, "nom") : bounded(command.value, "description", 0, 2000, true); }
+      try { copy[command.type] = command.type === "name" ? bounded(command.value, "nom", 0, 120, false) : bounded(command.value, "description", 0, 2000, true); }
       catch (error) { if (!(error instanceof ContractError)) throw error; return refuse("invalid_command"); }
       break;
     default: return refuse("invalid_command");

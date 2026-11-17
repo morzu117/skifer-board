@@ -1,8 +1,9 @@
-/** Les six entrées de la navigation, dans l'ordre des maquettes (DESIGN-SYSTEM §5). */
+/** Les sept entrées de la navigation, dans l'ordre des maquettes (DESIGN-SYSTEM §5). */
 export const SECTIONS = [
   { id: "explorer", label: "Explorer" },
   { id: "analyses", label: "Analyses" },
   { id: "dashboards", label: "Dashboards" },
+  { id: "themes", label: "Thèmes" },
   { id: "catalogue", label: "Catalogue Atlas" },
   { id: "deploiements", label: "Déploiements" },
   { id: "espace", label: "Espace & connexions" },

@@ -66,27 +66,27 @@ describe("Entrées de la navigation selon l'espace (plan 08, 8.4)", () => {
 
   it("hors d'un espace confirmé, le catalogue et les membres se lisent « dans un espace »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", espace: "dans un espace" } });
+      expect(resume(null, plateforme)).toEqual({ available: [], pending: { catalogue: "dans un espace", explorer: "dans un espace", analyses: "dans un espace", dashboards: "dans un espace", themes: "dans un espace", espace: "dans un espace" } });
     }
   });
 
   it.each([
-    ["admin", false, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
-    ["admin", true, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
-    ["creator", false, ["analyses", "catalogue", "dashboards", "explorer"], { espace: "administrateurs" }],
-    ["reader", false, ["analyses", "catalogue", "dashboards", "explorer"], { espace: "administrateurs" }],
-    ["reader", true, ["analyses", "catalogue", "dashboards", "espace", "explorer"], {}],
-    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle" }],
+    ["admin", false, ["analyses", "catalogue", "dashboards", "espace", "explorer", "themes"], {}],
+    ["admin", true, ["analyses", "catalogue", "dashboards", "espace", "explorer", "themes"], {}],
+    ["creator", false, ["analyses", "catalogue", "dashboards", "explorer", "themes"], { espace: "administrateurs" }],
+    ["reader", false, ["analyses", "catalogue", "dashboards", "explorer"], { themes: "sans rôle", espace: "administrateurs" }],
+    ["reader", true, ["analyses", "catalogue", "dashboards", "espace", "explorer"], { themes: "sans rôle" }],
+    [null, true, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle", themes: "sans rôle" }],
     // Un espace confirmé sans rôle ne l'est qu'à l'administration de la plateforme (E6) : l'entrée est
     // offerte même avant que la liste l'ait confirmé, et le serveur reste seul juge.
-    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle" }],
+    [null, false, ["espace"], { catalogue: "sans rôle", explorer: "sans rôle", analyses: "sans rôle", dashboards: "sans rôle", themes: "sans rôle" }],
   ] as [Space["role"], boolean, string[], object][])("rôle %s, plateforme %s", (role, plateforme, available, pending) => {
     expect(resume(de(role), plateforme)).toEqual({ available, pending });
   });
 
   it("l'espace implicite du mode local : catalogue livré, membres « mode local »", () => {
     for (const plateforme of [false, true]) {
-      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local", analyses: "mode local", dashboards: "mode local" } });
+      expect(resume(de("admin", true), plateforme)).toEqual({ available: ["catalogue"], pending: { espace: "mode local", explorer: "mode local", analyses: "mode local", dashboards: "mode local", themes: "mode local" } });
     }
   });
 });

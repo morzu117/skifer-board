@@ -35,6 +35,7 @@ describe("réponses de thèmes", () => {
   it("lit un historique filtré et une suppression", () => {
     const history = body("historique");
     expect(decodeThemeHistory(history, ID)).toMatchObject({ currentRevision: 2, deleted: false });
+    expect(() => decodeThemeHistory({ ...history, current_revision: null, revisions: [] }, ID)).toThrow();
     const entries = history.revisions as Record<string, unknown>[];
     expect(decodeThemeHistory({ ...history, current_revision: 3, revisions: [entries[0], { ...entries[1], revision: 3 }] }, ID).revisions.map((entry) => entry.revision)).toEqual([1, 3]);
     expect(decodeThemeHistory({ ...history, deleted: true, current_revision: null, revisions: [...entries, { ...entries[1], action: "delete" }] }, ID).deleted).toBe(true);

@@ -32,6 +32,14 @@ describe("éditeur de thème", () => {
     refuse({ type: "mark", role: "series", token: "surface" }, "token_not_admissible");
     refuse({ type: "mark", role: "bad", token: "ink" } as unknown as Command, "invalid_command");
   });
+  it("modifie les rôles de texte uniquement avec des tokens admissibles", () => {
+    const before = source();
+    const after = accept({ type: "text_role", role: "text", token: "ink2" }, before);
+    expect(after.roles.text.text).toBe("ink2");
+    expect(before.roles.text.text).toBe("ink");
+    refuse({ type: "text_role", role: "text", token: "surface" }, "token_not_admissible", before);
+    refuse({ type: "text_role", role: "bad", token: "ink" } as unknown as Command, "invalid_command", before);
+  });
   it("ajoute, retire et déplace les paliers sans muter l'entrée", () => {
     for (const palette of ["categorical", "sequential", "diverging"] as const) {
       const before = source(); const added = accept({ type: "palette_add", palette, index: 1, token: "ink" }, before);
@@ -52,6 +60,16 @@ describe("éditeur de thème", () => {
     const unknown = { ...source(), sequential: ["unknown", "blue", "ink"] };
     refuse({ type: "palette_move", palette: "sequential", from: 0, to: 1 }, "token_not_admissible", unknown);
     for (const type of ["palette_add", "palette_remove", "palette_move"] as const) refuse({ type, palette: "bad", index: 0, token: "ink", from: 0, to: 0 } as unknown as Command, "invalid_command");
+  });
+  it("choisit les tokens des paliers selon leur position", () => {
+    expect(accept({ type: "palette_set", palette: "sequential", index: 0, token: "surface" }).sequential[0]).toBe("surface");
+    expect(accept({ type: "palette_set", palette: "diverging", index: 1, token: "surface" }).diverging[1]).toBe("surface");
+    refuse({ type: "palette_set", palette: "categorical", index: 0, token: "surface" }, "token_not_admissible");
+    refuse({ type: "palette_set", palette: "sequential", index: 2, token: "surface" }, "token_not_admissible");
+    refuse({ type: "palette_set", palette: "diverging", index: 0, token: "surface" }, "token_not_admissible");
+    refuse({ type: "palette_set", palette: "diverging", index: 1, token: "unknown" }, "token_not_admissible");
+    refuse({ type: "palette_set", palette: "sequential", index: 10, token: "ink" }, "invalid_index");
+    refuse({ type: "palette_set", palette: "bad", index: 0, token: "ink" } as unknown as Command, "invalid_command");
   });
   it("modifie les champs fermés, et refuse les valeurs hors domaine", () => {
     expect(accept({ type: "typography", field: "scale", value: "large" }).typography.scale).toBe("large");
@@ -77,11 +95,17 @@ describe("éditeur de thème", () => {
     for (const command of [{ type: "chart_default", chart: "unknown", field: "legend", value: "auto" }, { type: "chart_default", chart: "bars", field: "bad", value: "auto" }, { type: "chart_default", chart: "bars", field: "legend", value: "bad" }] as unknown as Command[]) refuse(command, "invalid_command");
     expect(accept({ type: "name", value: "Autre" }).name).toBe("Autre");
     expect(accept({ type: "description", value: "Texte" }).description).toBe("Texte");
-    refuse({ type: "name", value: "" }, "invalid_command");
+    for (const name of ["", "   "]) {
+      const draft = accept({ type: "name", value: name });
+      expect(draft.name).toBe(name);
+      expect(themeProblems(draft, TOKEN_CATALOG)).toContainEqual({ path: "/name", rule: "name_required" });
+      expect(canSave(draft, TOKEN_CATALOG)).toBe(false);
+    }
+    refuse({ type: "name", value: "x".repeat(121) }, "invalid_command");
     refuse({ type: "description", value: "x".repeat(2001) }, "invalid_command");
     refuse({ type: "unknown" } as unknown as Command, "invalid_command");
     const document = source();
-    const spy = vi.spyOn(analysis, "decodeName").mockImplementation(() => { throw new Error("panne"); });
+    const spy = vi.spyOn(analysis, "bounded").mockImplementation(() => { throw new Error("panne"); });
     try { expect(() => apply({ type: "name", value: "Nom" }, document)).toThrow("panne"); } finally { spy.mockRestore(); }
   });
   it("borne l'historique, annule et rétablit sans marquer un document invalide comme enregistré", () => {

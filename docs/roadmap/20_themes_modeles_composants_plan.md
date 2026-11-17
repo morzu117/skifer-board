@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 à 20.4 réalisées**, 20.5a à 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 à 20.5a réalisées**, 20.5b et 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -390,4 +390,82 @@ Développé par Codex (gpt-6.1-terra) en sous-étapes, de a à c3e, puis corrig�
   - Python : 7 505 tests, couverture de 100 %.
   - Web : 4 041 tests, couverture de 100 %, build compris.
   - Bout en bout : 745 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle.
+
+### 20.5a — Entrée Thèmes, liste, éditeur, aperçu et approbation
+
+Développé par Codex (gpt-6.1-terra) en sous-étapes : a, puis b1 à b4, puis c, et deux passes de design. Relu par Claude Sonnet 5.5 : une revue, puis une contre-revue.
+
+Une session Codex neuve a pris le relais à partir de b1. Reprise depuis le plan 20.1, l'ancienne consommait plusieurs millions de tokens par passe et s'arrêtait après un fragment.
+
+Une pause demandée par le porteur, puis un redémarrage, ont interrompu la seconde passe de design. Le travail conservé dans le worktree a été vérifié (`check:web` et la spec), puis terminé.
+
+*Navigation et liste (C9).*
+- L'entrée « Thèmes » se place après Dashboards.
+  - Routes : `#/espaces/{space}/themes`, `…/themes/nouveau` et `…/themes/{id}`.
+  - Elle est ouverte à `creator` et `admin`. Elle est fermée avec « sans rôle » pour le rôle `reader`, et avec « mode local » en mode local.
+  - Dans les tests existants, seules les énumérations des entrées ont changé.
+- La liste donne pour chaque thème :
+  - le nom ;
+  - le propriétaire ;
+  - la révision et le commit ;
+  - l'état, avec l'écart entre révision approuvée et brouillon ;
+  - l'index ;
+  - le nombre de dashboards qui l'utilisent.
+- Ce nombre se lit ligne par ligne par la route des consommateurs, en comptant aussi ceux que la personne ne voit pas. Un échec affiche « indisponible » avec sa raison, jamais 0.
+- Une note annonce la colonne « par environnement » pour le lot 09.
+
+*Éditeur (C2, C9).*
+- **Organisation.** Les champs sont regroupés en sections repliables, et chaque choix de token est une liste compacte avec sa pastille, en variable CSS, et son contraste.
+- **Seuils.** Un token sous le seuil n'est jamais proposé là où le seuil s'applique. Les paliers intermédiaires et le centre divergent proposent tous les tokens connus, et la règle des palettes juge.
+- **Base.** Un changement de base ne remplace aucun choix en silence : un token devenu inadmissible est signalé.
+- **Nom.** Un nom vide est accepté pendant la saisie et signalé `name_required`.
+- **Champs pas encore rendus.** Les palettes catégorielle et divergente, l'échelle typographique et la densité portent « enregistré, pas encore rendu par les graphiques de Board ».
+- **Édition.**
+  - Annuler et rétablir, par les boutons et au clavier.
+  - Une garde de sortie protège un brouillon modifié.
+  - L'enregistrement se fait en création, ou en révision avec la révision attendue.
+- **Refus, rendus tels quels et sans nouvel essai.** `revision_conflict` propose « Recharger » et n'écrase rien. Sont aussi rendus `invalid_theme`, avec ses chemins, `forbidden`, `not_owner` et `local_mode`. Une erreur réseau ne fait pas perdre le brouillon.
+- **Historique.** Il donne les révisions, et la lecture d'une révision ancienne en lecture seule. Un historique vide est une rupture de contrat, rendue en erreur.
+
+*Aperçu (C9).*
+- Il porte sur un dashboard de référence aux données d'exemple embarquées : une valeur, des barres, une ligne et des barres groupées.
+- Aucun appel réseau, un bandeau permanent, et aucun export.
+- Il est rendu avec `chartThemeOf`, les défauts et les formats du thème. Il affiche exactement ce qu'afficherait une tuile de dashboard.
+- Il est indisponible, avec sa raison, tant qu'il reste un problème. La base du thème décide de la surface.
+- Sur ordinateur, il reste à côté des champs et défile. Sur téléphone, un lien y mène.
+
+*Format de date du thème (C2, C3).*
+- Il s'applique aux axes temporels et aux infobulles, dans l'aperçu comme dans les tuiles des dashboards. La date et l'heure d'un horodatage sont séparées.
+- Le format par défaut garde le rendu d'avant, octet pour octet, et les données et les requêtes ne changent pas.
+- Le format « Court », qui est le défaut, le dit dans l'éditeur.
+
+*Approbation et suppression (C4).*
+- **Approbation.** Elle est réservée à l'administrateur.
+  - L'écran montre le diff structurel avec la révision approuvée précédente, ou « Première approbation » avec un résumé.
+  - Elle se fait avec la révision attendue. Un diff périmé ou un brouillon modifié la désactive.
+  - Les refus sont rendus tels quels. Un succès relit le thème et la liste.
+- **Suppression.** Elle passe par une confirmation. Le refus `content_in_use` liste les dashboards visibles, avec leur lien, et compte les autres.
+
+*Bout en bout.*
+- `e2e/serveur-themes.ts` part des exemples réels des routes, et consigne toute demande hors scénario, révisions attendues comprises.
+- `e2e/themes.spec.ts` compte 42 parcours sur ordinateur et téléphone. Ils couvrent les étapes 1, 3 (diff et approbation) et 6 du §4, les états, le clavier seul et Axe sous les deux bases. Les étapes 2 et 3 côté dashboard viendront en 20.5b.
+- Captures : la liste, l'éditeur, l'aperçu seul et l'approbation, sur ordinateur et téléphone.
+
+*Vérification.*
+- **Design.** Les premières captures ont été ouvertes avant toute revue. L'éditeur faisait 5 700 px sur ordinateur, avec des murs de boutons radio, des boutons natifs, des clés brutes du schéma et l'aperçu en bas de page. Deux passes de design l'ont ramené à l'idiome de l'éditeur de dashboard.
+- **Revue.** Sonnet a appliqué 45 mutations, dont 31 tuées, et n'a trouvé aucune violation d'invariant. Elle a relevé :
+  - le rendu par défaut des KPI des dashboards changé. C'était une erreur de ma consigne, et ce rendu a été rétabli ;
+  - un décodeur d'historique assoupli sans raison ;
+  - un horodatage collé « 2026T12 » ;
+  - quatre trous de test ;
+  - des mineurs de texte, de mise en page et de CHANGELOG.
+
+  Tout a été corrigé.
+- **Contre-revue.** OK pour commit. Les mutations survivantes de la revue sont tuées, comme dix nouvelles. Seule survit une mutation sur le minimum de l'historique, que le test refuse pour une autre raison. À durcir plus tard en vérifiant l'erreur de contrat.
+- **Non-régression.** Le gate complet a révélé trois specs e2e existantes qui énuméraient les entrées de navigation, ou qui en dépendaient : `catalogue`, `parcours` et les captures téléphone d'`executions`. Seul « Thèmes » y est ajouté. J'ai vérifié que la navigation est la seule différence de ces captures.
+- **Gate complet.**
+  - Python : 7 505 tests, couverture de 100 %.
+  - Web : 4 122 tests, couverture de 100 %, build compris.
+  - Bout en bout : 787 parcours passés et 1 ignoré.
   - Aucune exclusion de couverture nouvelle.
