@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 à 20.5b réalisées**, 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **réalisé** (20.1 à 20.5c). Le lot 07 est déclaré livré sur son acceptation (plan de développement, lot 07), couverte par les plans 19 et 20. Les tuiles s'exécutent par les exécutions des lots 03 et 05, dont la recette sur source réelle reste ouverte ; elle n'est pas rejouée ici. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -554,3 +554,83 @@ Deux sessions Codex se sont succédé : la première à partir de d1 et jusqu'à
   - Web : 4 304 tests, couverture de 100 %, build compris.
   - Bout en bout : 849 parcours passés et 1 ignoré.
   - Aucune exclusion de couverture nouvelle, et aucun `eslint-disable`.
+
+### 20.5c — Parcours d'acceptation et captures
+
+Développé par Codex (gpt-6.1-terra) dans une session neuve, en sous-étapes étroites : le simulateur, les étapes 1 à 3, les étapes 4 à 6, puis les vérifications transverses. Relu par Claude Sonnet 5.5.
+
+*Simulateur partagé.* `e2e/serveur-plan20.ts` simule, avec un état, les thèmes, les modèles et les composants : révisions, état d'approbation et auteur. Il délègue les dashboards, les analyses et les exécutions au simulateur du plan 19.
+- **Identités.** `identite("createur" | "admin" | "autre")` change l'acteur. La visibilité C7 s'applique à toutes les lectures : un brouillon n'est visible que de son auteur et des administrateurs.
+- **Refus.** Les refus du serveur réel sont rendus tels quels : `revision_conflict`, `unapproved_reference` avec ses chemins, `content_in_use` avec ses consommateurs, et un token sous le seuil de contraste (`invalid_theme`).
+- **Journal.** Il garde les requêtes inattendues et tous les corps envoyés, bruts.
+- **Limite assumée.** La monotonie des palettes séquentielles n'y est pas vérifiée. Elle est couverte par les tests du serveur (20.1, 20.2).
+
+*Parcours du §4* (`e2e/themes-acceptation.spec.ts`), sur ordinateur et téléphone. Axe passe sous les deux bases après chaque étape, et le journal des requêtes inattendues reste vide.
+1. **Thème brouillon.** Seuls des tokens admissibles sont proposés. Un token sous le seuil, forgé dans le corps, est refusé par le serveur.
+2. **Thème appliqué au dashboard personnel.** Les marques changent. Les résultats restent identiques, et les corps d'exécution envoyés sont identiques octet pour octet.
+3. **Dashboard partagé.** Une lecture retardée laisse partir l'enregistrement : le serveur le refuse (`unapproved_reference` sur `/theme`). Une fois la lecture rendue, le brouillon est bloqué localement, dans l'onglet Problèmes. L'administrateur approuve : c'est une première révision, il voit donc « Première approbation » et son résumé. L'enregistrement partagé passe ensuite.
+4. **Modèle.** Le créateur enregistre un dashboard comme modèle ; aucune analyse, aucune cible ni aucune référence de composant n'est envoyée. Il crée un dashboard depuis ce modèle et ce thème, en brouillon local, remplit les emplacements, et le premier enregistrement porte les provenances `template` et `theme`.
+5. **Composant.** Un composant approuvé s'exécute avec le même corps que le visuel équivalent. Il est détaché puis rattaché par annuler. Sa révision 2 est approuvée par l'administrateur, qui en voit le diff, puis elle est signalée, comparée et adoptée.
+6. **Suppressions.** La suppression d'un thème ou d'un composant utilisé est refusée avec ses consommateurs.
+
+*Vérifications transverses.*
+- **Fuites.** Pour une autre créatrice, les brouillons du créateur n'apparaissent nulle part :
+  - ni dans les trois listes ;
+  - ni dans la liste « Thème » des propriétés ;
+  - ni dans la palette « Composants approuvés » ;
+  - ni dans le dialogue « Nouveau dashboard ».
+
+  Ses versions approuvées y apparaissent, et la lecture directe d'un brouillon par son adresse est refusée.
+- **Contenus.** Un contrôle récursif de tous les corps de thème, de modèle et de composant envoyés vérifie qu'il n'y a :
+  - aucune couleur brute ;
+  - aucun SQL ;
+  - aucune requête d'analyse.
+
+  Les corps de dashboard envoyés dans le parcours (créations et révisions) passent aussi par `verifierDashboard`. Au moins l'un d'eux porte `theme`, et au moins l'un d'eux porte `template`. Cette aide du plan 19 est déplacée dans `e2e/aides.ts` et partagée.
+- **Clavier.** L'étape 4 est parcourue entièrement au clavier, sans aucun clic, de l'ouverture du dialogue au premier enregistrement.
+- **Largeurs.** Aucun débordement horizontal à 1 280, 768 et 390 px sur :
+  - l'éditeur de thème ;
+  - les fiches d'un modèle et d'un composant ;
+  - l'éditeur d'un dashboard avec thème et composant ;
+  - le dialogue « Nouveau dashboard ».
+- **Git.** L'historique, le diff, les approbations et la reconstruction de l'index depuis le dépôt sont couverts par les tests serveur de 20.2 sur un vrai dépôt git ; le simulateur ne les rejoue pas.
+
+*Captures (C9)* (`e2e/themes-etats-captures.spec.ts`), sur ordinateur et téléphone :
+- les trois listes vides, en chargement et en refus ;
+- les fiches en refus ;
+- le dialogue « Nouveau dashboard » avec une liste en erreur.
+
+Elles s'ajoutent aux captures nominales de 20.5a et 20.5b.
+
+*Mineurs de la contre-revue 20.5b.*
+- **Garde de sortie.** Un `leave()` vers l'adresse courante réarme la garde.
+- **Message de sortie.** Il dit le vrai cas : brouillon jamais envoyé, création refusée, création non confirmée, enregistrement en cours, ou modifications d'un dashboard existant. « Quitter » est bloqué pendant tout enregistrement en cours, pas seulement pendant la création. Une confirmation ouverte pendant un enregistrement se ferme quand tout est enregistré : la personne reste dans l'éditeur. Elle reste ouverte si des modifications ou une saisie subsistent.
+- **Références.** Le retour de `useReferenceStates` est mémoïsé. Pendant une relecture, l'ancien succès reste affiché, et c'est désormais documenté comme voulu : le contenu épinglé est immuable. L'approbation et la révision courante gardent leurs valeurs précédentes jusqu'à la réponse, et le serveur reste juge.
+
+*Vérification.*
+- **Design.** Les nouvelles captures ont été ouvertes. Deux défauts d'affichage ont été corrigés :
+  - le rôle requis rendu brut, comme « Accès refusé · creator », est désormais libellé, et les deux fonctions de texte des refus de contenu ne font plus qu'une ;
+  - une phrase de refus de fiche commençait par une minuscule.
+- **Revue.** Aucun bloquant et aucune violation d'invariant. Elle a relevé :
+  - une étape 3 décrite à l'envers, et un diff d'approbation jamais vérifié ;
+  - un contrôle Axe de l'étape 1 qui ne changeait pas la base de l'application ;
+  - une largeur de 390 px laissée aux tests suivants ;
+  - des corps de dashboard hors du contrôle des contenus ;
+  - un commentaire inexact sur l'immuabilité ;
+  - un message de perte affiché après une sauvegarde réussie ;
+  - deux branches de message sans assertion.
+
+  Tout a été corrigé.
+- **Contre-revue.** OK pour commit. Elle a vérifié que la fermeture de la confirmation après sauvegarde ne boucle pas et ne touche ni le brouillon local, ni une création au contenu différent, ni des modifications restantes.
+- **Gate complet.**
+  - Python : 7 506 tests, couverture de 100 %.
+  - Web : 4 318 tests, couverture de 100 %, build compris.
+  - Bout en bout : 897 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle, et aucun `eslint-disable`.
+
+Le lot 07 est déclaré livré. Ses critères d'acceptation sont couverts par les plans 19 et 20 :
+- deux mises en page qui utilisent les mêmes analyses ;
+- un thème qui ne change pas les résultats ;
+- une composition conservée à la sauvegarde et à la relecture ;
+- des cibles de filtres explicites ;
+- le clavier et les largeurs.

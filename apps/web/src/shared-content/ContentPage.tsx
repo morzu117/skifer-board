@@ -12,8 +12,8 @@ import { useExitGuard } from "../shell/useExitGuard";
 import { Reading } from "../spaces/AdminParts";
 import type { Fetch } from "../spaces/api";
 import type { Space } from "../spaces/model";
-import { refusalText, ThemeNavigation } from "../themes/ContentListPage";
-import { CHART_LABELS, OPTION_LABELS } from "../themes/labels";
+import { ThemeNavigation } from "../themes/ContentListPage";
+import { CHART_LABELS, OPTION_LABELS, refusalText } from "../themes/labels";
 import type { ThemeChange, ThemeHistory } from "../themes/model";
 import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
@@ -47,7 +47,7 @@ export function ContentPage({ space, id, kind, fetcher, historical, view }: { sp
 function ReadContent({ space, id, kind, fetcher, historical }: { space: Space; id: string; kind: Kind; fetcher: Fetch; historical?: number | undefined }) {
   const [reload, setReload] = useState(0);
   const loaded = useOutcome(`${space.id}:${kind}:${id}:${String(historical)}:${String(reload)}`, (signal) => read(kind, space.id, id, historical, signal, fetcher));
-  return <div className="sb-dashboards sb-theme-skifer-clair">{loaded.status === "loading" ? <Reading>Lecture du {noun(kind)}…</Reading> : loaded.status !== "ok" ? <><Banner tone="danger">{noun(kind)} indisponible : {failureText(loaded)}. Rien n'est affiché à sa place.</Banner><a href={routeHash({ page: plural(kind), space: space.id })}>Retour à la liste</a></> : <Editor key={reload} space={space} kind={kind} value={loaded.value} historical={historical !== undefined} fetcher={fetcher} reload={() => { setReload((n) => n + 1); }} />}</div>;
+  return <div className="sb-dashboards sb-theme-skifer-clair">{loaded.status === "loading" ? <Reading>Lecture du {noun(kind)}…</Reading> : loaded.status !== "ok" ? <><Banner tone="danger">{kind === "modele" ? "Modèle de page" : "Composant"} indisponible : {failureText(loaded)}. Rien n'est affiché à sa place.</Banner><a href={routeHash({ page: plural(kind), space: space.id })}>Retour à la liste</a></> : <Editor key={reload} space={space} kind={kind} value={loaded.value} historical={historical !== undefined} fetcher={fetcher} reload={() => { setReload((n) => n + 1); }} />}</div>;
 }
 function Editor({ space, kind, value, historical, fetcher, reload }: { space: Space; kind: Kind; value: Revision; historical: boolean; fetcher: Fetch; reload: () => void }) {
   const [server, setServer] = useState(value);

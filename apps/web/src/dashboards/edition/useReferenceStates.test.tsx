@@ -126,3 +126,13 @@ it("ignore également une réponse reçue après annulation", async () => {
   await act(async () => { finish(response(1, "approved") as never); await Promise.resolve(); });
   expect(result.current).toEqual({});
 });
+
+it("garde la même identité entre deux rendus sans changement", async () => {
+  vi.mocked(fetchComponent).mockReset().mockResolvedValue(response(1, "approved") as never);
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const { result, rerender } = renderHook(() => useReferenceStates("finance", "ada", "dashboard", [component], fetcher));
+  await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("approved"); });
+  const previous = result.current;
+  rerender();
+  expect(result.current).toBe(previous);
+});

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchPageTemplates } from "../page-templates/client";
 import type { Fetch } from "../spaces/api";
 import { fetchThemes } from "../themes/client";
-import { refusalText } from "../themes/ContentListPage";
+import { refusalText } from "../themes/labels";
 import type { ThemeListItem } from "../themes/model";
 import { Banner } from "../ui/Banner";
 import { choices } from "./edition/ChoixContenus";

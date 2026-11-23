@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { fetchComponentDiff } from "../../components-lib/client";
 import { display, pathLabel } from "../../shared-content/ContentPage";
-import { refusalText } from "../../themes/ContentListPage";
+import { refusalText } from "../../themes/labels";
 import { Banner } from "../../ui/Banner";
 import { useOutcome } from "../../ui/useOutcome";
 import { useEditor } from "./EditorContext";

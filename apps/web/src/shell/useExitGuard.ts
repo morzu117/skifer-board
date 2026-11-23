@@ -72,7 +72,9 @@ export function useExitGuard(dirty: boolean): { pending: string | null; stay: ()
       released.current = true; unsaved.current = false;
       allowed.current = pending;
       setPending(null);
+      const before = window.location.hash;
       window.location.hash = pending as string;
+      if (window.location.hash === before) { released.current = false; unsaved.current = dirty; allowed.current = null; }
     },
   };
 }

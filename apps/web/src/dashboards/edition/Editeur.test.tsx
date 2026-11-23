@@ -1,7 +1,8 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as client from "../client";
 import { navigate } from "../../shell/route";
 import { expectAccessible } from "../../test/a11y";
 import { ID, route } from "../testing";
@@ -262,6 +263,55 @@ describe("problèmes bloquants", () => {
 });
 
 describe("garde de sortie", () => {
+  it("bloque la sortie pendant une révision puis la permet après sa réponse", async () => {
+    let finish: (value: Awaited<ReturnType<typeof client.reviseDashboard>>) => void = () => undefined;
+    const spy = vi.spyOn(client, "reviseDashboard").mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    await ready();
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByText(/enregistrement est en cours/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { finish({ status: "error", message: "panne" }); });
+    await waitFor(() => { expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeEnabled(); });
+    expect(screen.getByText(/Quitter perd les modifications non enregistrées/)).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it("ferme la confirmation après une sauvegarde complète et garde la personne dans l’éditeur", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    await ready({ overrides: { [`POST ${ROOT}/dashboards/${ID}/revisions`]: async (init) => { await gate; return echo(init, 2); } } });
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { release(); });
+    await screen.findByText("Révision 2 enregistrée.");
+    await waitFor(() => { expect(screen.queryByRole("dialog", { name: "Quitter sans enregistrer ?" })).not.toBeInTheDocument(); });
+    expect(window.location.hash).toBe("");
+    expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
+    await add("Ajouter une section");
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(await screen.findByRole("dialog", { name: "Quitter sans enregistrer ?" })).toBeInTheDocument();
+  });
+
+  it.each(["document", "saisie"] as const)("garde la confirmation si une %s reste non enregistrée après la sauvegarde", async (change) => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    await ready({ overrides: { [`POST ${ROOT}/dashboards/${ID}/revisions`]: async (init) => { await gate; return echo(init, 2); } } });
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    if (change === "document") await add("Ajouter une section");
+    else await userEvent.type(screen.getByRole("textbox", { name: /^Titre de la section/ }), " bis");
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { release(); });
+    await screen.findByText("Révision 2 enregistrée.");
+    expect(screen.getByRole("dialog", { name: "Quitter sans enregistrer ?" })).toHaveTextContent("Quitter perd les modifications non enregistrées du dashboard.");
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeEnabled();
+  });
+
   it("sans changement, on part sans question", async () => {
     await ready();
     act(() => { navigate({ page: "dashboards", space: "finance" }); });

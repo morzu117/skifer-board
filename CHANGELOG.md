@@ -6,9 +6,25 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Fixed
 
+- La confirmation de sortie se ferme après une sauvegarde complète, tout en restant ouverte si des modifications subsistent.
+
+- Les refus de thèmes, modèles et composants indiquent le rôle requis en français et contextualisent leurs détails ; les refus de fiche commencent par une majuscule.
+
+- La garde de sortie se réarme après une navigation vers la même adresse et bloque le départ pendant toute sauvegarde ; ses messages distinguent les tentatives de création. Les états des références gardent une identité stable entre deux rendus.
+
 - Fiabilisation des brouillons locaux, des références versionnées et de leurs choix, des refus de modèles et de l’accessibilité du remplissage des emplacements.
 
 ### Added
+
+- Vérifications d’acceptation des fuites de brouillons, du clavier, des largeurs et des contenus envoyés.
+
+- Parcours d’acceptation des modèles, composants versionnés et refus de suppression des contenus utilisés.
+
+- Parcours d’acceptation du thème personnel et de son approbation avant usage partagé, avec invariance des données et des requêtes.
+
+- Simulateur partagé du parcours des thèmes, modèles et composants, avec identités et journal des écritures.
+
+- Captures des listes de contenus vides, en chargement ou en refus, des fiches en refus et du dialogue de création avec une liste en erreur, sur ordinateur et téléphone.
 
 - La création depuis un modèle annonce le brouillon local ; l’éditeur affiche la provenance versionnée et le fil d’Ariane correspondant.
 

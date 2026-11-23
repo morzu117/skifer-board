@@ -193,7 +193,7 @@ it.each([
   render(<EditeurTheme space="finance" initial={defaultThemeDraft()} fetcher={fetcher} />);
   await user.type(screen.getByLabelText("Nom"), "x");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
-  expect(await screen.findByText(new RegExp(expected, "i"))).toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toHaveTextContent(new RegExp(expected, "i"));
   expect(screen.getByLabelText("Nom")).toHaveValue("Skifer clairx");
   expect(fetcher).toHaveBeenCalledTimes(1);
 });

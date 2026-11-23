@@ -8,7 +8,7 @@ import { decodeSpace } from "../spaces/model";
 import type { Fetch } from "../spaces/api";
 import { routeFromHash, routeHash } from "../shell/route";
 import { ThemesPage } from "./ThemesPage";
-import { themeRefusalText } from "./labels";
+import { refusalText } from "./labels";
 
 const id = "00000000-0000-4000-8000-000000000001";
 const commit = "a".repeat(40);
@@ -17,8 +17,8 @@ const space = decodeSpace(espace.body, "espace");
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
 it("conserve les précisions des refus", () => {
-  expect(themeRefusalText({ code: "local_mode" })).toBe("Mode local");
-  expect(themeRefusalText({ code: "invalid_parameter", reason: "raison", required: "creator", field: "champ", parameter: "revision", detail: "détail" })).toBe("Paramètre invalide · raison · creator · champ · revision · détail");
+  expect(refusalText({ code: "local_mode" })).toBe("Mode local");
+  expect(refusalText({ code: "invalid_parameter", reason: "raison", required: "creator", field: "champ", parameter: "revision", detail: "détail" })).toBe("Paramètre invalide · raison : raison · rôle requis : Créateur · champ : champ · paramètre : revision · détail : détail");
 });
 
 it("construit et relit les routes de liste et d'éditeur", () => {
@@ -43,6 +43,19 @@ it("rend l'échec des consommateurs sans inventer zéro", async () => {
   const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(url.endsWith("/consumers") ? new Response("panne", { status: 500 }) : Response.json(example(list.body))));
   render(<ThemesPage space={space} fetcher={fetcher} />);
   expect(await screen.findByText(/indisponible :/)).toBeInTheDocument();
+});
+
+it.each([
+  [{ code: "forbidden", required: "admin" }, "Accès refusé · rôle requis : Administrateur"],
+  [{ code: "forbidden", required: "reader" }, "Accès refusé · rôle requis : Lecteur"],
+  [{ code: "forbidden", required: "inconnu" }, "Accès refusé · rôle requis : inconnu"],
+  [{ code: "revision_conflict", reason: "stale" }, "Conflit de révision · raison : révision périmée"],
+  [{ code: "invalid_theme", reason: "token_not_admissible" }, "Thème invalide · raison : Ce token n'est pas admissible pour cette base."],
+  [{ code: "component_not_found" }, "Composant introuvable"],
+  [{ code: "invalid_page_template", reason: "out_of_bounds" }, "Modèle invalide · raison : hors des bornes"],
+  [{ code: "inconnu" }, "Refus du serveur · code : inconnu"],
+] as const)("libelle les précisions du refus %o", (refusal, expected) => {
+  expect(refusalText(refusal)).toBe(expected);
 });
 
 it.each(["admin", "creator"] as const)("explique la liste vide au rôle %s", async (role) => {
@@ -89,5 +102,5 @@ it.each(["réseau", "forbidden"] as const)("montre le refus de liste %s", async 
 it("montre un refus fermé de lecture des consommateurs", async () => {
   const fetcher = vi.fn<Fetch>().mockImplementation((url) => Promise.resolve(url.endsWith("/consumers") ? Response.json({ error: { code: "forbidden", required: "creator" } }, { status: 403 }) : Response.json(example(list.body))));
   render(<ThemesPage space={space} fetcher={fetcher} />);
-  expect(await screen.findByText("indisponible : Accès refusé · creator")).toBeInTheDocument();
+  expect(await screen.findByText("indisponible : Accès refusé · rôle requis : Créateur")).toBeInTheDocument();
 });

@@ -66,7 +66,7 @@ for (const kind of ["modele", "composant"] as const) {
     expect(await screen.findByRole("link", { name: "Lire la révision 1" })).toBeInTheDocument();
   });
   it(`affiche le refus du ${kind}`, async () => {
-    setup(kind, { fail: true }); expect(await screen.findByText(/Accès refusé/)).toBeInTheDocument();
+    setup(kind, { fail: true }); expect(await screen.findByText(kind === "modele" ? /Modèle de page indisponible : Accès refusé · rôle requis : Créateur/ : /Composant indisponible : Accès refusé · rôle requis : Créateur/)).toBeInTheDocument();
   });
   it(`affiche le diff du ${kind}`, async () => {
     setup(kind, { previous: true }); expect(await screen.findByRole("table")).toHaveTextContent("Nom");

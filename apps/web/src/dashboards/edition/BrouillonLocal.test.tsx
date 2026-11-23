@@ -21,6 +21,7 @@ it("garde le brouillon local et permet de quitter après confirmation", () => {
   expect(screen.getAllByText("Brouillon local, jamais enregistré").length).toBeGreaterThan(0);
   expect(screen.queryByRole("link", { name: "Historique des révisions" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Retour aux dashboards" }));
+  expect(screen.getByText("Ce brouillon local sera perdu : rien n’a été envoyé au serveur.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Rester" })); expect(onLeaveLocal).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Retour aux dashboards" })); fireEvent.click(screen.getByRole("button", { name: "Quitter sans enregistrer" })); expect(onLeaveLocal).toHaveBeenCalled();
 });
@@ -33,6 +34,8 @@ it("crée le dashboard au premier enregistrement", async () => {
 it.each([{ status: "refused", code: "forbidden", field: null }, { status: "error", message: "panne" }] as const)("rend le refus ou l'erreur de création : $status", async (failure) => {
   vi.spyOn(client, "createDashboard").mockResolvedValue(failure); const { onCreated } = open(); fireEvent.click(screen.getByRole("button", { name: /^Enregistrer$/ }));
   expect(await screen.findByRole("alert")).toBeInTheDocument(); expect(onCreated).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Retour aux dashboards" }));
+  expect(screen.getByText(failure.status === "refused" ? /création a été refusée/ : /création n’a pas été confirmée/)).toBeInTheDocument();
 });
 it("ne recrée pas un dashboard dont le serveur a changé le contenu", async () => {
   const different = decodeDashboardDraft({ ...draft(), name: "Autre" });
@@ -40,7 +43,7 @@ it("ne recrée pas un dashboard dont le serveur a changé le contenu", async () 
   const { onCreated } = open(); fireEvent.click(screen.getByRole("button", { name: /^Enregistrer$/ }));
   expect(await screen.findByText(/contenu diffère du brouillon/)).toBeInTheDocument(); expect(screen.getByRole("button", { name: /^Enregistrer$/ })).toBeDisabled(); expect(onCreated).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Retour aux dashboards" }));
-  expect(screen.getByText(/dashboard a été créé sur le serveur/)).toBeInTheDocument();
+  expect(screen.getByText("Le dashboard a été créé sur le serveur avec un contenu différent. Quitter perd le brouillon ouvert.")).toBeInTheDocument();
 });
 it("ignore la réponse après démontage", async () => {
   let release: (value: Awaited<ReturnType<typeof client.createDashboard>>) => void = () => undefined;

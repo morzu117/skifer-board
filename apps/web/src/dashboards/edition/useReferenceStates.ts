@@ -45,6 +45,10 @@ export function useReferenceStates(space: string, identity: string, dashboard: s
     });
     return () => { controller.abort(); };
   }, [key, scope, space, fetcher]);
-  const values = snapshot.scope === scope ? snapshot.values : {};
-  return Object.fromEntries(unique.flatMap((reference) => { const name = referenceKey(reference); const value = values[name]; return value === undefined ? [] : [[name, value]]; }));
+  // Le contenu épinglé est immuable ; approbation et révision courante gardent les valeurs précédentes pendant la relecture, le serveur restant juge.
+  return useMemo(() => {
+    const values = snapshot.scope === scope ? snapshot.values : {};
+    const parsed = JSON.parse(key) as Reference[];
+    return Object.fromEntries(parsed.flatMap((reference) => { const name = referenceKey(reference); const value = values[name]; return value === undefined ? [] : [[name, value]]; }));
+  }, [key, scope, snapshot]);
 }

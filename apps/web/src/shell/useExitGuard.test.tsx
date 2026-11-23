@@ -119,3 +119,13 @@ it("ne réarme pas la garde entre l'autorisation et le hashchange", () => {
   expect(window.location.hash).toBe("#/espaces/finance/dashboards/cree");
   expect(result.current.pending).toBeNull();
 });
+
+it("réarme la garde après une sortie vers l'adresse courante", () => {
+  window.history.replaceState(null, "", "/#/espaces/finance/dashboards");
+  const { result } = renderHook(() => useExitGuard(true));
+  act(() => { navigate({ page: "dashboards", space: "finance" }); });
+  expect(result.current.pending).toBe("#/espaces/finance/dashboards");
+  act(() => { result.current.leave(); });
+  act(() => { navigate({ page: "home" }); });
+  expect(result.current.pending).toBe("#/");
+});

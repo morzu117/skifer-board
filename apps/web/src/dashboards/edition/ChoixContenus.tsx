@@ -1,6 +1,6 @@
 import { fetchComponents } from "../../components-lib/client";
 import { fetchThemes } from "../../themes/client";
-import { refusalText } from "../../themes/ContentListPage";
+import { refusalText } from "../../themes/labels";
 import type { ThemeListItem } from "../../themes/model";
 import { Banner } from "../../ui/Banner";
 import { useOutcome } from "../../ui/useOutcome";

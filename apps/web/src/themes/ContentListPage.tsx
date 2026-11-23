@@ -11,16 +11,11 @@ import { Badge } from "../ui/Badge";
 import { Banner } from "../ui/Banner";
 import { Card } from "../ui/Card";
 import { useOutcome } from "../ui/useOutcome";
-import { INDEX_LABELS, REFUSAL_LABELS } from "./labels";
+import { INDEX_LABELS, refusalText } from "./labels";
 import type { ThemeListItem } from "./model";
 
 export function ThemeNavigation({ space, active }: { space: string; active: "themes" | "modeles" | "composants" }) {
   return <nav className="sb-themes__navigation" aria-label="Bibliothèque de thèmes"><p className="sb-dashboards__bar">{([ ["themes", "Thèmes"], ["modeles", "Modèles de page"], ["composants", "Composants"] ] as const).map(([page, label]) => <a key={page} className="sb-button" href={routeHash({ page, space })} aria-current={active === page ? "page" : undefined}>{label}</a>)}</p></nav>;
-}
-
-export function refusalText(value: { code: string; reason?: string; required?: string; field?: string; parameter?: string; detail?: string }): string {
-  const labels: Record<string, string> = { ...REFUSAL_LABELS, page_template_not_found: "Modèle introuvable", invalid_page_template: "Modèle invalide", component_not_found: "Composant introuvable", invalid_component: "Composant invalide", analysis_not_found: "Analyse introuvable", personal_reference: "Référence personnelle" };
-  return [labels[value.code], value.reason, value.required, value.field, value.parameter, value.detail].filter((part) => part !== undefined).join(" · ");
 }
 
 export function ContentListPage({ space, fetcher, kind }: { space: Space; fetcher: Fetch; kind: "modeles" | "composants" }) {

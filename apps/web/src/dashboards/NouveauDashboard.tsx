@@ -6,7 +6,7 @@ import { navigate } from "../shell/route";
 import type { Fetch } from "../spaces/api";
 import { Banner } from "../ui/Banner";
 import { Dialog } from "../ui/Dialog";
-import { refusalText } from "../themes/ContentListPage";
+import { refusalText } from "../themes/labels";
 import { fetchPageTemplateRevision } from "../page-templates/client";
 import type { DashboardDraft } from "./document";
 import { instantiateTemplate } from "./edition/template";

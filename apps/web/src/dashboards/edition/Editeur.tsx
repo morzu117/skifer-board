@@ -93,6 +93,7 @@ export function Editeur({ space, identity, revision, localDraft, onCreated, onLe
   const [conflict, setConflict] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [creationAttempted, setCreationAttempted] = useState<"none" | "refused" | "unconfirmed">("none");
   const [createdDifferent, setCreatedDifferent] = useState<string | null>(null);
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -113,6 +114,8 @@ export function Editeur({ space, identity, revision, localDraft, onCreated, onLe
   }, []);
   const unsaved = server === null || dirty || typing.size > 0;
   const guard = useExitGuard(unsaved && (copied !== JSON.stringify(document_) || typing.size > 0));
+  // La personne reste dans l'éditeur : une sauvegarde complète rend la confirmation de perte sans objet.
+  useEffect(() => { if (server !== null && !saving && !unsaved && guard.pending !== null) guard.stay(); }, [server, saving, unsaved, guard]);
   const readOnly = historical || (server !== null && !server.permissions.revise) || (server === null && saving);
 
   const workContext = JSON.stringify([space, identity, environment, id]);
@@ -222,8 +225,8 @@ export function Editeur({ space, identity, revision, localDraft, onCreated, onLe
         saveLock.current = false;
         if (!alive.current) return;
         setSaving(false);
-        if (outcome.status === "refused") { setNotice({ tone: "danger", text: dashboardRefusalText(outcome) }); return; }
-        if (outcome.status === "error") { setNotice({ tone: "danger", text: `Création non confirmée : ${outcome.message} Rien ne dit que le dashboard existe ; relisez la liste avant de recommencer.` }); return; }
+        if (outcome.status === "refused") { setCreationAttempted("refused"); setNotice({ tone: "danger", text: dashboardRefusalText(outcome) }); return; }
+        if (outcome.status === "error") { setCreationAttempted("unconfirmed"); setNotice({ tone: "danger", text: `Création non confirmée : ${outcome.message} Rien ne dit que le dashboard existe ; relisez la liste avant de recommencer.` }); return; }
         if (JSON.stringify(draftOf(outcome.value.dashboard)) !== JSON.stringify(sent)) {
           setCreatedDifferent(outcome.value.id);
           setNotice({ tone: "danger", text: "Le serveur a créé un dashboard dont le contenu diffère du brouillon : vos modifications restent ouvertes et aucun nouvel envoi ne sera fait." });
@@ -319,10 +322,10 @@ export function Editeur({ space, identity, revision, localDraft, onCreated, onLe
       {addingAnalysis ? <AjouterAnalyse space={space} fetcher={fetcher} onClose={() => { setAddingAnalysis(false); }} /> : null}
     </div>
       {guard.pending === null && !leavingLocal ? null : <Dialog title="Quitter sans enregistrer ?" onClose={() => { setLeavingLocal(false); guard.stay(); }}>
-        <p>{server === null && saving ? "La création est en cours : attendez sa réponse avant de quitter." : createdDifferent !== null ? "Le dashboard a été créé sur le serveur avec un contenu différent. Quitter perd le brouillon ouvert." : "Ce dashboard a des modifications non enregistrées. Les quitter les perd : rien n’a été envoyé au serveur pour ces modifications."}</p>
+        <p>{saving ? (server === null ? "La création est en cours : attendez sa réponse avant de quitter." : "L’enregistrement est en cours : attendez sa réponse avant de quitter.") : createdDifferent !== null ? "Le dashboard a été créé sur le serveur avec un contenu différent. Quitter perd le brouillon ouvert." : server === null && creationAttempted === "none" ? "Ce brouillon local sera perdu : rien n’a été envoyé au serveur." : server === null && creationAttempted === "refused" ? "La création a été refusée. Quitter perd le brouillon ouvert." : server === null ? "La création n’a pas été confirmée. Quitter perd le brouillon ouvert ; relisez la liste des dashboards." : "Quitter perd les modifications non enregistrées du dashboard."}</p>
         <div className="sb-dashboards__buttons">
           <button type="button" data-autofocus className="sb-button" onClick={() => { setLeavingLocal(false); guard.stay(); }}>Rester</button>
-          <button type="button" className="sb-button" disabled={server === null && saving} onClick={() => { if (leavingLocal || (server === null && guard.pending === routeHash({ page: "dashboards", space }))) { guard.allow(); onLeaveLocal?.(); } else guard.leave(); }}>Quitter sans enregistrer</button>
+          <button type="button" className="sb-button" disabled={saving} onClick={() => { if (leavingLocal || (server === null && guard.pending === routeHash({ page: "dashboards", space }))) { guard.allow(); onLeaveLocal?.(); } else guard.leave(); }}>Quitter sans enregistrer</button>
         </div>
       </Dialog>}
   </PendingInputs></EditorContext>;

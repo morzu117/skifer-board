@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fetchComponents, fetchComponentRevision } from "../../components-lib/client";
-import { refusalText } from "../../themes/ContentListPage";
+import { refusalText } from "../../themes/labels";
 import { Banner } from "../../ui/Banner";
 import { Dialog } from "../../ui/Dialog";
 import { useOutcome } from "../../ui/useOutcome";

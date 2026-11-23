@@ -48,7 +48,7 @@ for (const kind of ["modele", "composant"] as const) {
     expect(screen.getByRole("button", { name: /Enregistrer comme/ })).toBeDisabled(); expect(screen.getByText("Modifications non enregistrées.")).toBeInTheDocument();
     view.rerender(<EnregistrerContenu {...props} reason={null} />);
     await userEvent.click(screen.getByRole("button", { name: /Enregistrer comme/ })); await userEvent.click(screen.getByRole("button", { name: "Créer" }));
-    expect(await screen.findByText(/Accès refusé · creator/)).toBeInTheDocument(); expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Accès refusé · rôle requis : Créateur/)).toBeInTheDocument(); expect(fetcher).toHaveBeenCalledTimes(1);
     await userEvent.keyboard("{Escape}"); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 }
@@ -109,7 +109,7 @@ it("garde la raison d'un conflit renvoyé par le serveur", async () => {
   const fetcher = vi.fn<Fetch>().mockResolvedValue(Response.json({ error: { code: "revision_conflict", reason: "stale" } }, { status: 409 }));
   render(<EnregistrerContenu kind="composant" space="finance" fetcher={fetcher} node={node} analysisName="Analyse" reason={null} />);
   await userEvent.click(screen.getByRole("button", { name: /Enregistrer comme/ })); await userEvent.click(screen.getByRole("button", { name: "Créer" }));
-  expect(await screen.findByText(/Conflit de révision · révision périmée/)).toBeInTheDocument();
+  expect(await screen.findByText(/Conflit de révision · raison : révision périmée/)).toBeInTheDocument();
 });
 it("affiche l'échec de validation de l'extraction sans appel serveur", async () => {
   const fetcher = server("modele");
