@@ -59,3 +59,5 @@
 .sb-themes__preview.sb-theme-skifer-ardoise .sb-themes__scroll-hint { color: var(--sb-on-slate-muted); }
 
 .sb-themes__diff .sb-table caption { text-align: start; }
+
+.sb-themes__navigation .sb-button[aria-current="page"] { background: var(--sb-slate-900); border-color: var(--sb-slate-900); color: var(--sb-surface); }

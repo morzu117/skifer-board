@@ -58,6 +58,7 @@ export interface ReglagesDashboards {
   role: "admin" | "creator" | "reader";
   dashboards?: EntreeDashboard[];
   analyses?: Record<string, AnalysePinglee>;
+  composants?: Record<string, string>;
   identifiants?: string[];
   masquerPremiere?: boolean;
   /** Les exécutions restent en cours tant que `liberer()` n'a pas été appelé. */
@@ -88,13 +89,14 @@ export interface ServeurDashboards {
 }
 
 const COMPOSANTS = ["analysis", "kpi"];
-interface Noeud { id: string; type: string; children?: Noeud[]; rows?: Noeud[]; columns?: Noeud[]; sections?: Noeud[]; reference?: { analysis_id: string } }
+interface Noeud { id: string; type: string; component?: { component_id: string }; children?: Noeud[]; rows?: Noeud[]; columns?: Noeud[]; sections?: Noeud[]; reference?: { analysis_id: string } }
 
 /** Les composants exécutables d'un document, dans l'ordre du document. */
-export function executables(document: Document): { id: string; analyse: string }[] {
+export function executables(document: Document, composants: Record<string, string> = {}): { id: string; analyse: string }[] {
   const trouves: { id: string; analyse: string }[] = [];
   const parcourir = (noeud: Noeud) => {
     if (COMPOSANTS.includes(noeud.type) && noeud.reference !== undefined) trouves.push({ id: noeud.id, analyse: noeud.reference.analysis_id });
+    if (noeud.type === "component" && noeud.component && composants[noeud.component.component_id]) trouves.push({ id: noeud.id, analyse: composants[noeud.component.component_id] as string });
     for (const fils of [...(noeud.rows ?? []), ...(noeud.columns ?? []), ...(noeud.children ?? [])]) parcourir(fils);
   };
   for (const section of document.layout.sections as { rows: Noeud[] }[]) for (const rangee of section.rows) parcourir(rangee);
@@ -132,7 +134,7 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
   let liberee = reglages.retenir !== true;
   const ENTIER = /^[1-9]\d{0,8}$/;
 
-  const tuiles = (document: Document) => executables(document).map(({ id, analyse }) => {
+  const tuiles = (document: Document) => executables(document, reglages.composants).map(({ id, analyse }) => {
     const tuile = analyses[analyse]?.tuile ?? "prete";
     if (tuile === "indisponible") return { id, state: "unavailable", reason: "analysis_unavailable" };
     return { id, state: tuile === "non_verifie" ? "unverified" : "ready" };
@@ -164,6 +166,8 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
       journal.appels.push(`${methode} ${gabarit}`);
       return true;
     };
+    if (chemin === "/themes" && reconnu("GET", "/themes")) return route.fulfill({ json: { themes: [], unreadable: 0 } });
+    if (chemin === "/components" && reconnu("GET", "/components")) return route.fulfill({ json: { components: [], unreadable: 0 } });
     if (chemin === "/explorer/fields" && reconnu("GET", "/explorer/fields")) return route.fulfill({ json: { models: MODELES } });
     if (chemin === "/executions" && reconnu("POST", "/executions")) {
       const recu = corps();

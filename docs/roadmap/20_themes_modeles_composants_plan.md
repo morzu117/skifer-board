@@ -1,6 +1,6 @@
 # Plan 20 — Thèmes, modèles de page et composants approuvés (lot 07b)
 
-Date : 13 novembre 2026 · Statut : **20.1 à 20.5a réalisées**, 20.5b et 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
+Date : 13 novembre 2026 · Statut : **20.1 à 20.5b réalisées**, 20.5c à réaliser. Second plan du lot 07, ouvert sur la composition des dashboards du [plan 19](19_composition_dashboards_plan.md). Il clôt le lot 07.
 
 Le porteur a fait ses choix le 13 novembre, en suivant les recommandations :
 - **tout le lot 07b dans ce plan** ;
@@ -469,3 +469,88 @@ Une pause demandée par le porteur, puis un redémarrage, ont interrompu la seco
   - Web : 4 122 tests, couverture de 100 %, build compris.
   - Bout en bout : 787 parcours passés et 1 ignoré.
   - Aucune exclusion de couverture nouvelle.
+
+### 20.5b — Modèles de page, composants, Nouveau dashboard, et thème et composants dans l'éditeur
+
+Développé par Codex (gpt-6.1-terra) en sous-étapes d1 à d5, avec une passe de design à chaque étape d'écran. Relu par Claude Sonnet 5.5 : une revue, puis une contre-revue.
+
+Deux sessions Codex se sont succédé : la première à partir de d1 et jusqu'à d2, puis une session neuve à partir des retouches de d2. Le porteur a demandé deux pauses en cours de tranche. Les commits intermédiaires « en cours » ont été réunis dans ce commit.
+
+*Modèles et composants dans l'entrée Thèmes (C4, C7, C9).*
+- Les onglets Thèmes, Modèles de page et Composants partagent la liste de 20.5a (`ContentListPage`). L'onglet courant est marqué. Routes : `#/espaces/{space}/modeles[/{id}]` et `…/composants[/{id}]`.
+- Une même fiche (`shared-content/ContentPage`) sert aux deux genres :
+  - la révision du nom et de la description, avec la révision attendue ;
+  - l'historique, et la lecture d'une révision ancienne ;
+  - l'approbation par l'administrateur, avec le diff et des chemins en français, ou « Première approbation » avec un résumé ;
+  - la suppression, avec ses consommateurs.
+- La fiche d'un modèle montre son squelette en lecture seule : sections, rangées, colonnes, emplacements, textes, séparateurs, conteneurs et filtres communs sans cibles.
+- La fiche d'un composant montre son genre, l'analyse épinglée, avec son identifiant, et sa présentation sémantique. Elle n'exécute rien et le dit.
+
+*Enregistrer comme modèle, comme composant (C5, C6).*
+- `extractTemplate` porte en TypeScript l'extraction `extract_template` du serveur. Un exemple produit par le serveur réel (`contracts/page_templates/extraction/`) est vérifié des deux côtés : l'extraction donne le même modèle, octet pour octet.
+  - Aucune analyse, aucune cible ni aucune référence de composant ne subsiste.
+  - Un composant non résolu, ou un modèle que le contrat refuse, est un refus typé, rendu dans le dialogue. Rien n'est deviné.
+- « Enregistrer comme modèle » se trouve dans la barre d'actions. Il n'est désactivé, avec sa raison, que par des modifications non enregistrées, un problème bloquant ou un composant non lu. Un dashboard ouvert en lecture seule s'extrait aussi : le serveur reste juge.
+- « Enregistrer comme composant » se trouve dans les propriétés d'un visuel ou d'un KPI.
+  - Il reprend l'analyse épinglée et la présentation propre du nœud, sans les défauts du thème ni du dashboard.
+  - Une analyse personnelle est refusée localement, avec sa raison.
+
+*Thème et composants dans l'éditeur (C3, C6).*
+- **Thème.** La liste « Thème » est dans les propriétés du dashboard : approuvés seulement pour un dashboard partagé, plus les brouillons de l'auteur pour un personnel. Le choix est annulable.
+  - Un thème épinglé hors des choix courants garde son nom et sa raison : ancienne révision approuvée, ou brouillon interdit en partagé.
+  - Le refus `unapproved_reference` est rendu avec ses chemins.
+- **Palette.** La section « Composants approuvés » suit la même règle de visibilité.
+- **Tuile composant.**
+  - Elle porte le badge « Composant : nom rN » et n'a pas de surcharge locale.
+  - « Détacher » s'annule en une étape.
+  - L'écart de révision se compare, s'adopte ou se garde. Dans un dashboard partagé, seule une révision approuvée plus récente s'adopte, et sinon la raison est affichée.
+- **Emplacements.** Un emplacement vide est une tuile pointillée, avec son libellé, son genre attendu et le problème bloquant `empty_slot`. « Remplir » ne propose que des analyses ou des composants du bon genre, et dit pourquoi les analyses personnelles manquent en partagé.
+- **Arbitrage.** Le libellé d'origine « Composant » de l'héritage B9 du plan 19, qui désigne la surcharge propre d'une tuile, devient « Tuile » : « composant » désigne désormais le contenu réutilisable. La clé interne est inchangée. C'est le seul changement d'attente des plans 18 et 19.
+- **Références.** Les références inchangées gardent leur état pendant une relecture, puisque les révisions épinglées sont immuables. Une insertion n'annule plus l'exécution des autres composants, et un refus n'est jamais masqué par un succès antérieur.
+
+*Nouveau dashboard avec modèle et thème (C3, C5).*
+- Le dialogue gagne les listes facultatives « Modèle de page » et « Thème », avec la même règle de visibilité.
+  - Changer de visibilité signale un brouillon devenu interdit et bloque la création, sans le retirer en silence.
+  - Une liste en lecture ou en erreur le dit, propose « Réessayer » et permet de créer sans.
+- **Avec un modèle, rien n'est créé au serveur.**
+  - Le dialogue dit « Ouvrir le brouillon » et annonce que le dashboard sera créé au premier enregistrement.
+  - L'éditeur s'ouvre sur un brouillon local jamais enregistré, « Issu du modèle Exemple · r1 ». Il est protégé par une garde de sortie, et l'enregistrement est bloqué tant qu'un emplacement est vide.
+  - Le premier enregistrement crée le dashboard, avec ses provenances `template` et `theme`. La sortie est bloquée pendant la création, et la garde reste levée une fois la création faite.
+- Sans modèle, le comportement est inchangé.
+
+*Bout en bout.*
+- Les specs `modeles-composants`, `enregistrer-contenus`, `editeur-contenus`, `emplacements` et `nouveau-modele` couvrent :
+  - les étapes 2 à 5 du §4 côté dashboard ;
+  - un corps de requête soumis identique sous thème ;
+  - Axe sous les deux bases.
+- Le parcours des emplacements passe par le vrai chemin (Nouveau dashboard, puis modèle, puis brouillon local), et non par un état injecté.
+- Captures sur ordinateur et téléphone : les listes et les fiches avec approbation, les deux dialogues « Enregistrer comme… », l'éditeur avec thème et tuile composant, l'emplacement vide, le dialogue « Nouveau dashboard » et le brouillon local issu d'un modèle.
+
+*Vérification.*
+- **Design.** Chaque étape d'écran a été ouverte en capture avant la revue. Les défauts relevés ont tous été corrigés :
+  - un onglet courant sans marque ;
+  - des titres internes plus gros que leur carte ;
+  - un bouton désactivé étiré en bloc ;
+  - une tuile composant sans nom ;
+  - un « Créer et ouvrir » trompeur alors que rien n'est créé ;
+  - une provenance de modèle absente.
+- **Tests lents.** Deux tests d'éditeur dépassaient 5 s sous charge. Ils ont été découpés sans changer aucun délai, et la revue a fait rétablir les assertions perdues au découpage.
+- **Revue.** Aucune violation d'invariant. Elle a relevé :
+  - une garde de sortie qui pouvait se réarmer après la création du brouillon local ;
+  - un thème épinglé affiché « indisponible » à tort ;
+  - l'adoption d'une révision brouillon dans un dashboard partagé ;
+  - des tests sans assertion ;
+  - neuf mineurs, dont un filtre silencieux des analyses personnelles, une restriction locale sur l'extraction d'un dashboard en lecture seule, et un décodeur de refus des modèles élargi sans motif, rétabli comme en 20.3.
+
+  Tout a été corrigé.
+- **Contre-revue.** OK pour commit, et les 13 points sont vérifiés dans le code et les tests. Un seul test antérieur change d'attente, `useReferenceStates.test.tsx` : la révision approuvée vient désormais de la lecture courante du composant, et l'ancien mock contredisait le contrat. Quatre mineurs restent pour 20.5c :
+  - un `leave()` vers l'adresse courante ne réarme pas la garde ;
+  - « rien n'a été envoyé au serveur » s'affiche encore après une création refusée ou non confirmée ;
+  - le retour de `useReferenceStates` n'est pas mémoïsé ;
+  - pendant une relecture, un ancien succès reste affiché jusqu'à la réponse.
+- **Non-régression.** Le gate a révélé que les captures de l'acceptation du plan 19 (`dashboards-acceptation`) dataient d'avant 20.5a. L'entrée « Thèmes » restait sous la tolérance de 1 %, mais les deux listes facultatives du dialogue « Nouveau dashboard » la dépassent. Les 20 captures de cette spec ont été régénérées. J'ai vérifié que seuls y apparaissent les ajouts du plan 20 : l'entrée « Thèmes », « Enregistrer comme modèle », la section « Composants approuvés », « Enregistrer comme composant » et les deux listes du dialogue. Aucune assertion n'a changé.
+- **Gate complet.** Une erreur de lint (`any` dans une assertion) a été corrigée avant le gate final.
+  - Python : 7 506 tests, couverture de 100 %.
+  - Web : 4 304 tests, couverture de 100 %, build compris.
+  - Bout en bout : 849 parcours passés et 1 ignoré.
+  - Aucune exclusion de couverture nouvelle, et aucun `eslint-disable`.

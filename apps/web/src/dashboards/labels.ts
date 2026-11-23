@@ -87,7 +87,7 @@ export const NUMBER_FORMAT_LABELS: Readonly<Record<NumberFormat, string>> = {
   auto: "Valeur exacte", integer: "Entier", decimal_1: "Une décimale", decimal_2: "Deux décimales", percent: "Pourcentage", compact: "Compact",
 };
 export const TOOLTIP_LABELS: Readonly<Record<Tooltip, string>> = { value: "Valeur", value_and_definition: "Valeur et définition" };
-export const ORIGIN_LABELS: Readonly<Record<Origin, string>> = { theme: "Thème", analysis: "Analyse", dashboard: "Dashboard", component: "Composant" };
+export const ORIGIN_LABELS: Readonly<Record<Origin, string>> = { theme: "Thème", analysis: "Analyse", dashboard: "Dashboard", component: "Tuile" };
 
 /** Règle du serveur qu'un `invalid_dashboard` nomme, avec le chemin JSON de la violation. */
 export const DASHBOARD_RULE_LABELS: Readonly<Record<DashboardRule, string>> = {

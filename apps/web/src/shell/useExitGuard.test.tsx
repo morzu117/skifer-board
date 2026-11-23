@@ -108,3 +108,14 @@ it.each([{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: tru
   act(() => { link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ...options })); });
   expect(result.current.pending).toBeNull();
 });
+
+it("ne réarme pas la garde entre l'autorisation et le hashchange", () => {
+  window.history.replaceState(null, "", "/#/espaces/finance/dashboards");
+  const { result, rerender } = renderHook(({ dirty }) => useExitGuard(dirty), { initialProps: { dirty: true } });
+  act(() => { result.current.allow(); });
+  rerender({ dirty: true });
+  window.history.pushState(null, "", "#/espaces/finance/dashboards/cree");
+  act(() => { window.dispatchEvent(new HashChangeEvent("hashchange")); });
+  expect(window.location.hash).toBe("#/espaces/finance/dashboards/cree");
+  expect(result.current.pending).toBeNull();
+});

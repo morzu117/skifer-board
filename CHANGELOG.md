@@ -4,7 +4,31 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ## [Unreleased]
 
+### Fixed
+
+- Fiabilisation des brouillons locaux, des références versionnées et de leurs choix, des refus de modèles et de l’accessibilité du remplissage des emplacements.
+
 ### Added
+
+- La création depuis un modèle annonce le brouillon local ; l’éditeur affiche la provenance versionnée et le fil d’Ariane correspondant.
+
+- Création de dashboards avec choix d’un thème et d’un modèle ; les emplacements sont remplis dans un brouillon local avant la première création serveur.
+
+- Remplissage des emplacements par une analyse ou un composant compatible, avec annulation ; ajustements de la palette et des propriétés du dashboard.
+
+- Choix du thème et insertion de composants versionnés dans l’éditeur de dashboard, avec détachement et comparaison des révisions.
+
+- Les refus de références non approuvées indiquent les chemins transmis par le serveur.
+
+- Le libellé d’origine des surcharges locales devient « Tuile » ; les captures des dialogues utilisent la fenêtre visible.
+
+- Ajout des actions d’enregistrement de modèles et de composants depuis l’éditeur de dashboard.
+
+- Ajout de l’extraction locale de modèles de page, vérifiée contre le serveur.
+
+- Ajout des fiches de modèles et de composants, avec révisions, historique, approbation et suppression, et amélioration de leur présentation et des onglets.
+
+- Ajout des onglets et listes des modèles de page et composants dans Thèmes.
 
 - Plan 20, 20.5a : éditeur de thème avec aperçu local, historique, approbation et suppression ; garde des modifications et navigation par clavier.
 

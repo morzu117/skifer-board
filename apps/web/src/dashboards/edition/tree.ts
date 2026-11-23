@@ -45,6 +45,7 @@ function layoutNode(node: LayoutNode, parent: string, index: number, siblings: n
     const kind = node.type === "kpi" ? "KPI" : "Visuel";
     return { id: node.id, kind: node.type, parent, index, siblings, level, label: name === undefined ? kind : `${kind} · ${name}`, name: kind, children: [] };
   }
+  if (node.type === "component") return { id: node.id, kind: node.type, parent, index, siblings, level, label: titles[node.id] === undefined ? "Composant" : `Composant · ${titles[node.id]}`, name: "Composant", children: [] };
   if (node.type === "slot") return { id: node.id, kind: "slot", parent, index, siblings, level, label: `Emplacement : ${node.slot.label}`, name: "Emplacement", children: [] };
   return { id: node.id, kind: node.type, parent, index, siblings, level, label: NODE_LABELS[node.type], name: NODE_LABELS[node.type], children: [] };
 }

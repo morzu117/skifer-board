@@ -1,10 +1,9 @@
 import { fetchComponent, fetchComponentRevision } from "../../components-lib/client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchTheme, fetchThemeRevision } from "../../themes/client";
 import type { ThemeDocument } from "../../themes/document";
 import type { ComponentDocument } from "../../components-lib/document";
 import type { Fetch } from "../../spaces/api";
-import { useOutcome } from "../../ui/useOutcome";
 import { executableNodes, type DashboardDraft } from "../document";
 
 export type Reference = { kind: "theme" | "component"; id: string; revision: number };
@@ -18,26 +17,34 @@ export function referencesOf(document: DashboardDraft): Reference[] {
   return [...new Map(references.map((reference) => [referenceKey(reference), reference])).values()].sort((a, b) => referenceKey(a).localeCompare(referenceKey(b)));
 }
 
-/** Les lectures utilisent l'identité de la session ; une erreur n'établit aucune approbation. */
+/** Chaque résultat remplace celui de sa clé dès sa réception, y compris un refus. */
 export function useReferenceStates(space: string, identity: string, dashboard: string, references: readonly Reference[], fetcher: Fetch): Readonly<Record<string, ReferenceState>> {
   const unique = [...new Map(references.map((reference) => [referenceKey(reference), reference])).values()];
-  const key = JSON.stringify([space, identity, dashboard, unique]);
-  // Une nouvelle identité d'objet distingue aussi A → B → A d'une même lecture de A.
-  const generation = useMemo(() => ({ key }), [key]);
-  const result = useOutcome(generation, async (signal) => {
-    const currents = new Map<string, Promise<{ status: "ok"; value: { revision: number } } | { status: "error" | "refused" }>>();
-    const load = async (reference: Reference): Promise<readonly [string, ReferenceState]> => {
+  const key = JSON.stringify(unique);
+  const scope = useMemo(() => ({ space, identity, dashboard, fetcher }), [space, identity, dashboard, fetcher]);
+  const [snapshot, setSnapshot] = useState<{ scope: object; values: Record<string, ReferenceState> }>({ scope, values: {} });
+  useEffect(() => {
+    const controller = new AbortController();
+    const currents = new Map<string, Promise<{ status: "ok"; value: { revision: number; approvedRevision: number | null } } | { status: "error" | "refused" }>>();
+    const load = async (reference: Reference): Promise<void> => {
       const group = `${reference.kind}:${reference.id}`;
       let current = currents.get(group);
       if (current === undefined) {
-        current = reference.kind === "component" ? fetchComponent(space, reference.id, signal, fetcher) : fetchTheme(space, reference.id, signal, fetcher);
+        current = reference.kind === "component" ? fetchComponent(space, reference.id, controller.signal, fetcher) : fetchTheme(space, reference.id, controller.signal, fetcher);
         currents.set(group, current);
       }
-      const pinned = reference.kind === "component" ? fetchComponentRevision(space, reference.id, reference.revision, signal, fetcher) : fetchThemeRevision(space, reference.id, reference.revision, signal, fetcher);
+      const pinned = reference.kind === "component" ? fetchComponentRevision(space, reference.id, reference.revision, controller.signal, fetcher) : fetchThemeRevision(space, reference.id, reference.revision, controller.signal, fetcher);
       const [latest, read] = await Promise.all([current, pinned]);
-      return [referenceKey(reference), latest.status === "ok" && read.status === "ok" ? { state: read.value.state, approved_revision: read.value.approvedRevision, current_revision: latest.value.revision, ...("theme" in read.value ? { theme: read.value.theme } : {}), ...("component" in read.value ? { component: read.value.component } : {}) } : { state: "unresolved" }];
+      if (controller.signal.aborted) return;
+      const value: ReferenceState = latest.status === "ok" && read.status === "ok" ? { state: read.value.state, approved_revision: latest.value.approvedRevision, current_revision: latest.value.revision, ...("theme" in read.value ? { theme: read.value.theme } : {}), ...("component" in read.value ? { component: read.value.component } : {}) } : { state: "unresolved" };
+      setSnapshot((previous) => ({ scope, values: { ...(previous.scope === scope ? previous.values : {}), [referenceKey(reference)]: value } }));
     };
-    return Object.fromEntries(await Promise.all(unique.map(load)));
-  });
-  return "status" in result && result.status === "loading" ? {} : result as Readonly<Record<string, ReferenceState>>;
+    const parsed = JSON.parse(key) as Reference[];
+    for (const reference of parsed) void load(reference).catch(() => {
+      if (!controller.signal.aborted) setSnapshot((previous) => ({ scope, values: { ...(previous.scope === scope ? previous.values : {}), [referenceKey(reference)]: { state: "unresolved" } } }));
+    });
+    return () => { controller.abort(); };
+  }, [key, scope, space, fetcher]);
+  const values = snapshot.scope === scope ? snapshot.values : {};
+  return Object.fromEntries(unique.flatMap((reference) => { const name = referenceKey(reference); const value = values[name]; return value === undefined ? [] : [[name, value]]; }));
 }

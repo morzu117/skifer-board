@@ -40,7 +40,7 @@ describe("contrats des routes de modèles", () => {
     expect(decodePageTemplateDiff(ok("diff"), ID, 1, 2)).toEqual({ id: ID, base: 1, other: 2, changes: [{ path: "/name", kind: "modified", node: null, id: null, before: "Exemple", after: "Révisé" }] });
     expect(decodePageTemplateApproval(ok("approver"), ID)).toEqual({ id: ID, state: "approved", approvedRevision: 1, indexState: "indexed", diff: null });
     for (const [name, decode] of Object.entries(decoders)) expect(decode, name).not.toThrow();
-    const statuses: Record<string, number> = { page_template_not_found: 404, invalid_page_template: 422, already_approved: 409, not_owner: 403, content_in_use: 409, content_unavailable: 503, revision_conflict: 409, forbidden: 403, local_mode: 409 };
+    const statuses: Record<string, number> = { page_template_not_found: 404, invalid_page_template: 422, already_approved: 409, not_owner: 403, content_unavailable: 503, revision_conflict: 409, forbidden: 403, local_mode: 409 };
     for (const name of refusals) {
       const refusal = decodePageTemplateRefusal(ok(name));
       expect(refusal, name).toEqual((ok(name) as { error: unknown }).error);

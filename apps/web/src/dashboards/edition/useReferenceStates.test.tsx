@@ -25,7 +25,7 @@ describe("états des références", () => {
     vi.mocked(fetchTheme).mockResolvedValue(response(2, "approved") as never);
     vi.mocked(fetchThemeRevision).mockResolvedValue({ status: "error", message: "panne" });
     const { result } = renderHook(() => useReferenceStates("finance", "ada", "dashboard", [component, theme], fetcher));
-    await waitFor(() => { expect(result.current[referenceKey(component)]).toEqual({ state: "draft", approved_revision: null, current_revision: 3 }); });
+    await waitFor(() => { expect(result.current[referenceKey(component)]).toEqual({ state: "draft", approved_revision: 3, current_revision: 3 }); });
     expect(result.current[referenceKey(theme)]).toEqual({ state: "unresolved" });
   });
   it("annule les lectures au changement de session", async () => {
@@ -62,4 +62,67 @@ describe("états des références", () => {
     act(() => { release?.(response(1, "draft") as never); });
     await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("approved"); });
   });
+});
+it("conserve la clé inchangée pendant la lecture et remplace aussitôt un refus", async () => {
+  let finish: ((value: never) => void) | undefined;
+  vi.mocked(fetchComponent).mockReset().mockResolvedValueOnce(response(1, "approved") as never).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const second = { ...component, id: N.kpi };
+  const { result, rerender } = renderHook(({ refs }) => useReferenceStates("finance", "ada", "dashboard", refs, fetcher), { initialProps: { refs: [component] } });
+  await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("approved"); });
+  rerender({ refs: [component, second] });
+  expect(result.current[referenceKey(component)]?.state).toBe("approved"); expect(result.current[referenceKey(second)]).toBeUndefined();
+  // Le refus d'une clé ne doit pas réutiliser le succès d'une autre.
+  act(() => { finish?.({ status: "error", message: "panne" } as never); });
+  await waitFor(() => { expect(result.current[referenceKey(second)]?.state).toBe("unresolved"); });
+  expect(result.current[referenceKey(component)]?.state).toBe("approved");
+});
+it("un refus reçu remplace immédiatement l'ancien état, même si une autre lecture attend", async () => {
+  let finishA: ((value: never) => void) | undefined;
+  let count = 0;
+  vi.mocked(fetchComponent).mockReset().mockImplementation((_space, id) => {
+    if (id !== component.id) return new Promise(() => undefined);
+    if (count++ === 0) return Promise.resolve(response(1, "approved") as never);
+    return new Promise((resolve) => { finishA = resolve; });
+  });
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const second = { ...component, id: N.kpi };
+  const { result, rerender } = renderHook(({ refs }) => useReferenceStates("finance", "ada", "dashboard", refs, fetcher), { initialProps: { refs: [component] } });
+  await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("approved"); });
+  rerender({ refs: [component, second] }); expect(result.current[referenceKey(component)]?.state).toBe("approved");
+  act(() => { finishA?.({ status: "error", message: "refus" } as never); });
+  await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("unresolved"); });
+  expect(result.current[referenceKey(second)]).toBeUndefined();
+});
+it("rend une lecture rejetée non résolue", async () => {
+  vi.mocked(fetchComponent).mockReset().mockRejectedValue(new Error("panne"));
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const { result } = renderHook(() => useReferenceStates("finance", "ada", "dashboard", [component], fetcher));
+  await waitFor(() => { expect(result.current[referenceKey(component)]).toEqual({ state: "unresolved" }); });
+});
+it("isole le rejet dans une nouvelle session", async () => {
+  vi.mocked(fetchComponent).mockReset().mockResolvedValueOnce(response(1, "approved") as never).mockRejectedValueOnce(new Error("panne"));
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const { result, rerender } = renderHook(({ identity }) => useReferenceStates("finance", identity, "dashboard", [component], fetcher), { initialProps: { identity: "ada" } });
+  await waitFor(() => { expect(result.current[referenceKey(component)]?.state).toBe("approved"); });
+  rerender({ identity: "bea" });
+  await waitFor(() => { expect(result.current[referenceKey(component)]).toEqual({ state: "unresolved" }); });
+});
+it("ignore le rejet d'une lecture annulée", async () => {
+  let reject: (error: Error) => void = () => undefined;
+  vi.mocked(fetchComponent).mockReset().mockImplementation(() => new Promise((_resolve, fail) => { reject = fail; }));
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const { result, rerender } = renderHook(({ refs }) => useReferenceStates("finance", "ada", "dashboard", refs, fetcher), { initialProps: { refs: [component] } });
+  rerender({ refs: [] });
+  await act(async () => { reject(new Error("annulée")); await Promise.resolve(); });
+  expect(result.current).toEqual({});
+});
+it("ignore également une réponse reçue après annulation", async () => {
+  let finish: (value: never) => void = () => undefined;
+  vi.mocked(fetchComponent).mockReset().mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+  vi.mocked(fetchComponentRevision).mockReset().mockResolvedValue(response(1, "approved") as never);
+  const { result, rerender } = renderHook(({ refs }) => useReferenceStates("finance", "ada", "dashboard", refs, fetcher), { initialProps: { refs: [component] } });
+  rerender({ refs: [] });
+  await act(async () => { finish(response(1, "approved") as never); await Promise.resolve(); });
+  expect(result.current).toEqual({});
 });

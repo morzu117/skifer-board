@@ -1,3 +1,4 @@
+import { ThemeNavigation } from "./ContentListPage";
 import { useState } from "react";
 import { SKIFER_CLAIR, type ChartTheme } from "../charts/theme";
 import { ThemeSwitch } from "../prototype/ThemeSwitch";
@@ -23,6 +24,7 @@ export function ThemesPage({ space, fetcher }: Props) {
   const [reload, setReload] = useState(0);
   const list = useOutcome(`${space.id}:themes:${String(reload)}`, (signal) => fetchThemes(space.id, signal, fetcher));
   return <div className={`sb-dashboards sb-theme-${theme.id}`}>
+    <ThemeNavigation space={space.id} active="themes" />
     <div className="sb-page-head"><div><h1 className="sb-page-head__title">Thèmes</h1><p className="sb-page-head__lead">{space.name} · thèmes de graphiques versionnés.</p></div><ThemeSwitch value={theme} onChange={setTheme} /></div>
     <p className="sb-dashboards__bar"><button type="button" className="sb-button sb-button--primary" onClick={() => { navigate({ page: "theme", space: space.id, id: "nouveau" }); }}>Nouveau thème</button><button type="button" className="sb-button" onClick={() => { setReload((value) => value + 1); }}>Actualiser</button></p>
     {list.status === "loading" ? <Reading>Lecture des thèmes…</Reading> : list.status !== "ok" ? <Banner tone="danger">Thèmes indisponibles : {list.status === "error" ? list.message : themeRefusalText(list)}. Rien n'est affiché à leur place.</Banner> : <>

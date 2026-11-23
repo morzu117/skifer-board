@@ -5,12 +5,16 @@ import { Badge } from "../../ui/Badge";
 import { Banner } from "../../ui/Banner";
 import { LEGENDS, NUMBER_FORMATS, TOOLTIPS, type Defaults, type ExecutableComponent, type Section, type Threshold } from "../document";
 import { accord, CHART_LABELS, KIND_LABELS, LEGEND_LABELS, NUMBER_FORMAT_LABELS, ORIGIN_LABELS, GENDERS, TOOLTIP_LABELS, VISIBILITY_LABELS } from "../labels";
+import { RemplirEmplacement } from "./RemplirEmplacement";
+import { ChoixTheme } from "./ChoixContenus";
+import { ComponentFields } from "./RevisionComposant";
 import { BlocksEditor } from "./Blocs";
 import { Choice, CommitField } from "./Champs";
 import type { Origin } from "./commands";
 import { useEditor } from "./EditorContext";
 import { FiltreForm } from "./Filtres";
 import { effective, titleOf, withField, withoutField } from "./presentation";
+import { EnregistrerContenu } from "./EnregistrerContenu";
 import { compatibleCharts } from "./problems";
 import { findLayoutNode, findNode } from "./tree";
 
@@ -49,6 +53,7 @@ function DashboardFields() {
     onChange={(value) => { set("defaults", value === "" ? withoutKey(document.defaults, key) : { ...document.defaults, [key]: value }, `${label} par défaut ${accord(value === "" ? "retiré" : "modifié", GENDERS.presentation[key])}.`); }}
   />;
   return <>
+    <ChoixTheme />
     <CommitField label="Nom du dashboard" value={document.name} maxLength={120} onCommit={(text) => { set("name", text, "Nom modifié."); }} />
     <CommitField label="Description" value={document.description} multiline maxLength={2000} onCommit={(text) => { set("description", text, "Description modifiée."); }} />
     <fieldset className="sb-props__choice sb-props__visibility"><legend>Visibilité</legend>
@@ -74,6 +79,8 @@ function NodeFields({ id }: { id: string }) {
       editor.run({ type: "resize", id, span }, (tree) => `${node.name} : largeur ${String(findNode(tree, id)?.span)} douzièmes sur 12.`);
     }} />;
   }
+  if (node.kind === "slot") { const slot = findLayoutNode(editor.document, id) as Extract<NonNullable<ReturnType<typeof findLayoutNode>>, { type: "slot" }>; return <><p>Genre attendu : {slot.slot.expected === "visual" ? "Visuel" : "KPI"}.</p><RemplirEmplacement id={id} label={slot.slot.label} expected={slot.slot.expected} /></>; }
+  if (node.kind === "component") return <ComponentFields id={id} />;
   if (node.kind === "text") return <BlocksEditor id={id} />;
   if (node.kind === "analysis" || node.kind === "kpi") return <PresentationFields component={findLayoutNode(editor.document, id) as ExecutableComponent} />;
   return <p className="sb-field__hint">{KIND_LABELS[node.kind]} : aucune propriété. Il se place, se déplace et se supprime depuis la mise en page.</p>;
@@ -115,7 +122,7 @@ function PresentationFields({ component }: { component: ExecutableComponent }) {
   const editor = useEditor();
   const pinned = editor.analyses[component.id]?.pinned;
   if (pinned === undefined) {
-    return <Banner tone="warning">L'analyse épinglée n'est pas lue : sa présentation ne se modifie pas tant qu'elle n'est pas connue. Aucune valeur n'est devinée.</Banner>;
+    return <><EnregistrerContenu kind="composant" space={editor.space} fetcher={editor.contentSave.fetcher} node={component} analysisName="" reason="L’analyse épinglée n’est pas disponible." /><Banner tone="warning">L'analyse épinglée n'est pas lue : sa présentation ne se modifie pas tant qu'elle n'est pas connue. Aucune valeur n'est devinée.</Banner></>;
   }
   const found = effective(component, pinned, editor.document.defaults, editor.themeDocument);
   const dimensions = pinned.analysis.query.dimensions.length;
@@ -128,6 +135,7 @@ function PresentationFields({ component }: { component: ExecutableComponent }) {
   const chosen = chart?.value;
   const charts = compatibleCharts(dimensions);
   return <>
+    <EnregistrerContenu kind="composant" space={editor.space} fetcher={editor.contentSave.fetcher} node={component} analysisName={pinned.analysis.name} reason={editor.contentSave.reason ?? (pinned.analysis.visibility === "personal" ? "Une analyse personnelle ne peut pas être enregistrée comme composant." : null)} />
     <p className="sb-field__hint">Analyse épinglée : {pinned.analysis.name} · révision {String(component.reference.revision)}. La présentation ne change jamais la requête soumise.</p>
     <CommitField label="Titre" value={titleOf(found)} maxLength={120} onCommit={(text) => { if (text.trim() === "") remove("title", "titre"); else set("title", text, "Titre"); }} />
     <OriginNote origin={fields.title.origin} label="titre" onRemove={() => { remove("title", "titre"); }} />

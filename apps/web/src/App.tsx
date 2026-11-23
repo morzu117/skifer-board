@@ -1,3 +1,5 @@
+import { ContentPage } from "./shared-content/ContentPage";
+import { ContentListPage } from "./themes/ContentListPage";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AnalysePage } from "./analyses/AnalysePage";
@@ -38,7 +40,7 @@ const NOT_FOUND = { status: "not_found" } as const;
 
 /** Espace de la route, s'il y en a un. */
 function spaceOf(route: Route): string | null {
-  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" || route.page === "dashboards" || route.page === "dashboard" || route.page === "themes" || route.page === "theme" ? route.space : null;
+  return route.page === "catalogue" || route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" || route.page === "executions" || route.page === "explorer" || route.page === "analyses" || route.page === "analysis" || route.page === "dashboards" || route.page === "dashboard" || route.page === "themes" || route.page === "theme" || route.page === "modeles" || route.page === "modele" || route.page === "composants" || route.page === "composant" ? route.space : null;
 }
 
 interface Sections {
@@ -173,6 +175,7 @@ type Current = { status: "loading" } | SpaceOutcome<Space> | null;
  */
 function Workspace({ fetcher, identity, session, onLogout, children }: WorkspaceProps) {
   const [environment, setEnvironment] = useState<Environment>("DEV");
+  const [localDashboard, setLocalDashboard] = useState(false);
   const route = useRoute();
   const hash = routeHash(route);
   // Espace perdu pendant l'usage : relu une seule fois par navigation, pour que l'accès retiré
@@ -202,7 +205,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
   const space = current?.status === "ok" ? current.value : null;
   const platformAdmin = listed.status === "ok" && listed.value.platformAdmin;
   const sections = sectionsFor(space, platformAdmin);
-  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "dashboards" || route.page === "dashboard" ? "dashboards" : route.page === "themes" || route.page === "theme" ? "themes" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
+  const active = route.page === "explorer" ? "explorer" : route.page === "analyses" || route.page === "analysis" ? "analyses" : route.page === "dashboards" || route.page === "dashboard" ? "dashboards" : route.page === "themes" || route.page === "theme" || route.page === "modeles" || route.page === "modele" || route.page === "composants" || route.page === "composant" ? "themes" : route.page === "catalogue" ? "catalogue" : route.page === "members" || route.page === "environments" || route.page === "parameters" || route.page === "connections" ? "espace" : undefined;
 
   return (
     <AppShell
@@ -215,7 +218,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
           navigate(section === "espace" ? { page: "members", space: space.id } : section === "explorer" ? { page: "explorer", space: space.id } : section === "analyses" ? { page: "analyses", space: space.id } : section === "dashboards" ? { page: "dashboards", space: space.id } : section === "themes" ? { page: "themes", space: space.id } : { page: "catalogue", space: space.id });
         }
       }}
-      breadcrumb={breadcrumb(route, current)}
+      breadcrumb={breadcrumb(route, current, localDashboard)}
       pending={sections.pending}
       spaceSwitch={
         <SpaceSwitch
@@ -241,6 +244,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
         fetcher={fetcher}
         environment={environment}
         session={session}
+        onLocalDashboard={setLocalDashboard}
         onWritten={() => {
           setRevision((value) => value + 1);
         }}
@@ -249,7 +253,7 @@ function Workspace({ fetcher, identity, session, onLogout, children }: Workspace
   );
 }
 
-function breadcrumb(route: Route, current: Current): readonly string[] {
+function breadcrumb(route: Route, current: Current, localDashboard: boolean): readonly string[] {
   if (route.page === "home") {
     return ["Vos espaces"];
   }
@@ -278,10 +282,12 @@ function breadcrumb(route: Route, current: Current): readonly string[] {
     if (route.page === "explorer") return [current.value.name, "Explorer"];
     if (route.page === "analyses") return [current.value.name, "Analyses"];
     if (route.page === "analysis") return [current.value.name, "Analyses", "Fiche analyse"];
-    if (route.page === "dashboards") return [current.value.name, "Dashboards"];
+    if (route.page === "dashboards") return localDashboard ? [current.value.name, "Dashboards", "Éditeur"] : [current.value.name, "Dashboards"];
     if (route.page === "dashboard") return [current.value.name, "Dashboards", "Éditeur"];
     if (route.page === "themes") return [current.value.name, "Thèmes"];
     if (route.page === "theme") return [current.value.name, "Thèmes", "Éditeur"];
+    if (route.page === "modeles" || route.page === "modele") return [current.value.name, "Thèmes", "Modèles de page"];
+    if (route.page === "composants" || route.page === "composant") return [current.value.name, "Thèmes", "Composants"];
     if (route.page === "executions") {
       return [current.value.name, "Exécutions"];
     }
@@ -299,10 +305,11 @@ interface PageProps {
   environment: Environment;
   /** Clé stable de la session : un changement de personne abandonne ce que les pages de dashboards ont lu et recommence sous la nouvelle. */
   session: string;
+  onLocalDashboard: (active: boolean) => void;
   onWritten: () => void;
 }
 
-function Page({ route, current, listed, fetcher, environment, session, onWritten }: PageProps) {
+function Page({ route, current, listed, fetcher, environment, session, onLocalDashboard, onWritten }: PageProps) {
   if (route.page === "home") {
     return <SpacesHome listed={listed} />;
   }
@@ -402,11 +409,13 @@ function Page({ route, current, listed, fetcher, environment, session, onWritten
     return <AnalysePage key={`${current.value.id}:${route.id}:${String(route.revision)}:${String(route.view)}:${JSON.stringify(route.compare)}`} space={current.value} id={route.id} revision={route.revision} view={route.view} compare={route.compare} fetcher={fetcher} />;
   }
   if (route.page === "dashboards") {
-    return <DashboardsPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
+    return <DashboardsPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} identity={session} environment={environment} onLocalChange={onLocalDashboard} />;
   }
-  if (route.page === "themes" || route.page === "theme") {
+  if (route.page === "themes" || route.page === "theme" || route.page === "modeles" || route.page === "modele" || route.page === "composants" || route.page === "composant") {
     if (current.value.implicit || (current.value.role !== "creator" && current.value.role !== "admin")) return <Banner tone="warning">Thèmes indisponibles : {current.value.implicit ? "mode local" : "sans rôle"}.</Banner>;
     if (route.page === "theme") return route.view === "history" ? <HistoriqueTheme key={`${current.value.id}:${route.id}:${session}`} space={current.value.id} id={route.id} fetcher={fetcher} /> : <ThemeEditorPage key={`${current.value.id}:${route.id}:${session}:${String(route.revision)}`} space={current.value} id={route.id} identity={session} fetcher={fetcher} historical={route.revision} />;
+    if (route.page === "modele" || route.page === "composant") return <ContentPage key={`${current.value.id}:${route.page}:${route.id}:${String(route.revision)}:${String(route.view)}`} space={current.value} kind={route.page} id={route.id} fetcher={fetcher} historical={route.revision} view={route.view} />;
+    if (route.page === "modeles" || route.page === "composants") return <ContentListPage key={`${current.value.id}:${session}:${route.page}`} space={current.value} fetcher={fetcher} kind={route.page} />;
     return <ThemesPage key={`${current.value.id}:${session}`} space={current.value} fetcher={fetcher} />;
   }
   if (route.page === "dashboard") {

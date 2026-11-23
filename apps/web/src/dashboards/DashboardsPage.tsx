@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Unavailable } from "../analyses/Failure";
 import { SKIFER_CLAIR, type ChartTheme } from "../charts/theme";
 import { formatInstant } from "../format/date";
 import { ThemeSwitch } from "../prototype/ThemeSwitch";
-import { routeHash } from "../shell/route";
+import { navigate, routeHash } from "../shell/route";
 import { Reading } from "../spaces/AdminParts";
+import type { Environment } from "../shell/sections";
+import type { DashboardDraft } from "./document";
+import { Editeur } from "./edition/Editeur";
 import type { Fetch } from "../spaces/api";
 import type { Space } from "../spaces/model";
 import { Badge } from "../ui/Badge";
@@ -18,14 +21,17 @@ import type { DashboardListItem } from "./model";
 import { NouveauDashboard } from "./NouveauDashboard";
 import "./dashboards.css";
 
-interface Props { space: Space; fetcher: Fetch }
+interface Props { space: Space; fetcher: Fetch; identity?: string; environment?: Environment; onLocalChange?: (active: boolean) => void }
 
 /** Liste des dashboards de l'espace, en deux sections qui ne se recouvrent pas : les vôtres et ceux que d'autres partagent (plan 19, 19.5a). */
-export function DashboardsPage({ space, fetcher }: Props) {
+export function DashboardsPage({ space, fetcher, identity = "", environment = "DEV", onLocalChange }: Props) {
   const [theme, setTheme] = useState<ChartTheme>(SKIFER_CLAIR);
   const [reload, setReload] = useState(0);
+  const [localDraft, setLocalDraft] = useState<DashboardDraft | null>(null);
   const [creating, setCreating] = useState(false);
+  useEffect(() => () => { onLocalChange?.(false); }, [onLocalChange]);
   const list = useOutcome(`${space.id}:dashboards:${String(reload)}`, (signal) => fetchDashboards(space.id, signal, fetcher));
+  if (localDraft !== null) return <div className={`sb-dashboards sb-theme-${theme.id}`}><Editeur space={space.id} identity={identity} localDraft={localDraft} environment={environment} fetcher={fetcher} theme={theme} onTheme={setTheme} poll={1000} onLeaveLocal={() => { onLocalChange?.(false); setLocalDraft(null); }} onCreated={(id) => { onLocalChange?.(false); navigate({ page: "dashboard", space: space.id, id }); }} /></div>;
   return <div className={`sb-dashboards sb-theme-${theme.id}`}>
     <div className="sb-page-head">
       <div><h1 className="sb-page-head__title">Dashboards</h1><p className="sb-page-head__lead">{space.name} · compositions d'analyses épinglées, versionnées dans le dépôt de contenus.</p></div>
@@ -48,7 +54,7 @@ export function DashboardsPage({ space, fetcher }: Props) {
             <Section title="Partagés" empty="Personne d'autre n'a partagé de dashboard." rows={list.value.dashboards.filter((item) => !item.isOwner)} space={space.id} />
           </>}
       </>}
-    {creating ? <NouveauDashboard space={space.id} fetcher={fetcher} onClose={() => { setCreating(false); }} /> : null}
+    {creating ? <NouveauDashboard space={space.id} identity={identity} fetcher={fetcher} onLocal={(draft) => { onLocalChange?.(true); setCreating(false); setLocalDraft(draft); }} onClose={() => { setCreating(false); }} /> : null}
   </div>;
 }
 

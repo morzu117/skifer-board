@@ -1,3 +1,4 @@
+import { EnregistrerContenu } from "./EnregistrerContenu";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent } from "react";
 
 import type { ChartTheme } from "../../charts/theme";
@@ -13,7 +14,7 @@ import { Badge } from "../../ui/Badge";
 import { Banner } from "../../ui/Banner";
 import { Dialog } from "../../ui/Dialog";
 import { useOutcome } from "../../ui/useOutcome";
-import { reviseDashboard } from "../client";
+import { createDashboard, reviseDashboard } from "../client";
 import { executableNodes, executables } from "../document";
 import { dashboardRefusalText } from "../Failure";
 import { EDIT_REFUSAL_LABELS, READ_STATE_LABELS, VISIBILITY_LABELS } from "../labels";
@@ -29,6 +30,7 @@ import { EditorContext, filterDomId, nodeDomId, type Editor } from "./EditorCont
 import { PanneauBas, type BottomTab } from "./PanneauBas";
 import { Palette } from "./Palette";
 import { dashboardProblems } from "./problems";
+import { ProvenanceModele } from "./ProvenanceModele";
 import { PROPS_TITLE_ID, Proprietes } from "./Proprietes";
 import { buildTree } from "./tree";
 import { useTiles, type TileSources } from "./useTiles";
@@ -40,7 +42,10 @@ interface Props {
   space: string;
   historical?: boolean;
   identity: string;
-  revision: DashboardRevision;
+  revision?: DashboardRevision;
+  localDraft?: DashboardDraft;
+  onCreated?: (id: string) => void;
+  onLeaveLocal?: () => void;
   environment: Environment;
   fetcher: Fetch;
   theme: ChartTheme;
@@ -48,6 +53,8 @@ interface Props {
   /** Attente, en millisecondes, entre deux lectures d'une exécution en cours. */
   poll: number;
 }
+
+const EMPTY_TILES: DashboardRevision["tiles"] = [];
 
 type Notice = { tone: "neutral" | "danger"; text: string };
 
@@ -69,21 +76,26 @@ const stored = (found: DashboardRevision): Stored => ({ revision: found.revision
  * qu'à l'enregistrement, avec la révision attendue. Un refus du serveur (dont le conflit de révision) se lit tel quel : rien n'est
  * écrasé et le brouillon reste ouvert.
  */
-export function Editeur({ space, identity, revision, environment, fetcher, theme, onTheme, poll, historical = false }: Props) {
-  const id = revision.id;
-  const [history, setHistory] = useState<History<DashboardDraft>>(() => createHistory(draftOf(revision.dashboard)));
+export function Editeur({ space, identity, revision, localDraft, onCreated, onLeaveLocal, environment, fetcher, theme, onTheme, poll, historical = false }: Props) {
+  const [localId] = useState(() => crypto.randomUUID());
+  const id = revision?.id ?? localId;
+  const [history, setHistory] = useState<History<DashboardDraft>>(() => createHistory(revision ? draftOf(revision.dashboard) : localDraft as DashboardDraft));
   const latest = useRef(history);
-  const [server, setServer] = useState<Stored>(() => stored(revision));
+  const [server, setServer] = useState<Stored | null>(() => revision ? stored(revision) : null);
   const [selected, setSelected] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [refusal, setRefusal] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [tab, setTab] = useState<BottomTab>("problems");
+  const [leavingLocal, setLeavingLocal] = useState(false);
   const [addingAnalysis, setAddingAnalysis] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [createdDifferent, setCreatedDifferent] = useState<string | null>(null);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const saveLock = useRef(false);
   const focusLater = useRef<string | null>(null);
   const [, nudge] = useReducer((count: number) => count + 1, 0);
@@ -99,9 +111,9 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
       return next;
     });
   }, []);
-  const unsaved = dirty || typing.size > 0;
+  const unsaved = server === null || dirty || typing.size > 0;
   const guard = useExitGuard(unsaved && (copied !== JSON.stringify(document_) || typing.size > 0));
-  const readOnly = historical || !server.permissions.revise;
+  const readOnly = historical || (server !== null && !server.permissions.revise) || (server === null && saving);
 
   const workContext = JSON.stringify([space, identity, environment, id]);
   const [work, setWork] = useState<{ context: string; values: Readonly<Record<string, unknown>> }>({ context: workContext, values: {} });
@@ -110,31 +122,31 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
   const fields = useOutcome(`${space}:${identity}:${environment}:champs`, (signal) => fetchFields(space, signal, fetcher));
   const references = referencesOf(document_);
   const states = useReferenceStates(space, identity, id, references, fetcher);
-  const resolvedComponents = useMemo<NonNullable<TileSources["resolvedComponents"]>>(() => {
+  const resolvedComponents = useMemo<Record<string, NonNullable<NonNullable<TileSources["resolvedComponents"]>[string]>>>(() => {
     const result: Record<string, NonNullable<NonNullable<TileSources["resolvedComponents"]>[string]>> = {};
     for (const node of executableNodes(document_)) {
       if (node.type !== "component") continue;
-      const saved = executableNodes(server.dashboard).find((item) => item.type === "component" && item.component.component_id === node.component.component_id && item.component.revision === node.component.revision);
+      const saved = server && executableNodes(server.dashboard).find((item) => item.type === "component" && item.component.component_id === node.component.component_id && item.component.revision === node.component.revision);
       const found = saved ? server.resolved?.components[node.component.component_id] : undefined;
       const state = states[referenceKey({ kind: "component", id: node.component.component_id, revision: node.component.revision })];
       const component = found ?? (state && state.state !== "unresolved" ? state.component : undefined);
       if (component) result[node.id] = { document: component, revision: node.component.revision };
     }
     return result;
-  }, [server.dashboard, server.resolved, document_, states]);
-  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server.tiles, catalog: fields, fetcher, poll, values, resolvedComponents });
+  }, [server, document_, states]);
+  const tiles = useTiles({ space, dashboard: id, identity, environment, document: document_, tiles: server?.tiles ?? EMPTY_TILES, catalog: fields, fetcher, poll, values, resolvedComponents });
   const catalog = fields.status === "ok" ? fields.value.models : null;
   const themeState = document_.theme ? states[referenceKey({ kind: "theme", id: document_.theme.theme_id, revision: document_.theme.revision })] : undefined;
   const localTheme = themeState && themeState.state !== "unresolved" ? themeState.theme : undefined;
-  const serverTheme = JSON.stringify(document_.theme) === JSON.stringify(server.dashboard.theme) ? server.resolved?.theme : undefined;
+  const serverTheme = server && JSON.stringify(document_.theme) === JSON.stringify(server.dashboard.theme) ? server.resolved?.theme : undefined;
   const resolvedTheme = serverTheme ?? localTheme;
   const chart = document_.theme === undefined ? { theme } : dashboardChartTheme(document_, resolvedTheme ? { components: {}, theme: resolvedTheme } : undefined, TOKEN_CATALOG);
   const themeDocument = chart.problem ? undefined : resolvedTheme;
 
-  const titles = useMemo(() => Object.fromEntries(executables(document_).map((component) => {
+  const titles = useMemo(() => ({ ...Object.fromEntries(executables(document_).map((component) => {
     const known = tiles.analyses[component.id];
     return [component.id, known === undefined ? component.presentation.title : titleOf(effective(component, known.pinned, document_.defaults, themeDocument))];
-  })), [document_, tiles.analyses, themeDocument]);
+  })), ...Object.fromEntries(Object.entries(resolvedComponents).map(([id, value]) => [id, value.document.name])) }), [document_, tiles.analyses, themeDocument, resolvedComponents]);
   const tree = useMemo(() => buildTree(document_, titles), [document_, titles]);
   const shared = useMemo(() => {
     const themeState = document_.theme ? states[referenceKey({ kind: "theme", id: document_.theme.theme_id, revision: document_.theme.revision })] : undefined;
@@ -146,9 +158,9 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     return { components, ...(themeState && themeState.state !== "unresolved" ? { theme: { approved: themeState.state === "approved" } } : {}) };
   }, [document_, states]);
   const problems = useMemo(() => {
-    const found = dashboardProblems(document_, server.tiles, tiles.analyses, catalog, shared);
+    const found = dashboardProblems(document_, server?.tiles ?? EMPTY_TILES, tiles.analyses, catalog, shared);
     return chart.problem ? [...found, { code: "theme_unavailable" as const, severity: "warning" as const, nodeId: "dashboard", path: "/theme" }] : found;
-  }, [document_, server.tiles, tiles.analyses, catalog, shared, chart.problem]);
+  }, [document_, server, tiles.analyses, catalog, shared, chart.problem]);
   const blocking = problems.filter((problem) => problem.severity === "blocking");
 
   // Le focus demandé par une commande est posé après le rendu : un nœud déplacé ou remonté a été remplacé dans le DOM.
@@ -199,12 +211,28 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
   };
 
   const save = (): void => {
-    if (saveLock.current || readOnly || conflict || blocking.length > 0) return;
-    if (!dirty) { setNotice({ tone: "neutral", text: "Rien à enregistrer : le dashboard est identique à la révision enregistrée." }); return; }
+    if (saveLock.current || readOnly || conflict || blocking.length > 0 || createdDifferent !== null || (server === null && typing.size > 0)) return;
+    if (server !== null && !dirty) { setNotice({ tone: "neutral", text: "Rien à enregistrer : le dashboard est identique à la révision enregistrée." }); return; }
     saveLock.current = true;
     setSaving(true);
     setNotice(null);
     const sent = latest.current.present;
+    if (server === null) {
+      void createDashboard(space, sent, fetcher).then((outcome) => {
+        saveLock.current = false;
+        if (!alive.current) return;
+        setSaving(false);
+        if (outcome.status === "refused") { setNotice({ tone: "danger", text: dashboardRefusalText(outcome) }); return; }
+        if (outcome.status === "error") { setNotice({ tone: "danger", text: `Création non confirmée : ${outcome.message} Rien ne dit que le dashboard existe ; relisez la liste avant de recommencer.` }); return; }
+        if (JSON.stringify(draftOf(outcome.value.dashboard)) !== JSON.stringify(sent)) {
+          setCreatedDifferent(outcome.value.id);
+          setNotice({ tone: "danger", text: "Le serveur a créé un dashboard dont le contenu diffère du brouillon : vos modifications restent ouvertes et aucun nouvel envoi ne sera fait." });
+          return;
+        }
+        guard.allow(); onCreated?.(outcome.value.id);
+      });
+      return;
+    }
     void reviseDashboard(space, id, sent, server.revision, fetcher).then((outcome) => {
       saveLock.current = false;
       setSaving(false);
@@ -231,18 +259,24 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
     else if ((key === "z" && event.shiftKey) || key === "y") { event.preventDefault(); history_redo(); }
   };
   const history_undo = (): void => {
+    if (server === null && saveLock.current) return;
     if (latest.current.past.length === 0) { say("Rien à annuler."); return; }
     commit(undo(latest.current));
     say("Dernière modification annulée.");
   };
   const history_redo = (): void => {
+    if (server === null && saveLock.current) return;
     if (latest.current.future.length === 0) { say("Rien à rétablir."); return; }
     commit(redo(latest.current));
     say("Modification rétablie.");
   };
 
-  const editor: Editor = { document: document_, space, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, components: tiles.components, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, values, setValue: (filterId, value) => { setWork((previous) => ({ context: workContext, values: { ...previous.values, [filterId]: value } })); }, overlaps: tiles.overlaps, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme: chart.theme, themeDocument, reveal };
-  const read = READ_STATE_LABELS[server.state];
+  const modelComponents = Object.fromEntries(references.filter((reference) => reference.kind === "component").map((reference) => { const state = states[referenceKey(reference)]; return [referenceKey(reference), state && state.state !== "unresolved" ? state.component : undefined]; }));
+  const componentMissing = Object.values(modelComponents).some((value) => value === undefined);
+  const saveReason = unsaved ? "Enregistrez les modifications du dashboard avant de créer un contenu." : saving || conflict || readOnly ? "Le dashboard doit être disponible en écriture." : null;
+  const modelReason = (unsaved ? "Enregistrez les modifications du dashboard avant de créer un contenu." : null) ?? (componentMissing ? "Un composant référencé n’est pas encore disponible." : blocking.length > 0 ? "Corrigez les problèmes bloquants avant de créer un modèle." : null);
+  const editor: Editor = { contentSave: { fetcher, reason: saveReason }, document: document_, space, identity, referenceStates: states, resolvedComponents, tree, selected, select: setSelected, run, say, readOnly, states: tiles.states, components: tiles.components, cancelTile: tiles.cancel, retryTile: tiles.retry, restartTile: tiles.restart, values, setValue: (filterId, value) => { setWork((previous) => ({ context: workContext, values: { ...previous.values, [filterId]: value } })); }, overlaps: tiles.overlaps, analyses: tiles.analyses, catalog, problems, settled: tiles.settled, theme: chart.theme, themeDocument, reveal };
+  const read = server === null ? null : READ_STATE_LABELS[server.state];
   const reason = blocking.length > 0 ? `${String(blocking.length)} problème${blocking.length > 1 ? "s" : ""} bloquant${blocking.length > 1 ? "s" : ""}` : null;
   return <EditorContext value={editor}><PendingInputs value={report}>
     {previewing ? <Apercu onClose={() => { setPreviewing(false); }} /> : null}
@@ -250,29 +284,30 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
       <div className="sb-page-head">
         <div>
           <h1 className="sb-page-head__title">{document_.name}</h1>
+          {document_.template === undefined ? null : <ProvenanceModele space={space} identity={identity} id={document_.template.template_id} revision={document_.template.revision} fetcher={fetcher} />}
           <p className="sb-page-head__lead">
-            {historical ? "Révision en lecture seule" : "Éditeur de dashboard"} · {VISIBILITY_LABELS[document_.visibility]} · révision {String(server.revision)}{" "}
-            <Badge tone={read.tone}>{read.label}</Badge>
+            {server === null || read === null ? <>Brouillon local, jamais enregistré · {VISIBILITY_LABELS[document_.visibility]}</> : <>{historical ? "Révision en lecture seule" : "Éditeur de dashboard"} · {VISIBILITY_LABELS[document_.visibility]} · révision {String(server.revision)} <Badge tone={read.tone}>{read.label}</Badge></>}
           </p>
         </div>
         <ThemeSwitch value={theme} onChange={onTheme} />
       </div>
-      <p className="sb-editor__note">{read.reason}</p>
-      {readOnly && !historical ? <Banner tone="warning">Le serveur n'accorde pas la modification de ce dashboard à votre compte : il s'ouvre en lecture seule, rien ne peut y être changé ni enregistré.</Banner> : null}
+      {read === null ? null : <p className="sb-editor__note">{read.reason}</p>}
+      {server !== null && readOnly && !historical ? <Banner tone="warning">Le serveur n'accorde pas la modification de ce dashboard à votre compte : il s'ouvre en lecture seule, rien ne peut y être changé ni enregistré.</Banner> : null}
       {historical ? <p>Révision historique en lecture seule.</p> : <div role="toolbar" aria-label="Actions de l'éditeur" className="sb-toolbar">
         <button type="button" className="sb-button" disabled={history.past.length === 0} onClick={history_undo}>Annuler</button>
         <button type="button" className="sb-button" disabled={history.future.length === 0} onClick={history_redo}>Rétablir</button>
         <button type="button" className="sb-button" onClick={() => { setPreviewing(true); }}>Aperçu lecteur</button>
-        <button type="button" className="sb-button sb-button--primary" disabled={saving || readOnly || conflict || reason !== null} aria-describedby="sb-save-state" onClick={save}>{saving ? "Enregistrement…" : "Enregistrer"}</button>
+        {server === null ? <span className="sb-content-save"><button type="button" className="sb-button" aria-describedby="sb-local-model-reason" disabled>Enregistrer comme modèle</button><small id="sb-local-model-reason" className="sb-field__hint">Enregistrez d’abord le dashboard.</small></span> : <EnregistrerContenu kind="modele" space={space} fetcher={fetcher} dashboard={server.dashboard} components={modelComponents} reason={modelReason} />}
+        <button type="button" className="sb-button sb-button--primary" disabled={saving || readOnly || conflict || reason !== null || createdDifferent !== null || (server === null && typing.size > 0)} aria-describedby="sb-save-state" onClick={save}>{saving ? "Enregistrement…" : "Enregistrer"}</button>
         <span id="sb-save-state" className="sb-toolbar__state">
           <span className={`sb-toolbar__dirty${unsaved ? " sb-toolbar__dirty--on" : ""}`} aria-hidden="true" />
-          {unsaved ? "Modifications non enregistrées" : "Tout est enregistré"}
+          {server === null ? "Brouillon local, jamais enregistré" : unsaved ? "Modifications non enregistrées" : "Tout est enregistré"}
           {reason === null ? null : <> · Enregistrement impossible : {reason}. <button type="button" className="sb-problems__link" onClick={() => { setTab("problems"); focusOn("sb-bottom-tab-problems"); }}>Voir les problèmes</button></>}
         </span>
       </div>}
-      <p><a href={routeHash({ page: "dashboard", space, id, view: "history" })}>Historique des révisions</a></p>
-      {notice === null ? null : <Banner tone={notice.tone}>{notice.text}</Banner>}
-      {conflict ? <ConflitDashboard space={space} id={id} opened={server.revision} draft={document_} fetcher={fetcher} onSaved={() => { setCopied(JSON.stringify(document_)); }} onReopen={(found) => { commit(createHistory(draftOf(found.dashboard))); setServer(stored(found)); setSelected(null); setConflict(false); setCopied(null); }} /> : null}
+      {server === null ? <p><button type="button" className="sb-button" onClick={() => { setLeavingLocal(true); }}>Retour aux dashboards</button></p> : <p><a href={routeHash({ page: "dashboard", space, id, view: "history" })}>Historique des révisions</a></p>}
+      {notice === null ? null : <Banner tone={notice.tone}>{notice.text}{createdDifferent === null ? null : <> <a href={routeHash({ page: "dashboard", space, id: createdDifferent })}>Ouvrir le dashboard créé</a></>}</Banner>}
+      {conflict && server !== null ? <ConflitDashboard space={space} id={id} opened={server.revision} draft={document_} fetcher={fetcher} onSaved={() => { setCopied(JSON.stringify(document_)); }} onReopen={(found) => { commit(createHistory(draftOf(found.dashboard))); setServer(stored(found)); setSelected(null); setConflict(false); setCopied(null); }} /> : null}
       {document_.visibility === "shared" && Object.values(tiles.analyses).some((known) => known?.pinned.analysis.visibility === "personal") ? <Banner tone="warning">Ce dashboard partagé référence une analyse personnelle : le serveur refusera son enregistrement.</Banner> : null}
       {refusal === null ? null : <Banner tone="danger">{refusal}</Banner>}
       <p className="sb-editor__announce" aria-live="polite" aria-atomic="true">{announcement}</p>
@@ -283,11 +318,11 @@ export function Editeur({ space, identity, revision, environment, fetcher, theme
       <PanneauBas tab={tab} onTab={setTab} />
       {addingAnalysis ? <AjouterAnalyse space={space} fetcher={fetcher} onClose={() => { setAddingAnalysis(false); }} /> : null}
     </div>
-      {guard.pending === null ? null : <Dialog title="Quitter sans enregistrer ?" onClose={guard.stay}>
-        <p>Ce dashboard a des modifications non enregistrées. Les quitter les perd : rien n'a été envoyé au serveur.</p>
+      {guard.pending === null && !leavingLocal ? null : <Dialog title="Quitter sans enregistrer ?" onClose={() => { setLeavingLocal(false); guard.stay(); }}>
+        <p>{server === null && saving ? "La création est en cours : attendez sa réponse avant de quitter." : createdDifferent !== null ? "Le dashboard a été créé sur le serveur avec un contenu différent. Quitter perd le brouillon ouvert." : "Ce dashboard a des modifications non enregistrées. Les quitter les perd : rien n’a été envoyé au serveur pour ces modifications."}</p>
         <div className="sb-dashboards__buttons">
-          <button type="button" data-autofocus className="sb-button" onClick={guard.stay}>Rester</button>
-          <button type="button" className="sb-button" onClick={guard.leave}>Quitter sans enregistrer</button>
+          <button type="button" data-autofocus className="sb-button" onClick={() => { setLeavingLocal(false); guard.stay(); }}>Rester</button>
+          <button type="button" className="sb-button" disabled={server === null && saving} onClick={() => { if (leavingLocal || (server === null && guard.pending === routeHash({ page: "dashboards", space }))) { guard.allow(); onLeaveLocal?.(); } else guard.leave(); }}>Quitter sans enregistrer</button>
         </div>
       </Dialog>}
   </PendingInputs></EditorContext>;

@@ -81,6 +81,7 @@ describe("ouverture", () => {
     const { server } = await ready({ revise: false });
     expect(screen.getByText(/il s'ouvre en lecture seule/)).toBeInTheDocument();
     expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+    await waitFor(() => { expect(toolbar().getByRole("button", { name: "Enregistrer comme modèle" })).toBeEnabled(); });
     expect(screen.getByRole("button", { name: "Ajouter une section" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: "Nom du dashboard" })).toBeDisabled();
     // Un raccourci n'est pas ignoré en silence : le refus est dit.

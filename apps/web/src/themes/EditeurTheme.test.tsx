@@ -11,35 +11,52 @@ import { defaultThemeDraft } from "./defaultDraft";
 import { EditeurTheme, ThemeEditorPage } from "./EditeurTheme";
 
 const space = decodeSpace(espace.body, "espace");
-it("édite les champs et affiche les problèmes sans remplacer les tokens", async () => {
-  const user = userEvent.setup();
+it("édite la base et affiche les problèmes sans remplacer les tokens", () => {
   render(<EditeurTheme space="finance" initial={defaultThemeDraft()} />);
-  await user.type(screen.getByLabelText("Nom"), "x");
-  await user.selectOptions(screen.getByLabelText("Série"), "ink");
-  await user.selectOptions(screen.getByLabelText("Texte", { selector: "select" }), "ink");
-  await user.selectOptions(screen.getByLabelText("Base"), "skifer-ardoise");
+  fireEvent.change(screen.getByLabelText("Nom"), { target: { value: "Skifer clairx" } });
+  fireEvent.change(screen.getByLabelText("Série"), { target: { value: "ink" } });
+  fireEvent.change(screen.getByLabelText("Texte", { selector: "select" }), { target: { value: "ink" } });
+  fireEvent.change(screen.getByLabelText("Base"), { target: { value: "skifer-ardoise" } });
   expect(screen.getByRole("heading", { name: "Problèmes" })).toBeInTheDocument();
   expect(screen.getAllByText(/enregistré, pas encore rendu/)).toHaveLength(4);
-  await user.selectOptions(screen.getByLabelText("Base"), "skifer-clair");
-  await user.click(screen.getByText("Palettes", { selector: "summary" }));
-  await user.selectOptions(screen.getByLabelText("Palier à ajouter Catégorielle"), "ink");
-  await user.click(screen.getByRole("button", { name: "Ajouter Catégorielle" }));
-  await user.click(screen.getByRole("button", { name: "Monter le palier 2 de la palette catégorielle" }));
-  await user.click(screen.getByRole("button", { name: "Descendre le palier 1 de la palette catégorielle" }));
-  await user.click(screen.getByRole("button", { name: "Retirer le palier 1 de la palette catégorielle" }));
-  await user.click(screen.getByText("Typographie et densité", { selector: "summary" }));
-  await user.selectOptions(screen.getByLabelText("Échelle"), "large");
-  await user.selectOptions(screen.getByLabelText("Densité"), "airy");
-  await user.click(screen.getByText("Formats", { selector: "summary" }));
-  await user.selectOptions(screen.getByLabelText("Nombres"), "integer");
+  fireEvent.change(screen.getByLabelText("Base"), { target: { value: "skifer-clair" } });
+  expect(screen.getByLabelText("Base")).toHaveValue("skifer-clair");
+});
+it("modifie et borne les paliers de palette", () => {
+  render(<EditeurTheme space="finance" initial={defaultThemeDraft()} />);
+  fireEvent.click(screen.getByText("Palettes", { selector: "summary" }));
+  fireEvent.change(screen.getByLabelText("Palier à ajouter Catégorielle"), { target: { value: "ink" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ajouter Catégorielle" }));
+  fireEvent.click(screen.getByRole("button", { name: "Monter le palier 2 de la palette catégorielle" }));
+  fireEvent.click(screen.getByRole("button", { name: "Descendre le palier 1 de la palette catégorielle" }));
+  fireEvent.click(screen.getByRole("button", { name: "Retirer le palier 1 de la palette catégorielle" }));
+  expect(screen.getByLabelText("Catégorielle · palier 1")).toBeInTheDocument();
+});
+it("borne les paliers de palette", () => {
+  render(<EditeurTheme space="finance" initial={defaultThemeDraft()} />);
+  fireEvent.click(screen.getByText("Palettes", { selector: "summary" }));
+  for (let i = 0; i < 8; i++) { const button = screen.getByRole("button", { name: "Ajouter Catégorielle" }); if (!button.hasAttribute("disabled")) fireEvent.click(button); }
+  expect(screen.getAllByLabelText(/^Catégorielle · palier /)).toHaveLength(8);
+  expect(screen.getByRole("button", { name: "Ajouter Catégorielle" })).toBeDisabled();
+  for (let i = 0; i < 8; i++) { const button = screen.getByRole("button", { name: "Retirer le palier 1 de la palette catégorielle" }); if (!button.hasAttribute("disabled")) fireEvent.click(button); }
+  expect(screen.getAllByLabelText(/^Catégorielle · palier /)).toHaveLength(2);
+  expect(screen.getByRole("button", { name: "Retirer le palier 1 de la palette catégorielle" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Skifer ardoise" }));
+  expect(screen.getByRole("button", { name: "Skifer ardoise" })).toHaveAttribute("aria-pressed", "true");
+});
+it("édite la typographie, les formats et les défauts", () => {
+  render(<EditeurTheme space="finance" initial={defaultThemeDraft()} />);
+  fireEvent.click(screen.getByText("Typographie et densité", { selector: "summary" }));
+  fireEvent.change(screen.getByLabelText("Échelle"), { target: { value: "large" } });
+  fireEvent.change(screen.getByLabelText("Densité"), { target: { value: "airy" } });
+  fireEvent.click(screen.getByText("Formats", { selector: "summary" }));
+  fireEvent.change(screen.getByLabelText("Nombres"), { target: { value: "integer" } });
   expect(screen.getByText("Court : rendu actuel, AAAA-MM-JJ")).toBeInTheDocument();
-  await user.selectOptions(screen.getByLabelText("Dates"), "iso");
-  await user.click(screen.getByText("Défauts des graphiques", { selector: "summary" }));
-  await user.selectOptions(screen.getByLabelText("Valeur · Légende"), "shown");
-  await user.selectOptions(screen.getByLabelText("Valeur · Légende"), "");
-  for (let i = 0; i < 8; i++) { const button = screen.getByRole("button", { name: "Ajouter Catégorielle" }); if (!button.hasAttribute("disabled")) await user.click(button); }
-  for (let i = 0; i < 8; i++) { const button = screen.getByRole("button", { name: "Retirer le palier 1 de la palette catégorielle" }); if (!button.hasAttribute("disabled")) await user.click(button); }
-  await user.click(screen.getByRole("button", { name: "Skifer ardoise" }));
+  fireEvent.change(screen.getByLabelText("Dates"), { target: { value: "iso" } });
+  expect(screen.getByLabelText("Dates")).toHaveValue("iso");
+  fireEvent.click(screen.getByText("Défauts des graphiques", { selector: "summary" }));
+  fireEvent.change(screen.getByLabelText("Valeur · Légende"), { target: { value: "shown" } });
+  fireEvent.change(screen.getByLabelText("Valeur · Légende"), { target: { value: "" } });
 });
 it("lit un thème ou rend son échec", async () => {
   const id = "00000000-0000-4000-8000-000000000001";
