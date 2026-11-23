@@ -3,6 +3,12 @@
 schema_version: 1
 kind: kpi
 status: draft
+# Extraction fictive : Board ne conserve que l'empreinte, jamais le SQL.
+extraction:
+  source_file: notebooks/panier_moyen.sql
+  dialect: databricks
+  sql_sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+  residues: []
 data_product:
   id: brouillon
   version: 1
