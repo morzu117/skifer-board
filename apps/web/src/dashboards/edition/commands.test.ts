@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { applyCommand, createHistory, dispatch, undo, redo, markSaved, isDirty, resolveVisual, resolveKpi, type Command } from "./commands";
 import * as documentModule from "../document";
 import type { DashboardDraft } from "../document";
+import type { ComponentDocument } from "../../components-lib/document";
 
 const id = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 const base: DashboardDraft = { name: "Tableau", description: "", visibility: "personal", defaults: {}, filters: [], layout: { sections: [] } };
@@ -17,6 +18,29 @@ const build = () => {
 };
 
 describe("commandes et historique", () => {
+  it("épingle un thème et insère, révise ou détache un composant en conservant les cibles", () => {
+    let h = createHistory(build());
+    const theme = { theme_id: id(25), revision: 1 };
+    h = dispatch(h, { type: "set_theme", theme }).history;
+    expect(h.present.theme).toEqual(theme);
+    expect(undo(h).present.theme).toBeUndefined();
+    h = dispatch(h, { type: "set_theme", theme: null }).history;
+    expect(h.present.theme).toBeUndefined();
+    h = dispatch(h, { type: "insert_component", parent: id(3), index: 1, component: { component_id: id(30), revision: 1 } }, () => id(31)).history;
+    h = dispatch(h, { type: "add_filter", value: { label: "Pays", dimension: "pays", operator: "eq", targets: [id(31)] } }, () => id(32)).history;
+    h = dispatch(h, { type: "adopt_component_revision", id: id(31), revision: 2 }).history;
+    const doc = { id: id(30), kind: "visual", analysis: { analysis_id: id(9), revision: 1 }, presentation: {} } as ComponentDocument;
+    const detached = dispatch(h, { type: "detach_component", id: id(31), resolved: { document: doc, revision: 2 } });
+    expect(detached.result.ok).toBe(true);
+    expect(detached.history.present.filters[0]?.targets).toEqual([id(31)]);
+    expect(undo(detached.history).present).toEqual(h.present);
+    expect(redo(undo(detached.history)).present).toEqual(detached.history.present);
+    expect(dispatch(h, { type: "detach_component", id: id(31), resolved: { document: doc, revision: 1 } }).result).toMatchObject({ reason: "invalid_property" });
+    expect(dispatch(h, { type: "detach_component", id: id(4), resolved: { document: doc, revision: 2 } }).result).toMatchObject({ reason: "invalid_property" });
+    expect(dispatch(h, { type: "adopt_component_revision", id: id(4), revision: 1 }).result).toMatchObject({ reason: "invalid_property" });
+    const kpi = { ...doc, kind: "kpi" as const };
+    expect(dispatch(h, { type: "detach_component", id: id(31), resolved: { document: kpi, revision: 2 } }).result.ok).toBe(true);
+  });
   it("ajoute chaque genre, déplace, modifie et supprime avec annulation et rétablissement", () => {
     let h = createHistory(build());
     const commands: [Command, number][] = [

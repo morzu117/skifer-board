@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { choisirTheme } from "./aides";
+import { choisirTheme, verifierDashboard } from "./aides";
 import { AUTRE_DASHBOARD_ID, DASHBOARD_ID, entreeDashboard, pageDe, servirDashboards, texte, uuid, visuel, type AnalysePinglee, type ServeurDashboards } from "./serveur-dashboards";
 
 const A = uuid(21); const B = uuid(22); const C = uuid(23); const KPI = uuid(24);
@@ -32,17 +32,6 @@ async function ajouterAnalyse(page: Page, nom: string, kpi = false) {
   await expect(dialog).toHaveCount(0);
 }
 
-/** Le document comporte des filtres communs à sa racine, jamais des filtres de requête d'analyse. */
-function verifierDashboard(value: unknown, path = "racine"): void {
-  if (Array.isArray(value)) { for (const [i, one] of value.entries()) verifierDashboard(one, `${path}[${String(i)}]`); return; }
-  if (typeof value === "string") { expect(value).not.toMatch(/\b(?:select\s+.+\bfrom|insert\s+into|update\s+.+\bset|delete\s+from|(?:drop|alter|create)\s+(?:table|view|schema))\b/i); return; }
-  if (value === null || typeof value !== "object") return;
-  for (const [key, one] of Object.entries(value)) {
-    expect(["sql", "query", "metrics", "dimensions"]).not.toContain(key.toLowerCase());
-    if (key === "filters") expect(path).toBe("racine");
-    verifierDashboard(one, `${path}.${key}`);
-  }
-}
 
 test("Un créateur compose, annule et rétablit chaque étape, enregistre puis crée une révision ; chaque tuile garde sa provenance et aucun SQL ni aucune requête n'est écrit", async ({ page }) => {
   const serveur = await servir(page, [], ANALYSES);

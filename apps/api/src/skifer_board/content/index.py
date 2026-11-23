@@ -16,13 +16,19 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Connection, Engine, delete, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..spaces.model import PersonRef
-from ..state.schema import analysis_index, dashboard_index, dashboard_references
+from ..state.schema import (
+    analysis_index,
+    dashboard_component_references,
+    dashboard_index,
+    dashboard_references,
+    dashboard_theme_references,
+)
 from .dashboard import executables
 from .repository import StoredRevision
 
@@ -79,12 +85,22 @@ def _values(row: IndexRow, at: datetime) -> dict[str, Any]:
     }
 
 
+if TYPE_CHECKING:
+    from .shared_index import SharedIndex
+
+
 class AnalysisIndex:
     def __init__(
         self, engine: Engine, clock: Callable[[], datetime] = lambda: datetime.now(UTC)
     ) -> None:
         self._engine = engine
         self._clock = clock
+
+    def shared_index(self) -> SharedIndex:
+        """Construit l’index partagé sur la même base et la même horloge."""
+        from .shared_index import SharedIndex
+
+        return SharedIndex(self._engine, self._clock)
 
     def upsert(self, row: IndexRow) -> None:
         """Pose la ligne si elle n'est pas plus ancienne que celle en place : deux écritures
@@ -185,6 +201,13 @@ class Reference:
 
 
 @dataclass(frozen=True)
+class SharedReference:
+    component_id: str
+    component_ref_id: str
+    revision: int
+
+
+@dataclass(frozen=True)
 class DashboardRow:
     space_id: str
     dashboard_id: str
@@ -196,6 +219,8 @@ class DashboardRow:
     committed_at: datetime
     references: tuple[Reference, ...] = ()
     state: str = INDEXED
+    theme: tuple[str, int] | None = None
+    components: tuple[SharedReference, ...] = ()
 
     @classmethod
     def of(cls, space_id: str, stored: StoredRevision) -> DashboardRow:
@@ -214,7 +239,63 @@ class DashboardRow:
                 Reference(item.id, item.analysis_id, item.revision)
                 for item in executables(document)
             ),
+            theme=(document["theme"]["theme_id"], document["theme"]["revision"])
+            if "theme" in document
+            else None,
+            components=_shared_components(document),
         )
+
+
+def _shared_components(document: dict[str, Any]) -> tuple[SharedReference, ...]:
+    found: list[SharedReference] = []
+
+    def rows(items: list[dict[str, Any]]) -> None:
+        for row in items:
+            for column in row["columns"]:
+                for child in column["children"]:
+                    if child["type"] == "container":
+                        rows(child["rows"])
+                    elif child["type"] == "component":
+                        ref = child["component"]
+                        found.append(
+                            SharedReference(child["id"], ref["component_id"], ref["revision"])
+                        )
+
+    for section in document["layout"]["sections"]:
+        rows(section["rows"])
+    return tuple(found)
+
+
+def _shared_reference_values(
+    row: DashboardRow,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    base = {"space_id": row.space_id, "dashboard_id": row.dashboard_id}
+    themes = (
+        [] if row.theme is None else [{**base, "theme_id": row.theme[0], "revision": row.theme[1]}]
+    )
+    components = [
+        {
+            **base,
+            "component_id": ref.component_id,
+            "component_ref_id": ref.component_ref_id,
+            "revision": ref.revision,
+        }
+        for ref in row.components
+    ]
+    return themes, components
+
+
+def _insert_shared_references(connection: Connection, rows: Iterable[DashboardRow]) -> None:
+    themes: list[dict[str, Any]] = []
+    components: list[dict[str, Any]] = []
+    for row in rows:
+        theme, component = _shared_reference_values(row)
+        themes.extend(theme)
+        components.extend(component)
+    if themes:
+        connection.execute(insert(dashboard_theme_references), themes)
+    if components:
+        connection.execute(insert(dashboard_component_references), components)
 
 
 def _dashboard_values(row: DashboardRow, at: datetime) -> dict[str, Any]:
@@ -279,6 +360,13 @@ class DashboardIndex:
             )
             if row.references:
                 connection.execute(insert(dashboard_references), _reference_values(row))
+            for table in (dashboard_theme_references, dashboard_component_references):
+                connection.execute(
+                    delete(table).where(
+                        table.c.space_id == row.space_id, table.c.dashboard_id == row.dashboard_id
+                    )
+                )
+            _insert_shared_references(connection, [row])
 
     def remove(self, space_id: str, dashboard_id: str, revision: int) -> None:
         """Retire la ligne d'un dashboard supprimé, et ses références avec elle (jamais une ligne
@@ -293,12 +381,15 @@ class DashboardIndex:
             )
 
     def get(self, space_id: str, dashboard_id: str) -> DashboardRow | None:
+        # Le verrou partagé garde la ligne et ses références cohérentes pendant leur lecture.
         with self._engine.connect() as connection:
             found = connection.execute(
-                select(dashboard_index).where(
+                select(dashboard_index)
+                .where(
                     dashboard_index.c.space_id == space_id,
                     dashboard_index.c.dashboard_id == dashboard_id,
                 )
+                .with_for_update(read=True)
             ).first()
             if found is None:
                 return None
@@ -310,7 +401,21 @@ class DashboardIndex:
                 )
                 .order_by(dashboard_references.c.component_id)
             ).all()
-        return _dashboard_row(found, references)
+            themes = connection.execute(
+                select(dashboard_theme_references).where(
+                    dashboard_theme_references.c.space_id == space_id,
+                    dashboard_theme_references.c.dashboard_id == dashboard_id,
+                )
+            ).first()
+            components = connection.execute(
+                select(dashboard_component_references)
+                .where(
+                    dashboard_component_references.c.space_id == space_id,
+                    dashboard_component_references.c.dashboard_id == dashboard_id,
+                )
+                .order_by(dashboard_component_references.c.component_id)
+            ).all()
+        return _dashboard_row(found, references, themes, components)
 
     def rows(self, space_id: str) -> list[DashboardRow]:
         """Lignes de l'espace, sans leurs références (la liste n'en a pas besoin)."""
@@ -353,9 +458,12 @@ class DashboardIndex:
             references = [value for row in listed for value in _reference_values(row)]
             if references:
                 connection.execute(insert(dashboard_references), references)
+            _insert_shared_references(connection, listed)
 
 
-def _dashboard_row(found: Any, references: Iterable[Any]) -> DashboardRow:
+def _dashboard_row(
+    found: Any, references: Iterable[Any], theme: Any = None, components: Iterable[Any] = ()
+) -> DashboardRow:
     return DashboardRow(
         found.space_id,
         found.dashboard_id,
@@ -367,4 +475,6 @@ def _dashboard_row(found: Any, references: Iterable[Any]) -> DashboardRow:
         found.committed_at.astimezone(UTC),
         tuple(Reference(r.component_id, r.analysis_id, r.analysis_revision) for r in references),
         found.state,
+        None if theme is None else (theme.theme_id, theme.revision),
+        tuple(SharedReference(r.component_id, r.component_ref_id, r.revision) for r in components),
     )

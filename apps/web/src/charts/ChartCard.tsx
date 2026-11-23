@@ -33,6 +33,8 @@ interface ChartCardProps {
   /** Fond de l'image exportée : celui du thème. */
   exportBackground: string;
   height?: number;
+  /** L’aperçu fictif ne propose pas d’export. */
+  allowExport?: boolean;
   actions?: ReactNode;
   /** Pied de tuile : périmètre, fraîcheur, définition. */
   footer?: ReactNode;
@@ -47,7 +49,7 @@ const PREVIOUS_KEYS = new Set(["ArrowLeft", "ArrowUp"]);
  * Tuile de graphique : titre, onglets Graphique / Tableau, navigation clavier, export
  * (RULES §3 : chaque graphique a un `aria-label`, une alternative tableau et le clavier).
  */
-export function ChartCard({ title, description, option, table, items, source, dimension, onSelect, itemKey, exportBackground, height = 260, actions, footer }: ChartCardProps) {
+export function ChartCard({ title, description, option, table, items, source, dimension, onSelect, itemKey, exportBackground, height = 260, allowExport = true, actions, footer }: ChartCardProps) {
   const [view, setView] = useState<View>("chart");
   const [cursor, setCursor] = useState<number | null>(null);
   const chart = useRef<ChartHandle>(null);
@@ -120,9 +122,9 @@ export function ChartCard({ title, description, option, table, items, source, di
               Tableau
             </button>
           </div>
-          <button type="button" className="sb-button" onClick={exportImage} disabled={view !== "chart"}>
+          {allowExport ? <button type="button" className="sb-button" onClick={exportImage} disabled={view !== "chart"}>
             Exporter l'image
-          </button>
+          </button> : null}
           {actions}
         </>
       }

@@ -28,6 +28,7 @@ export const READ_STATE_LABELS: Readonly<Record<ReadState, StateLabel>> = {
 
 /** Pourquoi une tuile ne s'exécute pas : la raison est dite, jamais une approximation. */
 export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
+  component_unavailable: "Le composant épinglé n’est pas disponible pour vous.",
   analysis_unavailable: "L'analyse épinglée n'est pas disponible pour vous : elle est supprimée ou ne vous est pas ouverte.",
   unresolved_reference: "Une référence de l'analyse épinglée n'est pas résolue dans le catalogue.",
   filter_incompatible: "Un filtre commun ne s'applique pas à cette tuile : sa dimension, son opérateur ou ses valeurs ne conviennent pas.",
@@ -39,10 +40,10 @@ export const TILE_REASON_LABELS: Readonly<Record<ExecutionRefusal, string>> = {
 };
 
 export const KIND_LABELS: Readonly<Record<Kind, string>> = {
-  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur",
+  section: "Section", row: "Rangée", column: "Colonne", container: "Conteneur", component: "Composant", analysis: "Visuel", kpi: "KPI", text: "Texte", separator: "Séparateur", slot: "Emplacement",
 };
 export const GENDERS = {
-  kind: { section: "f", row: "f", column: "f", container: "m", analysis: "m", kpi: "m", text: "m", separator: "m" } satisfies Record<Kind, "f" | "m">,
+  kind: { section: "f", row: "f", column: "f", container: "m", component: "m", analysis: "m", kpi: "m", text: "m", separator: "m", slot: "m" } satisfies Record<Kind, "f" | "m">,
   presentation: { title: "m", chart: "m", legend: "f", number_format: "m", threshold: "m", tooltip: "f" } satisfies Record<keyof VisualPresentation, "f" | "m">,
   block: { paragraph: "m", heading: "m", list: "f" } satisfies Record<Block["type"], "f" | "m">,
 } as const;
@@ -50,6 +51,8 @@ export const accord = (word: string, gender: "f" | "m"): string => `${word}${gen
 
 /** Refus fermés du modèle d'édition, tels qu'une commande les rend. */
 export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {
+  component_unavailable: "Le composant épinglé n'est pas disponible.",
+  incompatible_slot: "Le genre ne correspond pas à cet emplacement.",
   not_found: "Élément introuvable.",
   incompatible_parent: "Cet élément ne peut pas être placé là : son parent n'est pas compatible.",
   invalid_index: "Position hors limites.",
@@ -58,6 +61,11 @@ export const EDIT_REFUSAL_LABELS: Readonly<Record<EditRefusal, string>> = {
 };
 
 export const PROBLEM_LABELS: Readonly<Record<ProblemCode, string>> = {
+  theme_unavailable: "Thème en cours de lecture ou indisponible : le thème de repli est affiché.",
+  empty_slot: "Emplacement à remplir avant l’enregistrement.",
+  unapproved_reference: "Référence non approuvée pour un dashboard partagé.",
+  component_revision_behind: "Révision de composant en retard sur la dernière.",
+  component_unavailable: "Composant indisponible : la tuile ne s’exécute pas.",
   analysis_unavailable: "Analyse indisponible : la tuile ne s'exécute pas.",
   unresolved_reference: "Référence non résolue : la tuile reste indisponible.",
   unverified: "Tuile non vérifiée : le catalogue n'a pas pu être lu.",
@@ -79,7 +87,7 @@ export const NUMBER_FORMAT_LABELS: Readonly<Record<NumberFormat, string>> = {
   auto: "Valeur exacte", integer: "Entier", decimal_1: "Une décimale", decimal_2: "Deux décimales", percent: "Pourcentage", compact: "Compact",
 };
 export const TOOLTIP_LABELS: Readonly<Record<Tooltip, string>> = { value: "Valeur", value_and_definition: "Valeur et définition" };
-export const ORIGIN_LABELS: Readonly<Record<Origin, string>> = { theme: "Thème", analysis: "Analyse", dashboard: "Dashboard", component: "Composant" };
+export const ORIGIN_LABELS: Readonly<Record<Origin, string>> = { theme: "Thème", analysis: "Analyse", dashboard: "Dashboard", component: "Tuile" };
 
 /** Règle du serveur qu'un `invalid_dashboard` nomme, avec le chemin JSON de la violation. */
 export const DASHBOARD_RULE_LABELS: Readonly<Record<DashboardRule, string>> = {
@@ -91,6 +99,7 @@ export const DASHBOARD_RULE_LABELS: Readonly<Record<DashboardRule, string>> = {
   bad_revision: "numéro de révision incorrect", bad_actor: "auteur incorrect", duplicate_id: "identifiant répété", row_overflow: "rangée de plus de 12 douzièmes",
   too_deep: "plus de trois niveaux de rangées", container_not_alone: "un conteneur occupe seul sa colonne", filter_without_target: "filtre sans cible",
   unknown_target: "cible absente du document", target_not_executable: "cible qui ne s'exécute pas", default_not_allowed: "valeur par défaut hors des valeurs autorisées",
+  theme_not_found: "thème épinglé introuvable ou inaccessible", component_not_found: "composant épinglé introuvable ou inaccessible",
   analysis_unavailable: "analyse épinglée indisponible", kpi_requires_value: "un KPI demande une valeur unique", chart_incompatible: "type de graphique incompatible",
   dimension_not_exposed: "dimension non exposée par le modèle", filter_type_mismatch: "type de filtre incompatible", operator_not_allowed: "opérateur non permis",
   filter_value_incompatible: "valeur de filtre incompatible", too_many_filters: "trop de filtres sur une tuile",

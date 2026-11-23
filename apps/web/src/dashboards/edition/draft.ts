@@ -7,6 +7,8 @@ import { decodeDashboardDraft, type DashboardDocument, type DashboardDraft } fro
 export const draftOf = (document: DashboardDocument): DashboardDraft => decodeDashboardDraft({
   name: document.name,
   description: document.description,
+  ...(document.theme === undefined ? {} : { theme: document.theme }),
+  ...(document.template === undefined ? {} : { template: document.template }),
   visibility: document.visibility,
   defaults: document.defaults,
   filters: document.filters,

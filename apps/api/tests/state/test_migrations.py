@@ -268,6 +268,44 @@ COLONNES = {
         "analysis_id": False,
         "analysis_revision": False,
     },
+    "shared_content_index": {
+        "kind": False,
+        "space_id": False,
+        "content_id": False,
+        "name": False,
+        "owner_issuer": False,
+        "owner_subject": False,
+        "revision": False,
+        "commit": False,
+        "committed_at": False,
+        "approved_revision": True,
+        "component_kind": True,
+        "analysis_id": True,
+        "analysis_revision": True,
+        "indexed_at": False,
+    },
+    "content_approvals": {
+        "kind": False,
+        "space_id": False,
+        "content_id": False,
+        "revision": False,
+        "issuer": False,
+        "subject": False,
+        "approved_at": False,
+    },
+    "dashboard_theme_references": {
+        "space_id": False,
+        "dashboard_id": False,
+        "theme_id": False,
+        "revision": False,
+    },
+    "dashboard_component_references": {
+        "space_id": False,
+        "dashboard_id": False,
+        "component_id": False,
+        "component_ref_id": False,
+        "revision": False,
+    },
 }
 INSTANTS = {
     "databricks_oauth": ["expires_at"],
@@ -290,6 +328,10 @@ INSTANTS = {
     "analysis_events": {"occurred_at"},
     "dashboard_index": {"committed_at", "indexed_at"},
     "dashboard_references": set(),
+    "shared_content_index": {"committed_at", "indexed_at"},
+    "content_approvals": {"approved_at"},
+    "dashboard_theme_references": set(),
+    "dashboard_component_references": set(),
     "executions": {
         "binding_set_at",
         "created_at",
@@ -321,6 +363,10 @@ CLES = {
     "analysis_events": ["event_id"],
     "dashboard_index": ["space_id", "dashboard_id"],
     "dashboard_references": ["space_id", "dashboard_id", "component_id"],
+    "shared_content_index": ["kind", "space_id", "content_id"],
+    "content_approvals": ["kind", "space_id", "content_id", "revision"],
+    "dashboard_theme_references": ["space_id", "dashboard_id"],
+    "dashboard_component_references": ["space_id", "dashboard_id", "component_id"],
 }
 TABLES = {*COLONNES, "alembic_version"}
 
@@ -412,9 +458,9 @@ def test_declarations_du_plan() -> None:
     assert set(metadata.tables) == set(COLONNES)
 
 
-def test_la_tete_des_migrations_est_0016(migre: Engine) -> None:
-    assert head_revision() == "0016"
-    assert current_revision(migre) == "0016"
+def test_la_tete_des_migrations_est_0017(migre: Engine) -> None:
+    assert head_revision() == "0017"
+    assert current_revision(migre) == "0017"
 
 
 def test_index_des_dashboards_cles_et_index_declares(migre: Engine) -> None:
@@ -549,3 +595,42 @@ def test_migrations_en_avant_seulement() -> None:
     modele = (MIGRATIONS / "script.py.mako").read_text(encoding="utf-8")
     assert "def upgrade" in modele
     assert "downgrade" not in modele
+
+
+def test_migration_0016_vers_0017(engine: Engine) -> None:
+    from alembic import command
+    from skifer_board.state.database import _alembic
+
+    config = _alembic()
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0016")
+    assert current_revision(engine) == "0016"
+    upgrade(engine)
+    assert current_revision(engine) == "0017"
+    inspector = inspect(engine)
+    for name in (
+        "shared_content_index",
+        "content_approvals",
+        "dashboard_theme_references",
+        "dashboard_component_references",
+    ):
+        assert inspector.get_pk_constraint(name)["constrained_columns"] == CLES[name]
+    assert inspector.get_foreign_keys("shared_content_index") == []
+    assert inspector.get_foreign_keys("content_approvals") == []
+    assert {
+        (item["name"], tuple(item["column_names"]))
+        for item in inspector.get_indexes("shared_content_index")
+    } == {("ix_shared_content_space", ("space_id", "kind"))}
+    assert {
+        (item["name"], tuple(item["column_names"]))
+        for item in inspector.get_indexes("dashboard_theme_references")
+    } == {("ix_dashboard_theme_consumers", ("space_id", "theme_id", "revision"))}
+    assert {
+        (item["name"], tuple(item["column_names"]))
+        for item in inspector.get_indexes("dashboard_component_references")
+    } == {("ix_dashboard_component_consumers", ("space_id", "component_ref_id", "revision"))}
+    for name in ("dashboard_theme_references", "dashboard_component_references"):
+        (fk,) = inspector.get_foreign_keys(name)
+        assert fk["referred_table"] == "dashboard_index"
+        assert fk["options"] == {"ondelete": "CASCADE"}

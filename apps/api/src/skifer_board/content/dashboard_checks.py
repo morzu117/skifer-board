@@ -48,6 +48,7 @@ READY = "ready"
 UNAVAILABLE = "unavailable"
 UNVERIFIED = "unverified"
 ANALYSIS_UNAVAILABLE = "analysis_unavailable"
+COMPONENT_UNAVAILABLE = "component_unavailable"
 UNRESOLVED_REFERENCE = "unresolved_reference"
 FILTER_INCOMPATIBLE = "filter_incompatible"
 # Raisons d'indisponibilité d'une tuile, ensemble fermé.
@@ -135,7 +136,7 @@ def _filter_checks(
     for index, item in enumerate(document["filters"]):
         first: str | None = None
         for position, target in enumerate(item["targets"]):
-            analysis = pins[target]
+            analysis = pins.get(target)
             if analysis is None:
                 continue
             model = model_of(catalog, analysis["query"]["model"])

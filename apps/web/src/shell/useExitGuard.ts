@@ -11,14 +11,15 @@ import { guardNavigation } from "./route";
  * Après un refus de Précédent, l'entrée visitée garde l'adresse de la page (l'entrée précédente est donc remplacée dans
  * l'historique) ; une adresse saisie à la main est quittée par un pas en arrière. `beforeunload` attrape le rechargement ou la fermeture de l'onglet.
  */
-export function useExitGuard(dirty: boolean): { pending: string | null; stay: () => void; leave: () => void } {
+export function useExitGuard(dirty: boolean): { pending: string | null; stay: () => void; leave: () => void; allow: () => void } {
   const [pending, setPending] = useState<string | null>(null);
   const unsaved = useRef(dirty);
+  const released = useRef(false);
   const home = useRef(window.location.hash);
   /** L'adresse que la personne vient de choisir de rejoindre : ses événements d'adresse passent sans question. */
   const allowed = useRef<string | null>(null);
   useEffect(() => {
-    unsaved.current = dirty;
+    unsaved.current = !released.current && dirty;
   });
   useEffect(() => {
     const release = guardNavigation((hash) => {
@@ -65,12 +66,15 @@ export function useExitGuard(dirty: boolean): { pending: string | null; stay: ()
   }, []);
   return {
     pending,
+    allow: () => { released.current = true; unsaved.current = false; },
     stay: () => { setPending(null); },
     leave: () => {
-      unsaved.current = false;
+      released.current = true; unsaved.current = false;
       allowed.current = pending;
       setPending(null);
+      const before = window.location.hash;
       window.location.hash = pending as string;
+      if (window.location.hash === before) { released.current = false; unsaved.current = dirty; allowed.current = null; }
     },
   };
 }

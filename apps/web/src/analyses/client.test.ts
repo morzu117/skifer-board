@@ -252,6 +252,7 @@ describe("refus", () => {
   const REFUSALS: readonly (readonly [string, number, string, Record<string, unknown>])[] = [
     ["refus-analyse-inconnue", 404, "analysis_not_found", noExtra],
     ["refus-analyse-invalide", 422, "invalid_analysis", { field: null, reason: "unknown_model", violations: [{ path: "/query/model", rule: "unknown_model" }] }],
+    ["refus-analyse-utilisee-par-composant", 409, "analysis_in_use", { field: null, consumers: [{ kind: "component", id: ID }, { kind: "dashboard", id: ID }], others: 0 }],
     ["refus-analyse-utilisee", 409, "analysis_in_use", { field: null, consumers: [{ kind: "dashboard", id: ID }], others: 0 }],
     ["refus-champ-reserve", 422, "invalid_analysis", { field: null, reason: "field_not_allowed", violations: [{ path: "/owner", rule: "field_not_allowed" }] }],
     ["refus-depot-indisponible", 503, "content_unavailable", noExtra],

@@ -1,10 +1,11 @@
 import { ContractError } from "../../catalogue/decode";
+import type { ComponentDocument } from "../../components-lib/document";
 import { decodeDashboard, decodeDashboardDraft, type DashboardDocument, type DashboardDraft, type CommonFilter, type Defaults, type KpiPresentation, type VisualPresentation } from "../document";
 
 /** Document complet ou brouillon décodé. */
 export type Document = DashboardDocument | DashboardDraft;
 /** Genres de nœuds de la mise en page. */
-export type Kind = "section" | "row" | "column" | "container" | "analysis" | "kpi" | "text" | "separator";
+export type Kind = "section" | "row" | "column" | "container" | "analysis" | "kpi" | "text" | "separator" | "component" | "slot";
 /** Une commande modifie une copie, jamais le document fourni. */
 export type SimpleCommand =
   | { type: "add"; kind: Kind; parent: string | null; index: number; value?: object }
@@ -15,6 +16,11 @@ export type SimpleCommand =
   | { type: "update_filter"; id: string; value: Partial<Omit<CommonFilter, "id">>; remove?: readonly ("default" | "allowed")[] }
   | { type: "delete_filter"; id: string }
   | { type: "adopt_revision"; id: string; revision: number }
+  | { type: "set_theme"; theme: { theme_id: string; revision: number } | null }
+  | { type: "insert_component"; parent: string; index: number; component: { component_id: string; revision: number } }
+  | { type: "adopt_component_revision"; id: string; revision: number }
+  | { type: "detach_component"; id: string; resolved: { document: ComponentDocument; revision: number } }
+  | { type: "fill_slot"; id: string; value: { source: "analysis"; kind: "visual" | "kpi"; reference: { analysis_id: string; revision: number }; presentation: VisualPresentation | KpiPresentation } | { source: "component"; kind: "visual" | "kpi"; component: { component_id: string; revision: number }; resolved?: { document: ComponentDocument; revision: number } } }
   | { type: "update_blocks"; id: string; blocks: unknown }
   | { type: "update"; id: string | null; property: "title" | "presentation" | "name" | "description" | "visibility" | "defaults"; value: unknown };
 /** Une liste atomique ne peut contenir que des commandes simples. */
@@ -22,7 +28,7 @@ export type Command = SimpleCommand | { type: "batch"; commands: readonly Simple
 /** Cibles retirées et filtres supprimés par les suppressions de nœuds. */
 export interface Removed { filters: readonly CommonFilter[]; targets: readonly { filterId: string; targets: readonly string[] }[] }
 /** Les refus propres à l'éditeur ; le décodeur détaille un document invalide. */
-export type Refusal = "not_found" | "incompatible_parent" | "invalid_index" | "invalid_property" | "invalid_document";
+export type Refusal = "not_found" | "incompatible_parent" | "invalid_index" | "invalid_property" | "invalid_document" | "incompatible_slot" | "component_unavailable";
 /** Résultat d'une commande, avec le document initial en cas de refus. */
 export type Result<T extends Document> = { ok: true; document: T; removed?: Removed } | { ok: false; reason: Refusal; detail?: string; index?: number; document: T };
 type MutableNode = { id: string; type?: string; rows?: MutableNode[]; columns?: MutableNode[]; children?: MutableNode[]; [key: string]: unknown };
@@ -48,7 +54,7 @@ function childList(sections: MutableNode[], parent: string | null, kind: Kind): 
   if (!found) return "not_found";
   if (kind === "row" && (found.kind === "section" || found.kind === "container")) return found.node.rows as MutableNode[];
   if (kind === "column" && found.kind === "row") return found.node.columns as MutableNode[];
-  if (["container", "analysis", "kpi", "text", "separator"].includes(kind) && found.kind === "column") return found.node.children as MutableNode[];
+  if (["container", "analysis", "kpi", "text", "separator", "component", "slot"].includes(kind) && found.kind === "column") return found.node.children as MutableNode[];
   return "incompatible_parent";
 }
 
@@ -141,6 +147,12 @@ function update(context: Context, command: Extract<Command, { type: "update" }>,
 }
 
 function execute(context: Context, command: SimpleCommand, uuid: () => string): Refusal | undefined {
+  if (command.type === "set_theme") {
+    if (command.theme === null) delete context.document.theme;
+    else context.document.theme = command.theme;
+    return undefined;
+  }
+  if (command.type === "insert_component") return add(context, { type: "add", kind: "component", parent: command.parent, index: command.index, value: { component: command.component } }, uuid);
   if (command.type === "add_filter") {
     context.document.filters = [...context.document.filters, { ...command.value, id: uuid() }];
     return undefined;
@@ -173,6 +185,31 @@ function execute(context: Context, command: SimpleCommand, uuid: () => string): 
       if (found.kind !== "analysis" && found.kind !== "kpi") return "invalid_property";
       found.node.reference = { ...(found.node.reference as object), revision: command.revision };
       return undefined;
+    case "adopt_component_revision":
+      if (found.kind !== "component") return "invalid_property";
+      found.node.component = { ...(found.node.component as object), revision: command.revision };
+      return undefined;
+    case "fill_slot": {
+      if (found.kind !== "slot") return "invalid_property";
+      const slot = found.node.slot as { expected: "visual" | "kpi" };
+      if (slot.expected !== command.value.kind) return "incompatible_slot";
+      const value = command.value;
+      if (value.source === "component") {
+        if (!value.resolved || value.resolved.document.id !== value.component.component_id || value.resolved.revision !== value.component.revision) return "component_unavailable";
+        if (value.resolved.document.kind !== slot.expected) return "incompatible_slot";
+      }
+      const replacement = value.source === "component" ? { id: found.node.id, type: "component", component: value.component } : { id: found.node.id, type: value.kind === "visual" ? "analysis" : "kpi", reference: value.reference, presentation: value.presentation };
+      found.list.splice(found.list.indexOf(found.node), 1, replacement);
+      return undefined;
+    }
+    case "detach_component": {
+      if (found.kind !== "component") return "invalid_property";
+      const pinned = found.node.component as { component_id: string; revision: number };
+      if (pinned.component_id !== command.resolved.document.id || pinned.revision !== command.resolved.revision) return "invalid_property";
+      const resolved = command.resolved.document;
+      found.list.splice(found.list.indexOf(found.node), 1, { id: found.node.id, type: resolved.kind === "visual" ? "analysis" : "kpi", reference: resolved.analysis, presentation: resolved.presentation });
+      return undefined;
+    }
     case "update_blocks":
       if (found.kind !== "text") return "invalid_property";
       found.node.blocks = command.blocks;

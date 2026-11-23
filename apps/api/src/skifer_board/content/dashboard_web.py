@@ -33,8 +33,18 @@ from ..spaces.access import Access
 from ..spaces.model import LocalMode, PersonRef, Role
 from ..spaces.web import Invalid, Refused, _body, viewer
 from . import dashboard as dashboard_format
+from .common import changes_json
+from .composition import component_analysis
+from .consumer_rows import consumer_row
 from .dashboard import API_VERSION, Document, executables
-from .dashboard_checks import Tile, personal_components, save_violations, tiles
+from .dashboard_checks import (
+    COMPONENT_UNAVAILABLE,
+    Tile,
+    personal_components,
+    save_violations,
+    tiles,
+)
+from .dashboard_shared import execution_view, references, resolve_references, validate_references
 from .errors import (
     CONTENT_UNAVAILABLE,
     DASHBOARD_NOT_FOUND,
@@ -44,7 +54,13 @@ from .errors import (
     Violation,
 )
 from .index import INDEXED, DashboardIndex, DashboardRow
-from .repository import DAMAGED_REASONS, DASHBOARD_KIND, ContentRepository, StoredRevision
+from .repository import (
+    COMPONENT_KIND,
+    DAMAGED_REASONS,
+    DASHBOARD_KIND,
+    ContentRepository,
+    StoredRevision,
+)
 from .web import (
     ANALYSIS_ID,
     LOGGER,
@@ -67,12 +83,14 @@ from .web import (
     establish,
     find,
     owner_of,
+    retry_head,
     rights,
     visible,
     visible_to,
 )
 
 PERSONAL_REFERENCE = "personal_reference"
+UNAPPROVED_REFERENCE = "unapproved_reference"
 CONSUMER_KIND = "dashboard"
 
 
@@ -82,6 +100,12 @@ class PersonalReference(Exception):
     def __init__(self, components: Sequence[str]) -> None:
         super().__init__(PERSONAL_REFERENCE)
         self.components = tuple(components)
+
+
+class UnapprovedReference(Exception):
+    def __init__(self, paths: Sequence[str]) -> None:
+        super().__init__(UNAPPROVED_REFERENCE)
+        self.paths = tuple(paths)
 
 
 def refuse(violations: Collection[Violation]) -> ContentError:
@@ -110,6 +134,9 @@ class Pinned:
         self._actor = actor
         self._tip = tip
         self._read: dict[tuple[str, int], Document | None] = {}
+        self._prepared: tuple[Document, Document, dict[str, Document | None]] | None = None
+        self._unavailable: set[str] = set()
+        self._blocked: set[str] = set()
 
     def analysis(self, analysis_id: str, revision: int) -> Document | None:
         key = (analysis_id, revision)
@@ -141,12 +168,40 @@ class Pinned:
             return None
         return stored.document
 
+    def prepared(self, document: Document) -> tuple[Document, dict[str, Document | None]]:
+        """Résout les composants et leurs analyses sans accorder les droits de leur auteur."""
+        if self._prepared is not None and self._prepared[0] == document:
+            return self._prepared[1], self._prepared[2]
+        shared = {**document}
+        try:
+            violations, unapproved = validate_references(
+                self._repository, self._space_id, shared, self._tip
+            )
+            blocked = {item.path for item in violations} | set(unapproved)
+            resolved = resolve_references(
+                self._repository, self._space_id, shared, self._tip, blocked=frozenset(blocked)
+            )
+            components = resolved["components"]
+        except ContentError:
+            blocked = {path for path, _, _, _, _ in references(shared)}
+            components = {}
+        projected, unavailable = execution_view(document, components, blocked)
+        self._blocked = blocked
+        self._unavailable = unavailable
+        pins = {
+            component.id: (
+                None
+                if component.id in unavailable
+                else self.analysis(component.analysis_id, component.revision)
+            )
+            for component in executables(projected)
+        }
+        self._prepared = (document, projected, pins)
+        return projected, pins
+
     def of(self, document: Document) -> dict[str, Document | None]:
         """Analyse lisible de chaque composant exécutable, par identifiant de composant."""
-        return {
-            component.id: self.analysis(component.analysis_id, component.revision)
-            for component in executables(document)
-        }
+        return self.prepared(document)[1]
 
 
 class DashboardConsumers:
@@ -159,9 +214,8 @@ class DashboardConsumers:
     non écrit ou pas encore à jour), est relu depuis git sur cette même tête ; un dashboard supprimé
     n'est pas un consommateur, une ligne dont le fichier n'est plus dans git est ignorée. Un
     dashboard abîmé, dont on ne peut pas dire qu'il n'épingle pas l'analyse, compte parmi les
-    autres :
-    dans le doute, l'analyse est tenue pour consommée. Si l'index ou le dépôt ne répondent pas,
-    l'exhaustivité n'est pas établie : l'appel lève `content_unavailable`, jamais une liste vide.
+    autres : dans le doute, l'analyse est tenue pour consommée. Si l'index ou le dépôt ne
+    répond pas, l'exhaustivité ne peut pas être établie et l'opération est refusée.
 
     La visibilité se juge sur ce qu'on sait du dashboard à cette révision : propriétaire et
     visibilité de la ligne ou du contenu relu."""
@@ -171,37 +225,101 @@ class DashboardConsumers:
         self._index = index
 
     def __call__(
-        self, space_id: str, analysis_id: str, actor: PersonRef, at: str | None
+        self,
+        space_id: str,
+        analysis_id: str,
+        actor: PersonRef,
+        at: str | None,
+        role: Role | None = None,
     ) -> Dependents:
         if self._repository is None:
             raise ContentError(CONTENT_UNAVAILABLE, "not_configured")
         try:
             known = {row.dashboard_id: row for row in self._index.rows(space_id)}
-            pinning = {row.dashboard_id for row in self._index.consumers(space_id, analysis_id)}
         except SQLAlchemyError:
             raise ContentError(CONTENT_UNAVAILABLE, "index_unavailable") from None
-        newest = self._repository.latest(space_id, at=at, kind=DASHBOARD_KIND)
+        newest_components = self._repository.latest(space_id, at=at, kind=COMPONENT_KIND)
         shown: list[Consumer] = []
         others = 0
-        for dashboard_id, commit in sorted(newest.items()):
-            row = known.get(dashboard_id)
-            if row is None or row.commit != commit:
-                try:
-                    row = DashboardRow.of(
-                        space_id,
-                        self._repository.read(space_id, dashboard_id, at=at, kind=DASHBOARD_KIND),
-                    )
-                except ContentError as error:
-                    if error.code == DASHBOARD_NOT_FOUND:
-                        continue
-                    if error.code == CONTENT_UNAVAILABLE and error.reason in DAMAGED_REASONS:
-                        others += 1
-                        continue
+        for ident in sorted(newest_components):
+            try:
+                stored = self._repository.read(space_id, ident, at=at, kind=COMPONENT_KIND)
+            except ContentError as error:
+                if error.code == COMPONENT_KIND.not_found:
+                    continue
+                if error.code == CONTENT_UNAVAILABLE and error.reason in DAMAGED_REASONS:
+                    others += 1
+                    continue
+                raise
+            if component_analysis(stored.document)[0] != analysis_id:
+                continue
+            owner_data = stored.document["owner"]
+            owner = PersonRef(owner_data["issuer"], owner_data["subject"])
+            approved = False
+            try:
+                approval_doc = self._repository.read_approvals(
+                    space_id, ident, kind=COMPONENT_KIND, at=at
+                )
+                approved = any(
+                    item["revision"] == stored.revision.number
+                    for item in approval_doc.document["approvals"]
+                )
+            except ContentError as error:
+                if error.code != "approvals_not_found":
                     raise
-                pins = any(item.analysis_id == analysis_id for item in row.references)
+            can_see = (
+                role is not None
+                and role.allows(Role.CREATOR)
+                and (actor == owner or role.allows(Role.ADMIN) or approved)
+            )
+            if can_see:
+                shown.append(Consumer("component", ident))
             else:
-                pins = dashboard_id in pinning
+                others += 1
+        newest = self._repository.latest(space_id, at=at, kind=DASHBOARD_KIND)
+        for dashboard_id, commit in sorted(newest.items()):
+            try:
+                row = consumer_row(
+                    self._repository,
+                    self._index,
+                    space_id,
+                    dashboard_id,
+                    commit,
+                    known.get(dashboard_id),
+                    at,
+                )
+            except ContentError as error:
+                if error.code == DASHBOARD_NOT_FOUND:
+                    continue
+                if error.code == CONTENT_UNAVAILABLE and error.reason in DAMAGED_REASONS:
+                    others += 1
+                    continue
+                raise
+            pins = any(item.analysis_id == analysis_id for item in row.references)
+            unknown = False
             if not pins:
+                for reference in row.components:
+                    try:
+                        component = self._repository.read(
+                            space_id,
+                            reference.component_ref_id,
+                            reference.revision,
+                            at=at,
+                            kind=COMPONENT_KIND,
+                        ).document
+                    except ContentError as error:
+                        if error.code == COMPONENT_KIND.not_found or (
+                            error.code == CONTENT_UNAVAILABLE and error.reason in DAMAGED_REASONS
+                        ):
+                            unknown = True
+                            continue
+                        raise
+                    if component_analysis(component)[0] == analysis_id:
+                        pins = True
+                        break
+            if not pins:
+                if unknown:
+                    others += 1
                 continue
             if visible_to(row.owner, row.visibility, actor):
                 shown.append(Consumer(CONSUMER_KIND, dashboard_id))
@@ -226,6 +344,10 @@ def install_dashboard_routes(
     @app.exception_handler(PersonalReference)
     async def personal_reference(request: Request, error: PersonalReference) -> JSONResponse:
         return _error(422, PERSONAL_REFERENCE, components=list(error.components))
+
+    @app.exception_handler(UnapprovedReference)
+    async def unapproved_reference(request: Request, error: UnapprovedReference) -> JSONResponse:
+        return _error(422, UNAPPROVED_REFERENCE, paths=list(error.paths))
 
     def active(request: Request, space_id: str) -> tuple[Access, PersonRef]:
         access = reader(request, space_id)
@@ -271,12 +393,17 @@ def install_dashboard_routes(
         if found is None:
             raise Refused(503, "engine_unavailable")
         pinned = pinning(space_id, actor, tip)
-        pins = pinned.of(document)
-        violations = save_violations(document, pins, found)
+        shared_violations, unapproved = validate_references(depot(), space_id, document, tip)
+        if shared_violations:
+            raise refuse(shared_violations)
+        if unapproved:
+            raise UnapprovedReference(unapproved)
+        projected, pins = pinned.prepared(document)
+        violations = save_violations(projected, pins, found)
         if violations:
             raise refuse(violations)
         if document["visibility"] == "shared":
-            personal = personal_components(document, pins)
+            personal = personal_components(projected, pins)
             if personal:
                 raise PersonalReference(personal)
         return pinned
@@ -313,7 +440,7 @@ def install_dashboard_routes(
         Cet état s'ajoute à une lecture ou à une publication déjà faites : il ne les défait
         jamais. Une base qui ne répond pas rend le dashboard `unverified`, sans erreur.
         """
-        pins = pinned.of(stored.document)
+        projected, pins = pinned.prepared(stored.document)
         stale = False
         found: dict[str, Any] | None = None
         names: Collection[str] = ()
@@ -331,7 +458,12 @@ def install_dashboard_routes(
         except SQLAlchemyError:
             log.warning("dashboard state not verified")
             found = None
-        states = tiles(stored.document, pins, found, names)
+        states = [
+            Tile(item.id, item.state, COMPONENT_UNAVAILABLE)
+            if item.id in pinned._unavailable
+            else item
+            for item in tiles(projected, pins, found, names)
+        ]
         if stale:
             return STALE, states
         if found is None:
@@ -357,7 +489,7 @@ def install_dashboard_routes(
             current=not deleted and current_revision == stored.revision.number,
             pinned=pinned,
         )
-        return {
+        result = {
             "id": stored.document["id"],
             "space_id": space_id,
             "revision": stored.revision.number,
@@ -370,6 +502,17 @@ def install_dashboard_routes(
             "permissions": rights(access, actor, stored.document, deleted=deleted).json(),
             "dashboard": stored.document,
         }
+        if any(references(stored.document)):
+            resolved = resolve_references(
+                depot(), space_id, stored.document, pinned._tip, blocked=frozenset(pinned._blocked)
+            )
+            resolved["components"] = {
+                ident: value
+                for ident, value in resolved["components"].items()
+                if ident not in pinned._unavailable
+            }
+            result["resolved"] = resolved
+        return result
 
     def locate(space_id: str, dashboard_id: str, actor: PersonRef) -> Located:
         return find(repository, space_id, dashboard_id, actor, DASHBOARD_KIND)
@@ -397,7 +540,8 @@ def install_dashboard_routes(
         def work() -> JSONResponse:
             dashboard_id = str(uuid4())
             document = compose(body, dashboard_id, actor)
-            pinned = check(space_id, document, actor, depot().head())
+            tip = depot().head()
+            pinned = check(space_id, document, actor, tip)
             stored = depot().write(
                 space_id,
                 dashboard_id,
@@ -405,6 +549,7 @@ def install_dashboard_routes(
                 expected_revision=None,
                 actor=actor,
                 kind=DASHBOARD_KIND,
+                expected_head=tip if any(references(document)) else None,
             )
             stamp(space_id, stored)
             number = stored.revision.number
@@ -413,7 +558,7 @@ def install_dashboard_routes(
                 status_code=201,
             )
 
-        return await asyncio.to_thread(work)
+        return await asyncio.to_thread(retry_head, work)
 
     @app.get(path)
     def list_dashboards(request: Request, space_id: str) -> JSONResponse:
@@ -538,17 +683,7 @@ def install_dashboard_routes(
                 "id": dashboard_id,
                 "base": first,
                 "other": second,
-                "changes": [
-                    {
-                        "path": item.path,
-                        "kind": item.kind,
-                        "node": item.node,
-                        "id": item.id,
-                        "before": item.before,
-                        "after": item.after,
-                    }
-                    for item in changes
-                ],
+                "changes": changes_json(changes),
             }
         )
 
@@ -584,6 +719,7 @@ def install_dashboard_routes(
                 expected_revision=expected,
                 actor=actor,
                 kind=DASHBOARD_KIND,
+                expected_head=tip if any(references(document)) else None,
             )
             if not saved.unchanged:
                 stamp(space_id, saved)
@@ -601,7 +737,7 @@ def install_dashboard_routes(
                 status_code=200 if saved.unchanged else 201,
             )
 
-        return await asyncio.to_thread(work)
+        return await asyncio.to_thread(retry_head, work)
 
     @app.post(path + "/{dashboard_id}/duplicate")
     async def duplicate_dashboard(
@@ -633,7 +769,13 @@ def install_dashboard_routes(
             )
             pinned = check(space_id, document, actor, tip)
             stored = depot().write(
-                space_id, new_id, document, expected_revision=None, actor=actor, kind=DASHBOARD_KIND
+                space_id,
+                new_id,
+                document,
+                expected_revision=None,
+                actor=actor,
+                kind=DASHBOARD_KIND,
+                expected_head=tip if any(references(document)) else None,
             )
             stamp(space_id, stored)
             return JSONResponse(
@@ -641,7 +783,7 @@ def install_dashboard_routes(
                 status_code=201,
             )
 
-        return await asyncio.to_thread(work)
+        return await asyncio.to_thread(retry_head, work)
 
     @app.delete(path + "/{dashboard_id}")
     def delete_dashboard(

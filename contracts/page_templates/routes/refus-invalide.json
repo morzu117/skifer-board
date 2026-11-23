@@ -1,0 +1,1 @@
+{"status":422,"body":{"error":{"code":"invalid_page_template","reason":"missing_field","violations":[{"path":"/defaults","rule":"missing_field"},{"path":"/description","rule":"missing_field"},{"path":"/filters","rule":"missing_field"},{"path":"/layout","rule":"missing_field"},{"path":"/name","rule":"wrong_type"}]}}}

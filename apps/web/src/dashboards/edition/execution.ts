@@ -3,7 +3,8 @@ import type { AnalysisRevision } from "../../analyses/model";
 import { ContractError } from "../../catalogue/decode";
 import type { ExecutionInput } from "../../executions/client";
 import type { Environment } from "../../shell/sections";
-import { decodeCommonValues, type CommonFilter, type ExecutableComponent } from "../document";
+import type { ComponentDocument } from "../../components-lib/document";
+import { decodeCommonValues, type CommonFilter, type ExecutableComponent, type SharedComponent } from "../document";
 import type { Tile, TileReason } from "../model";
 
 /** Raisons fermées empêchant la construction d'une soumission. */
@@ -17,11 +18,16 @@ export type ComposedExecution =
  * Compose une tuile avec les filtres qui la ciblent. L'environnement vient de la coque ; les valeurs de travail
  * `undefined` reprend le défaut ; `null` efface explicitement le filtre. La référence et l'identité de la tuile sont vérifiées avant toute composition.
  */
-export function composeExecution(component: ExecutableComponent, revision: AnalysisRevision, filters: readonly CommonFilter[], values: Readonly<Record<string, unknown>>, tile: Tile, environment: Environment): ComposedExecution {
+export function composeExecution(component: ExecutableComponent | SharedComponent, revision: AnalysisRevision, filters: readonly CommonFilter[], values: Readonly<Record<string, unknown>>, tile: Tile, environment: Environment, resolved?: { document: ComponentDocument; revision: number }): ComposedExecution {
   if (tile.id !== component.id) return { status: "unavailable", reason: "tile_mismatch" };
   if (tile.state === "unavailable") return { status: "unavailable", reason: tile.reason };
   if (tile.state === "unverified") return { status: "unavailable", reason: "unverified" };
-  if (revision.id !== component.reference.analysis_id || revision.revision !== component.reference.revision) return { status: "unavailable", reason: "reference_mismatch" };
+  let reference;
+  if (component.type === "component") {
+    if (resolved === undefined || resolved.document.id !== component.component.component_id || resolved.revision !== component.component.revision) return { status: "unavailable", reason: "component_unavailable" };
+    reference = resolved.document.analysis;
+  } else reference = component.reference;
+  if (revision.id !== reference.analysis_id || revision.revision !== reference.revision) return { status: "unavailable", reason: "reference_mismatch" };
   if (revision.state === "unverified" || revision.state === "unresolved_reference") return { status: "unavailable", reason: revision.state };
   const query = revision.analysis.query;
   const additions: AnalysisFilter[] = [];

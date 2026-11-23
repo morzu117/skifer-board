@@ -4,7 +4,59 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ## [Unreleased]
 
+### Fixed
+
+- La confirmation de sortie se ferme après une sauvegarde complète, tout en restant ouverte si des modifications subsistent.
+
+- Les refus de thèmes, modèles et composants indiquent le rôle requis en français et contextualisent leurs détails ; les refus de fiche commencent par une majuscule.
+
+- La garde de sortie se réarme après une navigation vers la même adresse et bloque le départ pendant toute sauvegarde ; ses messages distinguent les tentatives de création. Les états des références gardent une identité stable entre deux rendus.
+
+- Fiabilisation des brouillons locaux, des références versionnées et de leurs choix, des refus de modèles et de l’accessibilité du remplissage des emplacements.
+
 ### Added
+
+- Vérifications d’acceptation des fuites de brouillons, du clavier, des largeurs et des contenus envoyés.
+
+- Parcours d’acceptation des modèles, composants versionnés et refus de suppression des contenus utilisés.
+
+- Parcours d’acceptation du thème personnel et de son approbation avant usage partagé, avec invariance des données et des requêtes.
+
+- Simulateur partagé du parcours des thèmes, modèles et composants, avec identités et journal des écritures.
+
+- Captures des listes de contenus vides, en chargement ou en refus, des fiches en refus et du dialogue de création avec une liste en erreur, sur ordinateur et téléphone.
+
+- La création depuis un modèle annonce le brouillon local ; l’éditeur affiche la provenance versionnée et le fil d’Ariane correspondant.
+
+- Création de dashboards avec choix d’un thème et d’un modèle ; les emplacements sont remplis dans un brouillon local avant la première création serveur.
+
+- Remplissage des emplacements par une analyse ou un composant compatible, avec annulation ; ajustements de la palette et des propriétés du dashboard.
+
+- Choix du thème et insertion de composants versionnés dans l’éditeur de dashboard, avec détachement et comparaison des révisions.
+
+- Les refus de références non approuvées indiquent les chemins transmis par le serveur.
+
+- Le libellé d’origine des surcharges locales devient « Tuile » ; les captures des dialogues utilisent la fenêtre visible.
+
+- Ajout des actions d’enregistrement de modèles et de composants depuis l’éditeur de dashboard.
+
+- Ajout de l’extraction locale de modèles de page, vérifiée contre le serveur.
+
+- Ajout des fiches de modèles et de composants, avec révisions, historique, approbation et suppression, et amélioration de leur présentation et des onglets.
+
+- Ajout des onglets et listes des modèles de page et composants dans Thèmes.
+
+- Plan 20, 20.5a : éditeur de thème avec aperçu local, historique, approbation et suppression ; garde des modifications et navigation par clavier.
+
+- Plan 20, 20.5a : entrée Thèmes et liste des thèmes visibles, avec état d’approbation, index et nombre de dashboards consommateurs ; préparation des choix de tokens et des rôles de texte de l’éditeur.
+- Plan 20, 20.4 : refus local `empty_slot` à l'envoi d'un dashboard dont un emplacement reste vide.
+- Plan 20, 20.4 : commandes pures d’édition des thèmes avec historique, contrôles de parité et choix admissibles ; commandes de thème et de composants dans le dashboard, instanciation de modèles et remplissage des emplacements, exécution des composants résolus et lecture des états des références dans l’éditeur ; construction pure des thèmes graphiques depuis les tokens, héritage des présentations par type et signalement du thème de repli pendant la lecture ou en cas d’indisponibilité ; palettes séquentielle et divergente ordonnées par contraste avec la surface, seules leurs extrémités les plus contrastées devant atteindre 3:1.
+
+- Plan 20, 20.3 : catalogue web des tokens, client des thèmes, décodeurs stricts des réponses et refus, vérification des contrats de routes, décodage des modèles de page et client complet des modèles de page avec écarts structurels et approbations, client des composants avec vérification de ses contrats et remplacement de la raison `analysis_unavailable` par `component_unavailable` pour les tuiles de composant indisponible, contrat de lecture correspondant et inventaire des codes des trois genres.
+
+- Plan 20, 20.2 : migration 0017, index reconstructibles des thèmes, modèles, composants et approbations, références versionnées des dashboards, consommateurs visibles ou masqués et réindexation atomique depuis git ; règle de visibilité des révisions par rôle et approbation et routes de création, lecture, liste, révision et suppression des trois genres, avec contrôle des analyses épinglées par les composants ; historique et diff filtrés, télémétrie des refus et tests de confidentialité ; routes d’approbation, validation des références et résolution embarquée des thèmes et composants des dashboards ; résolution des analyses des composants dans le calcul serveur des tuiles ; consommateurs directs et transitifs, refus de suppression et indisponibilité fermée si l’index ou le dépôt ne répond pas ; contrats de routes produits par le serveur, sentinelles de confidentialité et matrice des droits ; décodage web des références, écarts structurels et refus de dashboards et de leurs consommateurs, avec inventaire des codes serveur ; corrections de visibilité des approbations, de résolution épinglée et de concurrence sur la tête Git et de signalement des pannes Git dans les listes de contenus.
+
+- Plan 20, 20.1 : genres de contenus theme, page_template et component ; formats validés de thème, de modèle de page et de composant, avec schémas, sérialisation canonique et diff ; palettes et contrastes du thème contrôlés depuis le catalogue de tokens dérivé du design ; approbations versionnées dans git avec révision attendue et extensions facultatives du dashboard pour thème, modèle et composant ; extraction pure d’un modèle et fermeture des dépendances versionnées ; sentinelle du schéma adaptée aux seules références de thème et de modèle, et test web aligné sur les extensions facultatives.
 
 - Plan 19, 19.5c : parcours d’acceptation des dashboards, des requêtes composées aux conflits, aux refus et à l’historique ; 44 captures de référence pleine page sur ordinateur et téléphone, avec Axe dans les deux thèmes. Le diff structurel reste lisible et défilable ; les annonces sont accordées, les filtres résumés et les noms des dashboards visibles résolus. Les choix de visibilité et les libellés sont ajustés ; la sélection d’analyse est signalée, et la légende du diff reste visible sur téléphone.
 
@@ -137,9 +189,14 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Changed
 
+- Plan 20, 20.5a : un nom vide est accepté pendant la saisie puis signalé `name_required` ; le format de date du thème s’applique aux axes et infobulles des tuiles.
+
+- Plan 20, 20.4 : les palettes séquentielles et divergentes progressent vers les extrémités avec un contraste sur la surface d'au moins 1,10 fois celui du palier précédent ; les extrémités doivent atteindre 3:1 et les paliers intermédiaires peuvent être sous ce seuil. Un thème valide sous les règles 20.1 peut désormais être refusé.
 - Plan 17, 17.2 : toute soumission refuse `engine_unavailable` si un champ quelconque du catalogue est invalide, même dans un autre modèle ; les filtres temporels et les valeurs textuelles hors liste blanche sont refusés avant création (SK-12).
 
 ### Fixed
+
+- Plan 20, 20.5a : affichage des horodatages, refus des historiques vides et aperçu accessible sans export.
 
 - Plan 17, 17.3 : les défauts du résultat stocké sont distingués des erreurs de sélection ; les calculs contextuels indiquent leur effectif et la télémétrie ne compte plus les refus ni les indisponibilités comme des pannes.
 

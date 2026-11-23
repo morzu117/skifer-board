@@ -1,0 +1,255 @@
+{
+  "dashboard": {
+    "api_version": "board.dashboard/v1",
+    "id": "00000000-0000-4000-8000-000000000001",
+    "name": "Pilotage",
+    "description": "Suivi",
+    "owner": {
+      "issuer": "https://id.example.invalid",
+      "subject": "cora"
+    },
+    "visibility": "personal",
+    "defaults": {
+      "legend": "shown"
+    },
+    "filters": [
+      {
+        "id": "00000000-0000-4000-8000-000000000018",
+        "label": "Région",
+        "dimension": "region",
+        "operator": "eq",
+        "default": "Nord",
+        "targets": [
+          "00000000-0000-4000-8000-000000000010",
+          "00000000-0000-4000-8000-000000000012"
+        ]
+      }
+    ],
+    "layout": {
+      "sections": [
+        {
+          "id": "00000000-0000-4000-8000-000000000019",
+          "title": "Synthèse",
+          "rows": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "columns": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000021",
+                  "span": 12,
+                  "children": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000010",
+                      "type": "analysis",
+                      "reference": {
+                        "analysis_id": "00000000-0000-4000-8000-000000000002",
+                        "revision": 1
+                      },
+                      "presentation": {
+                        "title": "Ventes"
+                      }
+                    },
+                    {
+                      "id": "00000000-0000-4000-8000-000000000011",
+                      "type": "kpi",
+                      "reference": {
+                        "analysis_id": "00000000-0000-4000-8000-000000000002",
+                        "revision": 1
+                      },
+                      "presentation": {}
+                    },
+                    {
+                      "id": "00000000-0000-4000-8000-000000000012",
+                      "type": "component",
+                      "component": {
+                        "component_id": "00000000-0000-4000-8000-000000000003",
+                        "revision": 2
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000022",
+              "columns": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000023",
+                  "span": 12,
+                  "children": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000015",
+                      "type": "container",
+                      "rows": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000016",
+                          "columns": [
+                            {
+                              "id": "00000000-0000-4000-8000-000000000017",
+                              "span": 12,
+                              "children": [
+                                {
+                                  "id": "00000000-0000-4000-8000-000000000013",
+                                  "type": "text",
+                                  "blocks": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "text": "Présentation"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "00000000-0000-4000-8000-000000000014",
+                                  "type": "separator"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "revision": 2,
+      "document": {
+        "api_version": "board.component/v1",
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": "Composant",
+        "description": "",
+        "owner": {
+          "issuer": "https://id.example.invalid",
+          "subject": "cora"
+        },
+        "kind": "visual",
+        "analysis": {
+          "analysis_id": "00000000-0000-4000-8000-000000000002",
+          "revision": 1
+        },
+        "presentation": {
+          "title": "ÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉ"
+        }
+      }
+    }
+  ],
+  "template_id": "00000000-0000-4000-8000-000000000001",
+  "expected": {
+    "api_version": "board.page_template/v1",
+    "id": "00000000-0000-4000-8000-000000000001",
+    "name": "Pilotage",
+    "description": "Suivi",
+    "owner": {
+      "issuer": "https://id.example.invalid",
+      "subject": "cora"
+    },
+    "defaults": {
+      "legend": "shown"
+    },
+    "filters": [
+      {
+        "id": "00000000-0000-4000-8000-000000000018",
+        "label": "Région",
+        "dimension": "region",
+        "operator": "eq",
+        "default": "Nord"
+      }
+    ],
+    "layout": {
+      "sections": [
+        {
+          "id": "00000000-0000-4000-8000-000000000019",
+          "title": "Synthèse",
+          "rows": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "columns": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000021",
+                  "span": 12,
+                  "children": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000010",
+                      "type": "slot",
+                      "expected": "visual",
+                      "label": "Ventes"
+                    },
+                    {
+                      "id": "00000000-0000-4000-8000-000000000011",
+                      "type": "slot",
+                      "expected": "kpi",
+                      "label": "KPI"
+                    },
+                    {
+                      "id": "00000000-0000-4000-8000-000000000012",
+                      "type": "slot",
+                      "expected": "visual",
+                      "label": "ÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉ"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000022",
+              "columns": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000023",
+                  "span": 12,
+                  "children": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000015",
+                      "type": "container",
+                      "rows": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000016",
+                          "columns": [
+                            {
+                              "id": "00000000-0000-4000-8000-000000000017",
+                              "span": 12,
+                              "children": [
+                                {
+                                  "id": "00000000-0000-4000-8000-000000000013",
+                                  "type": "text",
+                                  "blocks": [
+                                    {
+                                      "type": "paragraph",
+                                      "content": [
+                                        {
+                                          "text": "Présentation"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "00000000-0000-4000-8000-000000000014",
+                                  "type": "separator"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

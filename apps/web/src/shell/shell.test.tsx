@@ -10,11 +10,11 @@ import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 
 describe("Sidebar", () => {
-  it("rend les six entrées et ne lie que les entrées livrées", async () => {
+  it("rend les sept entrées et ne lie que les entrées livrées", async () => {
     const onNavigate = vi.fn();
     render(<Sidebar available={new Set<SectionId>(["explorer", "analyses"])} active="explorer" onNavigate={onNavigate} workspace="Finance Groupe" />);
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
-    expect(within(nav).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(7);
     expect(within(nav).getAllByRole("button")).toHaveLength(2);
     expect(within(nav).getByRole("button", { name: "Explorer" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("button", { name: "Analyses" })).not.toHaveAttribute("aria-current");
@@ -29,7 +29,7 @@ describe("Sidebar", () => {
     const nav = screen.getByRole("navigation", { name: "Navigation principale" });
     expect(within(nav).getByText("Catalogue Atlas")).toHaveTextContent("Catalogue Atlasdans un espace");
     expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
-    for (const name of ["Explorer", "Analyses", "Dashboards", "Déploiements", "Espace & connexions"]) {
+    for (const name of ["Explorer", "Analyses", "Dashboards", "Thèmes", "Déploiements", "Espace & connexions"]) {
       expect(within(nav).getByText(name)).toHaveTextContent(`${name}à venir`);
     }
   });

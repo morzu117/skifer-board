@@ -13,6 +13,7 @@ export function dashboardRefusalText(refusal: Refusal): string {
   if (refusal.code === "invalid_dashboard" && refusal.dashboardViolations !== undefined) {
     return `${base} ${refusal.dashboardViolations.map((violation) => `${violation.path === "" ? "/" : violation.path} : ${DASHBOARD_RULE_LABELS[violation.rule]}`).join(" ; ")}.`;
   }
+  if (refusal.code === "unapproved_reference" && refusal.paths !== undefined) return `${base} Références concernées : ${refusal.paths.join(", ")}.`;
   if (refusal.code === "personal_reference" && refusal.components !== undefined) return `${base} Composants : ${refusal.components.join(", ")}.`;
   return base;
 }

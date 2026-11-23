@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skifer-board.dev/schema/theme.v1.json",
+  "title": "board.theme/v1",
+  "description": "Les palettes utilisent des tokens connus. La catégorielle exige 3:1 et des couleurs distinctes. Chaque palier séquentiel et chaque palier des ailes divergentes présente un contraste sur la surface au moins 1,10 fois celui du palier précédent vers l’extrémité. La séquentielle atteint 3:1 à son dernier palier ; la divergente possède un nombre impair de paliers, un centre neutral.fg ou neutral.bg et deux extrémités à 3:1. Les rôles de texte atteignent 4,5:1 ; aucune valeur hexadécimale brute n’est admise.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "id",
+    "name",
+    "description",
+    "owner",
+    "base",
+    "roles",
+    "categorical",
+    "sequential",
+    "diverging",
+    "typography",
+    "density",
+    "formats",
+    "chart_defaults"
+  ],
+  "properties": {
+    "api_version": {
+      "const": "board.theme/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "name": {
+      "$ref": "#/$defs/name"
+    },
+    "description": {
+      "$ref": "#/$defs/description"
+    },
+    "owner": {
+      "$ref": "#/$defs/person"
+    },
+    "base": {
+      "enum": [
+        "skifer-clair",
+        "skifer-ardoise"
+      ]
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "marks",
+        "text"
+      ],
+      "properties": {
+        "marks": {
+          "$ref": "#/$defs/marks"
+        },
+        "text": {
+          "$ref": "#/$defs/text_roles"
+        }
+      }
+    },
+    "categorical": {
+      "$ref": "#/$defs/palette",
+      "minItems": 2,
+      "maxItems": 8,
+      "uniqueItems": true
+    },
+    "sequential": {
+      "$ref": "#/$defs/palette",
+      "minItems": 3,
+      "maxItems": 7
+    },
+    "diverging": {
+      "$ref": "#/$defs/palette",
+      "minItems": 3,
+      "maxItems": 7
+    },
+    "typography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sans",
+        "mono",
+        "scale"
+      ],
+      "properties": {
+        "sans": {
+          "const": "sans"
+        },
+        "mono": {
+          "const": "mono"
+        },
+        "scale": {
+          "enum": [
+            "compact",
+            "normal",
+            "large"
+          ]
+        }
+      }
+    },
+    "density": {
+      "enum": [
+        "compact",
+        "normal",
+        "airy"
+      ]
+    },
+    "formats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "date"
+      ],
+      "properties": {
+        "number": {
+          "$ref": "#/$defs/number_format"
+        },
+        "date": {
+          "enum": [
+            "short",
+            "medium",
+            "long",
+            "iso"
+          ]
+        }
+      }
+    },
+    "chart_defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/chart_default"
+        },
+        "bars": {
+          "$ref": "#/$defs/chart_default"
+        },
+        "line": {
+          "$ref": "#/$defs/chart_default"
+        },
+        "grouped_bars": {
+          "$ref": "#/$defs/chart_default"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?!\\n)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^(?![\\s\\S]*#[0-9a-fA-F]{6})[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "subject"
+      ],
+      "properties": {
+        "issuer": {
+          "$ref": "#/$defs/person_part"
+        },
+        "subject": {
+          "$ref": "#/$defs/person_part"
+        }
+      }
+    },
+    "person_part": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?![\\s\\S]*#[0-9a-fA-F]{6})[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]+$(?!\\n)"
+    },
+    "legend": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/legend"
+    },
+    "number_format": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/number_format"
+    },
+    "tooltip": {
+      "$ref": "https://skifer-board.dev/schema/dashboard.v1.json#/$defs/tooltip"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^(?![\\s\\S]*#[0-9a-fA-F]{6})[^\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f\\u2028\\u2029\\ud800-\\udfff]*$(?!\\n)"
+    },
+    "token": {
+      "type": "string",
+      "enum": [
+        "blue",
+        "copper",
+        "copperEdge",
+        "copperInk",
+        "copperOnDark",
+        "copperSoft",
+        "danger.bg",
+        "danger.fg",
+        "danger.text",
+        "ground",
+        "infoBg",
+        "ink",
+        "ink2",
+        "line",
+        "lineSoft",
+        "lineStrong",
+        "link",
+        "muted",
+        "neutral.bg",
+        "neutral.fg",
+        "onSlate",
+        "onSlateMuted",
+        "seriesEdge",
+        "seriesMuted",
+        "seriesMutedLight",
+        "slate700",
+        "slate900",
+        "slateLine",
+        "subtle",
+        "success.bg",
+        "success.fg",
+        "surface",
+        "warning.bg",
+        "warning.fg"
+      ]
+    },
+    "marks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "series",
+        "secondary",
+        "selected",
+        "threshold",
+        "positive",
+        "negative",
+        "total"
+      ],
+      "properties": {
+        "series": {
+          "$ref": "#/$defs/token"
+        },
+        "secondary": {
+          "$ref": "#/$defs/token"
+        },
+        "selected": {
+          "$ref": "#/$defs/token"
+        },
+        "threshold": {
+          "$ref": "#/$defs/token"
+        },
+        "positive": {
+          "$ref": "#/$defs/token"
+        },
+        "negative": {
+          "$ref": "#/$defs/token"
+        },
+        "total": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "text_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "textStrong",
+        "textMuted",
+        "thresholdLabel"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/token"
+        },
+        "textStrong": {
+          "$ref": "#/$defs/token"
+        },
+        "textMuted": {
+          "$ref": "#/$defs/token"
+        },
+        "thresholdLabel": {
+          "$ref": "#/$defs/token"
+        }
+      }
+    },
+    "palette": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "chart_default": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "legend": {
+          "$ref": "#/$defs/legend"
+        },
+        "number_format": {
+          "$ref": "#/$defs/number_format"
+        },
+        "tooltip": {
+          "$ref": "#/$defs/tooltip"
+        }
+      }
+    }
+  }
+}

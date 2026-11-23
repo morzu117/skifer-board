@@ -76,3 +76,16 @@ export function enregistrerLectures(page: Page): string[] {
 export function catalogueHorsEspace(chemins: readonly string[]): string[] {
   return chemins.filter((chemin) => chemin.startsWith("/api/catalog"));
 }
+
+/** Le document comporte des filtres communs à sa racine, jamais des filtres de requête d'analyse. */
+export function verifierDashboard(value: unknown, path = "racine"): void {
+  if (Array.isArray(value)) { for (const [i, one] of value.entries()) verifierDashboard(one, `${path}[${String(i)}]`); return; }
+  if (typeof value === "string") { expect(value).not.toMatch(/\b(?:select\s+.+\bfrom|insert\s+into|update\s+.+\bset|delete\s+from|(?:drop|alter|create)\s+(?:table|view|schema))\b/i); return; }
+  if (value === null || typeof value !== "object") return;
+  for (const [key, one] of Object.entries(value)) {
+    expect(["sql", "query", "metrics", "dimensions"]).not.toContain(key.toLowerCase());
+    if (key === "filters") expect(path).toBe("racine");
+    verifierDashboard(one, `${path}.${key}`);
+  }
+}
+

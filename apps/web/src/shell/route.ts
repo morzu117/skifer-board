@@ -23,6 +23,9 @@ export type Route =
   | { page: "analyses"; space: string }
   /** Liste des dashboards de l'espace, puis l'éditeur d'un dashboard par son identifiant (plan 19, 19.5a). */
   | { page: "dashboards"; space: string }
+  | { page: "themes" | "modeles" | "composants"; space: string }
+  | { page: "modele" | "composant"; space: string; id: string; revision?: number; view?: "history" }
+  | { page: "theme"; space: string; id: string; revision?: number; view?: "history" }
   | { page: "dashboard"; space: string; id: string; revision?: number; view?: "history"; compare?: { base: number; other: number } }
   /** Fiche d'une analyse : la courante, ou une révision numérotée (plan 18, 18.5a) ; `view: "history"` ouvre l'onglet Révisions (de la courante, jamais d'une révision numérotée) ; avec `compare`, il lance l'écart du serveur entre ces deux révisions (`…/historique/<a>/<b>`). */
   | { page: "analysis"; space: string; id: string; revision?: number; view?: "history"; compare?: { base: number; other: number } };
@@ -42,6 +45,9 @@ const SPACE_PAGES = {
   explorer: "explorer",
   analyses: "analyses",
   dashboards: "dashboards",
+  themes: "themes",
+  modeles: "modeles",
+  composants: "composants",
 } as const;
 
 export function routeHash(route: Route): string {
@@ -72,6 +78,16 @@ export function routeHash(route: Route): string {
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/analyses`;
     case "dashboards":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/dashboards`;
+    case "themes":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/themes`;
+    case "modeles":
+    case "composants":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/${route.page}`;
+    case "modele":
+    case "composant":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/${route.page === "modele" ? "modeles" : "composants"}/${encodeURIComponent(route.id)}${route.revision !== undefined ? `/revisions/${String(route.revision)}` : route.view === "history" ? "/historique" : ""}`;
+    case "theme":
+      return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/themes/${encodeURIComponent(route.id)}${route.revision !== undefined ? `/revisions/${String(route.revision)}` : route.view === "history" ? "/historique" : ""}`;
     case "dashboard":
       return `${SPACE_PREFIX}${encodeURIComponent(route.space)}/dashboards/${encodeURIComponent(route.id)}${route.revision !== undefined ? `/revisions/${String(route.revision)}` : route.view === undefined ? "" : route.compare === undefined ? "/historique" : `/historique/${String(route.compare.base)}/${String(route.compare.other)}`}`;
     case "analysis":
@@ -99,6 +115,14 @@ export function routeFromHash(hash: string): Route {
     return { page: "telemetry" };
   }
   if (hash.startsWith(SPACE_PREFIX)) {
+    const content = /^([^/]+)\/(modeles|composants)\/([^/]+)(?:\/revisions\/([1-9]\d{0,8})|\/(historique))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    if (content?.[1] !== undefined && content[3] !== undefined) return { page: content[2] === "modeles" ? "modele" : "composant", space: decodeSegment(content[1]), id: decodeSegment(content[3]), ...(content[4] !== undefined ? { revision: Number(content[4]) } : content[5] !== undefined ? { view: "history" as const } : {}) };
+    const theme = /^([^/]+)\/themes\/([^/]+)(?:\/revisions\/([1-9]\d{0,8})|\/(historique))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    if (theme?.[1] !== undefined && theme[2] !== undefined) {
+      const found = { page: "theme", space: decodeSegment(theme[1]), id: decodeSegment(theme[2]) } as const;
+      if (theme[4] !== undefined) return { ...found, view: "history" };
+      return theme[3] === undefined ? found : { ...found, revision: Number(theme[3]) };
+    }
     // La fiche d'une analyse : `analyses/<id>`, ou `analyses/<id>/revisions/<n>` pour une révision numérotée.
     // `analyses/<id>/historique` ouvre l'onglet Révisions de la fiche ; `…/historique/<a>/<b>` y lance l'écart entre deux révisions.
     const analysis = /^([^/]+)\/analyses\/([^/]+)(?:\/revisions\/([1-9]\d{0,8})|\/(historique)(?:\/([1-9]\d{0,8})\/([1-9]\d{0,8}))?)?$/.exec(hash.slice(SPACE_PREFIX.length));
@@ -121,7 +145,7 @@ export function routeFromHash(hash: string): Route {
       return { page: "explorer", space: decodeSegment(exploring[1]), analysis: exploring[3] === undefined ? reopened : { ...reopened, revision: Number(exploring[3]) } };
     }
     // `#/espaces/<id>` ouvre le catalogue de l'espace, sa page de lecture.
-    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions|explorer|analyses|dashboards))?$/.exec(hash.slice(SPACE_PREFIX.length));
+    const match = /^([^/]+)(?:\/(catalogue|membres|environnements|parametres|connexions|executions|explorer|analyses|dashboards|themes|modeles|composants))?$/.exec(hash.slice(SPACE_PREFIX.length));
     if (match?.[1] !== undefined) {
       const space = decodeSegment(match[1]);
       // Le motif n'admet que les segments de `SPACE_PAGES`.

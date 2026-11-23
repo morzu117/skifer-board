@@ -56,8 +56,11 @@ export interface AnalysePinglee {
 }
 export interface ReglagesDashboards {
   role: "admin" | "creator" | "reader";
+  onWrite?: (id: string, document: Document) => void;
+  acteur?: () => string;
   dashboards?: EntreeDashboard[];
   analyses?: Record<string, AnalysePinglee>;
+  composants?: Record<string, string>;
   identifiants?: string[];
   masquerPremiere?: boolean;
   /** Les exécutions restent en cours tant que `liberer()` n'a pas été appelé. */
@@ -88,13 +91,18 @@ export interface ServeurDashboards {
 }
 
 const COMPOSANTS = ["analysis", "kpi"];
-interface Noeud { id: string; type: string; children?: Noeud[]; rows?: Noeud[]; columns?: Noeud[]; sections?: Noeud[]; reference?: { analysis_id: string } }
+interface Noeud { id: string; type: string; component?: { component_id: string; revision?: number }; children?: Noeud[]; rows?: Noeud[]; columns?: Noeud[]; sections?: Noeud[]; reference?: { analysis_id: string } }
 
 /** Les composants exécutables d'un document, dans l'ordre du document. */
-export function executables(document: Document): { id: string; analyse: string }[] {
+export function executables(document: Document, composants: Record<string, string> = {}): { id: string; analyse: string }[] {
   const trouves: { id: string; analyse: string }[] = [];
   const parcourir = (noeud: Noeud) => {
     if (COMPOSANTS.includes(noeud.type) && noeud.reference !== undefined) trouves.push({ id: noeud.id, analyse: noeud.reference.analysis_id });
+    if (noeud.type === "component" && noeud.component) {
+      const component = noeud.component;
+      const analysis = composants[`${component.component_id}:${String(component.revision)}`] ?? composants[component.component_id];
+      if (analysis) trouves.push({ id: noeud.id, analyse: analysis });
+    }
     for (const fils of [...(noeud.rows ?? []), ...(noeud.columns ?? []), ...(noeud.children ?? [])]) parcourir(fils);
   };
   for (const section of document.layout.sections as { rows: Noeud[] }[]) for (const rangee of section.rows) parcourir(rangee);
@@ -121,6 +129,8 @@ const memeContenu = (a: Document, b: Document) => JSON.stringify(a) === JSON.str
 
 export async function servirDashboards(page: Page, reglages: ReglagesDashboards): Promise<ServeurDashboards> {
   const dashboards = new Map((reglages.dashboards ?? []).map((e) => [e.id, e]));
+  const moi = () => reglages.acteur?.() ?? MOI;
+  const visible = (entry: EntreeDashboard) => entry.proprietaire === moi() || entry.revisions.at(-1)?.visibility === "shared";
   const analyses = reglages.analyses ?? {};
   const entreesAnalyses = new Map(Object.entries(analyses).map(([id, a]) => [id, entree(id, (a.revisions ?? [a.contenu ?? {}]).map((revision) => brouillon(a.nom, revision)), { proprietaire: "cora", droits: a.droits ?? (a.contenu?.visibility === "personal" ? TOUS : AUCUN) })]));
   const supprimees = new Set<string>();
@@ -132,7 +142,7 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
   let liberee = reglages.retenir !== true;
   const ENTIER = /^[1-9]\d{0,8}$/;
 
-  const tuiles = (document: Document) => executables(document).map(({ id, analyse }) => {
+  const tuiles = (document: Document) => executables(document, reglages.composants).map(({ id, analyse }) => {
     const tuile = analyses[analyse]?.tuile ?? "prete";
     if (tuile === "indisponible") return { id, state: "unavailable", reason: "analysis_unavailable" };
     return { id, state: tuile === "non_verifie" ? "unverified" : "ready" };
@@ -159,11 +169,17 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
     const chemin = url.pathname.startsWith(RACINE) ? url.pathname.slice(RACINE.length) : url.pathname;
     const corps = (): Record<string, unknown> => requete.postDataJSON() as Record<string, unknown>;
     const cles = [...url.searchParams.keys()].sort().join(",");
+    if (reglages.acteur && /^\/dashboards\/[^/]+/.test(chemin)) {
+      const id = chemin.split("/")[2] as string; const dashboard = dashboards.get(id);
+      if (dashboard && !visible(dashboard)) return route.fulfill({ status: 404, json: { error: { code: "dashboard_not_found", reason: "not_visible" } } });
+    }
     const reconnu = (attendue: string, gabarit: string) => {
       if (methode !== attendue || cles !== "") return false;
       journal.appels.push(`${methode} ${gabarit}`);
       return true;
     };
+    if (chemin === "/themes" && reconnu("GET", "/themes")) return route.fulfill({ json: { themes: [], unreadable: 0 } });
+    if (chemin === "/components" && reconnu("GET", "/components")) return route.fulfill({ json: { components: [], unreadable: 0 } });
     if (chemin === "/explorer/fields" && reconnu("GET", "/explorer/fields")) return route.fulfill({ json: { models: MODELES } });
     if (chemin === "/executions" && reconnu("POST", "/executions")) {
       const recu = corps();
@@ -223,7 +239,7 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
     if (fiche !== undefined && ficheAnalyse?.[1] !== undefined) {
       const id = ficheAnalyse[1];
       const dependants = [...dashboards.values()].filter((entry) => executables(entry.revisions.at(-1) as Document).some((one) => one.analyse === id));
-      const visibles = dependants.filter((entry) => entry.proprietaire === MOI || (entry.revisions.at(-1) as Document).visibility === "shared");
+      const visibles = dependants.filter((entry) => visible(entry));
       const consumers = visibles.map((entry) => ({ kind: "dashboard", id: entry.id }));
       const others = dependants.length - visibles.length;
       if (ficheAnalyse[2] === "consumers" && reconnu("GET", "/analyses/:id/consumers")) return route.fulfill({ json: { id, consumers, others } });
@@ -242,11 +258,11 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
       return route.fulfill({ json: { ...example, current_revision: trouvee.revisions.length, revisions: trouvee.revisions.map((_, i) => ({ ...example.revisions[0], revision: i + 1 })) } });
     }
     if (chemin === "/dashboards" && reconnu("GET", "/dashboards")) {
-      const visibles = [...dashboards.values()].filter((e) => e.proprietaire === MOI || (e.revisions.at(-1) as Document).visibility === "shared");
+      const visibles = [...dashboards.values()].filter((e) => visible(e));
       return route.fulfill({ json: {
         dashboards: visibles.map((e) => {
           const dernier = e.revisions.at(-1) as Document;
-          return { ...fixe(lister, e.id).body.dashboards[0], id: e.id, name: dernier.name, visibility: dernier.visibility, owner: { issuer: EMETTEUR, subject: e.proprietaire }, is_owner: e.proprietaire === MOI, revision: e.revisions.length, state: "indexed" };
+          return { ...fixe(lister, e.id).body.dashboards[0], id: e.id, name: dernier.name, visibility: dernier.visibility, owner: { issuer: EMETTEUR, subject: e.proprietaire }, is_owner: e.proprietaire === moi(), revision: e.revisions.length, state: "indexed" };
         }),
         unreadable: 0,
       } });
@@ -255,8 +271,9 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
       const id = identifiants.shift() as string;
       const recu = corps() as unknown as Document;
       journal.creations.push(corps());
-      const cree = entreeDashboard(id, recu);
+      const cree = entreeDashboard(id, recu, { proprietaire: moi() });
       dashboards.set(id, cree);
+      reglages.onWrite?.(id, recu);
       return route.fulfill({ status: creer.status, json: revisionDe(cree, 1) });
     }
     const copie = /^\/dashboards\/([^/]+)\/duplicate$/.exec(chemin);
@@ -264,8 +281,9 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
     if (copie?.[1] !== undefined && source !== undefined && reconnu("POST", "/dashboards/:id/duplicate")) {
       const original = source.revisions.at(-1) as Document;
       const id = identifiants.shift() as string;
-      const clone = entreeDashboard(id, { ...structuredClone(original), name: `Copie de ${original.name}`, visibility: "personal" });
+      const clone = entreeDashboard(id, { ...structuredClone(original), name: `Copie de ${original.name}`, visibility: "personal" }, { proprietaire: moi() });
       dashboards.set(id, clone);
+      reglages.onWrite?.(id, clone.revisions[0] as Document);
       return route.fulfill({ status: 201, json: revisionDe(clone, 1) });
     }
     const diff = /^\/dashboards\/([^/]+)\/diff$/.exec(chemin);
@@ -302,6 +320,7 @@ export async function servirDashboards(page: Page, reglages: ReglagesDashboards)
         if ((contenu as unknown as Document).visibility === "shared" && references.length > 0) return route.fulfill({ status: personnel.status, json: { error: { ...personnel.body.error, components: references.map((one) => one.id) } } });
         if (memeContenu(contenu as unknown as Document, courant.revisions.at(-1) as Document)) return route.fulfill({ status: 200, json: revisionDe(courant, nombre) });
         courant.revisions.push(contenu as unknown as Document);
+        reglages.onWrite?.(courant.id, contenu as unknown as Document);
         return route.fulfill({ status: 201, json: revisionDe(courant, nombre + 1) });
       }
     }

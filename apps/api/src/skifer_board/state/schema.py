@@ -492,3 +492,89 @@ analysis_events = Table(
     PrimaryKeyConstraint("event_id", name="pk_analysis_events"),
     Index("ix_analysis_events_analysis", "space_id", "analysis_id", "kind"),
 )
+
+# Contenus partagés du plan 20 : aucun lien aux espaces, Git reste la source.
+shared_content_index = Table(
+    "shared_content_index",
+    metadata,
+    Column("kind", String(13), nullable=False),
+    Column("space_id", String(40), nullable=False),
+    Column("content_id", String(36), nullable=False),
+    Column("name", String(120), nullable=False),
+    Column("owner_issuer", Text, nullable=False),
+    Column("owner_subject", Text, nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("commit", String(64), nullable=False),
+    Column("committed_at", DateTime(timezone=True), nullable=False),
+    Column("approved_revision", Integer, nullable=True),
+    Column("component_kind", String(6), nullable=True),
+    Column("analysis_id", String(36), nullable=True),
+    Column("analysis_revision", Integer, nullable=True),
+    Column("indexed_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("kind", "space_id", "content_id", name="pk_shared_content_index"),
+    CheckConstraint(
+        "kind IN ('theme', 'page_template', 'component')", name="ck_shared_content_kind"
+    ),
+    CheckConstraint(
+        "(kind = 'component' AND component_kind IS NOT NULL "
+        "AND component_kind IN ('visual', 'kpi') "
+        "AND analysis_id IS NOT NULL AND analysis_revision IS NOT NULL) OR "
+        "(kind <> 'component' AND component_kind IS NULL AND analysis_id IS NULL "
+        "AND analysis_revision IS NULL)",
+        name="ck_shared_content_component",
+    ),
+    Index("ix_shared_content_space", "space_id", "kind"),
+)
+
+content_approvals = Table(
+    "content_approvals",
+    metadata,
+    Column("kind", String(13), nullable=False),
+    Column("space_id", String(40), nullable=False),
+    Column("content_id", String(36), nullable=False),
+    Column("revision", Integer, nullable=False),
+    Column("issuer", Text, nullable=False),
+    Column("subject", Text, nullable=False),
+    Column("approved_at", DateTime(timezone=True), nullable=False),
+    PrimaryKeyConstraint("kind", "space_id", "content_id", "revision", name="pk_content_approvals"),
+    CheckConstraint(
+        "kind IN ('theme', 'page_template', 'component')", name="ck_content_approvals_kind"
+    ),
+)
+
+dashboard_theme_references = Table(
+    "dashboard_theme_references",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("dashboard_id", String(36), nullable=False),
+    Column("theme_id", String(36), nullable=False),
+    Column("revision", Integer, nullable=False),
+    PrimaryKeyConstraint("space_id", "dashboard_id", name="pk_dashboard_theme_references"),
+    ForeignKeyConstraint(
+        ["space_id", "dashboard_id"],
+        ["dashboard_index.space_id", "dashboard_index.dashboard_id"],
+        name="fk_dashboard_theme_references_dashboard",
+        ondelete="CASCADE",
+    ),
+    Index("ix_dashboard_theme_consumers", "space_id", "theme_id", "revision"),
+)
+
+dashboard_component_references = Table(
+    "dashboard_component_references",
+    metadata,
+    Column("space_id", String(40), nullable=False),
+    Column("dashboard_id", String(36), nullable=False),
+    Column("component_id", String(36), nullable=False),
+    Column("component_ref_id", String(36), nullable=False),
+    Column("revision", Integer, nullable=False),
+    PrimaryKeyConstraint(
+        "space_id", "dashboard_id", "component_id", name="pk_dashboard_component_references"
+    ),
+    ForeignKeyConstraint(
+        ["space_id", "dashboard_id"],
+        ["dashboard_index.space_id", "dashboard_index.dashboard_id"],
+        name="fk_dashboard_component_references_dashboard",
+        ondelete="CASCADE",
+    ),
+    Index("ix_dashboard_component_consumers", "space_id", "component_ref_id", "revision"),
+)

@@ -1,0 +1,14 @@
+{
+  "api_version": "board.approvals/v1",
+  "kind": "theme",
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "approvals": [
+    {
+      "revision": 1,
+      "approver": {
+        "issuer": "https://idp.example.test"
+      },
+      "approved_at": "2026-11-13T12:00:00Z"
+    }
+  ]
+}

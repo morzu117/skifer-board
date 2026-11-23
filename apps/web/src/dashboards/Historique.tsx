@@ -13,6 +13,12 @@ import type { DashboardChange } from "./model";
 import "./dashboards.css";
 
 const NATURE: Readonly<Record<DashboardChange["kind"], string>> = { added: "Ajouté", removed: "Retiré", modified: "Modifié", moved: "Déplacé" };
+const NODE_LABELS: Readonly<Record<DashboardChange["node"], string>> = { dashboard: "dashboard", defaults: "defaults", section: "section", row: "row", column: "column", filter: "filter", container: "container", analysis: "analysis", kpi: "kpi", text: "text", separator: "separator", component: "Composant" };
+const nodeLabel = (change: DashboardChange): string => {
+  if (change.node === "dashboard" && (change.path === "/theme" || change.path.startsWith("/theme/"))) return "Thème";
+  if (change.node === "dashboard" && (change.path === "/template" || change.path.startsWith("/template/"))) return "Modèle de page";
+  return NODE_LABELS[change.node];
+};
 const coupures = (value: string) => value.split(/([/,:])/).map((part, index) => <span key={index}>{part}{/[/,:]/.test(part) ? <wbr /> : null}</span>);
 
 /** L'écart vient de la route et du décodeur : aucun calcul de différence dans l'écran. */
@@ -25,7 +31,7 @@ export function DashboardDiffView({ space, id, base, other, fetcher }: { space: 
     <table className="sb-table"><caption>Écart entre r{base} et r{other}</caption>
       <thead><tr><th scope="col">Nature</th><th scope="col">Nœud</th><th scope="col">Chemin</th><th scope="col">Avant</th><th scope="col">Après</th></tr></thead>
       <tbody>{diff.value.changes.map((change, index) => <tr key={`${change.path}:${change.kind}:${String(index)}`}>
-        <td>{NATURE[change.kind]}</td><td>{change.node}{change.id === null ? "" : ` · ${change.id}`}</td><th scope="row">{coupures(change.path)}</th>
+        <td>{NATURE[change.kind]}</td><td>{nodeLabel(change)}{change.id === null ? "" : ` · ${change.id}`}</td><th scope="row">{coupures(change.path)}</th>
         <td>{change.before === null ? "—" : coupures(JSON.stringify(change.before))}</td><td>{change.after === null ? "—" : coupures(JSON.stringify(change.after))}</td>
       </tr>)}</tbody>
     </table>

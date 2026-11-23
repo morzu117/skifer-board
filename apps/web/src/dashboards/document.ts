@@ -3,7 +3,7 @@ import { distinct, fail, flag, identifier, items, MAX_REVISION, pick, record, uu
 
 /**
  * Document `board.dashboard/v1` (plan 19, B2), décodé strictement et aligné sur `contracts/dashboards/dashboard.v1.json`.
- * Aucun champ inconnu, aucune valeur hors domaine ; ni SQL, ni requête, ni donnée, ni environnement, ni thème, ni couleur
+ * Aucun champ inconnu, aucune valeur hors domaine ; ni SQL, ni requête, ni donnée, ni environnement, ni couleur
  * brute, ni option de rendu, ni secret. Le décodeur refuse, il ne complète ni ne corrige : le serveur reste l'autorité.
  *
  * Il juge aussi les règles inter-champs que le serveur applique sans catalogue (`dashboard.py`) : identifiants uniques,
@@ -55,7 +55,8 @@ export type Legend = (typeof LEGENDS)[number];
 export type NumberFormat = (typeof NUMBER_FORMATS)[number];
 export type Tooltip = (typeof TOOLTIPS)[number];
 export type CommonOperator = (typeof COMMON_OPERATORS)[number];
-export type NodeType = (typeof NODE_TYPES)[number];
+export type NodeType = (typeof NODE_TYPES)[number] | "component";
+export const ALL_NODE_TYPES = [...NODE_TYPES, "component"] as const;
 
 export interface Threshold {
   value: number;
@@ -123,9 +124,12 @@ export interface Container {
   type: "container";
   rows: readonly Row[];
 }
-export type Component = AnalysisComponent | KpiComponent | TextComponent | SeparatorComponent;
+export interface SharedComponent { id: string; type: "component"; component: { component_id: string; revision: number } }
+/** Emplacement de travail, jamais publié dans un dashboard serveur. */
+export interface DraftSlot { id: string; type: "slot"; slot: { expected: "visual" | "kpi"; label: string } }
+export type Component = AnalysisComponent | KpiComponent | SharedComponent | TextComponent | SeparatorComponent;
 export type ExecutableComponent = AnalysisComponent | KpiComponent;
-export type LayoutNode = Container | Component;
+export type LayoutNode = Container | Component | DraftSlot;
 export interface Column {
   id: string;
   span: number;
@@ -156,15 +160,23 @@ export interface CommonFilter {
 export interface DashboardDraft {
   name: string;
   description: string;
+  theme?: { theme_id: string; revision: number };
+  template?: { template_id: string; revision: number };
   visibility: Visibility;
   defaults: Defaults;
   filters: readonly CommonFilter[];
   layout: { sections: readonly Section[] };
 }
+/** Mise en page publiée : elle exclut les emplacements, même dans les conteneurs. */
+export interface PublishedColumn { id: string; span: number; children: readonly (Component | PublishedContainer)[] }
+export interface PublishedRow { id: string; columns: readonly PublishedColumn[] }
+export interface PublishedContainer { id: string; type: "container"; rows: readonly PublishedRow[] }
+export interface PublishedSection { id: string; title?: string; rows: readonly PublishedRow[] }
 export interface DashboardDocument extends DashboardDraft {
   api_version: typeof API_VERSION;
   id: string;
   owner: Person;
+  layout: { sections: readonly PublishedSection[] };
 }
 
 const DRAFT_KEYS = ["name", "description", "visibility", "defaults", "filters", "layout"] as const;
@@ -215,7 +227,7 @@ function defaults(value: unknown, path: string): Defaults {
   };
 }
 
-function visual(value: unknown, path: string): VisualPresentation {
+export function visual(value: unknown, path: string): VisualPresentation {
   const found = fields(value, ["chart", "title", "legend", "number_format", "threshold", "tooltip"], [], path);
   return {
     ...(has(found, "chart") ? { chart: pick(found.chart, CHART_KINDS, `${path}.chart`) } : {}),
@@ -224,11 +236,11 @@ function visual(value: unknown, path: string): VisualPresentation {
   };
 }
 
-function kpi(value: unknown, path: string): KpiPresentation {
+export function kpi(value: unknown, path: string): KpiPresentation {
   return shared(fields(value, ["title", "number_format", "threshold", "tooltip"], [], path), path);
 }
 
-function reference(value: unknown, path: string): Reference {
+export function reference(value: unknown, path: string): Reference {
   const found = fields(value, ["analysis_id", "revision"], ["analysis_id", "revision"], path);
   return { analysis_id: uuid(found.analysis_id, `${path}.analysis_id`), revision: integer(found.revision, `${path}.revision`, 1, MAX_REVISION) };
 }
@@ -288,6 +300,8 @@ function blocksOf(value: unknown, path: string): readonly Block[] {
 
 /** Ce que le parcours de la mise en page apprend : identifiants et genres, comptes (règles inter-champs). */
 interface Scan {
+  draft: boolean;
+  template: boolean;
   kinds: Map<string, string>;
   nodes: number;
   components: number;
@@ -307,7 +321,7 @@ function count(scan: Scan, path: string): void {
 }
 
 function component(found: Readonly<Record<string, unknown>>, type: Exclude<NodeType, "container">, path: string, scan: Scan): Component {
-  const keys = type === "separator" ? ["id", "type"] : type === "text" ? ["id", "type", "blocks"] : ["id", "type", "reference", "presentation"];
+  const keys = type === "separator" ? ["id", "type"] : type === "text" ? ["id", "type", "blocks"] : type === "component" ? ["id", "type", "component"] : ["id", "type", "reference", "presentation"];
   const own = fields(found, keys, keys, path);
   const id = claim(scan, uuid(own.id, `${path}.id`), type, `${path}.id`);
   count(scan, path);
@@ -319,6 +333,7 @@ function component(found: Readonly<Record<string, unknown>>, type: Exclude<NodeT
   }
   scan.executable += 1;
   if (scan.executable > LIMITS.executable) fail(path, `au plus ${String(LIMITS.executable)} composants exécutables`);
+  if (type === "component") return { id, type, component: pinnedObject(own.component, "component_id", `${path}.component`) };
   const pinned = reference(own.reference, `${path}.reference`);
   return type === "analysis" ? { id, type, reference: pinned, presentation: visual(own.presentation, `${path}.presentation`) } : { id, type, reference: pinned, presentation: kpi(own.presentation, `${path}.presentation`) };
 }
@@ -327,7 +342,16 @@ function component(found: Readonly<Record<string, unknown>>, type: Exclude<NodeT
 function node(value: unknown, path: string, level: number, scan: Scan): LayoutNode {
   const found = record(value, path);
   if (!has(found, "type")) return fail(path, "champs type");
-  const type = pick(found.type, NODE_TYPES, `${path}.type`);
+  if (found.type === "slot" && scan.draft) {
+    const own = fields(found, ["id", "type", "slot"], ["id", "type", "slot"], path);
+    const slot = fields(own.slot, ["expected", "label"], ["expected", "label"], `${path}.slot`);
+    const id = claim(scan, uuid(own.id, `${path}.id`), "slot", `${path}.id`);
+    count(scan, path);
+    scan.components += 1;
+    if (scan.components > LIMITS.components) fail(path, `au plus ${String(LIMITS.components)} composants`);
+    return { id, type: "slot", slot: { expected: pick(slot.expected, ["visual", "kpi"] as const, `${path}.slot.expected`), label: bounded(slot.label, `${path}.slot.label`, 1, LIMITS.label, false) } };
+  }
+  const type = pick(found.type, ALL_NODE_TYPES, `${path}.type`);
   if (type !== "container") return component(found, type, path, scan);
   const own = fields(found, ["id", "type", "rows"], ["id", "type", "rows"], path);
   const id = claim(scan, uuid(own.id, `${path}.id`), type, `${path}.id`);
@@ -421,13 +445,13 @@ export function decodeCommonValues(operator: CommonOperator, found: Readonly<Rec
  * selon l'opérateur, bornes de `between`, `default` parmi `allowed`, au moins une cible. L'existence des cibles dans la
  * mise en page ne se juge qu'avec le document entier.
  */
-export function filterValues(found: Readonly<Record<string, unknown>>, path: string): Omit<CommonFilter, "id"> {
+export function filterValues(found: Readonly<Record<string, unknown>>, path: string, allowEmpty = false): Omit<CommonFilter, "id"> {
   const label = bounded(found.label, `${path}.label`, 1, LIMITS.label, false);
   const dimension = identifier(found.dimension, `${path}.dimension`);
   const operator = pick(found.operator, COMMON_OPERATORS, `${path}.operator`);
   const targets = distinct(items(found.targets, `${path}.targets`, LIMITS.targets).map((item, index) => uuid(item, `${path}.targets[${String(index)}]`)), `${path}.targets`);
   commonValueShapes(operator, found, path);
-  if (targets.length === 0) return fail(`${path}.targets`, "au moins une cible");
+  if (targets.length === 0 && !allowEmpty) return fail(`${path}.targets`, "au moins une cible");
   const { preferred, allowed } = commonValueContents(operator, found, path);
   return { label, dimension, operator, ...(preferred === undefined ? {} : { default: preferred }), ...(allowed === undefined ? {} : { allowed }), targets };
 }
@@ -435,20 +459,26 @@ export function filterValues(found: Readonly<Record<string, unknown>>, path: str
 function commonFilter(value: unknown, path: string, scan: Scan): CommonFilter {
   const found = fields(value, FILTER_KEYS, ["id", "label", "dimension", "operator", "targets"], path);
   const id = claim(scan, uuid(found.id, `${path}.id`), "filter", `${path}.id`);
-  const filter = filterValues(found, path);
+  const filter = filterValues(found, path, scan.draft && scan.template);
   // Règles inter-champs : les cibles sont des tuiles du document, les valeurs passent par la soumission d'exécution.
   filter.targets.forEach((target, index) => {
     const kind = scan.kinds.get(target);
     if (kind === undefined) fail(`${path}.targets[${String(index)}]`, "composant du document");
-    if (kind !== "analysis" && kind !== "kpi") fail(`${path}.targets[${String(index)}]`, "composant exécutable (visuel ou KPI)");
+    if (kind !== "analysis" && kind !== "kpi" && kind !== "component") fail(`${path}.targets[${String(index)}]`, "composant exécutable (visuel ou KPI)");
   });
   return { id, ...filter };
 }
 
 // -- document -----------------------------------------------------------------------------------
 
-function draftOf(found: Readonly<Record<string, unknown>>, path: string): DashboardDraft {
-  const scan: Scan = { kinds: new Map(), nodes: 0, components: 0, executable: 0 };
+export function pinnedObject<K extends "theme_id" | "template_id" | "component_id">(value: unknown, key: K, path: string): Record<K, string> & { revision: number } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail(path, `champs ${key}, revision`);
+  const found = fields(value, [key, "revision"], [key, "revision"], path);
+  return { [key]: uuid(found[key], `${path}.${key}`), revision: integer(found.revision, `${path}.revision`, 1, MAX_REVISION) } as Record<K, string> & { revision: number };
+}
+
+function draftOf(found: Readonly<Record<string, unknown>>, path: string, draft = false): DashboardDraft {
+  const scan: Scan = { draft, template: has(found, "template"), kinds: new Map(), nodes: 0, components: 0, executable: 0 };
   const name = decodeName(found.name, `${path}.name`);
   const description = bounded(found.description, `${path}.description`, 0, 2000, true);
   const visibility = pick(found.visibility, VISIBILITIES, `${path}.visibility`);
@@ -457,19 +487,27 @@ function draftOf(found: Readonly<Record<string, unknown>>, path: string): Dashbo
   const layout = fields(found.layout, ["sections"], ["sections"], `${path}.layout`);
   const sections = items(layout.sections, `${path}.layout.sections`, LIMITS.sections).map((item, index) => section(item, `${path}.layout.sections[${String(index)}]`, scan));
   const filters = items(found.filters, `${path}.filters`, LIMITS.filters).map((item, index) => commonFilter(item, `${path}.filters[${String(index)}]`, scan));
-  return { name, description, visibility, defaults: preferences, filters, layout: { sections } };
+  return { name, description, ...(has(found, "theme") ? { theme: pinnedObject(found.theme, "theme_id", `${path}.theme`) } : {}), ...(has(found, "template") ? { template: pinnedObject(found.template, "template_id", `${path}.template`) } : {}), visibility, defaults: preferences, filters, layout: { sections } };
 }
 
 /** Corps d'une création ou d'une révision : `api_version`, `id` et `owner` n'y ont pas leur place. */
 export function decodeDashboardDraft(value: unknown, path = "dashboard"): DashboardDraft {
-  return draftOf(fields(value, DRAFT_KEYS, DRAFT_KEYS, path), path);
+  return draftOf(fields(value, [...DRAFT_KEYS, "theme", "template"], DRAFT_KEYS, path), path, true);
+}
+
+/** Un emplacement à n'importe quelle profondeur interdit la publication du brouillon. */
+export function hasSlots(document: DashboardDraft): boolean {
+  const inRows = (list: readonly Row[]): boolean => list.some((row) => row.columns.some((column) => column.children.some((child) => child.type === "slot" || (child.type === "container" && inRows(child.rows)))));
+  return document.layout.sections.some((section) => inRows(section.rows));
 }
 
 /** Document complet, tel que le serveur le lit dans le dépôt. */
 export function decodeDashboard(value: unknown, path = "dashboard"): DashboardDocument {
-  const found = fields(value, ["api_version", "id", "owner", ...DRAFT_KEYS], ["api_version", "id", "owner", ...DRAFT_KEYS], path);
+  const found = fields(value, ["api_version", "id", "owner", ...DRAFT_KEYS, "theme", "template"], ["api_version", "id", "owner", ...DRAFT_KEYS], path);
   if (found.api_version !== API_VERSION) return fail(`${path}.api_version`, API_VERSION);
-  return { api_version: API_VERSION, id: uuid(found.id, `${path}.id`), owner: decodePerson(found.owner, `${path}.owner`), ...draftOf(found, path) };
+  const decoded = draftOf(found, path);
+  const sections = decoded.layout.sections as unknown as readonly PublishedSection[];
+  return { api_version: API_VERSION, id: uuid(found.id, `${path}.id`), owner: decodePerson(found.owner, `${path}.owner`), ...decoded, layout: { sections } };
 }
 
 // -- champs propres d'un nœud, pour l'écart de révisions ----------------------------------------
@@ -503,6 +541,7 @@ const OWN: Readonly<Record<OwnNode, { fields: Readonly<Record<string, ValueDecod
   container: { fields: { type: literal("container") }, optional: [] },
   analysis: { fields: { type: literal("analysis"), reference, presentation: visual }, optional: [] },
   kpi: { fields: { type: literal("kpi"), reference, presentation: kpi }, optional: [] },
+  component: { fields: { type: literal("component"), component: (value, path) => pinnedObject(value, "component_id", path) }, optional: [] },
   text: { fields: { type: literal("text"), blocks: blocksOf }, optional: [] },
   separator: { fields: { type: literal("separator") }, optional: [] },
 };
@@ -525,6 +564,12 @@ export function decodeOwn(node: OwnNode, value: unknown, path: string, complete:
 
 /** Champs de l'en-tête que l'écart compare, par chemin de feuille : `owner` se compare par `issuer` et `subject`. */
 export const HEADER_VALUES: Readonly<Record<string, ValueDecoder>> = {
+  "/theme": (value, path) => pinnedObject(value, "theme_id", path),
+  "/template": (value, path) => pinnedObject(value, "template_id", path),
+  "/theme/theme_id": uuid,
+  "/template/template_id": uuid,
+  "/theme/revision": (value, path) => integer(value, path, 1, MAX_REVISION),
+  "/template/revision": (value, path) => integer(value, path, 1, MAX_REVISION),
   "/name": decodeName,
   "/description": text(0, 2000, true),
   "/visibility": oneOf(VISIBILITIES),
@@ -547,4 +592,10 @@ function inRows(list: readonly Row[]): readonly ExecutableComponent[] {
 /** Composants exécutables (visuels et KPI) d'un document, dans l'ordre du document : celui des états de tuiles. */
 export function executables(document: DashboardDraft): readonly ExecutableComponent[] {
   return document.layout.sections.flatMap((one) => inRows(one.rows));
+}
+
+/** Inclut les composants référencés, comptés par le serveur parmi les tuiles. */
+export function executableNodes(document: DashboardDraft): readonly (ExecutableComponent | SharedComponent)[] {
+  const visit = (rows: readonly Row[]): (ExecutableComponent | SharedComponent)[] => rows.flatMap((row) => row.columns.flatMap((column) => column.children.flatMap((child) => child.type === "container" ? visit(child.rows) : child.type === "analysis" || child.type === "kpi" || child.type === "component" ? [child] : [])));
+  return document.layout.sections.flatMap((section) => visit(section.rows));
 }

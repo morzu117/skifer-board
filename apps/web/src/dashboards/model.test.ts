@@ -48,7 +48,7 @@ describe("révision d'un dashboard", () => {
     const tiles = decoded("lire-tuiles").tiles;
     expect(tiles.map((tile) => tile.state)).toEqual(["ready", "unavailable", "unavailable", "unavailable"]);
     expect(tiles.flatMap((tile) => (tile.state === "unavailable" ? [tile.reason] : []))).toEqual(["analysis_unavailable", "unresolved_reference", "filter_incompatible"]);
-    expect([...TILE_REASONS]).toEqual(["analysis_unavailable", "unresolved_reference", "filter_incompatible"]);
+    expect([...TILE_REASONS]).toEqual(["analysis_unavailable", "unresolved_reference", "filter_incompatible", "component_unavailable"]);
     expect(tiles.map((tile) => tile.id)).toEqual(executables(decoded("lire-tuiles").dashboard).map((one) => one.id));
     expect(decoded("lire-non-verifie").tiles.map((tile) => tile.state)).toEqual(["unverified", "unavailable", "unverified", "unverified"]);
     // Aucune tuile n'est inventée, perdue, déplacée ni dupliquée.
@@ -61,6 +61,13 @@ describe("révision d'un dashboard", () => {
     refused({ ...found, components: [] }, "aucune tuile");
     refused(changed(found, "components.0.id", "x"), "identifiant de tuile");
     refused({ ...found, components: Array.from({ length: 41 }, () => components[0]) }, "41 tuiles");
+  });
+
+  it("décode une tuile composant indisponible même sans catalogue", () => {
+    for (const state of ["unverified", "unresolved_reference", "index_stale"]) {
+      const source = state === "index_stale" ? "lire-index-perime" : "lire";
+      expect(decodeDashboardRevision(withTiles(source, state, [gone("component_unavailable")]), "finance").tiles[0]).toMatchObject({ state: "unavailable", reason: "component_unavailable" });
+    }
   });
 
   it("refuse une tuile à la forme forgée : raison hors domaine, raison en trop, raison manquante, champ en trop", () => {
@@ -498,4 +505,14 @@ describe("écart entre deux révisions", () => {
     refusedDiff(node({ id: "x" }));
     refusedDiff(node({ id: undefined }));
   });
+});
+
+it("libelle la raison d’indisponibilité d’un composant", async () => {
+  const { TILE_REASON_LABELS } = await import("./labels");
+  expect(TILE_REASON_LABELS.component_unavailable).toBe("Le composant épinglé n’est pas disponible pour vous.");
+});
+
+it("accepte un écart numérique de référence entre 1 et 1.0", () => {
+  const value: unknown = JSON.parse(`{"id":"${ID}","base":1,"other":2,"changes":[{"path":"/theme/revision","kind":"modified","node":"dashboard","id":null,"before":1,"after":1.0}]}`);
+  expect(decodeDashboardDiff(value, ID, 1, 2).changes).toHaveLength(1);
 });

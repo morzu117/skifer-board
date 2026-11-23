@@ -46,6 +46,9 @@ COMMIT = re.compile(r"[0-9a-f]{40}")
 # Les exemples du dossier des dashboards, tous produits par ce fichier.
 NOMS = frozenset(
     {
+        "refus-reference-non-approuvee",
+        "lire-references-resolues",
+        "lire-composant-indisponible",
         "creer",
         "lire",
         "lister",
@@ -293,6 +296,64 @@ def test_contrats_des_consommateurs_d_une_analyse(banc: Banc) -> None:
     exemple(ANALYSES, banc.appel(LECTEUR_GROUPE, "GET", chemin), "consommateurs", 200)
     aucun = banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN}/{seule}/consumers")
     exemple(ANALYSES, aucun, "consommateurs-aucun", 200)
+
+
+def test_contrats_references_partagees(banc: Banc) -> None:
+    from .test_routes_shared_contrats import exemple as shared_exemple
+    from .test_routes_shared_cycle import body
+
+    analyse = banc.creer_ok(CREATEUR_GROUPE, visibility="shared")
+    theme = banc.appel(
+        CREATEUR_GROUPE, "POST", f"/api/spaces/{A}/themes", json=body("themes", "clair.json")
+    )
+    assert theme.status_code == 201
+    comp = body("components", "base.json")
+    comp["analysis"]["analysis_id"] = analyse
+    composant = banc.appel(CREATEUR_GROUPE, "POST", f"/api/spaces/{A}/components", json=comp)
+    assert composant.status_code == 201
+    theme_id, component_id = theme.json()["id"], composant.json()["id"]
+    node = {
+        "id": C1,
+        "type": "component",
+        "component": {"component_id": component_id, "revision": 1},
+    }
+    tableau = corps_tableau(node, visibility="shared", theme={"theme_id": theme_id, "revision": 1})
+    contrat(
+        banc.appel(CREATEUR_GROUPE, "POST", CHEMIN_TABLEAUX, json=tableau),
+        "refus-reference-non-approuvee",
+        422,
+    )
+    for segment, ident in (("themes", theme_id), ("components", component_id)):
+        assert (
+            banc.appel(
+                ADMIN_GROUPE,
+                "POST",
+                f"/api/spaces/{A}/{segment}/{ident}/approvals",
+                json={"revision": 1, "expected_revision": 1},
+            ).status_code
+            == 201
+        )
+    cree = banc.appel(CREATEUR_GROUPE, "POST", CHEMIN_TABLEAUX, json=tableau)
+    assert cree.status_code == 201, cree.text
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN_TABLEAUX}/{cree.json()['id']}"),
+        "lire-references-resolues",
+        200,
+    )
+    refus = banc.appel(
+        CREATEUR_GROUPE, "DELETE", f"{CHEMIN}/{analyse}", params={"expected_revision": 1}
+    )
+    shared_exemple("analyses", "refus-analyse-utilisee-par-composant", refus, 409)
+    from skifer_board.content.repository import COMPONENT_KIND
+
+    banc.depot.delete(
+        A, component_id, expected_revision=1, actor=CREATEUR_GROUPE.ref, kind=COMPONENT_KIND
+    )
+    contrat(
+        banc.appel(LECTEUR_GROUPE, "GET", f"{CHEMIN_TABLEAUX}/{cree.json()['id']}"),
+        "lire-composant-indisponible",
+        200,
+    )
 
 
 def test_zz_le_dossier_ne_contient_que_les_exemples_produits() -> None:

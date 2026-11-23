@@ -1,13 +1,15 @@
+import { decodeTheme, type ThemeDocument } from "../themes/document";
+import { decodeComponent, type ComponentDocument } from "../components-lib/document";
 import { instant } from "../catalogue/decode";
 import { decodeName, decodePerson, type Person, type Visibility } from "../analyses/document";
 import { coherentRights, decodePermissions, READ_STATES, LIST_STATES, type ListState, type Permissions, type ReadState } from "../analyses/model";
 import { commit, count, distinct, exact, fail, flag, items, pick, record, revision, uuid, word } from "../analyses/shape";
-import { decodeDashboard, decodeOwn, DEFAULT_VALUES, executables, HEADER_VALUES, NODE_TYPES, optionalOwn, type DashboardDocument, type OwnNode } from "./document";
+import { decodeDashboard, decodeOwn, DEFAULT_VALUES, executableNodes, HEADER_VALUES, NODE_TYPES, optionalOwn, type DashboardDocument, type OwnNode } from "./document";
 
 /** Réponses des routes `/api/spaces/{space_id}/dashboards…` (plan 19, 19.2), décodées sans rien compléter. */
 
 /** Raisons fermées pour lesquelles une tuile est indisponible. */
-export const TILE_REASONS = ["analysis_unavailable", "unresolved_reference", "filter_incompatible"] as const;
+export const TILE_REASONS = ["analysis_unavailable", "unresolved_reference", "filter_incompatible", "component_unavailable"] as const;
 export type TileReason = (typeof TILE_REASONS)[number];
 
 /**
@@ -31,6 +33,7 @@ export interface DashboardRevision {
   tiles: readonly Tile[];
   permissions: Permissions;
   dashboard: DashboardDocument;
+  resolved?: { theme?: ThemeDocument; components: Readonly<Record<string, ComponentDocument>> };
 }
 
 function tile(value: unknown, path: string): Tile {
@@ -52,7 +55,7 @@ function tile(value: unknown, path: string): Tile {
  */
 function coherentState(state: ReadState, tiles: readonly Tile[]): boolean {
   const unverified = tiles.some((one) => one.state === "unverified");
-  const known = tiles.some((one) => one.state === "ready" || (one.state === "unavailable" && one.reason !== "analysis_unavailable"));
+  const known = tiles.some((one) => one.state === "ready" || (one.state === "unavailable" && one.reason !== "analysis_unavailable" && one.reason !== "component_unavailable"));
   if (unverified && known) return false;
   switch (state) {
     case "index_stale":
@@ -67,7 +70,8 @@ function coherentState(state: ReadState, tiles: readonly Tile[]): boolean {
 }
 
 export function decodeDashboardRevision(value: unknown, space: string, path = "révision"): DashboardRevision {
-  const found = exact(value, ["id", "space_id", "revision", "current_revision", "commit", "committed_at", "revised_by", "state", "components", "permissions", "dashboard"], path);
+  const keys = ["id", "space_id", "revision", "current_revision", "commit", "committed_at", "revised_by", "state", "components", "permissions", "dashboard"];
+  const found = exact(value, Object.hasOwn(record(value, path), "resolved") ? [...keys, "resolved"] : keys, path);
   const id = uuid(found.id, `${path}.id`);
   if (found.space_id !== space) return fail(`${path}.space_id`, "espace demandé");
   const number = revision(found.revision, `${path}.revision`);
@@ -79,12 +83,18 @@ export function decodeDashboardRevision(value: unknown, space: string, path = "r
   if (dashboard.id !== id) return fail(`${path}.dashboard.id`, "identifiant de la révision");
   if (current !== null && number > current) return fail(`${path}.revision`, "révision au plus égale à la courante");
   // Une tuile par composant exécutable, dans l'ordre du document : ni plus, ni moins, ni autre.
-  const pinned = executables(dashboard);
+  const pinned = executableNodes(dashboard);
   if (tiles.length !== pinned.length || tiles.some((one, index) => one.id !== pinned[index]?.id)) return fail(`${path}.components`, "une tuile par composant exécutable, dans l'ordre du document");
   if (!coherentState(state, tiles)) return fail(`${path}.state`, "état cohérent avec les tuiles");
   // Un écart d'index ne se juge que sur la révision courante.
   if (state === "index_stale" && current !== number) return fail(`${path}.state`, "écart d'index sur la révision courante");
   if (!coherentRights(rights, dashboard.visibility, current)) return fail(`${path}.permissions`, "droits cohérents avec le dashboard");
+  const rawResolved = found.resolved === undefined ? undefined : record(found.resolved, `${path}.resolved`);
+  const resolved = rawResolved === undefined ? undefined : (() => {
+    const obj = exact(rawResolved, Object.hasOwn(rawResolved, "theme") ? ["theme", "components"] : ["components"], `${path}.resolved`);
+    const components = Object.fromEntries(Object.entries(record(obj.components, `${path}.resolved.components`)).map(([key, value]) => [uuid(key, `${path}.resolved.components`), decodeComponent(value, `${path}.resolved.components.${key}`)]));
+    return { components, ...(Object.hasOwn(obj, "theme") ? { theme: decodeTheme(obj.theme, `${path}.resolved.theme`) } : {}) };
+  })();
   return {
     id,
     space,
@@ -97,6 +107,7 @@ export function decodeDashboardRevision(value: unknown, space: string, path = "r
     tiles,
     permissions: rights,
     dashboard,
+    ...(resolved === undefined ? {} : { resolved }),
   };
 }
 
@@ -150,7 +161,8 @@ export const DIFF_KINDS = ["added", "removed", "modified", "moved"] as const;
 export const TOP_PARENTS = ["layout", "filters"] as const;
 /** Nœuds d'un écart : l'en-tête et les défauts, puis chaque genre de nœud à identifiant. */
 export const DIFF_NODES = ["dashboard", "defaults", "section", "row", "column", "filter", ...NODE_TYPES] as const;
-export type DiffNode = (typeof DIFF_NODES)[number];
+const ALL_DIFF_NODES = [...DIFF_NODES, "component"] as const;
+export type DiffNode = (typeof ALL_DIFF_NODES)[number];
 
 /** Où un nœud déplacé se trouve : son parent (identifiant, `layout` ou `filters`) et son rang parmi les frères. */
 export interface Place {
@@ -186,6 +198,7 @@ const NODE_PATH: Readonly<Record<Exclude<DiffNode, "dashboard" | "defaults">, Re
   row: new RegExp(`^${ROW}$`),
   column: new RegExp(`^${COLUMN}$`),
   container: new RegExp(`^${CHILD}$`),
+  component: new RegExp(`^${CHILD}$`),
   analysis: new RegExp(`^${CHILD}$`),
   kpi: new RegExp(`^${CHILD}$`),
   text: new RegExp(`^${CHILD}$`),
@@ -242,7 +255,7 @@ function change(value: unknown, path: string): DashboardChange {
   const where = word(found.path, `${path}.path`);
   if (!CHANGE_PATH.test(where)) return fail(`${path}.path`, "chemin JSON");
   const kind = pick(found.kind, DIFF_KINDS, `${path}.kind`);
-  const node = pick(found.node, DIFF_NODES, `${path}.node`);
+  const node = pick(found.node, ALL_DIFF_NODES, `${path}.node`);
   if (node === "dashboard" || node === "defaults") {
     // L'en-tête et les défauts se comparent feuille par feuille : pas d'identifiant, jamais de déplacement.
     if (found.id !== null) return fail(`${path}.id`, "aucun identifiant pour l'en-tête et les défauts");
@@ -251,10 +264,13 @@ function change(value: unknown, path: string): DashboardChange {
     const decoder = Object.hasOwn(values, where) ? values[where] : undefined;
     if (decoder === undefined) return fail(`${path}.path`, `chemin d'un champ ${node === "dashboard" ? "de l'en-tête" : "des défauts"}`);
     // L'en-tête a toujours tous ses champs : il ne s'y ajoute ni ne s'y retire rien. Les défauts sont facultatifs un à un.
-    if (node === "dashboard" && kind !== "modified") return fail(`${path}.kind`, "champ de l'en-tête modifié");
+    if (node === "dashboard") {
+      const optionalReference = where === "/theme" || where === "/template";
+      if (optionalReference ? kind === "modified" : kind !== "modified") return fail(`${path}.kind`, optionalReference ? "référence ajoutée ou retirée" : "champ de l'en-tête modifié");
+    }
     const before = kind === "added" ? absent(found.before, `${path}.before`) : decoder(found.before, `${path}.before`);
     const after = kind === "removed" ? absent(found.after, `${path}.after`) : decoder(found.after, `${path}.after`);
-    if (kind === "modified" && same(before, after)) return fail(path, "valeurs différentes");
+    if (kind === "modified" && same(before, after) && !numeric(before)) return fail(path, "valeurs différentes");
     return { path: where, kind, node, id: null, before, after };
   }
   const id = uuid(found.id, `${path}.id`);

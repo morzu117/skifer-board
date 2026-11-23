@@ -1,0 +1,64 @@
+{
+  "api_version": "board.theme/v1",
+  "id": "12345678-1234-1234-1234-123456789abc",
+  "name": "Clair",
+  "description": "Thème clair",
+  "owner": {
+    "issuer": "https://idp.example.test",
+    "subject": "user-0001"
+  },
+  "base": "skifer-clair",
+  "roles": {
+    "marks": {
+      "series": "blue",
+      "secondary": "blue",
+      "selected": "blue",
+      "threshold": "blue",
+      "positive": "blue",
+      "negative": "blue",
+      "total": "blue"
+    },
+    "text": {
+      "text": "ink",
+      "textStrong": "ink",
+      "textMuted": "ink",
+      "thresholdLabel": "ink"
+    }
+  },
+  "categorical": [
+    "blue",
+    "copper"
+  ],
+  "sequential": [
+    "ink",
+    "ink",
+    "ink",
+    "ink",
+    "ink",
+    "ink",
+    "ink",
+    "ink"
+  ],
+  "diverging": [
+    "blue",
+    "neutral.bg",
+    "copper"
+  ],
+  "typography": {
+    "sans": "sans",
+    "mono": "mono",
+    "scale": "normal"
+  },
+  "density": "normal",
+  "formats": {
+    "number": "auto",
+    "date": "short"
+  },
+  "chart_defaults": {
+    "bars": {
+      "legend": "auto",
+      "number_format": "integer",
+      "tooltip": "value"
+    }
+  }
+}

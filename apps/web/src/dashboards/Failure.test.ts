@@ -17,6 +17,11 @@ it("nomme les composants qui épinglent une analyse personnelle", () => {
   expect(dashboardRefusalText(refusal({ code: "personal_reference", components: ["a", "b"] }))).toContain("Composants : a, b.");
 });
 
+it("nomme les références non approuvées", () => {
+  expect(dashboardRefusalText(refusal({ code: "unapproved_reference", paths: ["/theme", "/layout/sections/0"] }))).toContain("Références concernées : /theme, /layout/sections/0.");
+  expect(dashboardRefusalText(refusal({ code: "unapproved_reference" }))).not.toContain("Références concernées");
+});
+
 it("sans détail, garde le texte de base", () => {
   const plain = dashboardRefusalText(refusal({ code: "forbidden" }));
   expect(plain).not.toContain("Composants");

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Lit une réponse à chaque changement de `key` et ignore celle d'une demande abandonnée. */
-export function useOutcome<T>(key: string, load: (signal: AbortSignal) => Promise<T>): T | { status: "loading" } {
-  const [answer, setAnswer] = useState<{ key: string; outcome: T } | null>(null);
+export function useOutcome<T>(key: string | object, load: (signal: AbortSignal) => Promise<T>): T | { status: "loading" } {
+  const [answer, setAnswer] = useState<{ key: string | object; outcome: T } | null>(null);
   // `load` est recréée à chaque rendu ; `key` dit tout ce dont elle dépend.
   const loader = useRef(load);
   useEffect(() => {

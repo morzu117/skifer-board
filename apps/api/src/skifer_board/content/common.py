@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import cache
 from typing import Any, Literal
@@ -190,6 +190,21 @@ class Change:
     after: Any
     node: str | None = None
     id: str | None = None
+
+
+def changes_json(changes: Iterable[Change]) -> list[dict[str, Any]]:
+    """Forme commune des écarts structurels rendus par les routes."""
+    return [
+        {
+            "path": item.path,
+            "kind": item.kind,
+            "node": item.node,
+            "id": item.id,
+            "before": item.before,
+            "after": item.after,
+        }
+        for item in changes
+    ]
 
 
 def walk(path: str, old: Any, new: Any, changes: list[Change], rank: Mapping[str, int]) -> None:

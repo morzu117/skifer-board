@@ -5,13 +5,18 @@ import type { Command } from "./commands";
 import type { Problem, KnownAnalyses } from "./problems";
 import type { TreeNode } from "./tree";
 import type { TileState } from "./useTiles";
-import type { DashboardDraft } from "../document";
+import type { DashboardDraft, ExecutableComponent } from "../document";
 import type { ExplorerModel } from "../../explorer/model";
+import type { Fetch } from "../../spaces/api";
+import type { ThemeDocument } from "../../themes/document";
 
 /** Ce que les panneaux de l'éditeur partagent : le document, la sélection et le seul chemin d'écriture, `run`. */
 export interface Editor {
   document: DashboardDraft;
   space: string;
+  identity: string;
+  referenceStates: Readonly<Record<string, import("./useReferenceStates").ReferenceState>>;
+  resolvedComponents: NonNullable<import("./useTiles").TileSources["resolvedComponents"]>;
   tree: readonly TreeNode[];
   /** Identifiant du nœud sélectionné, ou `null` : les propriétés du dashboard. */
   selected: string | null;
@@ -24,7 +29,9 @@ export interface Editor {
   /** Dit quelque chose aux lecteurs d'écran, sans toucher au document ; `refused` en fait un refus, affiché en alerte. */
   say: (text: string, refused?: boolean) => void;
   readOnly: boolean;
+  contentSave: { fetcher: Fetch; reason: string | null };
   states: ReadonlyMap<string, TileState>;
+  components?: ReadonlyMap<string, ExecutableComponent>;
   values: Readonly<Record<string, unknown>>;
   setValue: (id: string, value: unknown) => void;
   overlaps: ReadonlyMap<string, readonly string[]>;
@@ -37,6 +44,7 @@ export interface Editor {
   /** Les analyses épinglées sont-elles toutes lues ? Tant que non, des problèmes de tuile peuvent manquer. */
   settled: boolean;
   theme: ChartTheme;
+  themeDocument?: ThemeDocument | undefined;
   /** Mène à un nœud (de la mise en page, un filtre ou le dashboard) : sélection, onglet et focus. */
   reveal: (id: string) => void;
 }

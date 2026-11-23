@@ -26,24 +26,30 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from sqlalchemy import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..identity.config import ConfigError
+from ..spaces.model import PersonRef
 from ..state.config import DATABASE_URL, config_from_env
 from ..state.database import SchemaError, check_schema, connect
 from .errors import ContentError
 from .index import AnalysisIndex, DashboardIndex, DashboardRow, IndexRow
 from .repository import (
     ANALYSIS_KIND,
+    COMPONENT_KIND,
     DAMAGED_REASONS,
     DASHBOARD_KIND,
+    PAGE_TEMPLATE_KIND,
     REPOSITORY_VARIABLE,
+    THEME_KIND,
     ContentConfigError,
     ContentRepository,
     Kind,
     StoredRevision,
 )
 from .repository import config_from_env as content_from_env
+from .shared_index import ApprovalRow, SharedRow
 
 USAGE = "Usage : skifer-board-reindex"
 ATTEMPTS = 3
@@ -60,6 +66,8 @@ class Report:
     unreadable: tuple[tuple[str, str, str], ...]
     dashboards: int = 0
     dashboards_unreadable: tuple[tuple[str, str, str], ...] = ()
+    shared: int = 0
+    shared_unreadable: tuple[tuple[str, str, str], ...] = ()
 
 
 class RepositoryMoving(Exception):
@@ -120,8 +128,57 @@ def _sweep(
 ) -> Report:
     rows, unreadable = _gather(repository, ANALYSIS_KIND, IndexRow.of)
     boards, damaged = _gather(repository, DASHBOARD_KIND, DashboardRow.of)
-    index.replace(rows, before_commit, lambda connection: dashboards.replace_in(connection, boards))
-    return Report(len(rows), tuple(unreadable), len(boards), tuple(damaged))
+    shared_rows: list[SharedRow] = []
+    approvals: list[ApprovalRow] = []
+    shared_bad: list[tuple[str, str, str]] = []
+    for kind in (THEME_KIND, PAGE_TEMPLATE_KIND, COMPONENT_KIND):
+        for space_id, content_id in repository.contents(kind=kind):
+            try:
+                stored = repository.read(space_id, content_id, kind=kind)
+                try:
+                    approved = repository.read_approvals(space_id, content_id, kind=kind).document[
+                        "approvals"
+                    ]
+                except ContentError as error:
+                    if error.code != "approvals_not_found":
+                        raise
+                    approved = []
+                indexed = [
+                    ApprovalRow(
+                        kind.name,
+                        space_id,
+                        content_id,
+                        item["revision"],
+                        PersonRef(item["approver"]["issuer"], item["approver"]["subject"]),
+                        datetime.fromisoformat(item["approved_at"].replace("Z", "+00:00")),
+                    )
+                    for item in approved
+                ]
+                shared_rows.append(
+                    SharedRow.of(kind, space_id, stored, indexed[-1].revision if indexed else None)
+                )
+                approvals.extend(indexed)
+            except ContentError as error:
+                if error.code == kind.not_found:
+                    continue
+                if error.reason not in DAMAGED:
+                    raise
+                shared_bad.append((space_id, content_id, error.reason))
+    shared = index.shared_index()
+
+    def replace_all(connection: Connection) -> None:
+        dashboards.replace_in(connection, boards)
+        shared.replace_in(connection, shared_rows, approvals)
+
+    index.replace(rows, before_commit, replace_all)
+    return Report(
+        len(rows),
+        tuple(unreadable),
+        len(boards),
+        tuple(damaged),
+        len(shared_rows),
+        tuple(shared_bad),
+    )
 
 
 def _utc_now() -> datetime:
@@ -180,8 +237,12 @@ def main(
         engine.dispose()
     print(f"{report.indexed} analyse(s) indexée(s).")
     print(f"{report.dashboards} dashboard(s) indexé(s).")
+    if report.shared:
+        print(f"{report.shared} contenu(s) partagé(s) indexé(s).")
     for space_id, analysis_id, reason in report.unreadable:
         print(f"Illisible : {space_id}/{analysis_id} ({reason}).", file=sys.stderr)
     for space_id, dashboard_id, reason in report.dashboards_unreadable:
         print(f"Illisible : dashboard {space_id}/{dashboard_id} ({reason}).", file=sys.stderr)
-    return 1 if report.unreadable or report.dashboards_unreadable else 0
+    for space_id, content_id, reason in report.shared_unreadable:
+        print(f"Illisible : contenu {space_id}/{content_id} ({reason}).", file=sys.stderr)
+    return 1 if report.unreadable or report.dashboards_unreadable or report.shared_unreadable else 0

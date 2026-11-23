@@ -1,3 +1,4 @@
+import { ChoixComposants } from "./ChoixContenus";
 import { accord, GENDERS, KIND_LABELS } from "../labels";
 import { useEditor } from "./EditorContext";
 import { ADDABLE, additionPlace, placed, type Addable } from "./placement";
@@ -33,5 +34,6 @@ export function Palette({ onAddAnalysis }: { onAddAnalysis: () => void }) {
       {ADDABLE.map((kind) => <button key={kind} type="button" className="sb-button" disabled={editor.readOnly} aria-label={`Ajouter ${ARTICLES[kind]}`} onClick={() => { add(kind); }}>+ {KIND_LABELS[kind]}</button>)}
       <button type="button" className="sb-button" disabled={editor.readOnly} onClick={onAddAnalysis}>Ajouter une analyse</button>
     </div>
+    <ChoixComposants />
   </section>;
 }

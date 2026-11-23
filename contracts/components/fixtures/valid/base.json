@@ -1,0 +1,19 @@
+{
+  "api_version": "board.component/v1",
+  "id": "00000000-0000-0000-0000-000000000001",
+  "name": "Exemple",
+  "description": "",
+  "owner": {
+    "issuer": "https://idp.example.test",
+    "subject": "user-0001"
+  },
+  "kind": "visual",
+  "analysis": {
+    "analysis_id": "00000000-0000-0000-0000-000000000008",
+    "revision": 1
+  },
+  "presentation": {
+    "chart": "bars",
+    "legend": "auto"
+  }
+}

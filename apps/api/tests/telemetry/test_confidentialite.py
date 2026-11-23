@@ -692,6 +692,36 @@ def test_aucune_donnee_personnelle_ni_valeur_sur_toutes_les_routes(
         )
         parcours("GET", f"{racine_d}/{tableau}", db + "/{dashboard_id}", 404)
 
+        # Routes des contenus partagés : les identifiants restent dans les gabarits.
+        for segment in ("themes", "page-templates", "components"):
+            racine_partagee = f"/api/spaces/{A}/{segment}"
+            gabarit = s + f"/{segment}"
+            absent_partage = new_id()
+            cible = f"{racine_partagee}/{absent_partage}"
+            gabarit_cible = gabarit + "/{content_id}"
+            parcours("GET", racine_partagee, gabarit, 200)
+            parcours("POST", racine_partagee, gabarit, 422, {"name": ["contenu-sentinelle"]})
+            parcours("GET", cible, gabarit_cible, 404)
+            parcours("PUT", cible, gabarit_cible, 404, {"expected_revision": 1})
+            parcours("DELETE", cible, gabarit_cible, 404, params={"expected_revision": "1"})
+            parcours("GET", cible + "/approvals", gabarit_cible + "/approvals", 404)
+            parcours(
+                "POST",
+                cible + "/approvals",
+                gabarit_cible + "/approvals",
+                404,
+                {"revision": 1, "expected_revision": 1},
+            )
+            parcours("GET", cible + "/consumers", gabarit_cible + "/consumers", 404)
+            parcours("GET", cible + "/history", gabarit_cible + "/history", 404)
+            parcours(
+                "GET",
+                cible + "/diff",
+                gabarit_cible + "/diff",
+                404,
+                params={"from": "1", "to": "2"},
+            )
+
         journal_espace = parcours("GET", f"/api/spaces/{A}/events", s + "/events", 200)
         assert "sentinelle" in journal_espace.text
         trouvees = parcours("GET", "/api/people", "/api/people", 200, params={"q": "sentinelle"})

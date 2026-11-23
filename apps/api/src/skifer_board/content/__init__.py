@@ -15,8 +15,11 @@ from .errors import (
 )
 from .repository import (
     ANALYSIS_KIND,
+    COMPONENT_KIND,
     DASHBOARD_KIND,
     KINDS,
+    PAGE_TEMPLATE_KIND,
+    THEME_KIND,
     ContentConfig,
     ContentConfigError,
     ContentRepository,
@@ -39,6 +42,9 @@ __all__ = [
     "INVALID_ANALYSIS",
     "INVALID_DASHBOARD",
     "KINDS",
+    "THEME_KIND",
+    "PAGE_TEMPLATE_KIND",
+    "COMPONENT_KIND",
     "REVISION_CONFLICT",
     "RULES",
     "Change",

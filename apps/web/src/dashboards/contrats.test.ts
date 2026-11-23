@@ -23,6 +23,8 @@ const DECODERS: Readonly<Record<string, () => unknown>> = {
   lire: () => revision("lire"),
   "lire-index-perime": () => revision("lire-index-perime"),
   "lire-non-verifie": () => revision("lire-non-verifie"),
+  "lire-composant-indisponible": () => revision("lire-composant-indisponible"),
+  "lire-references-resolues": () => revision("lire-references-resolues"),
   "lire-tuiles": () => revision("lire-tuiles"),
   reviser: () => revision("reviser"),
   "reviser-identique": () => revision("reviser-identique"),
@@ -36,10 +38,10 @@ const DECODERS: Readonly<Record<string, () => unknown>> = {
 };
 
 describe("exemples du serveur réel", () => {
-  it("a un décodeur ou un refus fermé pour chacun des 27 exemples, sans en laisser un seul de côté", () => {
+  it("a un décodeur ou un refus fermé pour chacun des 30 exemples, sans en laisser un seul de côté", () => {
     const refusals = ROUTE_NAMES.filter((name) => name.startsWith("refus-"));
-    expect(ROUTE_NAMES).toHaveLength(27);
-    expect(refusals).toHaveLength(11);
+    expect(ROUTE_NAMES).toHaveLength(30);
+    expect(refusals).toHaveLength(12);
     expect([...Object.keys(DECODERS), ...refusals].sort()).toEqual(ROUTE_NAMES);
     for (const name of Object.keys(DECODERS)) expect(DECODERS[name], name).not.toThrow();
     for (const name of refusals) refusal(name);
@@ -61,6 +63,7 @@ describe("exemples du serveur réel", () => {
     expect(revision("lire").state).toBe("ready");
     expect(revision("lire-index-perime").state).toBe("index_stale");
     expect(revision("lire-non-verifie").state).toBe("unverified");
+    expect(revision("lire-composant-indisponible").tiles).toMatchObject([{ state: "unavailable", reason: "component_unavailable" }]);
     expect(revision("lire-tuiles").state).toBe("unresolved_reference");
     expect(new Set(["lire", "lire-non-verifie", "lire-tuiles"].flatMap((name) => revision(name).tiles.map((tile) => tile.state)))).toEqual(new Set(["ready", "unverified", "unavailable"]));
     const reasons = revision("lire-tuiles").tiles.flatMap((tile) => (tile.state === "unavailable" ? [tile.reason] : []));

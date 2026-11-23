@@ -1,6 +1,6 @@
 import { ContractError } from "../catalogue/decode";
-import { decodeViolations, SHARED_CODES, type RefusalDetails } from "../analyses/refusal";
-import { distinct, exact, items, pick, uuid } from "../analyses/shape";
+import { decodeConsumerList, decodeViolations, SHARED_CODES, type RefusalDetails } from "../analyses/refusal";
+import { distinct, exact, items, pick, uuid, word } from "../analyses/shape";
 
 /**
  * Refus des routes de dashboards (plan 19, 19.2) : une union fermée, celle que les contrats d'exemple emploient. Elle
@@ -9,14 +9,10 @@ import { distinct, exact, items, pick, uuid } from "../analyses/shape";
  * forme exacte : un champ en plus, un champ en moins ou une valeur hors domaine rend le refus illisible, donc une erreur,
  * jamais un refus partiel.
  */
-export const DASHBOARD_CODES = ["dashboard_not_found", "invalid_dashboard", "personal_reference"] as const;
+export const DASHBOARD_CODES = ["dashboard_not_found", "invalid_dashboard", "personal_reference", "unapproved_reference", "content_in_use"] as const;
 export type DashboardCode = (typeof DASHBOARD_CODES)[number];
 
-/**
- * `revision_conflict` ne porte ici que `stale`. `head_changed`, que le dépôt lève sous son verrou quand la tête a bougé,
- * n'est jamais exposé : la route de suppression d'une analyse le rejuge puis le rend `stale`, et aucune route de dashboard
- * ne le demande. Un `head_changed` reçu est donc un refus illisible.
- */
+/** Le code de conflit est partagé avec les analyses. */
 export const DASHBOARD_REFUSALS = [...DASHBOARD_CODES, "revision_conflict", "content_unavailable", ...SHARED_CODES] as const;
 
 /**
@@ -29,6 +25,7 @@ export const DASHBOARD_RULES = [
   "unsupported_value", "unreadable_document", "not_representable", "id_mismatch", "bad_identifier", "bad_revision", "bad_actor",
   "duplicate_id", "row_overflow", "too_deep", "container_not_alone", "filter_without_target", "unknown_target",
   "target_not_executable", "default_not_allowed",
+  "theme_not_found", "component_not_found",
   "analysis_unavailable", "kpi_requires_value", "chart_incompatible", "dimension_not_exposed", "filter_type_mismatch",
   "operator_not_allowed", "filter_value_incompatible", "too_many_filters",
 ] as const;
@@ -56,6 +53,21 @@ function details(code: DashboardCode, error: Readonly<Record<string, unknown>>):
       if (violations[0]?.rule !== reason) throw new ContractError("refus.reason : règle de la première violation attendue");
       if (!violations.every((item, index) => index === 0 || before(violations[index - 1] as typeof item, item))) throw new ContractError("refus.violations : violations triées et distinctes attendues");
       return { reason, dashboardViolations: violations };
+    }
+    case "content_in_use": {
+      exact(error, ["code", "consumers", "others"], "refus");
+      const result = decodeConsumerList(error, "refus");
+      if (result.consumers.length + result.others === 0) throw new ContractError("refus : au moins un dépendant attendu");
+      return result;
+    }
+    case "unapproved_reference": {
+      exact(error, ["code", "paths"], "refus");
+      const paths = items(error.paths, "refus.paths", 41, 1).map((item, index) => {
+        const path = word(item, `refus.paths[${String(index)}]`);
+        if (!/^(?:\/[A-Za-z0-9_]+)+$/.test(path)) throw new ContractError("refus.paths : chemin JSON attendu");
+        return path;
+      });
+      return { paths: distinct(paths, "refus.paths") };
     }
     case "personal_reference": {
       exact(error, ["code", "components"], "refus");

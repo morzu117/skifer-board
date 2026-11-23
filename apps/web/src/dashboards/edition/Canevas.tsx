@@ -4,6 +4,9 @@ import { executables, type Column, type ExecutableComponent, type LayoutNode, ty
 import { accord, GENDERS } from "../labels";
 import { BlocksView } from "./Blocs";
 import { handleDomId, nodeDomId, useEditor } from "./EditorContext";
+import { RemplirEmplacement } from "./RemplirEmplacement";
+import { Badge } from "../../ui/Badge";
+import { RevisionComposant } from "./RevisionComposant";
 import { RevisionAnalyse } from "./RevisionAnalyse";
 import { placed } from "./placement";
 import { dropPlace, flatten, reparentPlace, stepPlace, type TreeNode } from "./tree";
@@ -186,9 +189,15 @@ export function Canevas() {
   const leaf = (child: LayoutNode): ReactNode => {
     if (child.type === "container") return frame(child.id, rows(child.rows, "Conteneur vide : ajoutez-y une rangée."));
     if (child.type === "text") return frame(child.id, <BlocksView blocks={child.blocks} />);
+    if (child.type === "slot") return frame(child.id, <div className="sb-slot"><strong>{child.slot.label}</strong><p>Genre attendu : {child.slot.expected === "visual" ? "Visuel" : "KPI"}</p><p>Bloquant : emplacement vide.</p><RemplirEmplacement id={child.id} label={child.slot.label} expected={child.slot.expected} /></div>);
+    if (child.type === "component") {
+      const component = editor.components?.get(child.id);
+      if (!component) return frame(child.id, <p role="status">Composant indisponible : rendu non pris en charge.</p>);
+      return frame(child.id, <><Badge tone="neutral">Composant : {editor.resolvedComponents[child.id]?.document.name} r{child.component.revision}</Badge><Tuile component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} themeDocument={editor.themeDocument} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} onRestart={() => { editor.restartTile(child.id); }} /><RevisionComposant id={child.id} /></>);
+    }
     if (child.type === "separator") return frame(child.id, <hr className="sb-node__rule" />);
     const component = components.get(child.id) as ExecutableComponent;
-    return frame(child.id, <><Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} /><RevisionAnalyse id={child.id} />{(editor.overlaps.get(child.id) ?? []).length === 0 ? null : <p className="sb-tile__state">Filtres de l’analyse et du dashboard appliqués ensemble : {editor.overlaps.get(child.id)?.join(", ")}.</p>}</>);
+    return frame(child.id, <><Tuile onRestart={() => { editor.restartTile(child.id); }} onCancel={() => { editor.cancelTile(child.id); }} onRetry={() => { editor.retryTile(child.id); }} component={component} state={editor.states.get(child.id)} pinned={editor.analyses[child.id]?.pinned} defaults={editor.document.defaults} catalog={editor.catalog} theme={editor.theme} themeDocument={editor.themeDocument} /><RevisionAnalyse id={child.id} />{(editor.overlaps.get(child.id) ?? []).length === 0 ? null : <p className="sb-tile__state">Filtres de l’analyse et du dashboard appliqués ensemble : {editor.overlaps.get(child.id)?.join(", ")}.</p>}</>);
   };
 
   const column = (item: Column): ReactNode => frame(item.id, item.children.length === 0 ? <p className="sb-node__empty">Colonne vide : ajoutez-y un texte, un séparateur ou un conteneur.</p> : item.children.map(leaf));

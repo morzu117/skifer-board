@@ -55,7 +55,7 @@ MAX_COMPONENTS = 64
 # réelle (environ 300 au plafond des composants), assez bas pour borner le travail des éditeurs.
 MAX_NODES = 600
 MAX_TEXT = 5000
-EXECUTABLE = frozenset({"analysis", "kpi"})
+EXECUTABLE = frozenset({"analysis", "kpi", "component"})
 
 RULES = ANALYSIS_RULES | frozenset(
     {
@@ -83,10 +83,16 @@ _ORDER = (
     "issuer",
     "subject",
     "defaults",
+    "theme",
+    "template",
     "filters",
     "layout",
     "sections",
     "type",
+    "component",
+    "component_id",
+    "theme_id",
+    "template_id",
     "chart",
     "title",
     "legend",
@@ -142,7 +148,17 @@ def _refuse(*violations: Violation) -> ContentError:
 
 
 def _schema_violations(data: Any) -> list[Violation]:
-    return schema_violations(_validator(), data)
+    violations = schema_violations(_validator(), data)
+    # Compatibilité des anciens refus : une valeur de thème non structurée est un champ
+    # étranger au format, comme avant C3. Les objets mal formés gardent leurs violations.
+    if isinstance(data, dict) and "theme" in data and not isinstance(data["theme"], dict):
+        violations = [
+            Violation(v.path, "unknown_field")
+            if v.path == "/theme" and v.rule == "wrong_type"
+            else v
+            for v in violations
+        ]
+    return violations
 
 
 @dataclass
@@ -183,7 +199,7 @@ def _integer(scan: _Scan, value: Any, path: str) -> None:
 
 
 def _component(scan: _Scan, component: dict[str, Any], path: str) -> None:
-    kind = component["type"]
+    kind: str = component["type"]
     scan.claim(component["id"], kind, f"{path}/id")
     scan.node(path)
     scan.components += 1
@@ -193,7 +209,8 @@ def _component(scan: _Scan, component: dict[str, Any], path: str) -> None:
         scan.executable += 1
         if scan.executable == MAX_EXECUTABLE + 1:
             scan.violations.append(Violation(path, "out_of_bounds"))
-        _integer(scan, component["reference"]["revision"], f"{path}/reference/revision")
+        reference = "component" if kind == "component" else "reference"
+        _integer(scan, component[reference]["revision"], f"{path}/{reference}/revision")
     elif kind == "text":
         if _text_length(component) > MAX_TEXT:
             scan.violations.append(Violation(f"{path}/blocks", "out_of_bounds"))
@@ -240,13 +257,15 @@ def _kind(value: Any) -> str:
     return "number" if type(value) in (int, float) else type(value).__name__
 
 
-def _filter(scan: _Scan, item: dict[str, Any], path: str) -> dict[str, Any]:
+def _filter(
+    scan: _Scan, item: dict[str, Any], path: str, *, targets_required: bool = True
+) -> dict[str, Any]:
     """Un filtre commun : identifiant, cibles, valeur par défaut et valeurs autorisées."""
     scan.claim(item["id"], "filter", f"{path}/id")
     normalized = dict(item)
-    if not item["targets"]:
+    if targets_required and not item["targets"]:
         scan.violations.append(Violation(f"{path}/targets", "filter_without_target"))
-    for index, target in enumerate(item["targets"]):
+    for index, target in enumerate(item.get("targets", [])):
         known = scan.kinds.get(target)
         where = f"{path}/targets/{index}"
         if known is None:
@@ -284,6 +303,9 @@ def _filter(scan: _Scan, item: dict[str, Any], path: str) -> dict[str, Any]:
 def _semantic(document: Document) -> tuple[Document, list[Violation]]:
     """Règles inter-champs, avec les valeurs de filtres sous leur forme canonique."""
     scan = _Scan()
+    for key in ("theme", "template"):
+        if key in document:
+            _integer(scan, document[key]["revision"], f"/{key}/revision")
     for index, section in enumerate(document["layout"]["sections"]):
         path = f"/layout/sections/{index}"
         scan.claim(section["id"], "section", f"{path}/id")
@@ -374,7 +396,7 @@ def _components(children: list[dict[str, Any]], base: str) -> Iterator[Component
         if child["type"] == "container":
             for position, row in enumerate(child["rows"]):
                 yield from _row_components(row, f"{path}/rows/{position}")
-        elif child["type"] in EXECUTABLE:
+        elif child["type"] in ("analysis", "kpi"):
             reference = child["reference"]
             yield Component(
                 child["id"],
@@ -402,7 +424,7 @@ def executables(document: Document) -> tuple[Component, ...]:
 
 # -- diff structurel ----------------------------------------------------------------------------
 
-_HEADER_FIELDS = ("name", "description", "visibility", "owner")
+_HEADER_FIELDS = ("name", "description", "visibility", "owner", "theme", "template")
 _CHILD_KEYS = frozenset({"id", "sections", "rows", "columns", "children"})
 # Parents des nœuds de premier niveau : sections sous la mise en page, filtres sous leur liste.
 LAYOUT = "layout"
@@ -497,7 +519,7 @@ def _same(old: Any, new: Any) -> bool:
 
 
 def _head(document: Document) -> dict[str, Any]:
-    return {key: document[key] for key in _HEADER_FIELDS}
+    return {key: document[key] for key in _HEADER_FIELDS if key in document}
 
 
 def _place(node: _Node) -> dict[str, Any]:

@@ -1,12 +1,15 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as client from "../client";
 import { navigate } from "../../shell/route";
 import { expectAccessible } from "../../test/a11y";
 import { ID, route } from "../testing";
 import { decodeDashboardDraft } from "../document";
 import { ANALYSES, dashboardBody, echo, N, openEditor, ROOT, sampleDraft, type AnalysisSpec, type TileInfo } from "./testing";
+import componentRead from "../../../../../contracts/components/routes/lire.json";
+import themeRead from "../../../../../contracts/themes/routes/lire.json";
 
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
@@ -23,6 +26,42 @@ const unavailable = (reason: string): TileInfo[] => [{ id: N.visual, state: "una
 const refused = (name: string) => { const example = route(name); return Response.json(example.body, { status: example.status }); };
 
 describe("ouverture", () => {
+  it("utilise les références résolues lues avec le dashboard", async () => {
+    const draft = decodeDashboardDraft({ ...sampleDraft(), theme: { theme_id: N.text, revision: 1 }, filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } });
+    const commit = "a".repeat(40);
+    const fixture = (value: unknown, id: string) => JSON.parse(JSON.stringify(value).replaceAll("<uuid>", id).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const component = fixture(componentRead.body.component, N.kpi);
+    const theme = fixture(themeRead.body.theme, N.text);
+    const response = { ...dashboardBody(draft, { tiles: [{ id: N.visual, state: "ready" }] }), resolved: { components: { [N.kpi]: component }, theme } };
+    await ready({ draft, overrides: { [`GET ${ROOT}/dashboards/${ID}`]: Response.json(response) } });
+    expect(await screen.findByRole("group", { name: /Visuel épinglé/ })).toBeInTheDocument();
+  });
+  it.each(["draft", "approved", "unresolved"] as const)("lit l'état %s du thème", async (state) => {
+    const draft = { ...sampleDraft(), theme: { theme_id: N.kpi, revision: 1 } };
+    const commit = "a".repeat(40);
+    const body = JSON.parse(JSON.stringify(themeRead.body).replaceAll("<uuid>", N.kpi).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const read = state === "approved" ? { ...body, state: "approved", approved_revision: 1 } : body;
+    const response = state === "unresolved" ? new Response("panne", { status: 500 }) : Response.json(read, { headers: { etag: `"${commit}"` } });
+    const { server } = await ready({ draft, overrides: { [`GET ${ROOT}/themes/${N.kpi}?revision=1`]: response, [`GET ${ROOT}/themes/${N.kpi}`]: response } });
+    await waitFor(() => { expect(server.fetcher).toHaveBeenCalledWith(`${ROOT}/themes/${N.kpi}?revision=1`, expect.anything()); });
+    if (state === "draft") expect(await screen.findByText("Référence non approuvée pour un dashboard partagé.")).toBeInTheDocument();
+    else await waitFor(() => { expect(screen.queryByText("Référence non approuvée pour un dashboard partagé.")).not.toBeInTheDocument(); });
+  });
+  it.each(["draft", "behind"] as const)("affiche l'état %s d'un composant épinglé", async (scenario) => {
+    const draft = decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.kpi, revision: 1 } }] }] }] }] } });
+    const commit = "a".repeat(40);
+    const body = JSON.parse(JSON.stringify(componentRead.body).replaceAll("<uuid>", N.kpi).replaceAll("<commit>", commit)) as Record<string, unknown>;
+    const pinned = scenario === "behind" ? { ...body, state: "approved", approved_revision: 1 } : body;
+    const current = scenario === "behind" ? { ...body, revision: 2, approved_revision: 1 } : body;
+    const reply = (value: object) => Response.json(value, { headers: { etag: `"${commit}"` } });
+    await ready({ draft, tiles: [{ id: N.visual, state: "ready" }], overrides: { [`GET ${ROOT}/components/${N.kpi}?revision=1`]: reply(pinned), [`GET ${ROOT}/components/${N.kpi}`]: reply(current) } });
+    const label = scenario === "draft" ? "Référence non approuvée pour un dashboard partagé." : "Révision de composant en retard sur la dernière.";
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    if (scenario === "draft") {
+      fireEvent.change(screen.getByRole("textbox", { name: "Nom du dashboard" }), { target: { value: "Modifié" } });
+      expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+    }
+  });
   it("annonce l'état, la révision, la visibilité et dit que tout est enregistré", async () => {
     await ready();
     expect(screen.getByText(/Éditeur de dashboard · Partagé · révision 1/)).toBeInTheDocument();
@@ -43,6 +82,7 @@ describe("ouverture", () => {
     const { server } = await ready({ revise: false });
     expect(screen.getByText(/il s'ouvre en lecture seule/)).toBeInTheDocument();
     expect(toolbar().getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+    await waitFor(() => { expect(toolbar().getByRole("button", { name: "Enregistrer comme modèle" })).toBeEnabled(); });
     expect(screen.getByRole("button", { name: "Ajouter une section" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: "Nom du dashboard" })).toBeDisabled();
     // Un raccourci n'est pas ignoré en silence : le refus est dit.
@@ -223,6 +263,55 @@ describe("problèmes bloquants", () => {
 });
 
 describe("garde de sortie", () => {
+  it("bloque la sortie pendant une révision puis la permet après sa réponse", async () => {
+    let finish: (value: Awaited<ReturnType<typeof client.reviseDashboard>>) => void = () => undefined;
+    const spy = vi.spyOn(client, "reviseDashboard").mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    await ready();
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByText(/enregistrement est en cours/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { finish({ status: "error", message: "panne" }); });
+    await waitFor(() => { expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeEnabled(); });
+    expect(screen.getByText(/Quitter perd les modifications non enregistrées/)).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it("ferme la confirmation après une sauvegarde complète et garde la personne dans l’éditeur", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    await ready({ overrides: { [`POST ${ROOT}/dashboards/${ID}/revisions`]: async (init) => { await gate; return echo(init, 2); } } });
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { release(); });
+    await screen.findByText("Révision 2 enregistrée.");
+    await waitFor(() => { expect(screen.queryByRole("dialog", { name: "Quitter sans enregistrer ?" })).not.toBeInTheDocument(); });
+    expect(window.location.hash).toBe("");
+    expect(screen.getByText("Tout est enregistré")).toBeInTheDocument();
+    await add("Ajouter une section");
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(await screen.findByRole("dialog", { name: "Quitter sans enregistrer ?" })).toBeInTheDocument();
+  });
+
+  it.each(["document", "saisie"] as const)("garde la confirmation si une %s reste non enregistrée après la sauvegarde", async (change) => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    await ready({ overrides: { [`POST ${ROOT}/dashboards/${ID}/revisions`]: async (init) => { await gate; return echo(init, 2); } } });
+    await add("Ajouter une section");
+    await userEvent.click(toolbar().getByRole("button", { name: "Enregistrer" }));
+    if (change === "document") await add("Ajouter une section");
+    else await userEvent.type(screen.getByRole("textbox", { name: /^Titre de la section/ }), " bis");
+    act(() => { navigate({ page: "dashboards", space: "finance" }); });
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeDisabled();
+    act(() => { release(); });
+    await screen.findByText("Révision 2 enregistrée.");
+    expect(screen.getByRole("dialog", { name: "Quitter sans enregistrer ?" })).toHaveTextContent("Quitter perd les modifications non enregistrées du dashboard.");
+    expect(screen.getByRole("button", { name: "Quitter sans enregistrer" })).toBeEnabled();
+  });
+
   it("sans changement, on part sans question", async () => {
     await ready();
     act(() => { navigate({ page: "dashboards", space: "finance" }); });

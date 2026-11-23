@@ -71,7 +71,7 @@ function Problems() {
         <button type="button" className="sb-problems__link" onClick={() => { editor.reveal(problem.nodeId); }}>
           <Badge tone={problem.severity === "blocking" ? "danger" : "warning"}>{problem.severity === "blocking" ? "Bloquant" : "Avertissement"}</Badge>
           {" "}<span>{PROBLEM_LABELS[problem.code]}</span>
-          {" "}<span className="sb-problems__where">{where(editor.tree, editor.document.filters, problem.nodeId)}</span>
+          {" "}<span className="sb-problems__where">{problem.code === "component_revision_behind" ? editor.resolvedComponents[problem.nodeId]?.document.name ?? where(editor.tree, editor.document.filters, problem.nodeId) : where(editor.tree, editor.document.filters, problem.nodeId)}</span>
           {detail(problem) === "" ? null : <span className="sb-problems__detail"> · {detail(problem)}</span>}
           {" "}<span className="sb-mono sb-problems__path">{problem.path}</span>
         </button>

@@ -18,6 +18,7 @@ export type Cells = Readonly<Record<string, string>>;
 export interface Shape {
   metrics: readonly string[];
   dimensions: readonly string[];
+  temporalDimensions?: readonly string[];
 }
 
 /** Présentation résolue d'un visuel (B9), champ par champ. */
@@ -27,6 +28,7 @@ export interface Style {
   numberFormat: NumberFormat;
   threshold: Threshold | undefined;
   tooltip: Tooltip;
+  dateFormat?: "short" | "medium" | "long" | "iso";
 }
 
 const NUMERIC = /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i;
@@ -42,6 +44,17 @@ export function formatValue(text: string, format: NumberFormat): string {
     case "percent": return formatPercent(value, 1);
     case "compact": return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
   }
+}
+
+/** Les dates typées gardent leur texte exact par défaut ; la partie heure et sa précision restent intactes. */
+export function formatThemeDate(text: string, format: NonNullable<Style["dateFormat"]>): string {
+  if (format === "short" || format === "iso") return text;
+  const match = /^(\d{4}-\d{2}-\d{2})(.*)$/.exec(text);
+  if (match === null) return text;
+  const day = match[1] as string;
+  const date = new Date(`${day}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== day) return text;
+  return `${new Intl.DateTimeFormat("fr-FR", { dateStyle: format, timeZone: "UTC" }).format(date)}${(match[2] as string).replace(/^T(?=\d{2}:\d{2}:\d{2})/, " ")}`;
 }
 
 const escape = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -94,6 +107,13 @@ export function drawChart(rows: readonly Cells[], shape: Shape, style: Style, th
   const rowLabels = categoriesOf(rows, grouped ? shape.dimensions.slice(0, -1) : shape.dimensions);
   // Barres groupées : une catégorie par combinaison des premières dimensions, une série par valeur de la dernière.
   const labels = grouped ? [...new Set(rowLabels)] : rowLabels;
+  const dateFormat = style.dateFormat;
+  const dateDimensions = shape.temporalDimensions ?? [];
+  const formattedDates = dateFormat !== undefined && dateFormat !== "short" && dateFormat !== "iso" && dateDimensions.length > 0;
+  const showDate = (name: string, value: string): string => dateFormat !== undefined && dateDimensions.includes(name) ? formatThemeDate(value, dateFormat) : value;
+  const labelDimensions = grouped ? shape.dimensions.slice(0, -1) : shape.dimensions;
+  const displayLabels = new Map(rows.map((row, index) => [rowLabels[index] as string, labelDimensions.map((name) => showDate(name, row[name] ?? MISSING)).join(" · ")]));
+  const labelOf = (label: string): string => displayLabels.get(label) ?? label;
   const groupOf = (row: Cells): string => (row[last] ?? MISSING);
   const palette = [theme.series, theme.secondary];
   const type = chart === "line" ? "line" : "bar";
@@ -113,20 +133,28 @@ export function drawChart(rows: readonly Cells[], shape: Shape, style: Style, th
     ...(index === 0 && style.threshold !== undefined ? { markLine: thresholdLine(theme, style.threshold) } : {}),
   }));
   const defined = (metric: string): string => definitions[metric] ?? "Définition indisponible";
+  const seriesLabel = (name: string): string => {
+    const found = seriesList.find((one) => one.name === name);
+    return found?.group === undefined ? name : `${showDate(last, found.group)} · ${found.metric}`;
+  };
   const tooltip = style.tooltip === "value_and_definition"
     ? { ...baseOption(theme).tooltip, trigger: "item", formatter: (params: { seriesName?: string; name?: string; value?: unknown }) => {
       const found = seriesList.find((one) => one.name === params.seriesName);
       const value = typeof params.value === "string" ? show(params.value) : MISSING;
-      return `${escape(params.name ?? "")} · ${escape(params.seriesName ?? "")} : ${escape(value)}<br/>${escape(defined(found?.metric ?? ""))}`;
+      const label = formattedDates ? labelOf(params.name ?? "") : params.name ?? "";
+      return `${escape(label)} · ${escape(formattedDates ? seriesLabel(params.seriesName ?? "") : params.seriesName ?? "")} : ${escape(value)}<br/>${escape(defined(found?.metric ?? ""))}`;
     } }
-    : { ...baseOption(theme).tooltip, trigger: "item" };
+    : formattedDates ? { ...baseOption(theme).tooltip, trigger: "item", formatter: (params: { seriesName?: string; name?: string; value?: unknown }) => {
+      const value = typeof params.value === "string" || typeof params.value === "number" ? show(String(params.value)) : MISSING;
+      return `${escape(labelOf(params.name ?? ""))} · ${escape(seriesLabel(params.seriesName ?? ""))} : ${escape(value)}`;
+    } } : { ...baseOption(theme).tooltip, trigger: "item" };
   const legendShown = style.legend === "shown" || (style.legend === "auto" && series.length > 1);
   const option: ChartOption = {
     ...baseOption(theme),
     tooltip,
     legend: { show: legendShown, top: 0, textStyle: { color: theme.text, fontFamily: theme.fontSans, fontSize: 11 } },
     grid: { left: 56, right: 16, top: legendShown ? 40 : 28, bottom: 28 },
-    xAxis: categoryAxis(theme, labels),
+    xAxis: formattedDates ? { ...categoryAxis(theme, labels), axisLabel: { ...categoryAxis(theme, labels).axisLabel, formatter: labelOf } } : categoryAxis(theme, labels),
     yAxis: valueAxis(theme, (value) => (numberFormat === "auto" ? String(value) : formatValue(String(value), numberFormat))),
     series,
     media: narrowMedia({ grid: { bottom: 28 }, xAxis: { axisLabel: { rotate: 0 } } }, { grid: { bottom: 72 }, xAxis: { axisLabel: { rotate: 45 } } }),
@@ -135,7 +163,7 @@ export function drawChart(rows: readonly Cells[], shape: Shape, style: Style, th
     key: `${String(dataIndex)}:${String(seriesIndex)}`,
     dataIndex,
     seriesIndex,
-    announcement: `${label}${seriesList.length === 1 ? "" : ` · ${one.name}`} : ${show(cell(dataIndex, one))}`,
+    announcement: `${formattedDates ? labelOf(label) : label}${seriesList.length === 1 ? "" : ` · ${formattedDates ? seriesLabel(one.name) : one.name}`} : ${show(cell(dataIndex, one))}`,
   })));
   return { option, items, description: description(chart === "line" ? "Ligne" : grouped ? "Barres groupées" : "Barres") };
 }

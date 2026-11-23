@@ -13,11 +13,11 @@ const ouvrir = async () => {
 const dialogue = () => screen.getByRole("dialog", { name: "Ajouter une analyse" });
 const barre = () => screen.getByRole("toolbar", { name: "Actions de l'éditeur" });
 
-it("ajoute une révision en colonne, exécute sa requête et annule en une étape", async () => {
+const ajouterRevision = async () => {
   const { server } = await ouvrir();
   await userEvent.click(screen.getByRole("button", { name: /^Colonne 1 · 4/ }));
   await userEvent.click(screen.getByRole("button", { name: "Ajouter une analyse" }));
-  await userEvent.type(within(dialogue()).getByRole("textbox", { name: "Rechercher une analyse" }), "région");
+  fireEvent.change(within(dialogue()).getByRole("textbox", { name: "Rechercher une analyse" }), { target: { value: "région" } });
   await userEvent.click(await within(dialogue()).findByRole("button", { name: /Chiffre d'affaires par région/ }));
   expect(await within(dialogue()).findByText(/Modèle : sales/)).toBeInTheDocument();
   expect(within(dialogue()).getByRole("combobox", { name: "Révision" })).toHaveValue("2");
@@ -31,15 +31,24 @@ it("ajoute une révision en colonne, exécute sa requête et annule en une étap
   expect(screen.getAllByRole("button", { name: /^Visuel · Chiffre/ })).toHaveLength(2);
   await waitFor(() => { expect(server.submitted()).toHaveLength(3); });
   expect(server.submitted()[2]).toMatchObject({ analysis: { id: N.bars, revision: 2 }, filters: [{ column: "region", operator: "in", value: ["Nord", "Sud"] }] });
+  return server;
+};
+
+it("ajoute une révision, exécute sa requête et annule en une étape", async () => {
+  await ajouterRevision();
   await userEvent.click(within(barre()).getByRole("button", { name: "Annuler" }));
   expect(screen.getAllByRole("button", { name: /^Visuel · Chiffre/ })).toHaveLength(1);
   await userEvent.click(within(barre()).getByRole("button", { name: "Rétablir" }));
   expect(screen.getAllByRole("button", { name: /^Visuel · Chiffre/ })).toHaveLength(2);
+});
+
+it("filtre une analyse ajoutée", async () => {
+  const server = await ajouterRevision();
   await userEvent.click(screen.getByRole("tab", { name: /^Filtres/ }));
   await userEvent.click(screen.getByRole("button", { name: "Nouveau filtre" }));
-  await userEvent.type(screen.getByRole("textbox", { name: "Libellé" }), "Filtre ajouté");
+  fireEvent.change(screen.getByRole("textbox", { name: "Libellé" }), { target: { value: "Filtre ajouté" } });
   await userEvent.selectOptions(screen.getByRole("combobox", { name: "Dimension" }), "region:string");
-  await userEvent.type(screen.getByRole("textbox", { name: "Valeur par défaut" }), "Nord");
+  fireEvent.change(screen.getByRole("textbox", { name: "Valeur par défaut" }), { target: { value: "Nord" } });
   await userEvent.click(screen.getAllByRole("checkbox", { name: /Visuel · Chiffre/ })[1] as HTMLElement);
   await userEvent.click(screen.getByRole("button", { name: "Ajouter le filtre" }));
   await waitFor(() => { expect(server.submitted()).toHaveLength(4); });

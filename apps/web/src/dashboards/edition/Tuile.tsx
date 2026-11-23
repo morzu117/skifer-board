@@ -1,10 +1,11 @@
-import type { Table } from "apache-arrow";
+import { DataType, type Table } from "apache-arrow";
 import { useMemo, type ReactNode } from "react";
 
 import type { AnalysisRevision } from "../../analyses/model";
 import { ChartCard } from "../../charts/ChartCard";
 import { DataTable } from "../../charts/DataTable";
 import type { ChartTheme } from "../../charts/theme";
+import type { ThemeDocument } from "../../themes/document";
 import { ERROR_LABELS } from "../../executions/labels";
 import type { Execution } from "../../executions/model";
 import { ProvenanceResultat } from "../../explorer/ProvenanceResultat";
@@ -31,6 +32,7 @@ interface Props {
   defaults: Defaults;
   catalog: readonly ExplorerModel[] | null;
   theme: ChartTheme;
+  themeDocument?: ThemeDocument | undefined;
   onCancel?: () => void;
   onRetry?: () => void;
   onRestart?: () => void;
@@ -49,8 +51,8 @@ function failureText(error: unknown, execution: Execution | undefined): string {
  * tuile indisponible dit sa raison sans qu'aucune exécution soit lancée, et tout résultat affiché porte sa provenance (§0.3).
  * La présentation (type, légende, format, seuil, infobulle) n'agit que sur l'affichage : la requête soumise est celle de l'analyse.
  */
-export function Tuile({ component, state, pinned, defaults, catalog, theme, onCancel, onRetry, onRestart }: Props) {
-  const found = useMemo(() => (pinned === undefined ? undefined : effective(component, pinned, defaults)), [component, pinned, defaults]);
+export function Tuile({ component, state, pinned, defaults, catalog, theme, themeDocument, onCancel, onRetry, onRestart }: Props) {
+  const found = useMemo(() => (pinned === undefined ? undefined : effective(component, pinned, defaults, themeDocument)), [component, pinned, defaults, themeDocument]);
   const title = found === undefined ? (component.presentation.title ?? (component.type === "kpi" ? "KPI épinglé" : "Visuel épinglé")) : titleOf(found);
   const head = <h3 className="sb-tile__title">{title}</h3>;
   const status = state?.status ?? "reading";
@@ -89,7 +91,8 @@ export function Tuile({ component, state, pinned, defaults, catalog, theme, onCa
   const partial = execution.truncated === true ? <ResultatPartiel dashboard /> : null;
   const style = styleOf(found as NonNullable<typeof found>);
   const query = (pinned as AnalysisRevision).analysis.query;
-  const shape: Shape = { metrics: query.metrics, dimensions: query.dimensions };
+  const temporalDimensions = result.schema.fields.filter((field) => query.dimensions.includes(field.name) && (DataType.isDate(field.type) || DataType.isTimestamp(field.type))).map((field) => field.name);
+  const shape: Shape = { metrics: query.metrics, dimensions: query.dimensions, temporalDimensions };
   if (state?.status === "empty") {
     return <div className="sb-tile" role="group" aria-label={title}>{head}
       {partial}

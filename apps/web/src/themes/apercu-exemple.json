@@ -1,0 +1,8 @@
+{
+  "kpi": { "title": "Valeur fictive", "value": "1234.5" },
+  "charts": [
+    { "type": "bars", "title": "Barres fictives", "dimensions": ["catégorie fictive"], "metrics": ["valeur fictive"], "rows": [{ "catégorie fictive": "A fictif", "valeur fictive": "12.5" }, { "catégorie fictive": "B fictif", "valeur fictive": "18" }] },
+    { "type": "line", "title": "Ligne fictive", "dimensions": ["date fictive"], "metrics": ["valeur fictive"], "rows": [{ "date fictive": "2026-01-15", "valeur fictive": "9" }, { "date fictive": "2026-02-15", "valeur fictive": "15" }] },
+    { "type": "grouped_bars", "title": "Barres groupées fictives", "dimensions": ["catégorie fictive", "groupe fictif"], "metrics": ["valeur fictive"], "rows": [{ "catégorie fictive": "A fictif", "groupe fictif": "G1 fictif", "valeur fictive": "8" }, { "catégorie fictive": "A fictif", "groupe fictif": "G2 fictif", "valeur fictive": "11" }, { "catégorie fictive": "B fictif", "groupe fictif": "G1 fictif", "valeur fictive": "14" }, { "catégorie fictive": "B fictif", "groupe fictif": "G2 fictif", "valeur fictive": "16" }] }
+  ]
+}

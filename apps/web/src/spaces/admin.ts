@@ -136,6 +136,8 @@ export const REFUSAL_LABELS: Record<RefusalCode, string> = {
   analysis_model_mismatch: "Le modèle de la demande n'est pas celui de l'analyse référencée.",
   dashboard_not_found: "Ce dashboard est introuvable ou ne vous est pas accessible.",
   invalid_dashboard: "Le dashboard est invalide : des règles ne sont pas respectées.",
+  unapproved_reference: "Une référence du dashboard ne correspond pas à une révision approuvée.",
+  content_in_use: "Ce contenu est encore utilisé.",
   personal_reference: "Un dashboard partagé ne peut épingler que des analyses partagées : des composants référencent une analyse personnelle.",
 };
 

@@ -560,3 +560,35 @@ it("une valeur de travail de type incompatible ne lance aucune exécution de la 
   await waitFor(() => { expect(server.submitted()).toHaveLength(1); });
   expect(server.submitted()[0]?.dimensions).toEqual([]);
 });
+
+describe("tuiles issues de composants", () => {
+  const document = decodeDashboardDraft({ ...sampleDraft(), filters: [], layout: { sections: [{ id: N.s1, rows: [{ id: N.r1, columns: [{ id: N.c1, span: 12, children: [{ id: N.visual, type: "component", component: { component_id: N.text, revision: 1 } }, { id: N.kpi, type: "analysis", reference: { analysis_id: N.bars, revision: 1 }, presentation: {} }] }] }] }] } });
+  const resolved = { document: { api_version: "board.component/v1" as const, id: N.text, name: "Ventes", description: "", owner: { issuer: "issuer", subject: "subject" }, kind: "visual" as const, analysis: { analysis_id: N.bars, revision: 1 }, presentation: {} }, revision: 1 };
+  it.each(["deny", "require_human"] as const)("partage la décision %s avec le visuel équivalent", async (decision) => {
+    const server = editorServer({ outcomes: { [N.bars]: decision } });
+    const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document, tiles: [], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1, resolvedComponents: { [N.visual]: resolved } };
+    const { result } = renderHook(() => useTiles(props));
+    await waitFor(() => { expect(result.current.states.get(N.visual)?.status).toBe("denied"); expect(result.current.states.get(N.kpi)?.status).toBe("denied"); });
+    expect(result.current.states.get(N.visual)).toEqual(result.current.states.get(N.kpi));
+    expect(server.submitted()).toHaveLength(1);
+  });
+  it("ne soumet jamais le composant non résolu", async () => {
+    const server = editorServer();
+    const props: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document, tiles: [], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1 };
+    const { result } = renderHook(() => useTiles(props));
+    expect(result.current.states.get(N.visual)).toEqual({ status: "unavailable", reason: "component_unavailable" });
+    await waitFor(() => { expect(server.submitted()).toHaveLength(1); });
+  });
+  it("accepte un KPI résolu et refuse une révision ou un identifiant différent", () => {
+    const server = editorServer();
+    const base: TileSources = { space: "finance", dashboard: ID, identity: "cora", environment: "DEV", document, tiles: [], catalog: { status: "ok", value: { models: MODELS } }, fetcher: server.fetcher, poll: 1 };
+    const kpi = { ...resolved, document: { ...resolved.document, kind: "kpi" as const } };
+    const initial: TileSources = { ...base, resolvedComponents: { [N.visual]: kpi } };
+    const { result, rerender } = renderHook((props: TileSources) => useTiles(props), { initialProps: initial });
+    expect(result.current.components.get(N.visual)?.type).toBe("kpi");
+    rerender({ ...base, resolvedComponents: { [N.visual]: { ...resolved, revision: 2 } } });
+    expect(result.current.states.get(N.visual)).toMatchObject({ reason: "component_unavailable" });
+    rerender({ ...base, resolvedComponents: { [N.visual]: { ...resolved, document: { ...resolved.document, id: N.bars } } } });
+    expect(result.current.states.get(N.visual)).toMatchObject({ reason: "component_unavailable" });
+  });
+});

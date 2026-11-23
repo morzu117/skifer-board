@@ -518,3 +518,13 @@ def test_operations_execution_sont_fermees() -> None:
             outcome="ok",
             duration_ms=1,
         )
+
+
+def test_codes_contenus_partages_sont_fermes() -> None:
+    from skifer_board.content.errors import COMPONENT_CODES, PAGE_TEMPLATE_CODES, THEME_CODES
+
+    for code in COMPONENT_CODES | PAGE_TEMPLATE_CODES | THEME_CODES:
+        assert code in REFUSAL_CODES
+        assert outcome(404, code) == code
+    assert outcome(403, "not_owner") == "not_owner"
+    assert outcome(404, "theme_secret") == "other"

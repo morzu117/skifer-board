@@ -162,6 +162,8 @@ export function editorServer(options: ServerOptions = {}): EditorServer {
     const key = `${method} ${url}`;
     const forced = options.overrides?.[key];
     if (forced !== undefined) return (typeof forced === "function" ? await forced(init) : forced).clone();
+    if (key === `GET ${ROOT}/themes`) return Response.json({ themes: [], unreadable: 0 });
+    if (key === `GET ${ROOT}/components`) return Response.json({ components: [], unreadable: 0 });
     if (key === `GET ${ROOT}/dashboards/${ID}`) return Response.json(dashboardBody(draft, { ...(options.revise === undefined ? {} : { revise: options.revise }), ...(options.tiles === undefined ? {} : { tiles: options.tiles }), ...(options.state === undefined ? {} : { state: options.state }), revision }));
     if (key === `POST ${ROOT}/dashboards/${ID}/revisions`) {
       const body = JSON.parse(init?.body as string) as Record<string, unknown>;

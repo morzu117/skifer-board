@@ -1,0 +1,206 @@
+{
+  "categorical_contrast": [
+    {
+      "path": "/categorical/1",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "categorical_duplicate": [
+    {
+      "path": "/categorical",
+      "rule": "duplicate_item"
+    }
+  ],
+  "categorical_long": [
+    {
+      "path": "/categorical",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "categorical_same_color": [
+    {
+      "path": "/categorical",
+      "rule": "duplicate_color"
+    }
+  ],
+  "categorical_short": [
+    {
+      "path": "/categorical",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "diverging_center": [
+    {
+      "path": "/diverging",
+      "rule": "diverging_sides"
+    },
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    },
+    {
+      "path": "/diverging/1",
+      "rule": "non_neutral"
+    }
+  ],
+  "diverging_center_equal": [
+    {
+      "path": "/diverging",
+      "rule": "diverging_sides"
+    },
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    }
+  ],
+  "diverging_contrast": [
+    {
+      "path": "/diverging",
+      "rule": "diverging_sides"
+    },
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    },
+    {
+      "path": "/diverging/2",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "diverging_endpoint_under": [
+    {
+      "path": "/diverging",
+      "rule": "diverging_sides"
+    },
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    },
+    {
+      "path": "/diverging/0",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "diverging_even": [
+    {
+      "path": "/diverging",
+      "rule": "even_diverging"
+    }
+  ],
+  "diverging_long": [
+    {
+      "path": "/diverging",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "diverging_order": [
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    }
+  ],
+  "diverging_short": [
+    {
+      "path": "/diverging",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "diverging_sides": [
+    {
+      "path": "/diverging",
+      "rule": "diverging_sides"
+    },
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    }
+  ],
+  "diverging_unknown": [
+    {
+      "path": "/diverging/0",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "diverging_wing_equal": [
+    {
+      "path": "/diverging",
+      "rule": "not_monotone"
+    }
+  ],
+  "hex": [
+    {
+      "path": "/roles/marks/series",
+      "rule": "hex_color"
+    }
+  ],
+  "mark_contrast": [
+    {
+      "path": "/roles/marks/series",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "palette_unknown": [
+    {
+      "path": "/sequential/1",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "sequential_contrast": [
+    {
+      "path": "/sequential",
+      "rule": "not_monotone"
+    },
+    {
+      "path": "/sequential/2",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "sequential_contrast_order": [
+    {
+      "path": "/sequential",
+      "rule": "not_monotone"
+    }
+  ],
+  "sequential_equal": [
+    {
+      "path": "/sequential",
+      "rule": "not_monotone"
+    }
+  ],
+  "sequential_last_under": [
+    {
+      "path": "/sequential/2",
+      "rule": "token_not_admissible"
+    }
+  ],
+  "sequential_long": [
+    {
+      "path": "/sequential",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "sequential_order": [
+    {
+      "path": "/sequential",
+      "rule": "not_monotone"
+    }
+  ],
+  "sequential_short": [
+    {
+      "path": "/sequential",
+      "rule": "out_of_bounds"
+    }
+  ],
+  "sequential_small_step": [
+    {
+      "path": "/sequential",
+      "rule": "not_monotone"
+    }
+  ],
+  "text_contrast": [
+    {
+      "path": "/roles/text/text",
+      "rule": "token_not_admissible"
+    }
+  ]
+}

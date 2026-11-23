@@ -38,6 +38,9 @@ from .content import config_from_env as content_from_env
 from .content.dashboard_web import DashboardConsumers, install_dashboard_routes
 from .content.events import UsageConfigError, UsageEvents, UsageKey, key_from_env
 from .content.index import AnalysisIndex, DashboardIndex
+from .content.shared_consumers import SharedConsumers
+from .content.shared_index import SharedIndex
+from .content.shared_web import install_shared_routes
 from .content.web import AnalysisUse, install_analysis_routes
 from .execution import ConnectionStore, install_connections
 from .execution.connectors import (
@@ -337,6 +340,13 @@ def create_app(
     )
     install_dashboard_routes(
         app, content_repository, dashboard_index, connections, models, guards.reader
+    )
+    install_shared_routes(
+        app,
+        content_repository,
+        None if spaces.store is None else SharedIndex(spaces.store.engine, spaces.clock),
+        guards.reader,
+        None if dashboard_index is None else SharedConsumers(content_repository, dashboard_index),
     )
     # En mode local, personne ne peut avoir le droit de lire : le mode est dit tel quel (T7).
     readable = None if spaces.store is None else telemetry.store

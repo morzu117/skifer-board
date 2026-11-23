@@ -1,10 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { tableFromArrays, type Table } from "apache-arrow";
+import { DateDay, TimestampMicrosecond, makeData, makeVector, tableFromArrays, Table } from "apache-arrow";
 import { describe, expect, it, vi } from "vitest";
 
 import { decodeRevision, type AnalysisRevision } from "../../analyses/model";
+import { chartOf } from "../../charts/testing";
 import { SKIFER_ARDOISE, SKIFER_CLAIR } from "../../charts/theme";
+import rawTheme from "../../../../../contracts/themes/fixtures/valid/clair.json";
+import { decodeTheme, type ThemeDocument } from "../../themes/document";
 import executionExample from "../../../../../contracts/executions/contextuel-detail.json";
 import { decodeExecution, type Execution } from "../../executions/model";
 import { renderThemed, expectAccessible } from "../../test/a11y";
@@ -22,11 +25,46 @@ const single = tableFromArrays({ revenue: [17] });
 const truncatedRun: Execution = { ...execution, truncated: true };
 const success = (result: Table = byRegion, run: Execution = execution): TileState => ({ status: "success", result, execution: run });
 
-interface Options { component?: AnalysisComponent | KpiComponent; state: TileState | undefined; pinned?: AnalysisRevision | undefined; defaults?: Defaults; catalog?: typeof MODELS | null }
+it("rend les états et la provenance d'un composant visuel résolu", () => {
+  const resolved = { kind: "visual" as const, analysis: { analysis_id: N.bars, revision: 1 }, presentation: { title: "Composant résolu" } };
+  const component: AnalysisComponent = { id: N.visual, type: "analysis", reference: resolved.analysis, presentation: resolved.presentation };
+  const rendered = show({ component, state: { status: "reading" } });
+  expect(screen.getByRole("status")).toHaveTextContent("Lecture");
+  rendered.rerender(<Tuile component={component} state={{ status: "unavailable", reason: "component_unavailable" }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} />);
+  expect(screen.getByText("Indisponible")).toBeInTheDocument();
+  rendered.rerender(<Tuile component={component} state={{ status: "denied", decision: "DENY", execution }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} />);
+  expect(screen.getByRole("alert")).toHaveTextContent("DENY");
+  rendered.rerender(<Tuile component={component} state={{ status: "error", error: new Error("panne") }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} />);
+  expect(screen.getByRole("alert")).toHaveTextContent("Échec");
+  rendered.rerender(<Tuile component={component} state={{ status: "empty", result: tableFromArrays({ revenue: [] as number[] }), execution }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} />);
+  expect(screen.getByRole("status")).toHaveTextContent("Aucune ligne");
+  rendered.rerender(<Tuile component={component} state={success()} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} />);
+  const footer = within(screen.getByLabelText(/^Provenance ·/));
+  expect(footer.getByText("Preuve").nextSibling).toHaveTextContent(execution.proof?.evidenceId ?? "");
+  expect(footer.getByText("Empreinte SQL").nextSibling).toHaveTextContent(execution.proof?.sqlHash ?? "");
+  expect(footer.getByText("Certification des sources").nextSibling).toHaveTextContent("inconnue");
+  expect(footer.getByText("Âge des données").nextSibling).toHaveTextContent("inconnu");
+});
+
+interface Options { component?: AnalysisComponent | KpiComponent; state: TileState | undefined; pinned?: AnalysisRevision | undefined; defaults?: Defaults; catalog?: typeof MODELS | null; themeDocument?: ThemeDocument }
 const show = (options: Options) => {
   const { component = visual(), state, defaults = {}, catalog = null } = options;
-  return render(<Tuile component={component} state={state} pinned={"pinned" in options ? options.pinned : pinned(N.bars)} defaults={defaults} catalog={catalog} theme={SKIFER_CLAIR} />);
+  return render(<Tuile component={component} state={state} pinned={"pinned" in options ? options.pinned : pinned(N.bars)} defaults={defaults} catalog={catalog} theme={SKIFER_CLAIR} themeDocument={options.themeDocument} />);
 };
+
+it("applique le format numérique du thème au KPI et au visuel", () => {
+  const source = decodeTheme(rawTheme);
+  const themeDocument = { ...source, formats: { ...source.formats, number: "decimal_2" as const }, chart_defaults: {} };
+  const first = show({ component: kpi(), pinned: pinned(N.total), state: success(single), themeDocument });
+  expect(first.container).toHaveTextContent("17,00");
+  first.unmount();
+  const second = show({ component: visual(), state: success(), themeDocument });
+  expect(second.container).toHaveTextContent("12,00");
+  second.unmount();
+  const valueDefaults = { ...themeDocument, chart_defaults: { value: { number_format: "decimal_1" as const } } };
+  const third = show({ component: kpi(), pinned: pinned(N.total), state: success(single), themeDocument: valueDefaults });
+  expect(third.container).toHaveTextContent("17,0");
+});
 
 describe("états d'une tuile (§0.2)", () => {
   it("lecture de l'analyse épinglée, sans titre connu : le titre est celui du composant ou un titre générique", () => {
@@ -242,4 +280,36 @@ it("une tuile annulée propose de relancer", async () => {
   render(<Tuile component={visual()} state={{ status: "cancelled" }} pinned={pinned(N.bars)} defaults={{}} catalog={null} theme={SKIFER_CLAIR} onRestart={restart} />);
   await userEvent.click(screen.getByRole("button", { name: "Relancer" }));
   expect(restart).toHaveBeenCalledOnce();
+});
+
+it("formate les dates Arrow dans une tuile avec le thème", () => {
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "auto" as const, date: "long" as const } };
+  const region = makeVector(makeData({ type: new DateDay(), length: 1, data: new Int32Array([20468]) }));
+  const table = new Table({ region, revenue: makeVector(new Float64Array([12])) });
+  show({ state: success(table), themeDocument });
+  const image = screen.getByRole("img", { name: /^Barres de/ });
+  const option = chartOf(image).getOption() as { xAxis: { data: string[]; axisLabel: { formatter: (value: string) => string } }[] };
+  const axis = option.xAxis[0];
+  expect(axis?.axisLabel.formatter(axis.data[0] as string)).toMatch(/janvier 2026/);
+});
+
+it("garde le KPI automatique brut et applique un format explicite de thème", () => {
+  const result = tableFromArrays({ revenue: [1234.5] });
+  const first = show({ component: kpi(), pinned: pinned(N.total), state: success(result) });
+  expect(screen.getByText("1234.5")).toBeInTheDocument();
+  first.unmount();
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "decimal_2" as const, date: "short" as const }, chart_defaults: {} };
+  show({ component: kpi(), pinned: pinned(N.total), state: success(result), themeDocument });
+  expect(screen.getByText("1 234,50")).toBeInTheDocument();
+});
+
+it("reconnaît un horodatage Arrow et applique le format long du thème", () => {
+  const themeDocument = { ...decodeTheme(rawTheme), formats: { number: "auto" as const, date: "long" as const } };
+  const region = makeVector(makeData({ type: new TimestampMicrosecond("UTC"), length: 1, data: new BigInt64Array([1700000000123457n]) }));
+  const table = new Table({ region, revenue: makeVector(new Float64Array([12])) });
+  show({ state: success(table), themeDocument });
+  const option = chartOf(screen.getByRole("img", { name: /^Barres de/ })).getOption() as { xAxis: { data: string[]; axisLabel: { formatter: (value: string) => string } }[] };
+  const axis = option.xAxis[0];
+  expect(axis?.data[0]).toBe("2023-11-14T22:13:20.123457Z");
+  expect(axis?.axisLabel.formatter(axis.data[0] as string)).toBe("14 novembre 2023 22:13:20.123457Z");
 });

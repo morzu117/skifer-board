@@ -155,7 +155,7 @@ describe("présentation d'un visuel (B9)", () => {
     expect(announce()).toBe("Surcharge retirée : format des nombres.");
   });
 
-  it("chaque surcharge se pose avec son origine « Composant » et se retire", async () => {
+  it("chaque surcharge se pose avec son origine « Tuile » et se retire", async () => {
     await ready();
     await select(VISUAL);
     await userEvent.selectOptions(combo("Type de graphique"), "line");
@@ -169,6 +169,7 @@ describe("présentation d'un visuel (B9)", () => {
     await userEvent.tab();
     expect(announce()).toBe("Titre modifié.");
     expect(screen.getByRole("button", { name: /^Visuel · Mon titre$/ })).toBeInTheDocument();
+    expect(screen.getAllByText("Origine : Tuile")).toHaveLength(5);
     const removers = screen.getAllByRole("button", { name: /^Retirer la surcharge : / }).map((button) => button.textContent);
     expect(removers).toEqual(["Retirer la surcharge : titre", "Retirer la surcharge : type de graphique", "Retirer la surcharge : légende", "Retirer la surcharge : format des nombres", "Retirer la surcharge : infobulle"]);
     for (const name of removers) await userEvent.click(screen.getByRole("button", { name }));

@@ -1,0 +1,78 @@
+{
+  "id": "00000000-0000-0000-0000-000000000001",
+  "base": 1,
+  "other": 2,
+  "changes": [
+    {
+      "path": "/filters/0/operator",
+      "kind": "modified",
+      "node": null,
+      "id": null,
+      "before": "eq",
+      "after": "in"
+    },
+    {
+      "path": "/filters/0/default",
+      "kind": "modified",
+      "node": null,
+      "id": null,
+      "before": "ouest",
+      "after": [
+        "est",
+        "ouest"
+      ]
+    },
+    {
+      "path": "/filters/0/allowed",
+      "kind": "added",
+      "node": null,
+      "id": null,
+      "before": null,
+      "after": [
+        "est",
+        "ouest"
+      ]
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/type",
+      "kind": "modified",
+      "node": null,
+      "id": null,
+      "before": "slot",
+      "after": "text"
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/expected",
+      "kind": "removed",
+      "node": null,
+      "id": null,
+      "before": "visual",
+      "after": null
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/label",
+      "kind": "removed",
+      "node": null,
+      "id": null,
+      "before": "Ventes",
+      "after": null
+    },
+    {
+      "path": "/layout/sections/0/rows/0/columns/0/children/0/blocks",
+      "kind": "added",
+      "node": null,
+      "id": null,
+      "before": null,
+      "after": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "text": "Exemple"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

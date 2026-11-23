@@ -83,7 +83,7 @@ it("lie la marque à l'accueil et livre Catalogue Atlas dans l'espace, avec son 
   expect(screen.getByRole("navigation", { name: "Fil d'Ariane" })).toHaveTextContent("Catalogue Atlas");
   expect(within(screen.getByRole("navigation", { name: "Fil d'Ariane" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Finance", "Catalogue Atlas"]);
   // L'espace confirmé dit « Administrateur » : Catalogue Atlas et Espace & connexions sont livrés (plan 08, 8.4).
-  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Explorer", "Analyses", "Dashboards", "Catalogue Atlas", "Espace & connexions"]);
+  expect(within(nav).getAllByRole("button").map((bouton) => bouton.textContent)).toEqual(["Explorer", "Analyses", "Dashboards", "Thèmes", "Catalogue Atlas", "Espace & connexions"]);
   expect(within(nav).getByRole("button", { name: "Catalogue Atlas" })).toHaveAttribute("aria-current", "page");
   expect(within(nav).getByRole("button", { name: "Espace & connexions" })).not.toHaveAttribute("aria-current");
   expect(within(nav).getByText("Déploiements")).toHaveTextContent("à venir");

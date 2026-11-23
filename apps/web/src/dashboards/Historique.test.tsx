@@ -79,3 +79,15 @@ it("affiche la suppression sans proposer de lire une révision de suppression", 
   expect(entries.at(-1)).not.toHaveTextContent("Lire la révision");
   expect(entries.at(-1)).toHaveTextContent(/suppression/i);
 });
+
+it("affiche les références et le composant d'un écart du serveur", async () => {
+  const { default: real } = await import("./ecart-references-reel.json");
+  const server = dashboardsServer({ [`GET ${diffUrl}`]: { status: 200, body: { id: ID, base: 1, other: 2, changes: [...real.added, ...real.modified, ...real.removed] } } });
+  render(<DashboardDiffView space="finance" id={ID} base={1} other={2} fetcher={server} />);
+  const table = await screen.findByRole("table", { name: "Écart entre r1 et r2" });
+  expect(within(table).getAllByText(/Composant ·/)).toHaveLength(3);
+  expect(within(table).getAllByText("Thème")).toHaveLength(4);
+  expect(within(table).getAllByText("Modèle de page")).toHaveLength(4);
+  expect(within(table).getAllByRole("rowheader", { name: "/theme" })).toHaveLength(2);
+  expect(within(table).getAllByRole("rowheader", { name: "/template" })).toHaveLength(2);
+});
