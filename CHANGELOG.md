@@ -189,6 +189,8 @@ Toutes les évolutions notables de skifer-board. Format inspiré de [Keep a Chan
 
 ### Changed
 
+- Atlas (`skifer-atlas`) épinglé sur sa version 0.1.0 (au lieu d'un commit de développement). Atlas exige désormais un bloc `extraction` sur un document `draft` : la fixture de brouillon du catalogue en porte un, fictif, sans SQL.
+
 - Plan 20, 20.5a : un nom vide est accepté pendant la saisie puis signalé `name_required` ; le format de date du thème s’applique aux axes et infobulles des tuiles.
 
 - Plan 20, 20.4 : les palettes séquentielles et divergentes progressent vers les extrémités avec un contraste sur la surface d'au moins 1,10 fois celui du palier précédent ; les extrémités doivent atteindre 3:1 et les paliers intermédiaires peuvent être sous ce seuil. Un thème valide sous les règles 20.1 peut désormais être refusé.
